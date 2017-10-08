@@ -1,5 +1,5 @@
 2.5.6(17281)
-versionURL:http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/version.txt
-NewAsspURL:http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/assp.pl.gz
-ChangeLogURL:http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/changelog.txt
+versionURL:http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/version.txt?format=raw
+NewAsspURL:http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/assp.pl.gz?format=raw
+ChangeLogURL:http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/changelog.txt?format=raw
 
