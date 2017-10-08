@@ -64,7 +64,7 @@
  http://downloads.sourceforge.net/projects/assp/files/ASSP%20V2%20multithreading/autoupdate/assp.pl.gz
 
  The latest development version is available at:
- http://assp.cvs.sourceforge.net/viewvc/*checkout*/assp/assp2/assp.pl.gz
+ http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/assp.pl.gz?format=raw
 
 =cut
 
@@ -193,7 +193,7 @@ our $shamod;
 #
 sub setVersion {
 $version = '2.5.6';
-$build   = '17276';        # 03.10.2017 TE
+$build   = '17281';        # 08.10.2017 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -278,9 +278,9 @@ if ($subversion % 2) {
     $maxAge = 365 * 24 * 3600;
 } else {
 # stable development (beta) version download
-    $versionURL = 'http://assp.cvs.sourceforge.net/viewvc/*checkout*/assp/assp2/version.txt';
-    $NewAsspURL = 'http://assp.cvs.sourceforge.net/viewvc/*checkout*/assp/assp2/assp.pl.gz';
-    $ChangeLogURL = 'http://assp.cvs.sourceforge.net/viewvc/*checkout*/assp/assp2/changelog.txt';
+    $versionURL = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/version.txt?format=raw';
+    $NewAsspURL = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/assp.pl.gz?format=raw';
+    $ChangeLogURL = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/changelog.txt?format=raw';
     $maxAge = 90 * 24 * 3600;
 }
 our $gripListDownUrl = 'http://*HOST*/cgi-bin/assp_griplist?binary';
@@ -288,7 +288,7 @@ our $gripListUpUrl = 'http://*HOST*/cgi-bin/assp_griplist?binary';
 our $gripListUpHost = 'assp.sourceforge.net';
 $gripListDownUrl =~ s/\*HOST\*/$gripListUpHost/o;
 $gripListUpUrl  =~ s/\*HOST\*/$gripListUpHost/o;
-our $GroupsFileURL = 'http://assp.cvs.sourceforge.net/viewvc/*checkout*/assp/assp2/files/groups.txt';
+our $GroupsFileURL = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/groups.txt?format=raw';
 #-----------
 
 our %neverLockTable;
@@ -359,6 +359,8 @@ our $Gid;
 our $Sgids;
 our $DNSCheckInterval:shared = 60;
 our $DNSErrorCheckInterval:shared = 5;
+#our %startupMem:shared;
+
 
 ${'Storable::Deparse'} = 1;
 ${'Storable::Eval'} = 1;
@@ -402,7 +404,6 @@ our $reportBadDetectedSpam = 1;          # (0/1) report mails to spamaddresses t
 our $AUTHLogUser = 0;                    # (0/1) write the username for AUTH (PLAIN/LOGIN) to maillog.txt
 our $AUTHLogPWD = 0;                     # (0/1) write the userpassword for AUTH (PLAIN) to maillog.txt
 our $Unidecode2Console = 0;              # (0/1) use Text::Unidecode to decode NONASCII characters to ASCII - if available  - if set - 'ConsoleCharset' is ignored
-our $showMEM = 0;                        # (0/1) show the current memory usage in every worker
 our $AnalyzeLogRegex = 0;                # (0/1) enables enhanced regex analyzing (in console mode only)
 our $SysLogFormat = '';                  # possible values are '' , 'rfc3164' and 'rfc5424' - '' is default
 our $SysLogProto = 'udp';                # possible values are 'udp' , 'tcp' - 'udp' is default
@@ -570,11 +571,13 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'A5CDB23EC84F31EE44EA876940E1C2BA1EECFEB2'; }
+sub __cs { $codeSignature = 'A98303678597DC5916A60E768467677092196886'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
 #######################################################
+
+our $showMEM = 0;                        # (0/1) show the current memory usage in every worker  !!! DO NOT use - this causes SEGV in Devel::Size !!!
 
 # these four values are configured using 'TCPBufferSize'
 # there is no longer a need to change them here
@@ -595,10 +598,10 @@ our $SSL_read_ahead_max_time = 50;     # time in milliseconds used for read ahea
 our $tlds_alpha_URL = 'http://data.iana.org/TLD/tlds-alpha-by-domain.txt';
 our $tlds2_URL = 'http://george.surbl.org/two-level-tlds';
 #    "http://www.surbl.org/tld/two-level-tlds",
-#    "http://assp.cvs.sourceforge.net/viewvc/*checkout*/assp/assp2/files/URIBLCCTLDS-L2.txt",
+#    "http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/URIBLCCTLDS-L2.txt?format=raw",
 our $tlds3_URL = 'http://george.surbl.org/three-level-tlds';
 #    "http://www.surbl.org/tld/three-level-tlds",
-#    "http://assp.cvs.sourceforge.net/viewvc/*checkout*/assp/assp2/files/URIBLCCTLDS-L3.txt",
+#    "http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/URIBLCCTLDS-L3.txt?format=raw",
 
 our $BackDNSFileURL = 'http://wget-mirrors.uceprotect.net/rbldnsd-all/ips.backscatterer.org.gz';
 
@@ -5501,34 +5504,55 @@ sub strip50 {
     $_[0] = substr($_[0],0,20). '.....'. substr($_[0],length($_[0])-20,20) if (length($_[0]) > 50);
 }
 
+sub getPackMem {
+    my $v = shift;
+    my $count;
+return;
+    return if $v=~ /^(?:::)?main::/o;
+    for (keys %$v) {
+       if (/\:\:$/o) {
+           return &getPackMem($v.$_);
+       } else {
+           my $t;
+           $t = '$' if defined ${$v.$_};
+           $t = '@' if @{$v.$_};
+           $t = '%' if %{$v.$_};
+#           $t = '&' if defined &{$v.$_};
+           next unless $t;
+           my $size;
+           $size = Devel::Size::total_size(\${$v.$_}) if $t eq '$';
+           $size = Devel::Size::total_size(\@{$v.$_}) if $t eq '@';
+           $size = Devel::Size::total_size(\%{$v.$_}) if $t eq '%';
+#           $size = Devel::Size::total_size(\&{$v.$_}) if $t eq '&';
+           $count += $size;
+           $MemTable{$_} = $size;
+           if (abs($MemTable{$_} - $MemTableHist{$_}) > (1024*1024)) {
+               if ($showMEM > 1) {
+                   open (my $F , '>>', "$base/debug/memmap_$WorkerNumber.txt");
+                   print $F timestring() . " - $_ :" . formatDataSize( $MemTableHist{$_} ,1) . ':' . formatDataSize( $MemTable{$_} ,1)."\n";
+                   $F->close if $F;
+               }
+               $MemTableHist{$_} = $MemTable{$_};
+           }
+           $MemTableHist{$_} = $MemTable{$_} if ! $MemTableHist{$_};
+       }
+    }
+    return $count;
+}
+
 sub printMem {
     return if ! $showMEM;
     my $runmem = $showMEM;
     $showMEM = 0;
-    ($runmem = eval('use Devel::Size();use Devel::InnerPackage();$runmem;')) or return;
-    ${'Devel::Size::warn'} = 0;
-    %MemTable = ();
-    my $mem = $CurrentMEM{$WorkerNumber} = ' (' . formatDataSize( getPackMem('main') ,1) . ')';
-    threads->yield();
-    $showMEM = $runmem;
-    return $mem;
-}
-
-sub getPackMem {
-    my $pack = shift;
-    my $mem = 0;
-    open (my $F , '>>', "$base/debug/memmap_$WorkerNumber.txt");
-    for ($pack, Devel::InnerPackage::list_packages($pack)) {
-        $MemTable{$_} = Devel::Size::total_size(\%{$_.'::'});
-        $mem += $MemTable{$_};
-        if (abs($MemTable{$_} - $MemTableHist{$_}) > (1024*1024)) {
-            print $F timestring() . " - $_ :" . formatDataSize( $MemTableHist{$_} ,1) . ':' . formatDataSize( $MemTable{$_} ,1)."\n";
-            $MemTableHist{$_} = $MemTable{$_};
-        }
-        $MemTableHist{$_} = $MemTable{$_} if ! $MemTableHist{$_};
-    }
-    $F->close if $F;
-    return $mem;
+return;
+#    ($runmem = eval('use Devel::Size();$runmem;')) or return;
+##    ($runmem = eval('use Devel::Size();use Devel::InnerPackage();$runmem;')) or return;
+#    ${'Devel::Size::warn'} = 0;
+#    %MemTable = ();
+#    my $mem = $CurrentMEM{$WorkerNumber} = ' (' . formatDataSize( (getPackMem('::') + $startupMem{$WorkerNumber}) ,1) . ')';
+#    threads->yield();
+#    $showMEM = $runmem;
+#    return $mem;
 }
 
 sub checkVersionAge {
@@ -6321,15 +6345,15 @@ print $^C ? "compiling code, checking syntax and check code integrity - please w
 
 push @INC,$base unless grep {/^\Q$base\E$/o} @INC;
 
-&printVarsOn();
-if ($printVars) {
-    if (eval('use Data::Dumper; use Devel::Peek; use Devel::Size(); 1;')) {
-        print "\n!!! debugmode for variables is set to on !!!";
-        print "\n!!! reference counting for variables is set to on !!!" if ($countRefs);
-    } else {
-        $printVars = undef;
-    }
-}
+#&printVarsOn();
+#if ($printVars) {
+#    if (eval('use Data::Dumper; use Devel::Peek; use Devel::Size(); 1;')) {
+#        print "\n!!! debugmode for variables is set to on !!!";
+#        print "\n!!! reference counting for variables is set to on !!!" if ($countRefs);
+#    } else {
+#        $printVars = undef;
+#    }
+#}
 
 if (open my $ADV,'>' , "$base/ASSP_DEF_VARS.pm") {    # write the module to disk
 print $ADV <<'EOT';
@@ -12140,7 +12164,7 @@ $headers .= "</div>
 <a href=\"remotesupport\" target=\"_blank\">Remote Support</a> |
 <a href=\"donations\">donations</a> |
 <a href=\"http://sourceforge.net/p/assp/tickets\" rel=\"external\" target=\"_blank\">view,open tickets</a> |
-<a href=\"http://assp.cvs.sourceforge.net\" rel=\"external\" target=\"_blank\">development</a> |
+<a href=\"http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk\" rel=\"external\" target=\"_blank\">development</a> |
 <a href=\"http://assp.sourceforge.net/cgi-bin/assp_stats\" rel=\"external\" target=\"_blank\">global stats</a> |
 <a href=\"http://sourceforge.net/p/assp/wiki/ASSP_Documentation\" rel=\"external\" target=\"_blank\">docs</a> |
 <a href=\"http://sourceforge.net/mail/?group_id=69172\" rel=\"external\" target=\"_blank\">email lists</a> |
@@ -12184,8 +12208,8 @@ if ($mobile) {
    assp news</a>
   </td>
   <td class="noBorder">
-   <a href="http://assp.cvs.sourceforge.net" rel="external" target="_blank">
-   assp CVS repository</a>
+   <a href="http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk" rel="external" target="_blank">
+   assp SVN repository</a>
   </td>
   <td class="noBorder">
    <a href="http://sourceforge.net" rel="external" target="_blank">
@@ -12206,8 +12230,8 @@ if ($mobile) {
    <img src="get?file=images/assp-home-page.jpg" alt="ASSP Home Page" height="31" width="31" /></a>
   </td>
   <td class="noBorder">
-   <a href="http://assp.cvs.sourceforge.net" rel="external" target="_blank">
-   <img src="get?file=images/viewvc-logo.png" alt="Development Version CVS Repository" height="31" width="106" /></a>
+   <a href="http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk" rel="external" target="_blank">
+   <img src="get?file=images/viewvc-logo.png" alt="Development Version SVN Repository" height="31" width="106" /></a>
   </td>
   <td class="noBorder">
    <a href="http://sourceforge.net" rel="external" target="_blank">
@@ -14508,6 +14532,7 @@ if ($CanUseTieRDBM) {
   mlog(0,"starting maintenance worker thread [10000] - ThreadCycleTime is set to $MaintThreadCycleTime microseconds");
   $ComWorker{10000} = &share({});
   $ComWorker{10000}->{run} = 1;
+#  my $runmem = $startupMem{0} = &memoryUsage();
   if ($ThreadStackSize) {
       $Threads{10000} = threads->create({'stack_size' => 1024*1024*$ThreadStackSize},\&ThreadMaintStart,10000);
   } else {
@@ -14543,12 +14568,19 @@ If the step belongs to a BerkeleyDB hash,
   print "\rstarting maintenance worker thread";
   print "\t\t\t".($ComWorker{10000}->{inerror}?'[FAILED]':'[OK]').(' ' x 100)."\nstarting $NumComWorkers communication worker threads ";
 
+#  my $mu = &memoryUsage();
+#  $startupMem{10000} = $mu - $runmem;
+#  $runmem = $mu;
+
   mlog(0,"starting SMTP-worker-threads with ThreadCycleTime set to $ThreadCycleTime microseconds");
   mlog(0,"starting communication worker threads [1 to $NumComWorkers]");
   for (my $i = 1; $i <= $NumComWorkers; $i++) {
      newThread($i);
      print '.';
      while (! $ComWorker{$i}->{issleep} && ! $ComWorker{$i}->{inerror}){ThreadYield();}
+#     $mu = &memoryUsage();
+#     $startupMem{$i} = $mu - $runmem;
+#     $runmem = $mu;
   }
   print "\rstarting $NumComWorkers communication worker threads\t\t\t[OK]\nstarting rebuild SpamDB worker thread";
 
@@ -14562,6 +14594,10 @@ If the step belongs to a BerkeleyDB hash,
   }
   while (! $ComWorker{10001}->{isstarted} && ! $ComWorker{10001}->{inerror}){ThreadYield();}
   print "\t\t\t".($ComWorker{10001}->{inerror}?'[FAILED]':'[OK]')."\n";
+
+#  $mu = &memoryUsage();
+#  $startupMem{10001} = $mu - $runmem;
+#  $runmem = $mu;
 
   print "initializing main thread and logging\t\t\t[OK]\n";
   sleep 1;
@@ -14620,7 +14656,9 @@ If the step belongs to a BerkeleyDB hash,
   &mlogWrite();
   &initPrivatHashes($resetIntCacheAtStartup ? 'clean' : '');
   &mlogWrite();
+  threads->yield();
   %SMTPSessionIP = ();
+  threads->yield();
   &ResetStats();
   &mlogWrite();
   &initDBHashes();        # init DB based hashes - they are not shared
@@ -14996,7 +15034,13 @@ sub saveHashToFile {
    }
    my $LH;
    my $count;
-   lock(%$hash) if is_shared(%$hash);
+   my %tmp;
+   {
+       lock(%$hash) if is_shared(%$hash);
+       threads->yield();
+       %tmp = %$hash;
+       threads->yield();
+   }
    unless (open($LH, '>',$file)) {
        mlog(0,"warning: can't open file '$file' to save hash (in saveHashToFile)");
        return;
@@ -15004,10 +15048,10 @@ sub saveHashToFile {
    binmode($LH);
    print $LH "\n";
    my @h;
-   @h = sort keys %$hash;
+   @h = sort keys %tmp;
    while (@h) {
       (my $k = shift @h) or next;
-      (my $v = ${$hash}{$k}) or next;
+      defined (my $v = $tmp{$k}) or next;
       print $LH "$k\002$v\n";
       $count++;
    }
@@ -18331,9 +18375,6 @@ sub NewSMTPConnection {
             $Con{$client}->{error} = '5';
             done($client);
             return;
-        } else {
-            $SMTPSession{$client}=1;
-            threads->yield();
         }
     }
 
@@ -18477,12 +18518,6 @@ sub NewSMTPConnection {
     if(! (ref($server) && $peerhost && $peerport)) {
         mlog(0,"error: couldn't create server socket to $destination -- aborting connection") ;
         threads->yield();
-        if (exists $SMTPSession{$client}) {
-            $SMTPSessionIP{Total}++;
-            threads->yield();
-            $smtpConcurrentSessions++;
-            threads->yield();
-        }
         $Con{$client}->{type} = 'C';
         &NoLoopSyswrite($client,"421 <$myName> service temporarily unavailable, closing transmission\r\n",0);
         done($client);
@@ -18558,7 +18593,7 @@ sub NewSMTPConnection {
     threads->yield();
     $smtpConcurrentSessions++;
     threads->yield();
-    $SMTPSession{$client}=$client;
+    $SMTPSession{$client} = $client;
     if ($maxSMTPSessions && $numsess>=$maxSMTPSessions) {
         d("$WorkerName limiting sessions: $client");
         if ($SessionLog) {
@@ -20669,10 +20704,12 @@ sub WebDone {
 sub ConCountSync {
      my $count = 0;
      for (my $i = 1; $i<=$NumComWorkers; $i++) {
+         threads->yield();
          $count += $ComWorker{$i}->{numActCon};
-         last if $count;
+         return if $count;
      }
      if ($count == 0) {
+        threads->yield();
         %SMTPSessionIP = ();
         threads->yield();
         $SMTPSessionIP{Total} = 0;
@@ -20791,10 +20828,12 @@ sub done2 {
         return;
     }
     push @handles, $fh;
-    if ($oldfh && ! exists $ConDelete{$oldfh}) {
+    if ($oldfh && $oldfh ne $fh && ! exists $ConDelete{$oldfh}) {
         delete $Con{$oldfh}->{timestart};
         push @handles, $oldfh;
     }
+    delete $SMTPSession{$oldfh} if $oldfh && $oldfh ne $fh;
+
     d('done2');
     while (scalar @handles) {
         my $fh = shift @handles;
@@ -20906,7 +20945,7 @@ sub done2 {
             threads->yield();
             $smtpConcurrentSessions = 0 if (--$smtpConcurrentSessions < 0);
             threads->yield();
-            $SMTPSessionIP{Total}-- ;
+            $SMTPSessionIP{Total}--;
             threads->yield();
             delete $SMTPSessionIP{$ip} if (--$SMTPSessionIP{$ip} <= 0);
             threads->yield();
@@ -21007,11 +21046,11 @@ sub addsslfh {
   $Con{$sslfh}->{friend} = $friend;
   $Con{$sslfh}->{self} = $sslfh;
   $Con{$sslfh}->{oldfh} = $oldfh;
-  $SMTPSession{$sslfh} = $sslfh;
   delete $SMTPSession{$oldfh};
   if ($Con{$sslfh}->{type} eq 'C') {
-    $Con{$sslfh}->{client}   = $sslfh;
-    $Con{$sslfh}->{server}   = $friend;
+    $SMTPSession{$sslfh} = $sslfh;
+    $Con{$sslfh}->{client} = $sslfh;
+    $Con{$sslfh}->{server} = $friend;
     $Con{$sslfh}->{myheaderCon} .= "X-Assp-Client-TLS: yes\r\n";
     $Stats{smtpConnTLS}++ unless $Con{$sslfh}->{relayok};
   } else {
@@ -44982,7 +45021,7 @@ sub Maillog {
     d('Maillog');
     return unless $fh;
 
-    mlog(0,"error: possibly saw SMTP finish line QUIT[CR][LF] in sub maillog - please report this issue to development stuff",1) if $ConnectionLog && $text =~ /(^|[\n\r])quit[\r\n]+$/io;
+#    mlog(0,"error: possibly saw SMTP finish line QUIT[CR][LF] in sub maillog - please report this issue to development stuff",1) if $ConnectionLog && $text =~ /(^|[\n\r])quit[\r\n]+$/io;
 
     if ( ! defined($parm) && ! $Con{$fh}->{maillog} && ! $Con{$fh}->{maillogfilename} && ! $Con{$fh}->{recreatelog}) {
         mlog($fh,"info: 'nolog' condition found",1) if $SessionLog > 1;
@@ -47213,11 +47252,11 @@ sub StatsGetModules {
      my $url = 'http://search.cpan.org/search?query='.$_;
      $url = 'http://search.cpan.org/search?query=Alien::Libarchive'  if ($_ eq 'Archive::Libarchive::XS(libarchive-version)');
      $url = 'http://www.oracle.com/technology/products/berkeley-db/' if ($_ eq 'BerkeleyDB_DBEngine');
-     $url = 'http://assp.cvs.sourceforge.net/viewvc/assp/assp2/lib/' if ($_ eq 'AsspSelfLoader');
-     $url = 'http://assp.cvs.sourceforge.net/viewvc/assp/assp2/lib/' if ($_ eq 'ASSP_WordStem');
-     $url = 'http://assp.cvs.sourceforge.net/viewvc/assp/assp2/filecommander/' if ($_ eq 'ASSP_FC');
-     $url = 'http://assp.cvs.sourceforge.net/viewvc/assp/assp2/lib/' if ($_ eq 'ASSP_SVG');
-     $url = 'http://assp.cvs.sourceforge.net/viewvc/assp/assp2/Plugins/' if ($_ =~ /^Plugins/o);
+     $url = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/lib/' if ($_ eq 'AsspSelfLoader');
+     $url = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/lib/' if ($_ eq 'ASSP_WordStem');
+     $url = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/filecommander/' if ($_ eq 'ASSP_FC');
+     $url = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/lib/' if ($_ eq 'ASSP_SVG');
+     $url = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/Plugins/' if ($_ =~ /^Plugins/o);
      $url = 'https://www.openssl.org/' if ($_ =~ /^OpenSSL/oi);
      my $prov = 'CPAN';
      $prov = 'OpenSSL' if ($_ =~ /^OpenSSL/oi);
@@ -48108,7 +48147,7 @@ $ret .= <<EOT;
               <a href="http://sourceforge.net/project/showfiles.php?group_id=69172" rel="external" target="_blank">release</a>
             </td>
             <td class="statsOptionValueC">
-              <a href="http://assp.cvs.sourceforge.net/viewvc/assp/assp2/" rel="external" target="_blank">beta</a>
+              <a href="http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/" rel="external" target="_blank">beta</a>
             </td>
           </tr>
           <tr>
@@ -63974,8 +64013,10 @@ sub doneProxy {
   return unless $Con{$fh};
   my $mode ="Proxy";
   $mode = "TLS" if ($Con{$fh}->{runTLS});
-  eval{$cliIP=ITR($fh->peerhost()).":".$fh->peerport();
-  $serIP=ITR($Con{$fh}->{friend}->peerhost()).":".$Con{$fh}->{friend}->peerport();};
+  eval{
+      $cliIP=ITR($fh->peerhost()).":".$fh->peerport();
+      $serIP=ITR($Con{$fh}->{friend}->peerhost()).":".$Con{$fh}->{friend}->peerport();
+  };
   mlog(0,"info: closed $mode connection for $serIP and $cliIP") if $ConnectionLog;
   if ($Con{$fh}->{friend}) {
     delete $SocketCalls{$Con{$fh}->{friend}};
@@ -63992,10 +64033,10 @@ sub doneProxy {
         delete $SMTPSessionIP{$Con{$Con{$fh}->{friend}}->{ip}} if (--$SMTPSessionIP{$Con{$Con{$fh}->{friend}}->{ip}} <= 0);
         threads->yield();
       }
-  }
-  sockclose($Con{$fh}->{friend});
-  threadConDone($Con{$fh}->{friend});
-  delete $Con{$Con{$fh}->{friend}};
+    }
+    sockclose($Con{$fh}->{friend});
+    threadConDone($Con{$fh}->{friend});
+    delete $Con{$Con{$fh}->{friend}};
   }
   delete $SocketCalls{$fh};
   unpoll($fh,$readable);
@@ -66237,6 +66278,7 @@ sub ThreadWaitFinCon {
             return;
         } else {                  # some connection are active - try to restart
             $notallfinished = scalar(keys %ConFno);
+            threads->yield();
             &downASSP("try restarting ASSP: con in thread: $notallfinished, con concurrent: $smtpConcurrentSessions, con total: $SMTPSessionIP{Total}");
             _assp_try_restart;
         }
@@ -66487,9 +66529,9 @@ sub threadConDone {
     }
     unpoll($fhh,$readable);
     unpoll($fhh,$writable);
-    delete $SocketCalls{$fhh} if (exists $SocketCalls{$fhh});
-    delete $Fileno{$fno} if (exists $Fileno{$fno});
-    if (exists $ConFno{$fno}) {delete $ConFno{$fno}};
+    delete $SocketCalls{$fhh};
+    delete $Fileno{$fno};
+    delete $ConFno{$fno};
 }
 
 sub ThreadStart {
@@ -68437,7 +68479,7 @@ sub ThreadMain {
             $wait = scalar(@canread) ? $MinPollTimeT/1000 : $longwait;    # wait at least two milliseconds
         }
     }
-    d("rh: $rh - read: $re - wait: $wait");
+    d("rh: $rh - read: $re - wait: $wait - act: $numActCon");
 
     my $wr;
     my $wh;
@@ -68464,7 +68506,7 @@ sub ThreadMain {
     } else {
         $pollwait = $wait;
     }
-    d("wh: $wh - write: $wr - wait: $pollwait");
+    d("rh: $rh - read: $re - wh: $wh - write: $wr - wait: $pollwait - act: $numActCon");
 
     $itime=Time::HiRes::time(); # poll loop cycle idle end time
     &sigon(__LINE__);
@@ -68475,13 +68517,13 @@ sub ThreadMain {
 
     if (! $EnableHighPerformance && ($rh + $wh == 0)) {
         my $loop = 300;
-        d('idle or damping');
+        d("idle or damping - act: $numActCon");
         do {
             &ThreadYield();
-        } while ! $ComWorker{$Iam}->{numActCon} && --$loop;
+        } while ! ($numActCon = $ComWorker{$Iam}->{numActCon}) && --$loop;
     } elsif ($rh + $wh == 0) {
         $pollwait = 1;
-        d('HP - idle or damping');
+        d("HP - idle or damping - act: $numActCon");
         sleep 1;
     }
 
@@ -68519,6 +68561,7 @@ sub ThreadMain {
         return $numActCon if(! $ComWorker{$Iam}->{run});
         next unless(fileno($fh));
         &NewSMTPConCall();
+        $numActCon = $ComWorker{$Iam}->{numActCon};
         my $dampOffset = 0;
 #        $dampOffset = $DoDamping * 10 if ! $Con{$fh}->{messagescore} && &pbBlackFind($Con{$fh}->{ip});
         my $damptime; $damptime = int(($Con{$fh}->{messagescore} + $dampOffset) / $DoDamping) if $DoDamping;
@@ -68574,15 +68617,17 @@ sub ThreadMain {
                 $ThreadDebug = 0;
         }
     }
+    $numActCon = $ComWorker{$Iam}->{numActCon};
     return $numActCon if(! $ComWorker{$Iam}->{run});
     &sigoff(__LINE__);# if ($ComWorker{$WorkerNumber}->{CANSIG} == 1);
     &ConDone();
 
     &SMTPTimeOut();
 
-    d('ThreadMain - end loop');
+    d("ThreadMain - end loop - act: $numActCon");
     &ConDone();
     &sigon(__LINE__);
+    $numActCon = $ComWorker{$Iam}->{numActCon};
     while ( my ($fh,$dfh) = each %dampedFH) {
         if (! $fh || ! $dfh || ! fileno($dfh)) {
             delete $dampedFH{$fh};
@@ -68616,7 +68661,7 @@ sub ThreadMain {
         $nextdetectGhostCon = time + 300;
         &sigon(__LINE__);
     }
-    return $numActCon;
+    return $ComWorker{$Iam}->{numActCon};
 }
 
 # possibly used in plugins to keep all working
@@ -69960,6 +70005,7 @@ sub tlit {
 }
 
 sub printVars {
+return;
     return unless $printVars;
     return unless $WorkerNumber == 0 or $WorkerNumber == 1 or $WorkerNumber > 999;
     &printVarsOn();
@@ -70380,17 +70426,17 @@ sub HMMreadCrashFiles {
             mlog(0,"info: Markov-Chain ($_) => '$sym' => occurrency count: ".$chain->{top10count}{$_});
         }
     }
-    if ($MaintenanceLog > 2 && eval 'use Devel::Size();1;') {
-        my $size = &formatDataSize((Devel::Size::total_size(\%{$chain->{totals}}) +
-                                    Devel::Size::total_size(\%{$chain->{chains}}) +
-                                    Devel::Size::total_size(\%{$chain->{top10}}) +
-                                    Devel::Size::total_size(\%{$chain->{top10count}}) +
-                                    Devel::Size::total_size(\@{$chain->{_start_states}}) +
-                                    Devel::Size::total_size(\%{$chain->{_symbols}})
-                                   ) * $NumComWorkers
-                                  ,1);
-        mlog(0,"info: the crash respository HMM uses $size of memory");
-    }
+#    if ($MaintenanceLog > 2 && eval 'use Devel::Size();1;') {
+#        my $size = &formatDataSize((Devel::Size::total_size(\%{$chain->{totals}}) +
+#                                    Devel::Size::total_size(\%{$chain->{chains}}) +
+#                                    Devel::Size::total_size(\%{$chain->{top10}}) +
+#                                    Devel::Size::total_size(\%{$chain->{top10count}}) +
+#                                    Devel::Size::total_size(\@{$chain->{_start_states}}) +
+#                                    Devel::Size::total_size(\%{$chain->{_symbols}})
+#                                   ) * $NumComWorkers
+#                                  ,1);
+#        mlog(0,"info: the crash respository HMM uses $size of memory");
+#    }
     return $chain;
 }
 
