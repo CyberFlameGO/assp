@@ -1,0 +1,205 @@
+Install ASSP
+
+To install ASSP you will need to follow the install directions
+provided in the ASSP documentation that is included with this install.
+
+
+For a NEW installation:
+copy the contents of the folder ASSP to a folder called ASSP and then
+follow the module installation instructions at the end of this text.
+
+For an UPDATE installation:
+make sure you have a backup of the existing ASSP folder
+do it again!
+
+
+copy all files and folders to your existing  ASSP folder:
+
+copy from folder "files" into the folder "files" inside your old ASSP folder
+(copy the folder "files" if no folder with this name exists):
+(you may have to merge your modifications in the old files with the new files)
+- invalidptr.txt
+- URIBLCCTLDS.txt 
+- nodelay.txt (merge)
+- redre.txt
+- ipnp.txt (merge)
+- blockreportuser.txt
+- validptr.txt
+- bombre.txt (merge)
+- whiteorg.txt (merge)
+- strictspf.txt (merge)
+- invalidhelo.txt
+
+clean
+- denyalways.txt
+-- keep only your own entries
+
+After you have started assp use the webadmin to change the settings to this files: login as user root with your old password
+On a new installation the password for user root is nospam4me.
+
+denySMTPConnectionsFromAlways: file:files/denyalways.txt
+invalidFormatHeloRe: file:files/invalidhelo.txt
+
+
+Attention: Because of the new Password Encryption since version 2 you cannot simply fallback to versions prior to 1
+You have to restore the password directly in the assp.cfg file if you want to go back.
+
+Perl Version 5.10.0 or higher is needed.
+OpenSSL is needed (please use the latest available version
+
+List of the perl modules to be installed :
+
+  Text::Glob
+  Number::Compare
+  Compress::Zlib/2.008
+  Convert::TNEF/0.17
+  Digest::MD5/2.36
+  Digest::SHA1/2.11
+  Email::MIME::Modifier/1.442
+  Email::Send/2.192
+  Email::Valid/0.176
+  File::ReadBackwards/1.04
+  File::Scan::ClamAV/1.8
+  LWP::Simple/1.41
+  MIME::Types/1.23
+  Mail::DKIM::Verifier/0.30_1
+  Mail::SPF/2.005
+  Mail::SPF::Query/1.999001
+  Mail::SRS/0.31
+  Net::CIDR::Lite/0.20
+  Net::DNS/0.61
+  Net::IP::Match::Regexp/1.00
+  Net::LDAP/0.33
+  Net::SMTP/2.31
+  Net::SenderBase/1.01
+  Net::Syslog/0.03
+  PerlIO::scalar/0.05
+  threads/1.74
+  threads::shared/1.32
+  Thread::Queue/2.11
+  Thread::State/0.09
+  Tie::DBI/1.02
+  Time::HiRes/1.9707
+  Schedule::Cron/0.97
+  Sys::MemInfo/0.91
+  IO::Socket::SSL/1.22
+  BerkeleyDB/0.31
+  Crypt::CBC/2.30
+  Crypt::OpenSSL::AES/0.02
+
+  If any of the following DB's should be used, install the DBD driver module
+  DBD::ADO/2.96
+  DBD::AnyData/0.09
+  DBD::CSV/0.22
+  DBD::File/0.35
+  DBD::LDAP/0.09
+  DBD::Log/0.22
+  DBD::MVS_FTPSQL/0.38.14
+  DBD::Mimer/1.00
+  DBD::Mock/1.35
+  DBD::Multiplex/2.06
+  DBD::ODBC/1.15
+  DBD::Ovrimos/0.11
+  DBD::PgPP/0.05
+  DBD::Sprite/0.59
+  DBD::Template/0.01
+  DBD::mysql::informationschema
+  DBD::mysqlPP/0.04
+  DBD::mysql/4.005
+  DBIx::AnyDBD/2.01
+
+  If you want any of the plugins, install the following modules:
+  YAML
+  File::Find::Rule/0.30
+  File::Slurp
+  File::Which/0.05
+  LEOCHARRE::DEBUG
+  File::chmod
+  Linux::usermod
+  LEOCHARRE::CLI
+  Crypt::RC4/2.02
+  Text::PDF/0.29
+  Smart::Comments
+  CAM::PDF/1.21
+  PDF::API2/0.69
+  Image::Magick/6.4.1
+  PDF::Burst/1.10
+  PDF::GetImages/1.10
+  Image::OCR::Tesseract/1.10
+  PDF::OCR/1.09
+  PDF::OCR2/1.20
+  LEOCHARRE::DEBUG/1.14
+ 
+
+############################################################
+Installs Perl modules used by ASSP 2.x 
+############################################################
+
+Installs Perl modules used by ASSP 2.x 
+
+- extract assp.mod.zip in your ASSP folder
+- Open the command line and change directory to the 
+  cd to assp/assp.mod/install directory
+- Run 'perl mod_inst.pl'
+
+(on windows do:) 
+   	- Change install.cmd
+   	- Edit the next line if the location of your ASSP-installation is not default!
+     	set ASSPDIR=C:\assp
+	- Please set your Proxy, if you need it
+	- Run 'install.cmd'
+
+- Run 'perl mod_inst.pl'
+
+
+There is a Win32 Quick Start guide included in this release for
+those who are installing on the windows platform. See file Win32-
+quickstart-guide.txt
+
+It can also be found at
+
+http://apps.sourceforge.net/mediawiki/assp/index.php?title=Win32
+
+Unix Installation:
+https://apps.sourceforge.net/mediawiki/assp/index.php?title=Unix
+
+If you want to run assp.pl as a daemon start first from command line:
+
+perl assp.pl
+Point your browser to http://127.0.0.1:55555/
+user: root
+Password: nospam4me
+Section: Server Setup
+Change the options and click "Apply Changes" (and restart)
+
+AsADaemon: Run ASSP as a Daemon -- In Linux/BSD/Unix/OSX fork and close file handles. Similar to the command "perl assp.pl &;", but better.
+runAsUser: Run as UID -- The *nix user name to assume after startup (*nix only). Examples: assp, nobody
+runAsGroup: Run as GID -- The *nix group to assume after startup (*nix only). Examples: assp, nobody
+
+************************************************************
+
+
+Check out the ASSP project status at:
+http://www.magicvillage.de/~Fritz_Borgstedt/assp/S064D398D?WasRead=1 
+
+Go here http://sourceforge.net/mail/?group_id=69172 to subscribe to
+the email list.
+
+Visit the community forums at:
+http://apps.sourceforge.net/mediawiki/phpbb/
+
+For updated info and help visit the WIKI for ASSP at
+http://apps.sourceforge.net/mediawiki/assp/
+
+Don't forget to read the ASSP Documentation that can be found in the
+wiki: https://apps.sourceforge.net/mediawiki/assp/index.php?title=ASSP_Documentation
+
+Getting Started at
+https://apps.sourceforge.net/mediawiki/assp/index.php?title=Getting_Started
+
+ASSP workflows can be seen here:
+Basic: https://apps.sourceforge.net/mediawiki/assp/index.php?title=ASSP_Basic_Workflow
+Advanced: https://apps.sourceforge.net/mediawiki/assp/index.php?title=ASSP_Advanced_Workflow
+
+
+

@@ -1,0 +1,30 @@
+#!/bin/bash
+assppidfile=/opt/assp/pid
+logfile=~assp_watchdog.log
+
+function checkpid
+{
+if [ -f $assppidfile ]
+then
+    /sbin/service assp status |grep "is running"
+    if [ $? != 0 ]
+    then
+        sleep 10
+        /sbin/service assp status |grep "is running"
+        if [ $? != 0 ]
+	then
+	    LOGDATE=`date "+%m-%d-%y [%k:%M:%S]"`
+	    /sbin/service assp start
+	    echo "$LOGDATE - started died assp" >> $logfile
+	fi
+    fi
+fi
+}
+
+COUNTER=1
+while [ $COUNTER == 1 ]; do
+
+checkpid
+sleep 60
+
+done

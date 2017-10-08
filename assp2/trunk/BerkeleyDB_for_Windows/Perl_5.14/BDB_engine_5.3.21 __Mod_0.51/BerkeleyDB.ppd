@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SOFTPKG NAME="BerkeleyDB" VERSION="0,51,0,0">
+  <TITLE>BerkeleyDB</TITLE>
+  <ABSTRACT>Perl extension for Berkeley DB version 2, 3 , 4 or 5 - includes BDB engine 5.3.21</ABSTRACT>
+  <AUTHOR>Paul Marquess &lt;pmqs@cpan.org&gt;</AUTHOR>
+  <IMPLEMENTATION>
+    <OS NAME="MSWin32" />
+    <ARCHITECTURE NAME="MSWin32-x86-multi-thread-5.14" />
+    <CODEBASE HREF="BerkeleyDB.tar.gz" />
+    <PROVIDE NAME="BerkeleyDB::" VERSION="0.51" />
+    <PROVIDE NAME="BerkeleyDB::Btree" />
+    <PROVIDE NAME="BerkeleyDB::Hash" />
+  </IMPLEMENTATION>
+</SOFTPKG>

@@ -1,0 +1,25 @@
+package V1upgrade;
+use strict qw(vars subs);
+
+our VERSION = 1.01;
+
+# (c) Thomas Eckardt 2014
+#
+# requires V2 build 14140 (at least !)
+#
+# rename the file to V1upgrade.pm to upgrade from V1 to V2 before starting assp V2 the first time
+#
+# If this Package is available, it will be loaded by assp and the sub convert will be called, 
+# after the configuration is parsed.
+# This module is used to convert ASSP V1 parameters and values to ASSP V2 requirements.
+#
+# ASSP will rename this module after the first usage to prevent a second run !!!
+#
+
+sub convert {
+    my $Config = shift;
+#   $Config->{V2parm} = $Config->{V1parm};   
+}
+
+1;
+

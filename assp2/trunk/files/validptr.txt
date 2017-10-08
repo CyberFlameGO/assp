@@ -1,0 +1,13 @@
+static
+^mail\d*\.
+^mailhost\d*\.
+^mta(out)?\d*\.
+^mx\d*\.
+^smtp\d*\.
+^smtpq\d*\.
+^relay\d*\.
+^smtpdel\.
+^post\.
+^posta\d*\.
+^correo\d*\.
+^mm-notify-out

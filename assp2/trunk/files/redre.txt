@@ -1,0 +1,17 @@
+Auto-reply
+auto-submitted\:.{0,60}auto-replied
+automated.response
+autoreply
+content-type\:.{0,60}message\/delivery-status
+content-type\:.{0,60}multipart\/report
+mailer-daemon
+report-type.{0,60}\=.{0,60}delivery-status
+report-type.{0,60}\=.{0,60}disposition-notification
+subject\:.{0,60}delivered:
+subject\:.{0,60}undeliverable\:
+subject\:.{0,60}out.of.office
+X-FC-AutoForward-By
+X-FC-Forwarded-From
+X-FC-Machinegenerated
+Content-Type\: message\/disposition-notification  # for Exchange/MS OutLook users
+Disposition\: manual-action\/MDN-sent-automatically\; displayed # Disposition: manual-action/MDN-sent-automatically; displayed

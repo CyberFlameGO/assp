@@ -1,0 +1,4 @@
+Forwarding error !
+
+An BlockReport-Request could'nt be sent to another ASSP Host.
+Your request will be processed, as soon as the failed host is back online.

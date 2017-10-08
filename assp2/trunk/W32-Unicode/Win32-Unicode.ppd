@@ -1,0 +1,15 @@
+<SOFTPKG NAME="Win32-Unicode" VERSION="0.37">
+  <TITLE>Win32-Unicode</TITLE>
+  <ABSTRACT>perl unicode-friendly wrapper for win32api.</ABSTRACT>
+  <AUTHOR>Yuji Shimada (xaicron@cpan.org)</AUTHOR>
+  <IMPLEMENTATION>
+    <OS NAME="MSWin32" />
+    <ARCHITECTURE NAME="MSWin32-x86-multi-thread-5.12" />
+    <CODEBASE HREF="Win32-Unicode_512.tar.gz" />
+  </IMPLEMENTATION>
+  <IMPLEMENTATION>
+    <OS NAME="MSWin32" />
+    <ARCHITECTURE NAME="MSWin32-x86-multi-thread-5.14" />
+    <CODEBASE HREF="Win32-Unicode_514.tar.gz" />
+  </IMPLEMENTATION>
+</SOFTPKG>

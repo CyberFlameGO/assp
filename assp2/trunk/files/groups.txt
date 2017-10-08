@@ -1,0 +1,104 @@
+# groups.txt version 1.07 - 2017/07/01
+###############################################################################################
+#If you don't want to use group definitions, leave this field blank otherwise a file definition like 'file:files/groups.txt' is required.
+#Group definitions could be used in any other configuration value where multiple user names, email addresses or domain names or IP addresses could be defined.
+#Groups are defined and used using the same syntax [group-name] (including the brackets) in a single line. In the configuration parameters, the line [group-name] will be replaced by the content of the group definition, that is done here.
+#All group definitions are case sensitive. Group names can only contain the following characters: A-Z, a-z, 0-9, - , _ and @ !
+#The structure of this file has to be as follows:
+#
+#[super_spamlovers]
+#myBoss
+#ldap:{host=>my_LDAP_server:389,base=>(sep)DC=domain,DC=tld(sep),user=>(sep)CN=admin,DC=domain(sep),password=>(sep)pass(sep),timeout=>2,scheme=>ldap,starttls=>1,version=>3},{(CN=management)}{member},{(CN=%USERID%)}{mailaddress}
+#entry
+#exec:/usr/bin/list_postfix_users --domain mydomain --group postoffice
+#entry
+#...
+#
+#[admins]
+#ldap:{host=>domino1.mydomain.com:389,base=>(sep)DC=domain,DC=tld(sep),user=>(sep)Administrator(sep),password=>(sep)pass(sep),timeout=>2,scheme=>ldap,starttls=>1,version=>3},{(CN=LocalDomainAdmins)}{member},{(%USERID%)}{mailaddress}
+#entry
+## include files/other.file.txt entry
+#...
+#
+#[specialIPList]
+#1.2.3.4
+#123.234.0.0/16
+#::1
+#
+#Lines starting with a # OR ; are consider a comment. Empty lines will be ignored. A group definition stops, if a new group definition starts or at the end of the file. Comments are not allowed inside a definition line.
+#
+#There are two possible methods to import entries from an external source in to a group - the execution of a system command or an LDAP query.
+#To import entries via a system command like (eg. cat|grep or find or your self made shell script), write a single line that begins with exec: followed by the command to be executed - like:
+#exec:cat /etc/anydir/*.txt|grep '@'
+#The executed system command has to write a comma(,) or pipe(|) or linefeed(LF,CRLF) separated list of entries to STDOUT, that should become part of that group, where this line is used. There could be multiple and any combination of entry types in one group definition.
+#Be carefull! The external script should never BLOCK, DIE or RUN longer than some seconds. It is may be better, to schedule the script by a system cron job, write the output of the script to a file and to include this file here.
+#
+#If you are familar with the usage of LDAP, you can define LDAP queries to import entries from one or more LDAP server. This is done, defining one query per line. The syntax of such a line is:
+#
+#ldap:{host_and_protocol},{LDAP_group_query_filter}{LDAP_group_query_attribut_to_return},{LDAP_entry_query_filter}{LDAP_entry_query_attribut_to_return}
+#
+#If the 'host_and_protocol' part is empty {}, the default LDAP configuration will be used. A 'host_and_protocol' part should contain the following entries in the following structure:
+#{host=>127.0.0.1:389,base=>(sep)DC=domain,DC=tld(sep),user=>(sep)...(sep),password=>(sep)pass(sep),timeout=>..,scheme=>ldap/ldaps,starttls=>0/1,version=>2/3}
+#The 'host' has to be set, if you want to define any other LDAP parameter. If any other parameter is not defined, the default LDAP configuration value will be used, except user and password. The port definition (:xxx) in the host setting is optional - if not defined, the default LDAP ports 389(LDAP) and 636(LDAPS) will be used. It is possible to define a comma(,) separated list of hosts for failover functionality like 'host=>"localhost:389,192.168.1.1:389,...."' - notice the quotes as terminator which are required in this case!
+#The value of the base, password and user parameter has to start and end with the same single character (sep) as terminator, that is not part of the value and is not used inside the value.
+#examples:
+#{host=>127.0.0.1:389,base=>"DC=domain,DC=tld",user=>'admin',password=>!p'as"sW0rD!,timeout=>..,scheme=>ldap,starttls=>1,version=>3}
+#
+#{host=>127.0.0.1:389,base=>"CN=group,DC=domain,DC=tld",user=>'admin',password=>!p'as"sW0rD!,timeout=>..,scheme=>ldap,starttls=>1,version=>3}
+#
+#The parameter "base" defines the LDAP search root like LDAPRoot .
+#
+#The 'LDAP_group_query_filter' and 'LDAP_group_query_attribut_to_return' are used to query an LDAP group for it's members (users). The resulting list will contain the requested attributes of all group members. The definition of these two parameters could look as follows:
+#{(&(objectclass=dominoGroup)(CN=LocalDomainAdmins))}{member}
+#
+#or - if the base DN is already set to the group DN
+#{}{member}
+#
+#It is possible to modify each returned value with a callback-code. This is for example useful for MS-AD queries on the attribute 'proxyaddresses' (older MS-Exchange), which returns a list of all available mail addresses (SMTP,smtp,X400...). 
+#example: ldap:{},{(&(CN=firstname lastname)(proxyaddresses=smtp:*))<=s/^\s*smtp:\s*(.+)\s*$/$1/i}{proxyaddresses},{}{} 
+#<= is the required separator, s/^\s*smtp:\s*(.+)\s*$/$1/i is the callback code.
+#The callback code has to return a value of not zero or undef on success. The code gets the LDAP result in the variable $_ and has to modify this variable in place on success.
+#It is not allowed to use any of the following characters in the callback definition of an ldap line: {}| 
+#
+#The 'LDAP_entry_query_filter' and 'LDAP_entry_query_attribut_to_return' are used to query each member from the first query, for it's email address. The literal '%USERID%' in the 'LDAP_entry_query_filter' will be replaced by each LDAP-attribute result of the first query. The definition of these two parameters could look as follows:
+#{(&(objecttype=person)(%USERID%))}{mailaddress} - %USERID% is here replaced by the full returned LDAP result for the user
+#or
+#{(&(objectClass=user)(objectcategory=person)(CN=%USERID%)(! msExchHideFromAddressLists=TRUE))}{mail} - only the CN= part of the returned LDAP result will be used
+#
+#to use a different base DN for the 'LDAP_entry_query_filter' define it as follows as first parameter
+#{base=>"DC=domain,DC=tld",(&(objecttype=person)(%USERID%))}{mailaddress}
+#
+#A callback code could be used the same way like for 'LDAP_group_query_filter' - {(&(objecttype=person)(CN=%USERID%))<=callback-code}{mailaddress}. 
+#To break long lines in to multiple, terminate a continued line with a slash "/"
+#
+#If you are able to get all results (eg. email addresses or domain names) with the 'LDAP_group_query' query, leave the definition of 'LDAP_entry_query_filter' and 'LDAP_entry_query_attribut_to_return' empty {}{}.
+#
+#The result of each group definition will be stored in a file in files/group_export/GROUPNAME.txt.
+#The groups are build at every start of assp and if the defined file or an include file is stored (changed file creation or modification time). To force a reload of all groups, open the file and click 'Save changes' or change the file time with an external shell script. It is also possible to use GroupsReloadEvery, to reload the Groups definition in time intervals, if the exec: or ldap: option are used.
+#
+#some simple examples:
+#
+#You use MS-AD with MS-Exchange, you have an AD-group mailAdmins and you want to import the email addresses of the members (persons only) of this group in to the same assp group - hidden users should be skipped.
+#The AD-controllers (LDAP-servers) are dc1.your-domain.local and dc2.your-domain.local, your mail domain is your-domain.com, LDAP logon user is ldapadmin with the password LdapAdmin0PW=
+#
+#[mailAdmins] 
+#ldap:{host=>"dc1.your-domain.local:389,dc2.your-domain.local:389",base=>'DC=your-domain,DC=local',user=>'ldapadmin',password=>'LdapAdmin0PW=',timeout=>10,scheme=>ldap,starttls=>1,version=>3},{(&(objectclass=group)(CN=mailAdmins))}{member},{(&(objectClass=user)(objectcategory=person)(CN=%USERID%)(! msExchHideFromAddressLists=TRUE))}{mail}
+#
+#the same for a IBM Domino cluster
+#
+#[mailAdmins]
+#ldap:{host=>"node1.your-domain.local:389,node2.your-domain.local:389",base=>'CN=your-domain,O=com',user=>'ldapadmin',password=>'LdapAdmin0PW=',timeout=>10,scheme=>ldap,starttls=>1,version=>3},{(&(objectclass=dominoGroup)(CN=mailAdmins))}{member},{(&(objectclass=person)(CN=%USERID%))}{mail}
+#
+#the same for an OpenLDAP cluster
+#
+#[mailAdmins]
+#ldap:{host=>"ldap1.your-domain.local:389,ldap2.your-domain.local:389",base=>'CN=your-domain,O=com',user=>'ldapadmin',password=>'LdapAdmin0PW=',timeout=>10,scheme=>ldap,starttls=>1,version=>3},{(&(objectclass=group)(CN=mailAdmins))}{member},{(&(objectclass=inetOrgPerson)(CN=%USERID%))}{mail}
+#
+#the same for a eDirectory cluster - the callback code is here used to remove ,O=.... after the CN=....
+#
+#[mailAdmins]
+#ldap:{host=>"edir.your-domain.local:389,edir2.your-domain.local:389",base=>'ou=your-domain,o=com',user=>'ldapadmin',password=>'LdapAdmin0PW=',timeout=>10,scheme=>ldap,starttls=>1,version=>3},{(&(objectclass=group)(cn=mailAdmins))<=s/,o=.+//io}{member},{(&(objectclass=inetOrgPerson)(%USERID%))}{mail}
+#
+#ASSP will do a small syntax check for your LDAP line definition. How ever - it is recommended to validate your LDAP queries with a ldap tool before you put them in to assp and to set LDAPLog to diagnostic while you play around with this configuration!
+#
+###############################################################################################

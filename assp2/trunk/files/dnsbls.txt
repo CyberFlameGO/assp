@@ -1,0 +1,10 @@
+#apews.org and uceprotect.net are commended out because of there bad policies
+zen.spamhaus.org=>1
+bl.spamcop.net=>1
+psbl.surriel.com=>2
+ix.dnsbl.manitu.net=>2
+#l2.apews.org=>3
+safe.dnsbl.sorbs.net=>1
+#dnsbl-1.uceprotect.net=>2
+#dnsbl-2.uceprotect.net=>2
+#dnsbl-3.uceprotect.net=>1

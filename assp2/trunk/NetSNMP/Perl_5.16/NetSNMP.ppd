@@ -1,0 +1,19 @@
+<SOFTPKG NAME="Bundle-NetSNMP" VERSION="5,6,0,0">
+    <ABSTRACT>Object Oriented Interface to Net-SNMP</ABSTRACT>
+    <AUTHOR></AUTHOR>
+    <IMPLEMENTATION>
+        <OS NAME="MSWin32" />
+        <ARCHITECTURE NAME="MSWin32-x86-multi-thread-5.12" />
+        <CODEBASE HREF="NetSNMP_512.tar.gz" />
+    </IMPLEMENTATION>
+    <IMPLEMENTATION>
+        <OS NAME="MSWin32" />
+        <ARCHITECTURE NAME="MSWin32-x86-multi-thread-5.14" />
+        <CODEBASE HREF="NetSNMP_514.tar.gz" />
+    </IMPLEMENTATION>
+    <IMPLEMENTATION>
+        <OS NAME="MSWin32" />
+        <ARCHITECTURE NAME="MSWin32-x86-multi-thread-5.16" />
+        <CODEBASE HREF="NetSNMP_516.tar.gz" />
+    </IMPLEMENTATION>
+</SOFTPKG>

@@ -1,0 +1,31 @@
+# This file maps the database fieldnames to internal variables which are stored in $Con{$fh}
+# The syntax is   fieldname=>variable
+# for example:
+
+#time=>TIME                       # the archive time in seconds since 01.01.1970
+#date=>DATE                       # the date in the format yyyymmdd
+#ftime=>FTIME                     # the time in the format hh:mm:ss
+#arcfile=>ARCFILE                 # the full archived filename (incl. the path)
+#rcpt=>RCPT                       # the receipients address
+#from=>FROM                       # the senders address
+#out=>relayok                     # was the mail outgoing
+#spam=>LOG                        # the collecting path spam / notspam
+#messagereason=>messagereason     # the last message reason
+#subject=>subject3                # the encoded subject
+
+# The following internal variables (and much more) are available
+#rcvdTime          # the message received time in seconds since 01.01.1970
+#ARCPATH           # the path to the file
+#ARCFILENAME       # the filename without the path
+#YEAR              # the year yyyy
+#MONTH             # the month mm
+#DAY               # the day dd
+#FDATE             # the date yyyy.mm.dd
+#RNAME             # the receipient name without domain
+#FNAME             # the sender name without domain
+#RDOMAIN           # the receipient domain with @
+#FDOMAIN           # the sender domain with @
+
+# A full summary of all available variables could be found in assp.pl in sub stateReset
+
+

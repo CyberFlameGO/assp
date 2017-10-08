@@ -1,0 +1,1816 @@
+2012-05-09
+fixed in assp 2.1.2 build 12131:
+
+- the HMM fix in build 12129 was not working like expected
+
+
+2012-05-09
+fixed in assp 2.1.2 build 12130:
+
+- using SSL with a installed IO::Socket::SSL version higher than 1.66 will possibly crash assp
+  or produce errors, that a wrong SSL_version is defined and SSL/TLS will not work
+
+
+
+2012-05-08
+fixed in assp 2.1.2 build 12129:
+
+- the HMM check was disabled in build 12126
+- a timing problem caused in some situations that the accept of a SMTP connection failed with an error like:
+  '..... bad file descriptor' - this should be no longer the case - or better 'in very rare cases'
+
+
+changed:
+
+- the BerkeleyDB cache size is increased from 20 to 40MB for the rebuild task if the HMM is used
+  to speed up the rebuild task for a large corpus
+
+
+2012-05-05
+fixed in assp 2.1.2 build 12126:
+
+- The database structure for the HMM has been changed. Instead using four databases, the rebuildspamdb task
+  creates a single HMM-database (HMMdb). After an upgrade to this or a later version the HMM check will be disabled 
+  until a rebuildspamdb task was finished successfully. If all assp installation that are sharing the spamdb
+  are upgraded, the old DB-tables and files
+  
+  HMMspam*
+  HMMham*
+  HMMspamTot*
+  HMMspamTot*
+  
+  could be deleted.
+  The time required by the rebuild task to create and to publish the HMM database(s) will be nearly the same like in
+  the previouse versions. But the HMM-check in the workers and in the analyzers are very much faster, require
+  much less database requests and much less calculations - in short, much less system resources.
+  As a result, the requirements for the performance of the used database server are reduced to a normal state.
+  
+
+
+2012-05-02
+fixed in assp 2.1.2 build 12123:
+
+- unwriteable timedout connections were not closed and cleanedup by assp.
+- the wrong HELO was written in to the final [spam found] logline, if the HeloBlacklist has failed for an ISP connection
+- if a 'robot' is used to report spam/ham, and the robot does'nt sent a valid address in 'MAIL FROM' (like: <>)
+  some of the report functions were not working correct. Now in this case the 'X-Assp-Intended-For:' address is used and
+  no reports will be sent back
+
+
+changed:
+
+-'MaxBytesReports','Error Max Bytes'
+'How many bytes of an error report message will ASSP look at. For example: 10000. Set this to zero for no limit.'
+
+-'autoCorrectCorpus','Automatic Corpus Correction',
+'(Syntax: a.a[a]-b.b[b]-cccc-dd or empty - default is "0.6-1.4-4000-14") If the corpus norm (the weight 
+between spamwords/hamwords) is less than "a" (0.6 - too much ham) or greater than "b" (1.4 - too much spam), 
+assp will delete the excess (oldest) files from the corresponding folder ( spamlog , notspamlog ). 
+ASSP will keep a minimum of "c" (4000) files in the folder and will never delete files that are younger 
+than "d" (14) days. This cleanup will run at the end of the rebuildspamdb task. 
+So the corrected file corpus will take effect at the next rebuildspamdb!
+
+
+
+2012-04-30
+fixed in assp 2.1.2 build 12121:
+
+- the startup config files check was too weak for some special cases
+  if a config file is OK, the last line is 
+  'ConfigSavedOK:=1'
+  if this line is not found the next available backup config file will be used, if the last saved version
+  is higher than build 12119 
+
+- in some special cases the parsing of the 'Received:' header lines was not correct
+- in case the personal blacklist was used, a whitelist report or a combined ham/whitelist report caused the worker
+  to get stucked because of an infinity loop, while cleaning up the personal blacklist from whitelisted entries
+  
+
+changed:
+
+- the BlockReports now have a button to simplify or to extend the report format of the HTML report
+  the default view for admins is the extended - for users the simplified view is default
+  
+  
+
+2012-04-27
+fixed in assp 2.1.2 build 12118:
+
+- some of the users and domain regular expressions were not working correct in rare cases
+- build 12116 has thown an exeption for émail interface analyze reports
+  Error: Worker_X: Undefined subroutine &main::ConfigAnalyze called at assp.pl line 35772
+- some unexpected outputs of the rebuildspamdb debug feature are solved
+
+changed:
+
+'DoHMM','Hidden Makrov Model Check 
+  ....
+  How ever, it is possible, that HMM gets no result on very small messages, for this reason it is recommended 
+  to use both Bayesian and HMM. If you enable both checks, check your settings for 
+  baysValencePB, HMMValencePB, bayslocalValencePB and HMMlocalValencePB - 
+  eg. divide them by 2. or set the bayes values to 1/3 and the HMM values to 2/3.
+
+- The default value for 'LDAPcrossCheckInterval' is changed to 12 hours.
+
+
+added:
+
+'HMMValencePB','Hidden-Makov-Model, default=49 +' 'Message/IP scoring'
+'HMMlocalValencePB','Hidden-Makov-Model for Local Messages, default=55 +', 'Message/IP scoring'
+
+'Bayesian_localOnly','Do Bayesian and HMM Check ONLY for this local senders*',
+ 'Only mail from any of these local addresses are processed by the Bayesian- and HMM checks, except they are 
+ also defined in noBayesian_local. Accepts specific addresses (user@domain.com), user parts (user) or 
+ entire domains (@domain.com)'
+
+
+
+2012-04-25
+fixed in assp 2.1.2 build 12116:
+
+- on some systems the rebuild spamdb failed with a 'wide character' error in sub 'BayesWordClean'
+- the analyze report send failed in some cases
+- recursive definitions of include files in report files leads in to assp restarts
+- in the 'address action' GUI dialog some strings were wrong parsed for domain names
+
+
+
+2012-04-24
+fixed in assp 2.1.2 build 12115:
+
+- if 'allowAdminConnectionsFrom' was used - build 12114 rejected all connection to the WEB-GUI
+
+added:
+
+- the email analyze feature now accepts also compressed (zip/gz/gzip/bzip2/bz2) files with one or more
+  .eml in them
+
+
+
+2012-04-23
+fixed in assp 2.1.2 build 12114:
+
+- if 'nolocalDomains' was set - the remove foreign BCC headers features has blocked on 'Relay attempt'
+- if an IP address or hostname was used in the 'webAdminPort' definition (like: 192.168.1.1:55555 or myhost:55555), 
+  the links in the BlockReports were not working.
+- the maximum count for a HMM sequence was not limited to 2 - which caused too many database queries 
+
+
+changed:
+
+- 'allowAdminConnectionsFromName','Allow Admin Connections From These Hostnames*'
+  is removed from configuration - hostnames are supported by 'allowAdminConnectionsFrom'
+
+- the EmailInterface analyze feature now sends the report as HTML mail (same HTML like the GUI analyzer)
+  notice: links to open files and acting on IP or email addresses are not supported in email analyze reports
+
+- the analyze results contains now the same scoring table for HMM like for Bayesian
+  each table entry shows if a score is found in the 'privat:', 'domain:' or global '' Spamdb/HMM entry list
+
+
+
+2012-04-18
+fixed in assp 2.1.2 build 12109:
+
+- new ASSP_WordStem.pm version 1.22 is available - it fixes some language detection mistakes
+- new ASSP_AFC.pm version 1.30 is available - improves the spam- attachment and image detection
+- new ASSP_ÓCR.pm version 2.09 is available - fixes a bug in the module PDF::OCR2::Page which caused exception
+
+
+changed:
+
+- from this version assp shows a warning at startup, if a perl version below 5.012000 (5.12.0) is used
+- all unicode features are disabled, if a perl version below 5.12.0 is running
+
+- With this version assp reaches a new quality level of spam detection. It is now possible to advice assp to produce
+  and to use domain based and/or user-email-address based Spamdb and Hidden-Markov-Model entries.
+
+- if spam or ham are reported via the email interface, a header tag 'X-Assp-Reported-By: ...' is added to the corpus file 
+
+
+added:
+
+'DoPrivatSpamdb','Use also privat entries for the Bayesian Spamdb and Hidden Makrov Model databases',
+'0:NO|1:for users only|2:for domains only|3:for users and domains'
+'If enabled, privat entries (based on the local recipient and/or the report sender email address) will be added to 
+the Bayesian and HMM databases. These privat entries have a three times higher priority for users (full email address) 
+and two times higher priority for domains (domain part of the email address) than global entries. 
+To enable this option "spamdb" must be set to use a database "DB:" first!
+Setting this option to on will increase the record count for the spamdb and the HMM databases dramaticaly!
+
+
+  
+
+
+2012-04-14
+fixed in assp 2.1.2 build 12105:
+
+- If a plugin has changed the location of a .eml file, it was possible that this email was forwarded twice.
+
+changed:
+
+'MaxWhitelistDays','Max Whitelist/Personal Black Days'
+'This is the number of days an address will be kept on the whitelist and personal blacklist without any 
+ email to/from this address. Set it to 0 to keep the entries infinity.
+
+
+'EmailPersBlackAdd','Add to Personal BlackListed Addresses'
+  'Any mail sent by local/authenticated users to this username will be interpreted as a request to add the 
+  listed address(es) to the personal blackListed addresses. Do not put the full address here, just the user part. 
+  For example: assp-persblack.
+  The add and remove is done via email-interface, by sending specific email addresses to 'EmailPersBlackAdd'  
+  and 'EmailPersBlackRemove'.
+  A local user can force a complete report about all his personal black list entries by defining an email address 
+  that begins with 'reportpersblack' in a remove or add request : eg: reportpersblack@anydomain.com or by 
+  sending an empty body.
+  Any mail address sent to this username will be removed from the whitelist if possible.
+  Globalized adding an address to all local users is not supported - use EmailBlackAdd instead.
+  The following wildcard combinations are allowed for an email address to support personal blacklisting of domains:
+  full_sender_address
+  *@sender_domain or @sender_domain<
+  @*sender_domain or *@*sender_domain
+  @*.sender_domain or *@*.sender_domain'
+
+'EmailPersBlackRemove','Remove from Personal BlackListed Addresses'
+  'Any mail sent by local/authenticated users to this username will be interpreted as a request to remove the 
+  listed address(es) from the personal blackListed addresses .
+  Do not put the full address here, just the user part.
+  For example: assp-persnotblack.
+  The add and remove is done via email-interface, by sending specific email addresses to 'EmailPersBlackAdd'  
+  and 'EmailPersBlackRemove'.
+  A local user can force a complete report about all his personal black list entries by defining an email address 
+  that begins with 'reportpersblack' in a remove or add request : eg: reportpersblack@anydomain.com or by sending 
+  an empty body.
+  Only an admin can force a complete cleanup of all personal black entries for a specific email address for all 
+  local users - sending an email to \'EmailPersBlackRemove\' with the address followed by ',*' in the body
+  eg: address_to_remove@the_domain.foo,* - be carefull modifying personal entries of other users!
+  The same wildcard combinations like in EmailPersBlackAdd are supported.
+  Notice: a removement request for a specific email address will remove ALL entries from the users personal blacklist, 
+  that would block this email address (also all matching wildcard entries)!
+
+
+2012-04-12
+fixed in assp 2.1.2 build 12103:
+
+- the too high default value of 'SSLtimeout' caused possibly stucking workers and unexpected restarts of assp
+  (read the changed section for further information)
+
+- If assp was unable to repair a BerkeleyDB at startup and was running in to an infinity wait state while starting
+  the maintenance worker thread - no hint was shown nor a log entry was written.
+  If the startup of the maintenance worker thread takes longer than 10 seconds, the last debug step of the
+  maintenance worker thread is written to STDOUT and in to the maillog.txt - this hint will show the 
+  database/file name of the corrupt database. 
+
+- the analyze report was not returned, if an email (to analyze) was send as an attachment
+
+- IP's blocked because of a personal-black-list entry were sent to the SF-Griplist server.
+
+
+
+changed:
+
+- the default value for 'SSLtimeout' is changed from 180 to 5 seconds - the value will be changed to 5
+  if the old default value 180 is found at startup.
+
+- the undocumented postfix XCLIENT/XFORWARD ESMTP extension REVERSE_NAME is now supported
+
+- the config parameter 'NoHaiku' is removed - use 'EmailSenderNoReply' instead
+'NoHaiku','Legacy: Don't reply to messages to the Email Interface'
+  'Check this option to suppress all email reports
+
+- a warning is shown at startup and in the maillog.txt, if the running perl version is less than 5.12.3 (5.012003)
+
+- a new ASSP_MIB file is released to reflect the config parameter changes
+
+
+added:
+
+'EmailSenderNoReply','Do Not Reply To These Addresses*',
+  'Email sent from ASSP acknowledging your submissions will not be sent to these addresses. Accepts specific 
+  addresses (user@example.com), user parts (user) or entire domains (@example.com).
+  Analyze-, PersonalBlackList- and all virus related reports are ignored by this feature 
+  (are sent even a user is listed here).
+  An Report copy to EmailAnalyzeTo, EmailBlackTo, EmailNoProcessingTo, EmailSpamLoverTo, EmailRedlistTo, 
+  EmailWhitelistTo and EmailErrorsTo is also ignored by this feature.
+
+
+
+
+2012-04-08
+fixed in assp 2.1.2 build 12099:
+
+- if the MTA has offered STARTTLS but returned 4xx or 5xx as reply to the STARTTLS command, the client connection
+  was also not going in to TLS mode
+
+- if a connection was dropped by assp the '421 ...' terminating reply was not sent in every case
+
+- the cleanup of temporary files and DB's after an unclean shutdown is improved
+
+- the usage of the following DBD drivers was possibly leading in to SQL statement errors
+DB2
+ADO
+PgPP
+
+- the ASSP_OCR plugin has not fully cleaned up all temporary files - the new version 2.08 of the ASSP_OCR plugin
+  fixes this
+
+
+changed:
+
+- the list of unsupported SMTP and ESMTP commands is enhanced to:
+
+CHUNKING|PIPELINING|XEXCH50|SMTPUTF8|
+TURN|ATRN|ETRN|TURNME|X-TURNME|XTRN|
+SEND|SOML|SAML|EMAL|ESAM|ESND|ESOM|
+XAUTH|XQUE|XREMOTEQUEUE|
+X-EXPS|X-ADAT|X-DRCP|X-ERCP|EVFY
+
+- 'sendEHLO' is no longer restricted to the 'DoTLS' setting. If 'sendEHLO' is selected assp uses the EHLO command 
+  in every case a client or server uses only 'HELO'.
+
+
+added:
+
+- the postfix ESMTP extensions XCLIENT and XFORWARD are now supported and answered with the requested information 
+  by assp
+
+  
+
+
+
+2012-04-04
+fixed in assp 2.1.2 build 12095:
+
+- the character set conversion feature was no longer working since build 12090
+   - related to this - new versions for ASSP_AFC (1.29) and ASSP_OCR (2.07) must be used !
+- if multiple puny encodings were used in a domain name, the last one was not correct detected by assp
+- the rebuilddebug.txt file lost data in case of a crash in the rebuild task
+- if a mail was skipped by assp for a recipient because of his 'Personal Blacklist', this event was not shown
+  in the BlockReport of an envelope and/or 'header to:' recipient 
+- if a mail was sent to multiple envelope recipients the important log line about 'spam found' or 'MessageOK' was
+  only shown for the first recipient. For this reason, only the first recipient has got a BlockReport. ASSP writes
+  now one line per envelope recipient, in case a spam is found or a message is OK. All other additional log lines
+  related to a mail will only contain the mail address of the first recipient (like until now) 
+- in case of a MIME parsing error while generating a DKIM signature, the first MIME parsing of the next mail
+  in the same thread was wrong
+- the Recipient-Replacement-Rules were ignored for the personal blacklist processing in the header to: lines
+
+
+changed:
+
+- If 'useDB4Rebuild' is switched on but BerkeleyDB nor DB_File are available, ASSP will use the internal orderedtie
+  file tie processing for the temporary hashes. This will reduce the memory usage but will increase the runtime for
+  the rebuild dramaticaly.
+  
+- The alphabetical index of the GUI was not working for all browsers to navigate in the 'manage admin users' view.
+
+added:
+
+- an new hidden config parameter is available - HideIPandHelo
+  set any or both of 'ip' and 'helo' to values that should replace the default values in the received header line
+  added by assp - both options must be separated by at least one space
+  for example 'ip=127.0.0.1 helo=anyhost.local'
+
+$HideIPandHelo; # (ip=127.0.0.1 helo=anyhost.local) replace these information in our received header for outgoing mails
+
+
+
+2012-04-02
+fixed in assp 2.1.2 build 12093:
+
+- corrects some 'Mixed high and low-precedence booleans' mistakes (PBP) in conditional statements
+- the substitution of '$_' in the Grouping feature GUI text was wrong
+- the MaintThread could stuck in Stats upload if the sourceforge server makes a mistake 
+- the RebuildThread could stuck in Griplist upload if the sourceforge server makes a mistake 
+
+
+
+2012-03-30
+
+released as public version
+
+fixed in assp 2.1.2 build 12090:
+
+- fixes a runtime penalty for MIME parsing - related to this a new ASSP_OCR.pm version 2.05 is released
+
+
+2012-03-29
+
+released as public version
+
+fixed in assp 2.1.2 build 12089:
+
+- removed two unneeded Stats
+- some code changes to follow perlcritic
+
+
+
+2012-03-27
+fixed in assp 2.1.2 build 12087:
+
+- The DoIPinHelo check has blocked mails even if the penalty box limit was not reached.
+- The URIBL check has detected some user parts of an email address as a domain name.
+- On some platforms assp has caused a main exception: Can't locate auto/Sys/MemInfo/totalswap.al in @INC
+  if the connection screen was opened.
+
+changed:
+
+- If the attachment MD5 processing for a single mail or file (while rebuild) exceeds three seconds
+  the processing will be stopped. The rebuild task in case will write an special entry to the Trashlist
+  database/file and will skip the MD5 processing for this files in future rebuild tasks.
+
+- New ASSP_AFC (1.27) and ASSP_OCR (2.04) plugins are available - they are optimizing the runtime and memory usage.
+
+- The DoIPinHelo check is now also done by both analyzers.
+
+- The file editor is enhanced to be able to handle files in the "$base/rebuild_error" folder.
+
+- An new ASSP-MIB file is released and required for this version.
+
+
+added:
+
+'RebuildFileTimeLimit','File Processing time Limit',30,'(Syntax: a[.aa] b[.bb] - default is "1 5")
+   Define one, or two space or comma separated values.
+   If the first value is not zero and the processing time of a single corpus file exceeds the first value in seconds, 
+   this will be shown in the rebuild log.
+   If the second value is not zero and the processing time of a single corpus file exceeds the second value in seconds, 
+   the file will be moved to the folder "$base/rebuild_error" to prevent future runtime penalties.
+
+
+2012-03-25
+fixed in assp 2.1.2 build 12085:
+
+- an unrelased DB cursor while counting DB records caused some times an unaccessable database (Spamdb/Whitelist)
+- some URL's were not detected by URIBL
+- optimized cleanup of HTML body data for Bomb-regexes and Bayes/HMM
+
+changed:
+
+- The coloring of the connection screen could now be switched on and off with a button.
+
+
+
+2012-03-20
+fixed in assp 2.1.2 build 12080:
+
+- assp no longer warns about "Malformed UTF-8 character (unexpected end of string)"
+
+
+changed:
+
+- If a file 'rebuilddebug.txt' exists in the assp - base folder, the rebuild task will write debug output
+  to this file. This makes it possible to detect the name of a file which makes problems.
+  
+  
+
+2012-03-17
+fixed in assp 2.1.2 build 12077:
+
+- after an unclean shutdown of assp it was possible that assp was hanging at the next startup while mounting
+  the Griplist - all Griplist files are now removed in that case - and a new Griplist download is forced
+  
+
+
+added:
+
+- an new hidden config parameter is added
+'DoNoSpoofing4From' default = 0  # (0/1) do the NoSpoofing check also for 'from:' addresses
+
+
+-'EmailErrorsModifyPersBlack','Spam/NotSpam Report will modify Personal Blacklist *'
+  'Spam Reports will add email addresses to the Personal Blacklist, NotSpam Reports will remove addresses from 
+  the Personal Blacklist, if the report senders address matches.
+  Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com). 
+  Wildcards are supported (fribo*@domain.com).
+  Default is *@* , which matches all addresses.
+
+
+changed:
+
+- the description and function for 'EmailWhitelistAdd' is changed
+  If an address is added to whitelist, it will be removed from the Personal Blacklist of the sending user.
+
+- the description anf function of 'EmailPersBlackAdd' is changed
+  A local user can force a complete report about all his personal black list entries by defining an email 
+  address that begins with 'reportpersblack' in a remove or add request : eg: reportpersblack@anydomain.com 
+  or by sending an empty body.
+  Any mail address sent to this username will be removed from the whitelist if possible.
+  Globalized adding an address to all local users is supported - use EmailBlackAdd instead.'
+
+- the description and function of 'EmailPersBlackRemove' is changed
+  A local user can force a complete report about all his personal black list entries by defining an email address 
+  that begins with 'reportpersblack' in a remove or add request : eg: reportpersblack@anydomain.com or by sending 
+  an empty body.
+  Only an admin can force a complete cleanup of all personal black entries for a specific email address for all 
+  local users - sending an email to 'EmailPersBlackRemove' with the address followed by ',*' in the body
+  eg: address_to_remove@the_domain.foo,* - be carefull modifying personal entries of other users!
+
+- the personal black list funtion is enhanced
+  ASSP will remove all local recipient addresses from 'to:,cc:,bcc:' header lines if a sender address is personal
+  blacklisted for that recipient
+
+
+
+
+2012-03-13
+fixed in assp 2.1.2 build 12073:
+
+- wrong encoding of Report subjects for non ASCII data
+- scheduling error for Block Reports
+- the rebuild task has sometimes thrown an error 'error unable to execute 'detete from Spamdb'
+  in case switch 'forceTrunc4ClearDB' to on - notice: the trunkate will be not logged in a transaction log
+- some internal sorting mechanism are optimized
+- in case of a shutdown of assp, damping was switched off too late
+- the word length calculation for unicode characters was wrong in some cases (Bayesian and HMM)
+- the Perl-Auto-Module-Update was some times failing, because of existing *.ppmbak files
+  those files are now removed if detected, the next module update will be OK
+- if 'AllowInternalsInRegex' was set to '1' both analyzers hav'nt shown the correct line number of the regex file
+- if a mail without a body was analyzed - the subject was not decoded correctly (was empty) 
+- the HTML decoding has some times destroyed the internal UTF-8 byte order (3-4 Byte unicode code points)
+- if a database backup schedule was falling in to a running rebuildspamdb task the backup was wrong
+  the backup task is now waiting until the rebuild is finished 
+
+changed:
+
+- the option "'run instantly' - the request will be processed instantly (not stored)"
+  is removed from 'QueueUserBlockReports'
+ 
+- if a connection is closed, the processing time and the damping time are shown in a log message
+
+- URIBL is now able to detect double (HTML) encoded URI's
+
+- the connection screen now also shows 'whitelisted' and 'noprocessing' messages in different colors
+
+
+added:
+
+- two new hidden config parameters are added
+
+forceRebuildDowngrade (default = 1)   # (0/1) keep rebuildspamdb.pm compatible to assp.pl in case of a 
+                                         version downgrade
+forceTrunc4ClearDB (default = 0)      # (0/1) try/force a 'TRUNCATE TABLE' instead of a 'DELETE FROM' - 'DELETE FROM' 
+                                         is used as fall back if the truncate failes
+- two new config parameters are added
+
+'BayesWL','Bayesian/HMM Check on Whitelisted Senders/Messages'
+'BayesNP','Bayesian/HMM Check on NoProcessing Messages'
+
+
+
+
+2012-03-07
+fixed in assp 2.1.2 build 12068:
+
+- assp dies in the rebuild task
+- assp stucks in the rebuild task
+- Bayesian values are calculated too high
+- reference error in Win32::Unicode::File.pm line 408
+
+
+2012-03-07
+fixed in assp 2.1.2 build 12067:
+
+- fixes a possible division by zero error in sub 'BayesHMMProb'
+- fixes a possible SQL 'NULL' query error
+- reduces the time used for the 'Generating weighted Bayesian tuplets' rebuild task if 
+  'ReplaceOldSpamdb' is set and a DB is used for spamdb
+  
+changed:
+
+- the reply sent if a spam was detected is changed from '451...' to '421...'
+
+
+
+2012-03-04
+fixed in assp 2.1.2 build 12064:
+
+- it was possible that a successful DKIM check has disabled any plugin level 2 call if no charset conversion
+  was configured
+- the subject of a report (return) mail was some times not MIME encoded
+- the 'msgverify' STATUS was missing in the GUI - this caused also scrambled SNMP OID's for the STATS
+  (new versions of ASSP-MIB and assp-mrtg.cfg are released) 
+
+changed:
+
+- The 'Worker-Status' and 'Connection-STATUS' screen now have a 'STOP/START' button.
+- The 'Connection-STATUS' screen is more readable, shows more information and displays
+  different mails (OUT [green] / IN [normal], is SPAM [red], has positive message score [yellow]) in different colors
+- It is now possible to click at the IP-address and sender address of incoming mail in the 'Connection-STATUS' screen
+  to take actions on them.
+    
+
+2012-02-27
+fixed in assp 2.1.2 build 12058:
+
+- the backup of the HMMspam.. databases was done to a file with a HMMham... name
+
+
+changed:
+
+- the Bayesian and the HMM features are now able to detect and to handle all Unicode Blocks
+  for example to detect characters of symbolic languages like CJK, Thai, Khmer, Katakana .... 
+
+
+2012-02-26
+fixed in assp 2.1.2 build 12057:
+
+- It was possible that a code update or Perl module update has terminated running tasks
+- some times the output to the maillog.txt was not UTF-8 conform
+- it was possible to get 'wide character print' in the console output
+- it was possible that interrupted workers have scrambled the maillog file names and/or subject logging
+  as a result no files are stored and/or archived
+- if multiple character encodings were used in a subject line, the output to maillog.txt was incorrect
+  related to this, maillog file names are unreadable or too short    
+- the output for the Bayesian pairs in both analyzers in case of NON-ASCII data was incorrect
+- to generate DKIM signatures the domain of the envelope sender was used - RFC5617 says the domain part from 
+  the 'from: ..' header line has to be used
+  this is corrected to prevent wrong DKIM signature calculation
+
+
+changed:
+
+- new ASSP-MIB and mrtg config file are released
+- optimizer.pm version 1.09 is released for better Perl 5.14 support
+- a MIME header is added to the default analyzereport.txt file
+
+- function and description for 'baysProbability' are changed:
+
+ An resulting Spam-Probability above this value is multiplied with baysValencePB_local or baysValencePB to get 
+ the penaltybox scoring value for the IP- and message score. In other words, the penaltybox scoring value is 
+ weighted by the Spam-Probability in case Spam is detected.
+ An resulting Spam-Probability below this value but higher than ( 1 - baysProbability ) is stated as 'UNSURE' . 
+ In this case the half score will be added to the message score but not to the IP score and the message will 
+ not be blocked.
+
+- the Bayesian and the HMM engine have got a major improvement, especially for NON-ASCII data
+
+added:
+
+- the SMTPUTF8 SMTP command is now removed from the SMTP handshake stack
+
+
+
+2012-02-11
+fixed in assp 2.1.2 build 12042:
+
+- the autoupdate feature causes an error "unknown mode 'rb' use in open" while deflating
+  assp.pl.gz to assp.pl
+  
+
+
+changed:
+
+'setFilePermOnStart' and 'checkFilePermOnStart' are no longer available for windows systems.
+Perls chmod has no effect on NTFS volumes - so both options are useless on windows systems.
+Windows user should use the windows build in features to set the file and folder permission
+to grant the user account used to run assp 'FULL' rights.
+
+
+
+2012-02-08
+fixed in assp 2.1.2 build 12039:
+
+- The charset definition in report files was ignored since build 12030
+
+- The 'worker status' screen, the 'connection status screen' and the 'MaillogTail realtime screen'
+  havent stop refreshing if the gone out of focus, which possibly caused wrong HTML-session handling for
+  GUI updates with unexpected results in assp.cfg.
+  
+- If assp is unable to find or to open the config file 'assp.cfg' it will try to open the next backup config
+  file in the following order:
+
+  assp.cfg.bak
+  assp.cfg.bak.bak
+  assp.cfg.bak.bak.bak
+
+  An information line will be written in to exception.log if this was happen.
+  
+- It was possible that some reports were parsed not correct for mail addresses.
+
+- Some modules in 'noupgrade.txt' are ignored by the Perl auto-module-update
+
+    
+changed:
+
+- The HTML session handling has been changed. If you hav'nt stored your logon credentials in to the browser,
+  it is possible that must logon again for each new GUI page.
+
+
+
+2012-02-01
+fixed in assp 2.1.2 build 12032:
+
+- the autoupdate for a Perl module on windows was not skipped, if the module was registered as Mail::SPF 
+  instead of Mail-SPF in the 'no update' file 
+
+
+2012-01-31
+fixed in assp 2.1.2 build 12031:
+
+- an UTF-8 BOM is written to the maillog.txt on every start of assp, even the file still exists
+- if 'StoreCompleteMail' is set to zero, the files in the corpus are trunked to the mail header (no body)
+- it is possible that assp failes to overwrite an existing mail file (.eml)
+ 
+
+2012-01-30
+
+ATTENTION: this release will not start on Perl version < 5.10.0 !!!!
+
+fixed in assp 2.1.2 build 12030:
+
+- file processing order for the rebuild process was not correct (youngest files first)
+- ASSP_OCR.pm has not removed all temporary image files from the ./tmp folder - new version 2.03 is available
+- The domain '.su' is added to the blackdomains.txt file - this domain is still registered but the Soviet Union
+  no longer exists - this domain is 100% abused by spammers. 
+
+changed:
+
+This version is nearly full unicode compatible. Do not use non-ascii filenames in the assp configuration.
+Unicode support for these filenames will possibly available in the next new major release in the second quater 2012.
+
+On MSWin32 installations the module Win32::Unicode is required to use 'UseSubjectsAsMaillogNames'.
+use: >ppm install Win32-Unicode
+to install this module on wíndows.
+The latest version for Perl 5.10 and 5.12 of this module is 0.28 - for Perl 5.14 version 0.32 is available.
+
+PLEASE install this module on windows systems BEFORE an upgrade of assp.pl to build 12030 is done!
+
+Linux system will have no problem with the unicode - UTF-8 file system support is recommended!
+
+The ./assp.mod/install/mod_inst.pl has been update to version 1.46
+
+What else has been changed for unicode support?
+
+- the config parameters 'decodeMIME2UTF8' and 'LogCharset' are removed
+- maillog.txt and bmaillog.txt are stored in UTF-8 and starts with a UTF-8 BOM
+- language files must be now UTF-8 encoded - the exported default file starts with a UTF-8 BOM
+- if  'UseSubjectsAsMaillogNames' is enabled on windows - file names are unicode names (UTF-16LE) - 
+  this was already the case for linux (UTF-8)
+
+- The plugins ASSP_ARC.pm and ASSP_DCC.pm are also updated to version 2.01 for the unicode support. 
+
+
+
+2012-01-26
+fixed in assp 2.1.2 build 12026:
+
+- puny coded top level domains are not detected in imail addresses and not detected by the URIBL feature
+
+
+
+2012-01-23
+fixed in assp 2.1.2 build 12023:
+
+- If the IPv6 modules are installed but IPv6 is disabled in assp or unavailable at OS level
+  Net::DNS is running in to a timeout. This causes SPF timeouts, if SPF-include records are defined
+  and possibly some other DNS runtime penalties.
+
+- Some times an empty line was added to the mail header if our own header lines are merged in to the outgoing mail.
+
+changed:
+
+- The EarlyTalker check is now restricted to the 'listenPort' listeners
+
+- The new plugin versions:
+ASSP_AFC.pm 1.26
+ASSP_DCC.pm 1.04
+ASSP_Razor.pm 1.09
+have now the possibilty to define a comma or pipe separated value for the *ValencePB parameter (see build 12019).
+To use this plugin versions assp.pl build 12022 or higher is required.
+
+- The 'bad image' check in the ASSP_AFC.pm plugin is enhanced. 'ASSP_AFCDetectSpamImage' was replaced by 
+  'ASSP_AFCDetectSpamAttachRe' which accepts now a regular expression or regular expression file to detect 
+  "Content-Type" header tags MIME parts, that should be checked to be known spam or not.
+
+'ASSP_AFCDetectSpamAttachRe','Detect Spam Attachments*'
+ 'An regular expression used on the "Content-Type" header tag to detect MIME parts that should be checked 
+ to be known spam or not. The rebuildspamdb task will build spamdb entries for these attachements and 
+ inlines (in assp build 12022 and higher). The plugin will block an email, if a bad attachment is found 
+ and was not removed/replaced by any other rule in this plugin. Leave this blank to disable the feature.
+ for example:
+ image\/
+ application\/pd[ft]
+ application\/zip 
+ 
+ 
+
+2012-01-21
+changed in assp 2.1.2 build 12021:
+
+- The 'EarlyTalker' check is now skipped for all IP's
+  - connected to the 'relayPort'
+  - include in 'acceptAllMail'
+  - include in 'whiteListedIPs'
+  - include in 'ispip'
+  - include in 'noPB'
+  - include in 'noDelay'
+  - include in 'noBlockingIPs'
+  - include in 'noProcessingIPs'
+  - include in 'noHelo'
+  
+
+
+2012-01-19
+changed in assp 2.1.2 build 12019:
+
+- It is now possible to define both, the message score and the IP score for every *ValencePB parameter which is used for
+  both scorings.
+  
+  The following text is added to the GUI description for 'autValencePB':
+
+  This option and all other *ValencePB options with an "+" at the end of the description, accepts a second comma or pipe 
+  separated value like: "20,10" .
+  In this case the first value is used for message scoring and the second value is used for IP scoring.
+  If only the first value is defined, this value is used for both scoring mechanism.
+  If a *ValencePB option is related to any feature which allowes the usage of weighted penalties, the message scoring 
+  value is used to calculate the weighted penalty and the result is used for message and IP scoring.
+
+
+
+2012-01-16
+fixed in assp 2.1.2 build 12016:
+
+- It was possible that the rebuildspamdb has failed with:
+Error: rebuildspamdb failed - Malformed UTF-8 character (fatal) at 
+/usr/local/lib/perl5/site_perl/5.12.4/Lingua/Identify.pm line 637.
+
+The new 'ASSP_WordStem.pm' version 1.21 fixes this.
+
+- Some times assp has stored the complete mail in a file, even if 'StoreCompleteMail' was not set to 'no limit'
+
+- The calculated URIBL weight was not correct in every case
+
+- The razor2 plugin has written an empty line to maillog.txt .
+
+- If Blockreports generated for multiple recipients are sent to MS-Exchange, the same Message-ID was used for
+  each report mail - which caused a 'duplicate mail' error in Exchange.
+
+
+added:
+
+- Two new hidden config vars are available
+
+our $AUTHLogUser = 0; # (0/1) write the username for AUTH (PLAIN/LOGIN) to maillog.txt
+our $AUTHLogPWD = 0;  # (0/1) write the userpassword for AUTH (PLAIN/LOGIN) to maillog.txt
+
+
+
+2012-01-10
+changed in assp 2.1.2 build 12010:
+
+- An new ASSP_AFC.pm version 1.23 is released.
+The changed plugin together with the rebuild spamdb task is now able to detect spam images.
+The rebuild task creates image entries in the spamdb and the ASSP_AFC plugin compares attached
+or included images against this database entries. The mail will be blocked if a bad image is detected.
+
+
+The GUI description has been changed to:
+ This plugin is an addon to the default attachment- and ClamAV- engine of ASSP. The default engines only scannes 
+ the first MaxBytes/ClamAVBytes of an email. If you enable this plugin, the complete mail will be scanned for 
+ bad attachments and/or viruses!
+ The default engine(s) will be disabled by this enhanced version. Before you enable this plugin, please go to 
+ the configuration section(s) and configure the values for attachments and/or ClamAV! 
+ This plugin requires an installed <a href="http://search.cpan.org/search?query=Email::MIME::Modifier" rel="external">
+ Email::MIME::Modifier</a> module in PERL.
+ If this plugin is enabled, the rebuildspamdb task will build spamdb entries for attached and inline images 
+ (in assp build 12010 and higher). The plugin will block an email, if a bad image is found and was not 
+ removed or replaced by any other rule in this plugin.
+ This plugin is designed for- and running in call/run level'complete mail'. 
+
+
+
+2012-01-07
+changed in assp 2.1.2 build 12007:
+
+
+URIBLIPRe','Bad URI IP's*'
+  'Every IP in an URI and every IP resolved for a hostname in an URI is checked against this list of IP\'s or 
+  networks. For example:145.145.145.145|145.146.|1.2.0.0/16
+  This high security feature will follow the rules in URIBLWL, URIBLNP, URIBLLocal and URIBLISP - 
+  but if a match is found, it will block the email ( ignores scoring, monitoring, testmodes and spamlover )
+
+
+2012-01-03
+fixed in assp 2.1.2 build 12003:
+
+- If a large number (>400) of to, cc or bcc recipient was defined in an outgoing mail, the whitelist addition for these
+  number of recipients has taken too long and the SMTP-timeout was detected for the connection.
+  The SMTP-timeout is now ignored for those connections. 
+
+changed:
+
+'MaxEqualXHeader','Maximum Equal X-Header Lines*'
+ 'The maximum allowed equal X-header lines - eg. "X-SubscriberID". If the value is set to empty the header will not be 
+  checked for equal X-header lines. This check will be skipped for noprocessing, whitelisted and outgoing mails.
+  The default is "*=>20", which means any X-header can occure 20 time maximum. You can define different values 
+  for different X-headers - wildcards like "*" and "?" are allowed to be used.
+  For example:
+  *=>20|X-Notes-Item=>100|X-Subscriber*=>10|X-AnyTag=>0
+  An value of zero disables the check for the defined X-header. The check is also skipped if no default like "*=>20" 
+  is defined and the X-header defintion is not found.
+
+
+
+2012-01-02
+fixed in assp 2.1.2 build 12002:
+
+- defined a weight below 1 without a leading zero ~..~=>.4 instead of ~..~=>0.4 was resulting in an invalid 
+regular expression
+
+changed:
+
+- An new ASSP_WordStem.pm version 1.20 is available.
+  If the perl module Lingua::StopWords is installed, 'Stop Words' are removed from the Spamdb and the 
+  Hidden-Makrov-Model.
+  'Stop Words' are words that are very common and so resists in spam and ham mails.
+  This speedsup the spamdb rebuild by 15% and reduces the databases by 10-15%.
+  
+  
+
+2012-01-01
+fixed in assp 2.1.2 build 12001:
+
+- It was possible, that a BlockReport resend request was forwarded two times
+
+changed:
+
+The following Unicode characters are converted to a dot '.' for URI detection:
+
+U+3002 - IDEOGRAPHIC FULL STOP
+U+FF0E - FULLWIDTH FULL STOP
+U+FE52 - SMALL FULL STOP
+U+06D4 - ARABIC FULL STOP
+
+
+
+
+2011-12-30
+fixed in assp 2.1.2 build 11364:
+
+- it was possible that a forwarded BlockReport resend request has caused an SMTP '500 unimplemented command' error
+
+changed:
+
+- It is now possible to define a max-spamlover-score for all spamLover configuration parameter entries.
+
+The following description is added to 'spamLovers':
+
+ This option and all SpamLover-Options below accepting a second score parameter like user@your-domain.com=>70
+ If such a parameter is defined in any option for an entry and the recipient address matches this entry and 
+ the message score exceeds the parameter value, the message will be blocked.
+ If there are multiple possible matches for a recipient address found, the generic longest match (and value) 
+ will be used.
+ ASSP will use the highes found value for all recipients of an email.
+
+- An new ASSP-MIB files is released for SNMP access.
+
+2011-12-28
+changed in assp 2.1.2 build 11362:
+
+- New ASSP_OCR.pm plugin version 2.01 is available
+  - better MSWin32 support
+  - selectable maximum OCR tasks
+
+
+- enhancedOriginIPDetect is moved from hidden variables to the GUI
+
+'enhancedOriginIPDetect','Do an Enhanced Origin IP Address Detection in the Mail Header'
+  'If selected, ASSP will analyze the mail headers "RECEIVED:" lines for IP's on the mail routing way to detect 
+  spam bots, that uses open relay or highjacked mail servers for mail delivery.
+  Local and private IP\'s, and IP\'s listed in ispip, acceptAllMail, whiteListedIPs, noProcessingIPs, noDelay and 
+  noPB will be ingnored.
+  The detected IP\'s will be additionaly checked for IP-Blocking, DNSBL and IP-Frequency - 
+  the same way like the connected IP. These IP\'s are also additionaly used for the maximum mail size calculation 
+  in MaxRealSizeAdr and MaxRealSizeExternalAdr.
+
+'AsADaemon','Run ASSP as a Daemon','0:No|1:Yes - externaly controlled|2:Yes - run AutoRestartCmd on restart and wait|3:Yes - run AutoRestartCmd on restart and exit'
+'In Linux/BSD/Unix/OSX fork and close file handles. 
+ Similar to the command "perl assp.pl &amp;", but better.
+ If "externaly controlled" is selected, ASSP simply ends and you have to restart assp from your daemon or 
+ watchdog script
+ If "run AutoRestartCmd on restart and wait" is selected, assp starts the OS command defined in AutoRestartCmd - 
+ assp will NOT ! automaticaly terminate - the started command has to terminate/kill and to (re)start assp - 
+ like "service assp restart"!
+ If "run AutoRestartCmd on restart and exit" is selected, assp starts the OS command defined in AutoRestartCmd 
+ and terminates immediatly!
+
+  
+
+2011-12-24
+fixed in assp 2.1.2 build 11358:
+
+- It was possible that assp has removed some bytes from the original mail header, if a plugin has detected spam.
+
+- some typos corrected
+
+changed:
+
+- the droplist is now checked before it is updated
+
+
+
+2011-12-22
+fixed in assp 2.1.2 build 11356:
+
+- If an include file was defined in a report file - the GUI has'nt shown an edit button
+
+
+changed:
+
+- The reporting code is now more human readable
+
+
+
+2011-12-21
+fixed in assp 2.1.2 build 11355:
+
+- Under certain conditions it was possible that a report request caused a worker to die, if no MIME header was defined 
+  in the report file.
+
+added:
+
+- Report files now supports the '# include filename' statement like any option file.
+
+
+
+2011-12-20
+fixed in assp 2.1.2 build 11354:
+
+- It was possible the a second web GUI session has overtaken the permissons from the first one
+
+changed:
+
+- The emergency blocker was too restictive and has blocked too many good connections. From now
+  it is only used for EarlyTalkers and blocking is lifted after ~15 minutes after the last bad
+  connection of an IP.
+  
+- It is now possible to define any MIME-header lines in any report file after the first (subject) line.
+  This makes it possible to define MIME encoding and/or charset settings.
+  If a definition of MIME encoding and/or charset is found in such report file, assp converts the report
+  from UTF-8 in to the defined encodings.
+
+added:
+
+'noMaxAUTHErrorIPs','Do not check MaxAUTHErrors for these IP\'s*','List of IP\'s which should not be checked 
+ for MaxAUTHErrors .  For example: 145.145.145.145|145.146.'
+
+Until now 'noBlockingIPs' was used to prevent ASSP from checking an IP for 'MaxAUTHError' - from now
+'noMaxAUTHErrorIPs' is used to do this. If an upgrade is detected, assp copies the setting of 'noBlockingIPs'
+to 'noMaxAUTHErrorIPs'.
+  
+
+
+2011-12-18
+fixed in assp 2.1.2 build 11352:
+
+- 'Bad History' scoring was done even if 'DoPenaltyExtreme' was set to 'disabled'
+
+
+changed:
+
+- If 'MaillogTail' was used in the GUI or large config changes were made in the GUI, ASSP has not accepted any new 
+  connection until the web request was finished. This performance penalty is removed.
+  The fixed maximum search time of 30 seconds in MaillogTail is changed to an aproximatly value above 30 seconds.
+
+
+
+2011-12-16
+fixed in assp 2.1.2 build 11350:
+
+- the emergency blocker is now switched off for local and outgoing mails
+
+
+changed:
+
+- ReportLog has now a 'diagnosic' option
+
+
+added:
+
+- 'noBayesian_local','Skip Bayesian and HMM Check for this local senders*'
+ 'Mail from any of these local addresses are ignored by Bayesian- and HMM check, 
+ mails will not be stored in spam/notspam collection. Accepts specific addresses (user@domain.com), 
+ user parts (user) or entire domains (@domain.com)'
+
+- the DNSBL provider hostkarma.junkemailfilter.com is now also supported in RWLServiceProvider
+
+
+
+2011-12-15
+fixed in assp 2.1.2 build 11349:
+
+- only the first line of a config file was synchronized by the sync feature since 2.1.2 build 11337
+- assp.pl caused a syntax error if Email::send was not installed
+
+
+
+2011-12-12
+fixed in assp 2.1.2 build 11346:
+
+- It was possible that ASSP crashed if an 'EarlyTalker' has sent nonASCII data. If such a very bad behavior is detected,
+  the connected IP will be further blocked very early. The build and used 'EMERGENCY' blocking IP-list could be
+  cleanedup with a restart of assp or using the GUI (left menu -> scroll to bottom).
+
+- 'URIBLwhite' was not working, if the detected URL was longer than the one registered in URIBLwhite.
+  registered: domain.com - found : www.domain.com
+  The feature was working if the domain was registered with a leading asterix '*' - like: *domain.com
+  
+- Under very havy workload the 'MaxAllowedDups' could cause stucking workers or building wrong file names.  
+
+
+The global STATS script/page has been updated to reflect new features.
+http://assp.sourceforge.net/cgi-bin/assp_stats?stats
+
+
+2011-12-11
+fixed in assp 2.1.2 build 11345:
+
+- If assp is used as a generic transparent TCP-proxy, and an allow-IP-list is defined and an IP-group
+  is used in the allow-IP-list - the config watch code has done wrong scheduling or caused an exception in the
+  worker.
+  
+- the module version information was not available via SNMP
+
+changed:
+
+-new ASSP-MIB file released  
+
+
+2011-12-10
+fixed in assp 2.1.2 build 11344:
+
+- a minor schedule problem for the Groups file
+- the PPM repositories used by assp, if running with the SYSTEM account on windows are incomplete
+
+changed:
+
+- ASSP V2 has now a PPM repository on SF - updates of the needed modules are now possible without
+  downloading the complete assp.mod.zip.
+  The ASSP2 repository is added by assp if required.
+  To add the ASSP2 repository manualy, run:
+  ppm rep add "http://downloads.sourceforge.net/project/assp/ASSP V2 multithreading/packages/" ASSP2
+
+  Notice: this repository is not used by the mod_inst.pl install script! 
+
+- 'MaxFileAgeSchedule' now accepts a crontab entry or entry list
+- 'QueueSchedule' now accepts a crontab entry or entry list
+- 'BlockReportSchedule' now accepts a crontab entry or entry list
+
+
+2011-12-09
+fixed in assp 2.1.2 build 11343:
+
+- some backend servers like MS-Exchange got scrambled BlockReports and resent mails
+- the links in the BlockReports uses a wrong port number
+- the exportExtreme schedule was not set correct
+- file links in the MaillogTail are sometimes wrong
+
+
+
+2011-12-08
+fixed in assp 2.1.2 build 11342:
+
+- BlockReportNow was not working for entries with a cron schedule
+- in one case localaddresses_flat has no longer matched after build 11321
+
+
+changed:
+
+- The following configuration parameters support now, as an alternative, a crontab like entry or entry list:
+
+SaveStatsEvery 
+POP3Interval
+GroupsReloadEvery 
+UpdateWhitelist 
+CleanDelayDBInterval 
+CleanPBInterval 
+CleanCacheEvery 
+exportInterval 
+backupDBInterval 
+ReloadOptionFiles 
+LDAPcrossCheckInterval 
+
+
+The main help text has been updated for this:
+
+Fields marked with one small (s) - which are interval definitions - 
+accept a single or a list of crontab entries separated by '|'. 
+Such entries could be used to flexible schedule the configured task. 
+An description of such crontab entries could be found in 'RebuildSchedule' and 'RestartSchedule'.
+
+
+
+2011-12-07
+changed in assp 2.1.2 build 11341:
+
+- assp now corrects malformed line endings like [CR][CR][LF] in the mail headers (not in the body)
+
+- the BlockReportFile now accepts a fifth cron like parameter in every line - read the GUI
+
+
+
+2011-12-06
+fixed in assp 2.1.2 build 11340:
+
+- the config sync feature was sometimes running in to an infinity loop
+
+added:
+
+- the ldap queries in the Group definition now supports a callback procedure
+  usefull for MS-AD queries
+  
+  
+
+2011-12-05
+fixed in assp 2.1.2 build 11339:
+
+- LDAP query was not working for Groups if multiple hosts are defined
+- the syntax of the LDAP query definition in Groups is changed to allow any possible LDAP queries
+
+
+2011-12-04
+changed in assp 2.1.2 build 11338:
+
+- the definiton of LDAP querys in 'Groups' is enhanced
+- LDAPLog now supports diagnostic outputs
+
+added:
+
+- 'GroupsReloadEvery','Reload the Groups definitions every this minutes',
+ 'ASSP will reload the Groups definiton every this minutes, a value of zero disables the reload.'
+
+
+
+2011-12-03
+fixed in assp 2.1.2 build 11337:
+
+- build 11336 fails to start on NIX systems
+- fixes the following security holes
+   - the config synchronization feature has temporary stored secured configuration values in clear text
+   - if a value of 'file:...' was used for a secured config value, the file was not stored encrypted
+ 
+- it was not possible to define a password with a comma in a ldap group definition (the GUI text is changed 
+  to describe the changes)
+
+
+2011-12-02
+fixed in 2.1.2 build 11336:
+
+***************!!!!!!!!!!!!!!!!!!!!!!!!!!******************
+remove the following files from the Perl/bin path if you run assp on windows
+
+libeay32.dll
+libssl32.dll
+***************!!!!!!!!!!!!!!!!!!!!!!!!!!******************
+
+- it was possible that DNSBL has scored two times if a RBLCache entry was found for an IP
+
+
+changed:
+
+- If the upgrade of a connection to SSL failes - the retry and recovery procedure is improved
+
+- ASSP is now able to autoupdate Perl modules via PPM or CPAN
+
+added to description of 'AutoUpdateASSP'
+
+  If set, ASSP (on windows systems with ActivePerl installations) will search for updated Perl modules in all 
+  registered PPM respositories 
+  The installation of some modules could require manual configuration and the installation failes or an upgrade 
+  is not recommended. In this case put the case sensitive module names (one per line) in the followog 
+  file.(\'files/noupgrade.txt\',1);" 
+  If this value is set to \'download and install\', ASSP will try an autoupdate of the new available modules. 
+  It is possible, that some modules could not be installed, because the XS module parts are still in use. 
+  In this case follow the instruction - click the "new available perl modules" button above. 
+  To disable the automatic Perl module update - set "noModuleAutoUpdate" below.
+
+- If HMM is used - the rebuildspamdb report creates a recommendation for the DISK-IO system, 
+  if the the system speed is too less.
+
+added:
+
+-'noModuleAutoUpdate','No Automatic Perl Module update','If set, ASSP will skip the automatic Perl module update.
+
+
+
+2011-11-27
+fixed in in assp 2.1.2 build 11331:
+
+- IP-Blocking feature was not working like expected for OIP's
+
+
+2011-11-25
+fixed in in assp 2.1.2 build 11329:
+
+- in several outputs ASSP has written the version of the AsspSelfLoader.pm instead of the version of assp.pl
+
+
+2011-11-24
+changed in assp 2.1.2 build 11328:
+
+- BlockReports now supporting Groups / combining
+
+ It is possible to define a group ( Groups ) in the first parameter like:
+ [user@domain]=>recipient@any-domain
+ The group name must be a lower case email address of a local domain without any wildcard. 
+ This will create a combined block report for all email addresses defined in this group - useful, 
+ if someone has multiple email addresses and wants to get a single report
+ If the group name is equal to a real existing email address of a user, and this user requests a block report 
+ using this email address (MAIL FROM:), a combined block report for the group will be generated.
+
+- In case a resend of a blocked mail from inside a BlockReport, it is now possible to prevent auto whitelisting 
+and file movement by adding a tag behind the file name definition: ### file name ### nowhite, nomove
+
+- changed behavior for 'MaintByesCollection', 'MaxCorrectedDays' and 'MaxFileAgeSchedule' in case rebuildspamdb 
+is used - see the GUI text
+- the rbuildspamdb task now ignores files in the long time Bayes store that are too old.
+
+- MailLoopDetection now also scannes for host names defined in 'myNameAlso'
+
+
+2011-11-17
+changed in assp 2.1.2 build 11321:
+
+- To make the corpus cleanup more flexible the following config parameters are enhanced.
+
+'MaxBayesFileAge','Max Age of Bayes Files',
+'The maximum file age in days of every file in every bayesian collection folder ( spamlog , notspamlog ). 
+If MaintBayesCollection is set to on and a file is older than this number in days, the file will be deleted. 
+Default is 31. A value of 0 disables this feature and no file will be deleted because of its age. 
+To use different values for spamlog and notspamlog, define two space separated values - the first for spamlog 
+and the second for notspamlog, like '30 60'
+
+'MaxCorrectedDays','Max Corrected File Age',
+'This is the number of days a error report will be kept in the correctedspam and correctednotspam folders. 
+These folders are the longterm memory of ASSP, therefore the default is 1000 days. To use different values for 
+correctedspam and correctednotspam, define two space separated values - the first for correctedspam and the 
+second for correctednotspam, like '1000 1500'
+
+'MaxNoBayesFileAge','Max Age of non Bayes Files',
+'The maximum file age in days of every file in every non bayesian collection folder 
+( incomingOkMail , discarded , viruslog ). If defined and a file is older than this number in days, 
+the file will be deleted. Default is 31. A value of 0 disables this feature and no file will be deleted because 
+of its age. To use different values for incomingOkMail and discarded and viruslog, define three space separated 
+values - the first for incomingOkMail and the second for discarded and the third for viruslog, like '31 45 60'
+
+
+- both analyzers are now showing the real SPF state for an analyzed mail
+
+
+2011-11-16
+fixed in assp 2.1.2 build 11320:
+
+- improved OIP detection
+- wrong collection folder 'notspam' was used after a mail was stored in 'discarded' folder
+- a malformed header end sequence caused an destroyed mail header after our own header was added
+
+
+2011-11-15
+fixed in assp 2.1.2 build 11319:
+
+- on some linux OS the process name was wrong modified by the module Schedule::Cron - like 
+> 3485  v0- SJ   104:18,29 /usr/bin/perl /usr/bin/perl /usr/bin/perl 
+> /usr/bin/perl /usr/bin/perl /usr/bin/perl /usr/bin/perl /usr/bin/perl
+> /usr/local/share/assp/assp.pl MainLoop - next: Wed Nov  9 07:44:40 2011
+> MainLoop - next: Wed Nov  9 10:36:55 2011 MainLoop - next: Wed Nov  9 
+
+- the rebuildspamdb has removed too young files from the long time corpus
+
+
+changed/added:
+
+- The following two config parameters are moved to the GUI and are no longer need to be set at startup or in 'CorrectASSPcfg.pm'
+
+'maxBayesValues','Maximum most significant results used per mail to calculate Bayesian- and HMM-Probability','Maximum count of 
+ most significant values used to calculate the Bayesian/HMM-Spam-Probability and the confidence of that probability.
+ The Bayesian/HMM Spam Probability will be fine with 30 and will get more exact, than higher this value is - until a value of 60.
+ The confidence of the Bayesian/HMM Spam Probability will get better, than higher this value is.
+ Values above 60 are possible, but could lead in to a performance penalty, without getting a better spam detection.
+ Default is 60, minimum is 30
+
+'myNameAlso','Additional My-Name-Definitions','If myName was changed or you use shared folders (multiple ASSP) for the corpus files, 
+ define the old or other host names here - separate multiple entries by pipe , comma or space. ASSP will use this 
+ host names in addition to myName, to detect the received headerlines while the rebuildspamdb is running and in the mail analyzer.'
+
+
+2011-11-12
+fixed in 2.1.2 build 11316:
+
+- an email address that contains a '+' caused an exception like
+"exception detected : Nested quantifiers in regex; marked by <-- HERE in m/^+++ <-- HERE 
+2037789-34-95005+++@mail.emaileri.fi | +++2037789-34-95005+++@mail.emaileri.fi / at sub main::getline line 1588." 
+
+
+changed:
+
+- ASSP now calculates a corpus-confidence dependinng on the corpus-norm.
+- ASSP now weights the Bayes/HMM penaltybox values with the SpamProb
+- The baysConf calculation has been completely changed
+
+'baysProbability',Bayesian/HMM Probability Threshold 
+Messages with spam-probability below or equal this threshold are considered Ham. Recommended '0.6'.
+An resulting Spam-Probability above this value is multiplied with baysValencePB_local or baysValencePB to get 
+the penaltybox scoring value. In other words, the penaltybox scoring value is weighted by the Spam-Probability in 
+case Spam is detected.
+
+The following default Bayesian math (prob = p1 / (p1 + p2)) is used to calculate the SpamProb value for 'n' found 
+Bayesian-Word-Pairs or HMM-Sequences, each with a spam-weight 'p' - where 0<p<1 :
+
+'SpamProb' = (p1 * p2 * ... * pn) / ( p1 * p2 * ... * pn + (1 - p1) * (1 - p2 ) * ... * (1 - pn))
+ 
+
+'baysConf',Bayesian/HMM Confidence Threshold,
+Spam-Mails having a confidence below this threshold are passed in TestMode . Spam-Mails having a confidence above 
+this threshold are blocked. Set this only above 0 if you are familiar with the bayesian statistics used in ASSP.
+Messages that are processed by the bayesian and HMM check get a spam-probability score and a confidence score. 
+The confidence score in assp is a quality indicator. A confidence near 0 would mean the probability score is like a 
+wild guess. A confidence score near 1 would mean that it's pretty sure that the bayesian analysis result is correct. 
+The confidence threshold is an allowance to process a Bayesian/HMM Spam as-if in Bayesian TestMode, 
+if the message's *confidence* score is lower than the confidence threshold. Set this level to a specfic value, 
+let's say .001 (which is a good one for starting), then:
+- messages with spam-probability higher than 0.6 and a confidence of less than .001 would come through as in test mode
+- messages with spam-probability higher than 0.6 and a confidence of more than .001 would be blocked
+- messages with spam-probability less than 0.6 would pass
+The 0.6 threshold can be set in baysProbability .
+Carefully set this parameter above 0, if the bayesian corpus norm (shown by the rebuildspamdb log) is less 
+than 0.6 or higher than 1.4 .
+
+The following math is used to calculate the SpamProbConfidence value for 'n' found Bayesian-Word-Pairs or HMM-Sequences, 
+each with a spam-weight 'p' - where 0<p<1 :
+
+'extreme_confidence_count' = |(0 < p1...n < 0.01)| - |(0.99 < p1...n < 1)|
+'extreme_confidence_count' = 0 - if ('extreme_confidence_count' < 0 and SpamProb > 0.5) or ('extreme_confidence_count' > 0 and SpamProb <= 0.5) == TRUE; 
+'extreme_confidence_count' = abs( 'extreme_confidence_count' )
+'mail_confidence' = abs((P1 * P2 * ... * Pk) - ((1 - P1) * (1 - P2 ) * ... * (1 - Pk))) - for all elements 'P1...k' in (0.01 < p1...n < 0.99)
+'corpus_confidence' = 1 / (abs(1 - 'corpus_norm') + 1) ** int(abs(1 - 'corpus_norm') * 10) - the exponent is limited to a maximum of 4
+'SpamProbConfidence' = 0.01 ** 'extreme_confidence_count' * 'mail_confidence' * 'corpus_confidence' * (n / maxBayesValues) ** 2
+
+The SpamProbConfidence is limited to a maximum of 1.0 . 
+All extreme values 'p' having a spam weight less than 0.01 or higher than 0.99 with a corresponding extreme 
+value like (0.009 <-> 0.999) are ignored for the 'mail_confidence' calculation.
+
+empty or zero = disabled.
+
+
+
+2011-11-10
+fixed in 2.1.2 build 11314:
+
+- some incorrect logging entries in the maillog.txt, have possibly caused an incorrect calculation of the 
+  uploaded griplist
+-  the X-Assp-Spam-Level: header has not shown any asterix in the last release (11311)
+
+
+changed:
+
+- The calculation of the Bayesian and HMM confidence value is improved. If both extrem ham and spam values 
+  like 0.00001 and 0.99999 where found, the resulting confidence value was far away from beeing correct.
+
+- if the send of a block report failes using TLS - assp will try to send the report without using TLS
+
+- the output of the 'Totals:' in both analyzers is removed - all values used to calculate the spam weigth and 
+  confidence are shown in the well known table
+
+
+REMOVED - was added in 2.1.2 build 11306 !
+
+- If the envelope sender matches not the 'from:' address in the header - an additionaly SPF check for the 'from:' 
+  address is done. 
+
+
+
+2011-11-07
+fixed in 2.1.2 build 11311:
+
+- the calculation of the spam confidence value was wrong in case of less Bayesian word pair matches
+
+changed:
+
+- both analyzers now are showing URIBL results
+
+
+2011-11-06
+fixed in 2.1.2 build 11310:
+
+- if a not valid value was defined in 'RebuildSchedule' or 'RestartSchedule' assp was going crazy.
+- the X-ASSP header of the corpus files was also used to build the spamdb and the HMM
+
+changed:
+
+- it is now possible to define more than one entry in 'RebuildSchedule' and 'RestartSchedule' - 
+multiple entries must be separated by '|'
+
+
+2011-11-05
+fixed in 2.0.2 build 11309:
+
+- the rebuild spamdb task has wrong retied the main HMM databases after any 'GUI apply' - which could crash assp
+
+changed:
+
+- if there are more than 'MaxFiles' in a corpus folder - now the youngest files are used for the rebuild
+- possible memory usage peaks in the rebuild task are reduced.
+
+
+2011-11-03
+fixed in 2.1.2 11307:
+
+- scoring for strictSPF was wrong
+- the config reload scheduler has taken wrong times for reload, if hostnames are defined in IPre lists
+- the rebuild spamdb has not produced a HeloBlack list (or only a very short one)
+- rebuild spamdb has used too less bytes from the email-files
+
+
+2011-11-02
+changed in assp 2.1.2 build 11306:
+
+
+- If the envelope sender matches not the 'from:' address in the header - an additionaly SPF check for the 'from:' address is done.
+
+the GUI description for 'DoHMM' is changed:
+
+'DoHMM','Hidden Makrov Model Check'
+  "If activated, the message is checked  based on a Hidden Markov Model. 
+  This needs a fully functional spamHMM and hamHMM database built by rebuildspamdb. 
+  For starters it is best practice to put this in monitoring mode and built the HMM collection with the help 
+  of DSNBL ,URIBL and spamaddresses. Scoring is done with baysValencePB for external mails, baysValencePB_local 
+  is used for outgoing and internal mails. 
+  The perl module <a href=\"http://search.cpan.org/dist/BerkeleyDB/\" rel=\"external\">BerkeleyDB</a> version 0.34 
+  or higher and BerkeleyDB version 4.5 or higher is required (to store temporary data) to use this feature 
+  and 'useDB4Rebuild' and 'useBerkeleyDB' must be set to ON.
+  The HMM uses all defined values below from the Bayesian check, except bayesConf and AddConfidenceHeader - 
+  which are not used by HMM. If this option is disabled, the rebuildspamdb task will NOT produce valid HMM databases!
+  Compared to the Bayesian option, the Hidden Markov Model will produce more exact results. How ever, it is possible, 
+  that HMM gets no result on very small messages, for this reason it is recommended to use both Bayesian and HMM.
+  NOTICE that using this option requires a <b>very fast database server</b> behind, if HMMusesBDB is set to OFF. 
+  The Bayesian- and HMM check together can produce <b>4000 and much more SQL querys per second</b>.
+  Keep in mind, that all backups and exports of the HMM databases could need several gigabyte of diskspace, 
+  if the file count in the corpus is very large.
+  <span class=\"negative\">Don't enable this feature, if your system has less than 2GB free RAM, 
+  after assp was currently started!</span>
+  <span class=\"negative\">Don't enable this feature, if you don't have a very fast database server behind 
+  or you don't use BerkeleyDB for the spamdb or HMMusesBDB is set to ON.</span>",
+
+
+
+added:
+
+  'HMMusesBDB','Use BerkeleyDB for the Hidden Makrov Model databases',"If enabled (default), 
+  the Hidden Makrov Model databases are using BerkeleyDB. This value is ignored, if DBdriver is set to 'BerkeleyDB' 
+  and spamdb is set to 'DB:'.
+  <span class=\"negative\">Changing this value requires a restart of assp. Possibly a forced rebuildspamdb is 
+  required after the restart.</span>
+
+
+
+2011-11-01
+fixed in 2.1.2 build 11305:
+
+- some messages are not scanned for viruses and/or attachment are not detected
+- assp was crashing on cleanup after populating very large Hidden Markov Models
+- HMM-check was disabled by a bug in build 11304
+
+******  ATTENTION ******
+
+- if MySQL databases are used - check the version of the module 'DBD::mysql'
+:>perl -e "use DBD::mysql; print $DBD::mysql::VERSION;"
+
+Some driver versions producing large memory leaks on all supported Perl version!
+
+If the installed version is greater than 4.014 and lower than 4.020 - upgrade the driver to the latest version,
+at least to version 4.020.
+
+Windows - via PPM:
+
+ppm update --install DBD::mysql
+
+
+other OS or Windows via CPAN
+
+cpan DBD::mysql
+
+************************
+
+
+2011-10-31
+fixed in 2.1.2 build 11304:
+
+- the AsspSelfLoader.pm version was shown as ASSP version in maillog.txt
+- major memory usage reduction and speed improvement for the rebuildspamdb task
+
+changed:
+
+- if a client IP was listed in the SSLfailed cache - SSL was also disabled for the server connection
+- if a server IP was listed in the SSLfailed cache - SSL was also disabled for the client connection
+
+
+2011-10-30
+fixed in 2.1.2 build 11303:
+
+- the memory usage of the rebuildspamdb task is reduced
+- the assp main task has produced uncleanable memory leaks
+- if the matching string for the redRe was very long, it was possible that assp has destroyed the MIME header 
+by adding our header
+- the time to populate the HMM to the main database (RDBM) was too long - rebuildspamdb now uses the DB-IMPORT 
+function (RDBM-only)
+
+
+changed:
+
+- In all lists where IP-addresses as a list (* file option) could be used, it is now possible to define hostnames. 
+If assp detects a hostname in such a list, it will resolve all IP-addresses for the host name and will expand the 
+list with these IPaddresses using a hostmask /32 (255.255.255.255). Each of these expanded IP-addresses will 
+get the defined description from  the hostname.
+ASSP will also resolve the TTL for the DNS entry of the hostname and will reload the value for the configuration 
+parameter, if the TTL is reached. The minimum time for such a reload is 600 seconds.
+
+changed GUI description for this (bottom main part):
+
+You may define a hostname instead of an IP, in this case the hostname will be replaced by all DNS-resolved IP-addresses, each with a /32 netmask. For example:
+mta5.am0.yahoodns.net Yahoo #comment to be removed -> 66.94.238.147/32 Yahoo|... Yahoo|... Yahoo
+
+- The HMM now uses the value of  'spamdb' . HMM is only available if 'spamdb' is set to 'DB:'. 
+The temporary data of the HMM while the rebuild is running requires BerkeleyDB.
+
+- If enabled the HMM check is running before the Bayesian check
+
+
+2011-10-22
+fixed in 2.1.2 build 11295:
+
+- sometimes the workers where stucking in step MSGIDsigCheck
+- rebuildspamdb 2.80 (2.1.2 build 11291) has procuced an empty spamDB if 'ReplaceOldSpamDB' was set on 
+
+
+changed:
+
+- the SSLfailed chache now allows privat and 'acceptAllMail' IP's one more try after a SSL mistake
+
+
+added:
+
+'DoHMM','Hidden Makrov Model Check ','0:disabled|1:block|2:monitor|3:score',
+  "If activated, the message is checked  based on a Hidden Markov Model. This needs a fully functional spamHMM 
+  and hamHMM BerkeleyDB database built by rebuildspamdb. For starters it is best practice to put this in monitoring 
+  mode and built the HMM collection with the help of DSNBL ,URIBL and spamaddresses. 
+  Scoring is done with baysValencePB for external mails, baysValencePB_local is used for outgoing and internal mails. 
+  The perl module BerkeleyDB version 0.34 or higher and BerkeleyDB version 4.5 or higher is required to use this feature.
+  The HMM uses all defined values below from the Bayesian check, except bayesConf and AddConfidenceHeader - 
+  which are not used by HMM. If this option is disabled, the rebuildspamdb task will not produce valid HMM databases!
+  Compared to the Bayesian option, the Hidden Markov Model will produce more exact results. 
+  How ever, it is possible, that HMM gets no result on very small messages, for this reason it is recommended 
+  to use both Bayesian and HMM."
+
+If 'DoHMM' is enabled both Mail Analyzers will show the HMM result.
+
+The HMM check is also done for the results of level 2 Plugins (e.g.: OCR).
+
+The blacklisted Helo database now stores weights (occurencies). The score for a blacklisted HELO will be increased 
+for up to three times - valence * occurs(max 3)
+
+The Bayesian Engine has increased or decreased the Bayes-value based on fail or success of several others features. 
+This is removed to get more exact Bayesian results.
+The cleanup of 'words' used by Bayesian is improved to get better results.
+
+
+
+2011-10-18
+fixed in 2.1.2 build 11291:
+
+- attachment scanning caused an exception if the filename was 8Bit encoded and not 7bit clean
+- removed some performance penalties at the HMM
+- IPv6 listeners where not correct detected since build 11290
+
+
+2011-10-17
+changed in 2.1.2 build 11289:
+
+- The definition of VRFY hosts in 'localDomains' and 'LocalAddresses_Flat' now supports multiple comma separated 
+  entries for failover configuration.
+.... Use the syntax: 
+*mydomain.com=>smtp.mydomain.com|other.com=>mx.other.com:port|other2.com=>mx.other.com:port,mx2.other.com:port
+
+
+2011-10-16
+fixed in 2.1.2 build 11289:
+
+- AUTH LOGIN used by exchange prevents the email inteerface from working correct
+
+
+
+2011-10-13
+fixed in 2.1.2 build 11286:
+
+- replyLogging was not working in every case
+- some internal regular expressions are changed to be faster
+- an error  'Wide character in subroutine entry at sub main::assp_encode_Q line 2' 
+  occured some times on non standard character sets
+- workers where some times stucking in or after MailLoopOK check
+- In an HTML only email, formatted to 72 character line length, 
+  URI domain names that are split on two lines are not captured completely.
+- HTML decoding was not working correct for BombRe's and URI's
+- an corrected vanilla file 'redre.txt' was imported from V1
+
+2011-10-11
+fixed in 2.1.2 build 11284:
+
+- the URIBL and Script check are no longer running.
+
+- the forced 'download and install' of the latest assp.pl.gz version was not working, if the latest version was already downloaded
+
+
+2011-10-10
+fixed in 2.1.2 build 11283:
+
+- 2.1.2 build 11282 has not written to maillog.txt and bmaillog.txt
+
+changed:
+
+- the Top-Ten statistic is now switched off per default
+If someone wants to use this Top-Ten statistic , start assp with the startup switch
+
+DoT10Stat:=1
+
+or add the following line to the sub 'set' in file 'lib/CorrectASSPcfg.pm'
+
+    $main::DoT10Stat = 1; 
+
+
+
+2011-08-10
+fixed in 2.1.2 build 11282:
+
+- if a RecipientReplacement rule was removed from the config, this change was sometimes only active after a assp restart
+- if a still made decision 'notspam' has to be reverted - the new .eml file name was sometimes build wrong
+
+
+changed:
+
+- the code was changed to reduce the compiled code, if the AsspSelfLoader.pm is used, for all not used features
+
+- the SPF code is optimized
+
+- the following configuration parameters are removed from the code:
+
+localDomainsFile
+relayHostFile
+autoIncNumComWorkers
+autoIncNCWInterva
+autoIncMinSysMEM
+autoIncMaxTotWorkers
+
+- if 'NumComWorkers' is increased no new threads will be started - a assp restart is required to start all WorkerThreads
+- some subroutines are renamed to have a more readable name
+- large parts of the code are changed to be more readable, to reduce runtime and to reduce memory usage
+
+
+2011-06-10
+fixed in 2.1.2 build 11279:
+
+- the SPF check for local and outgoing mails was not working
+
+changed:
+
+- SPF records in SPFoverride , SPFfallback , LocalPolicySPF and SPFlocalRecord are now checked for validation if 
+  SPF2 is used
+
+- it is now possible to define a record 'ALL=>x.x.x.x' in 'LocalAddresses_Flat' and 'localDomains', 
+  which sets all records without a VRFY-MTA definition to '=>x.x.x.x'
+  if a VRFY-MTA definition is still defined for a record, this will be not changed
+
+- group defnitions are now possible for ip-address lists - use this option with care!
+
+added:
+
+'SPFLocal','Local and outgoing mail SPF Validation'
+  'Enable Sender Policy Framework Validation for local and outgoing messages also. 
+  Don't forget to configure your DNS-server for SPF and/or to configure SPFoverride / SPFfallback / SPFlocalRecord, 
+  if you enable this option.
+
+
+2011-04-10
+fixed in 2.1.2_11278:
+
+- the top ten statistic has counted connection which where running in to the SMTP timeout
+
+- the top ten statistic was added to scheduled BlockReports even if the recipient was not an email admin
+
+fixed in 2.1.2_11277:
+
+changed:
+
+- the configuration parameters 'SPFoverride' and 'SPFfallback' are no longer restricted to the old SPF-module Mail::SPF::Query
+
+-The version numbering of assp V2 has been changed. The new version numbering is:
+
+FAMILY.MAJOR.MINOR_BUILD[.PATCH]  
+
+where the BUILD number is build from the two digit year and the three digit day of the year. 
+If there are more than one patches available for one day, a dot + PATCH number with one or two digits will be appended.
+The MINOR number indicates: odd - production version , even - development version.
+
+
+
+For changes in previouse releases 2.0, please read the changelog_2.0.X.txt file.
+

@@ -1,0 +1,19 @@
+<SOFTPKG NAME="Crypt-SMIME" VERSION="0.15">
+    <ABSTRACT>S/MIME message signing, verification, encryption and decryption</ABSTRACT>
+    <AUTHOR>Ymirlink &lt;tl@tripletail.jp&gt;</AUTHOR>
+    <IMPLEMENTATION>
+        <REQUIRE NAME="XSLoader::" />
+        <ARCHITECTURE NAME="MSWin32-x86-multi-thread-64int-5.20" />
+        <CODEBASE HREF="Crypt-SMIME-0.15_520.tar.gz" />
+    </IMPLEMENTATION>
+    <IMPLEMENTATION>
+        <REQUIRE NAME="XSLoader::" />
+        <ARCHITECTURE NAME="MSWin32-x86-multi-thread-64int-5.18" />
+        <CODEBASE HREF="Crypt-SMIME-0.15_518.tar.gz" />
+    </IMPLEMENTATION>
+    <IMPLEMENTATION>
+        <REQUIRE NAME="XSLoader::" />
+        <ARCHITECTURE NAME="MSWin32-x86-multi-thread-5.16" />
+        <CODEBASE HREF="Crypt-SMIME-0.15_516.tar.gz" />
+    </IMPLEMENTATION>
+</SOFTPKG>

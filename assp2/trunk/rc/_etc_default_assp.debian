@@ -1,0 +1,18 @@
+# This file contains the configuration parameters for the init script
+# that starts ASSP.
+# Except for the BASE directory, all the other vars are the default.
+
+# BASE: Base directory where the program is installed
+BASE="/srv/assp"
+
+# DAEMON: Name of the assp executable
+DAEMON="$BASE/assp.pl"
+
+# DAEMON_ARGS: Optional arguments to pass to the assp.pl executable
+#              Except the $BASE value that is passed as 1st parameter
+DAEMON_ARGS=""
+
+# PIDFILE: The file where the PID of the daemon is saved (cfr. assp.cfg)
+#          The default is not FHS compliant
+PIDFILE="$BASE/assp.pid"
+

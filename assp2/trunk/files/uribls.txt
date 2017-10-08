@@ -1,0 +1,8 @@
+multi.surbl.org
+black.uribl.com
+#multi.uribl.com=>127.0.0.1=>0
+#multi.uribl.com=>127.0.0.*=>1
+#uribl.swinog.ch
+#sbl.spamhaus.org
+#uribl.spameatingmonkey.net
+#dob.sibl.support-intelligence.net

@@ -1,0 +1,8 @@
+# user@domain - will send a report for this user to this user
+# *@domain - will send a report for every blocked user in this domain to this user
+# user@domain=>recipient@any-domain - will send a report for user@domain to recipient@any-domain
+# *@domain=>recipient@any-domain - will send a report for every blocked user in this domain to  
+# recipient@any-domain
+
+# *@domain=>recipient@any-domain=>2 - creates a report for two days.
+# user@domain=>=>3 - creates a report for three days. The second parameter is here empty!

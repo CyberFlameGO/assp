@@ -1,0 +1,107 @@
+#!/bin/sh
+#
+# $FreeBSD: assp,v 1.0 2013/11/09 08:55:56 TE Exp $
+#
+# dont't use symlinks for pathes in this script (/home/assp => /usr/home/assp) !
+#
+# PROVIDE: assp
+# KEYWORD: shutdown
+#
+#
+
+
+. /etc/rc.subr
+
+assp_enable=${assp_enable}
+
+name=assp
+rcvar="${name}_enable"
+
+start_cmd=assp_start
+stop_cmd=assp_stop
+status_cmd=assp_status
+extra_commands="status"
+
+# specify your pathes here
+#
+# the path to the assp user home
+user_home="/usr/home/${name}"
+
+# the path to the perl binary
+perlbin="${user_home}/bin/perl"
+
+# the path to the assp base folder
+base="${user_home}/${name}"
+
+# the path to the assp.pl script
+assp="${base}/${name}.pl"
+
+# the path to the assp PID file
+pidfile="${base}/pid"
+
+# tells assp that it is started as a OS controlled daemon
+assp_parms="--AsADaemon:=2"
+
+
+# code goes here
+get_status() {
+    local retcode=0 # assume assp is running
+    if [ -f ${pidfile} ]; then # is the PID found
+        if ! ps -p $(cat $pidfile) > /dev/null; then # is the process not running
+	    rm ${pidfile}
+	    echo "removed orphaned PID file ${pidfile}"
+	    retcode=1 # assp is not running
+	fi
+    else
+	retcode=1 # assp is not running
+    fi
+    return $retcode
+}
+
+assp_start() {
+    checkyesno assp_enable && ! get_status && echo "Starting ${name}." && \
+    su -m ${name} -c "${perlbin} ${assp} ${base} ${assp_parms}" > /dev/null && \
+    echo "${name} started" || \
+    echo "${name} not started"
+}
+
+assp_stop() {
+    if [ ! -f ${pidfile} ];then # PID file not available
+	echo "${name} seems not to be running - missing PID file ${pidfile}"
+	exit 1
+    fi
+    if ! get_status; then # assp is not running
+        exit 1
+    fi
+    echo "Stopping ${name} - sent INT."
+    pkill -INT -F ${pidfile} # send INT to assp
+    echo "wait for ${name} termination - max 60 seconds."
+    local timeout=60
+    # wait until assp has stopped but max 60 seconds
+    while [ -f ${pidfile} -a ${timeout} -gt 0 ]; do
+        timeout=$(( timeout -1 ))
+        sleep 1
+    done
+    if [ -f ${pidfile} ];then # assp is still running - kill it
+        echo "${name} was not stopped within 60 seconds - will KILL it"
+        pkill -KILL -F ${pidfile}
+        sleep 2
+        rm ${pidfile}
+    fi
+    echo "${name} stopped"
+}
+
+assp_status() {
+    if get_status; then
+	echo "${name} is running as pid" $(cat $pidfile).
+        return 0
+    else
+	echo $name is not running
+        return 1
+    fi
+}
+
+
+load_rc_config ${name}
+run_rc_command "$1"
+

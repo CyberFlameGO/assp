@@ -1,0 +1,21 @@
+If you want to use BlockReports configure your setup as follows:
+
+1. never set 'doMove2Num' to on !
+2. set 'UseSubjectsAsMaillogNames' to 'ON' to produce unique file names !
+3. set 'MaxAllowedDups'
+4. set 'decodeMIME2UTF8' to 'ON'
+5. set 'MaxFileNameLength'
+6. set 'MaintBayesCollection'
+7. set 'MaxBayesFileAge'
+8. set 'MaxCorrectedDays'
+9. set 'MaxNoBayesFileAge'
+10. set 'MaxFileAgeSchedule' 
+
+think about - and if usefull configure
+
+'ConsoleCharset', 'LogCharset', 'UseUnicode4MaillogNames', 
+'UseUnicode4SubjectLogging', 'AllowedDupSubjectRe','ExtraBlockReportLog' 
+and the other parameters in the BlockReports section of the GUI
+
+And not to forget: Never use any 'old style' rebuildspamdb.pl, move2num.pl 
+or any other V1 script (e.g. if you've done an upgrade from V1) !

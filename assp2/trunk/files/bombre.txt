@@ -1,0 +1,723 @@
+# version 1.06
+# 
+(you\'ve|youve|you.have).(just )*received an? (postcard|greeting|ecard)
+[0-9][\s-]day target[\(\:?_|\s\)]price
+..\% 0ff
+..\% Discount
+..\% improvement
+..\% off
+<a\s+href\s*=\s*"http\:\/\/(?![^\/]+ebay)[^>]+>(\s*<(?!\/a)[^>]+>){0,5}\s*<img\s+[^>]*src\s*=\s*"?http\:\/\/pics.ebaystatic.com\/
+buy c+heap
+d+iscount d+rugs
+h+erbal
+n+asty g+irls
+[o0]+em software
+[o0]+nline d+rugs
+p+rescription d+rugs
+r+egal.s
+r+eplica\s
+s+oft t+abs
+t+he v+irus
+v+irus found in sent message
+v+irus (infect|detected)
+\$\$\$
+\$\$\$\$\$\$
+\$aving
+\*\*\* you have sent a virus !
+\bbegin\b \d\d\d \b\s{0,72}.*\s{0,61}.{0,61}\bend\b
+\bxanax\b
+\d+\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d\d\d\d\s+\d\d\:\d\d(\:\d\d)?\s+[+\-]\d\d(?!00|30|45)\d\d
+\d\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d\d\d\d\s+\d\d\:\d\d(\:\d\d)?\s+[+\-]\d\d[6-9]\d
+\s+c+[il1]+a+[il1]+s+\s
+\sbuerger\s
+\seridan\s
+\sfick\s 
+\sg.eil\s
+\shorny\s
+\sor.der\s
+\ss.e.x\s
+\sst ock\s
+a possible virus
+a virus was detected
+a+\s.\sm+\s.\sb+\s.\si+\s.\se+\s.\sn+\s
+abriefmail authenticated
+achtung! sie haben eine mit einem virus infizierte mail verschickt
+act of 1933
+adamantbestfinancing
+adamantfinancing
+administration der postbank
+adresslister\.de
+adressverwaltung\.org
+advarsel! dit e\-brev indeholder virus
+afiworldneu
+after replying, please erase it from your computer system
+agora\.adm\.br
+aids weight
+alert \- virus
+alerta de virus
+alerte \- vous avez envoye un mail avec virus
+alerte de l'anti\-virus
+alerte virus
+alerte\: un virus a 
+allabout\.ne\.jp
+amaazing
+amateur online
+A+\s.\sM+\s.\sB+\s.\sI+\s.\sE+\s.\sN+\s
+ana lerotik
+anal action
+anal fucked
+anal.?sex
+anti-depressants antibiotics
+anti\-?fraud
+anti\-?virus alert
+anti\-?virus notification
+antibiotics cholesterol
+antivirus notification
+antivirus scan results
+antivirus stopped your message
+antivirus system found
+antivirus system report
+anwichsen
+arbeitslosichkeit
+are.you.ready.to.have.fun.at 
+as the beneficiary
+asian shemale
+assfuck
+atenci.n\: virus detectado en e\-?mail
+atentie !!! virusi detectati
+attachments contain a virus
+attenzione virus
+auto-submitted\: auto-generated \(failure\)
+automated email block\: virus
+automatische nachricht
+aviso\: email rejeitado\: virus detectado
+award notification
+b1gger 
+bac helor
+bad credit ok
+bank of nigeria
+bankfuhrung
+bankverkehrskontoinformation
+be\$t
+best erection
+big black cock
+big tit
+bitdefender found an infected object
+black cock
+blocked by our bulk email filter
+blonde teen
+blowjobaward
+bluecomtv
+branded watches
+brasil\.gov\.br
+breitling .eplica
+broadcastemailservices
+browser error\: othr
+busty nymphet
+by our virus scanner
+by real-net\.de
+c.?hea.?p
+can-spam
+centrale anti\-virus melding
+ch0ice
+charity\/non-?profit
+cheap drugs
+cheap oem soft
+cheap\! 
+cholesterol diabetes
+cials-tabs
+classic vibrator
+cocjarchowbid
+coldline.cronon.org
+competitive discount
+cooperate!!!!!!!
+cpea\.org\.tw
+cumshot 
+customersupport_
+custservice_id_
+custservice_ref_
+custservice_.{1,20}@.{1,20}bank.de
+d1ploma
+database\.uk
+decgree
+deep fucking
+degr ee
+degr3e
+delivery status notification (failure)
+der restposten\.de-newsletter
+derbesteshopderwelt\.de
+detected a virus
+diabetes diuretic
+dicounts
+digitalnet\.eti\.br
+disallowed attachment type was found
+discounter\.ro
+discreet
+diuretic pain
+dns lookup failure
+do not take undue advantage
+drug\$
+e-mail-empfang ist hier nicht moeglich
+ebay registration suspended
+ec.life c.mpany
+eclipse internet virusshield detected virus
+ejaculation
+email quarantined due to virus
+email you sent may have contained a virus
+emailing\:
+entjungfert
+eqse news
+er.otik
+erection pack
+eroarchiv
+ervas\.med\.br
+etrust antivirus lotus notes domino option detected virus!
+euc-kr
+euromillions
+europegameoffice
+f2m\.idv\.tw
+f\*ck
+failed to clean virus
+fairly cost health products
+fda approved
+fi cken
+ficken
+fickgeil
+fickorgie
+file was infected with a virus
+filled up with hot
+filtering for domino detected a virus
+fineholiday\.cc
+firmekundebetreung
+found virus in your mail to\:
+free porn
+freeworld.cc
+from. barracuda spam firewall
+from\: \"\?\?\?
+from\: barracuda spam firewall
+funmod\.tv
+ge-il
+gef.{1,2}hrlicher virus
+gei-l 
+geile .{1,30} im netz
+geile liveshow
+geiler se.?x
+gesch.{1,2}fts-vorschlag
+gesch.{1,2}ftsvorschlag
+get fucked
+gir ls
+give you the mordalities for the bank to approve
+google\.gg
+google\.lt
+google\.mn
+google\.pt
+google\.ro
+google\.ru
+google\.rw
+gr0wth
+gratislotto\.tv
+growth patch
+guarantee a full refund 
+guys need this
+happynewyear\.jpg
+hard cock
+hard fucking
+hardcore
+has been compensated with approximately \d+,\d+ shares
+hast-du-mich-lieb
+hat einen virus
+have decieded
+healingsphere
+health anti-depressants
+health sleep
+healthlylife
+homeloan
+honourable contractor
+hot anal blonde
+hot babe
+hot brunette
+hot dog sperm
+hot little slut
+hot white spunk
+hot-sex
+hottie
+hottinger \: newsletter
+hov, du har sendt jubii en virus
+hr\.org\.tw
+huge cock
+human growth hormone
+human.optonline
+i wish for utmost confidentiality in handling this transaction
+icomailserver\: virus 
+id irk...-000
+identdep_op
+identdep.{1,20}@volksbank.de
+identdep_.{1,20}@dresdner-bank.de
+iflex mail server detected an unrepairable virus in a message you sent
+ihr job ist absolute legal
+iii\.org\.tw
+impress her
+improves sexual performance
+in anspruch auch das unsere
+in compliance with sec
+increase sexual function
+inep\.gov\.br
+information \- antivirus
+insstant
+internet mail failure \- virus alert
+interscan mss has quarantined a message
+intertops
+investmentalert
+investorsweekly
+invitation.sms.ac
+ipod fuer umsonst
+is removed from here because it contains a virus
+issueoftheweek
+jack rabbit vibrator
+je vous donnerai ..\% sur la somme totale
+jeder hund seinen tag
+joejohnson
+kindly include your full names
+kommerzangebot
+l+e+v+i+t+r+a+\s
+last[ _](?:trade|price)[ \:]
+litigation reform act of 1995
+live-strip.cc
+loan application
+loan is approved
+loan request
+losing weight
+lottery coordinator
+lottery winner
+low price branded
+low prlce piiis
+lowestt
+lycos security hat einen virus entdeckt
+m+\s.\se+\s.\sr+\s.\si+\s.\sd+\s.\si+\s.\sa+\s
+m.edicin.e
+mail delivery error \: virus found
+mail message detected as spam
+mail virus incident report
+mailsure virus alert
+make your sexual life better
+male enhancement
+malefemale
+market alert
+mass mailing virus detected \- message was deleted.
+masturbating
+mcafee detected a virus in a document sent to you\.
+mdaemon notificacion \- virus encontrado!!!!
+mdaemon warning \- virus found
+meds online
+megaheiss
+mensagem com virus
+message from .{0,99}virus detect system
+message from general
+message you sent blocked by our bulk email filter
+micro-cap
+micros0ft
+modeles
+mortagge
+mortgage analysis
+much lower
+muschi\s
+mutterjagd
+nasty blonde
+national[\- ]lottery
+naughtynews
+nav detected a virus
+nav ha rilevato un virus in un documento inviato
+nav hat einen virus oder nicht erlaubten inhalt
+need to recompense
+net integrator virus alert
+new email address added to your paypal account
+news.geld.de
+news.messagizer.de
+next of kin
+nineteen thirty three
+no prior prescription
+non-?profit\/charity
+norton anti ?virus detected
+not interested\.\.\.
+notification du serveur antivirus
+notification of virus mail
+oem version
+on-line-zahlung manager
+online medical shop
+online-support_id_
+onlinedurchsuchung
+onlinepharma?cy
+only \$..
+operate_ref
+opt-in email special offer
+oral-?news
+otc financial network
+outdo ?orsex
+p4yment
+pain relief
+paul a\. davis
+pay less today
+paypal security
+peak promotions lotto
+penis+\s+(enlarge|enlargement|growth)?
+penl\$
+percent off
+pferdewurst\.de
+pharmacies worldwide
+pharmacy you
+pi ssspiele
+playstarpoker
+please send me your full names and current residential
+possible virus found in message you sent
+powerball lottery
+pr.escription
+pr0jecti0ns
+pr1ce
+premiuminvestinc
+prescribed for free
+prize award dept
+prods\.tv
+provide me with your full names and address
+pussy
+quality generic
+quality loan
+quality medicine
+quality meds
+quality rolex
+quarantined e-mail message
+quarantined mail\: virus from
+r\'ape
+ra\'pe
+ra\'ped
+rap\'e
+rap\'ed
+ratee
+ratess
+rav antivirus scan
+rav[0-9]+ antivirus notification
+rblprovidor
+reality\.freeworld\.cc
+recipient virus\-alert
+ref1nance
+reference_id_
+refill
+refinance at ...\%
+refniancing 
+relay\.line1\.ru
+remain blessed in the name of the lord
+removed from here because it contains a virus
+removed_by_the_exchange_ema.txt
+repli.a watch
+replikas
+reply immediately
+returned due to virus
+returned mail\:
+returned mail\: possible virus infection
+returned mail\: data format error
+risikolos fremdgehen
+rolex repli.a
+rolex watch
+s t0ck
+s y m b o l
+s+\s.\so+\s.\sm+\s.\sa+\s
+s0ftware
+s\*x
+safeharbor
+satiisfaction
+save ..\%
+save \$..
+save more buying more
+save up to ..\%
+schufainfoabmeldung
+selection of meds 
+semen production increase
+send a free greeting card from
+send me your confidential telephone and fax
+sent.you.an?.(postcard|greeting|ecard)
+seu\.bio\.br
+sex-4you
+sex-addict
+sexoholics
+sexual health
+sexually.explicit
+sexy mom
+seznam\.cz
+shift_jis
+shoot five times as much
+short term target(?:\:| price\:)
+sie solen ein konto
+sl\*t
+sleep aids
+smartsavingsengine
+smtp mail gescheitert
+soft tabs
+special xxx offer
+spur-m
+st0c k
+st0ck
+st0cks
+st\.ck
+sto ck 
+strictly confidential
+strong buy recommendation
+subject\:  contact my secretary now
+subject\: . news .
+subject\: \*\*\*\*\*spam
+subject\: \[bayesian\]
+subject\: \d\:
+subject\: business proposal
+subject\: business relationship
+subject\: cheapest
+subject\: eintrag im gaestebuch
+subject\: email address not available for replies
+subject\: fw\[.?.?\]\:
+subject\: good day
+subject\: important message for
+subject\: look here
+subject\: partnership
+subject\: please call me a.s.a.p
+subject\: request and call me
+subject\: respond asap
+subject\: rolex
+subject\: spam\: mail could not be delivered
+subject\: urgent!!
+subject\: very important
+subject\: very urgent
+subject\: warning\: e-mail viruses detected
+subject\: winning notification
+subject\: yours assistance is needed
+subject\:.{0,20}it me
+subject\:.{0,50}asshole
+subject\:.{1,20} at \$.{1,20}ref\:\d\d\d
+subject\:.{1,20}\(urgent\)
+subject\:.{1,20}much bigger
+subject\:.{1,40}(penny )?st[o0]cks?|cribsheet
+subject\:.{1,40}micr[qw]?o-?caa?pk?s?
+subject\:.{1,60}bull stock
+subject\:.{1,60}loan
+subject\:.{1,60}mergertrader stock
+subject\:.{1,60}micro- cap
+subject\:.{1,60}microcap
+subject\:.{1,60}penny stock
+subject\:.{1,60}samurai stock
+subject\:.{1,60}small stock
+subject\:.{1,60}smallcap
+subject\: fwd\[..\]\:
+subject\: re\[..\]\:
+such a huge amount of money
+sucking cocks
+sucks cock 
+sunstarcasino
+support_ref_
+support_reference
+support_refnum_
+support_.{1,30}\@.{1,30}bank\.de
+support_num_.{1,20}\@volksbank\.de
+supprefnum.{1,20}\@volksbank\.de
+supprefnum.{1,30}bank\.de
+supprefnum_id_.{1,20}\@volksbank\.de
+suppresion du Virus
+suppression de fichier due a un virusmail delivery
+symantec antivirus detected a violation
+to contain a virus
+trovato virus nel messaggio
+undelivered mail\: virus found
+unfortunately your message was blocked as a possible virus was detected
+rus figyelmeztet
+suppression de fichier due a un virusmail delivery
+swiss watch
+symantec antivirus detected a violation
+tabs online
+tashop\.idv\.tw
+teengirl
+tests=comes_from_trusted_source
+thank.you.for.joining.
+the following action has been taken\: remove
+the message is currently purged
+the national lottery
+the original message was received at
+the same old dildo
+therusmarket
+these great duplicates
+they may have substantial positions in the securities
+this account is fraudulent and will be suspended
+this is an advertisement
+this is not a scam
+this is not spam
+this mailing complies with all united states regulatory
+to contain a virus
+transfer of this fund to your norminated account
+transfer the money  into your bank account
+transfering the fund into your nominated bank account
+transfering this money to your account
+transient non-fatal delivery error
+traumkontaktchat
+trovato virus nel messaggio
+tru\$t
+ttct\.edu\.tw
+uebersandt
+undeliverable\:
+undelivered mail\: virus found
+unfortunately your message was blocked as a possible virus was detected
+united states regulatory and jurisdictional laws
+universal promotion lottery
+unsubscripe
+unterstuezung
+upd.ate
+user unknown in local recipient table
+usuario inexistente
+v+\s.\sa+\s.\sl+\s.\si+\s.\su+\s.\sm+\s
+v+\s.\si+\s.\sa+\s.\sg+\s.\sr+\s.\sa+\s
+vendas\.nom\.br
+verwende bei der anmeldung meine nummer
+viagra
+virilforce\.med\.br
+virus .{0,99}in \(a \)?mail from youi
+virus f+ound in message
+virus \(.{1,50}\) in mail
+virus \(\\(.{1,50}\\) \)?in ihrer nachrichti
+virus \(worm\.\)
+virus alert
+virus attachment removed
+virus check alert
+virus detectado en el mensaje
+virus detectado para 
+virus detected
+virus en su correo
+virus encontrado
+virus entfernt
+virus found and removed
+virus found in a message you sent
+virus found in message from you!
+virus found, original message not delivered
+virus from
+virus ihrer nachricht
+virus in einer e\-mail von ihnen gefunden!
+virus in ihrer
+virus in mail
+virus in outgoing mail
+virus in una mail per lei
+virus in verschickter
+virus in your mail
+virus incident
+virus infection
+virus intercepted
+virus message
+virus notification from
+virus notification\:
+virus quarantine notification
+virus reject
+virus trovato in un messaggio inviato
+virus warning(\( \:\))?
+virus.{0,99} em sua mensagem
+virus\.pif gefunden \- message rejected
+virusinformation
+virusveszely! virus warning!
+viruswarnung
+visibility hidden
+volksbank haben einige technische probleme in der bank
+votre message contient un virus
+wanna get laid tonight
+warning possible virus alert !!!
+warning virus found!!!
+warning\: antivirus system report
+warning\: e\-mail virus detected
+warning\: possible virus infection
+warning\: virus found by avas anti\-virus module
+warning\: you may have a virus
+warning\: you were sent a virus
+was blocked by our spam firewall
+watch-jewelry
+watchdog\: virus gefunden
+watchhes
+we approved your loan
+we do not answer on email reply
+we may have to close your account temporarily
+we were compensated.{1,10}dollars to distribute this report
+we.are.(glad|so.happy).you.joined
+weight loss
+weiterinformieren erwuenscht
+welcome.to.(bar|cat|coo|dog|dow|ent|fun|gam|int|job|jok|mp3|mob|net|off|onl|pet|pok|rec|res) 
+wellness\.lt
+winsoft company
+wirdpreis
+withhold up to ..\%
+wundf\*cken
+www\.mykezyke
+www\.sabrina-thale\.de
+x+(?:\s.\s)?a+(?:\s.\s)?n+(?:\s.\s)a+(?:\s.\s)?x+\s?
+x-amavis-alert\: bad header mime error\: error\: unexpected end of header
+x-mailer\: the bat!
+x-spam. not detected
+x-ticot\: quit receiving mails
+x-virtualservergroup\: ffadult
+xenios\.org
+yahoo! groupsl\: you
+you have won the lottery
+you may have a virus
+you save\: \$.00.00
+you will be entitled to ..\% of every payment
+you\'ve received
+young cutie
+young teens
+young.{1,50}schoolgirl
+your account has been used to send
+your credit will not disqualify you
+your email requires verification
+your loan
+your mail was deleted by norton antivirus
+your reward will be
+your road to financial freedom
+your woman
+[0-9][ -]day target[(\:?_| )]?(?:price)?\:
+buy cheap
+discount drugs
+herbal
+nasty girls
+prescription drugs
+regal.s
+replica\s
+soft tabs
+the virus
+\$aving
+\$\$\$
+\$\$\$\$\$\$
+\*\*\* you have sent a virus !
+\@canadian.{1,10}\.com
+\@tradingmarkets\.com
+\@yahoo.com.au
+\d\d\d\d\d\d\@tom\.com
+\sb\@nk
+\sc+i+a+l+i+s+\s
+\scasino\s
+\sche@p\s
+\seridan\s
+\sfick\s 
+\sg.eil\s
+\sor.der\s
+\sporn\s 
+\sreplica\s
+\ss.e.x\s
+\sst ock\s
+\sst\@ck\s
+\sc[il1]al[il1]s\s
+\sp[o0]rn\s
+\[.{1,50}\: Virus detected\]
+\b(?:\\\/|V)+\s?\S?\s?\W?[I1!|lt\xEC-\xEF]+\s?\S?\s?\W?[a\xA4\xE0-\xE6@]+\s?\S?\s?\W?G+\s?\S?\s?\W?R+\s?\S?\s?\W?[a\xA4\xE0-\xE6@]\b#                                         VIAGRA
+\bbegin\b \d\d\d \b\S{0,72}.*(\S{61}).{0,61}\bend\b# UUENCODED
+\bC+\s?\S?\s?\W?[I1!|lt\xEC-\xEF]+\s?\S?\s?\W?[a\xA4\xE0-\xE6@]+\s?\S?\s?\W?[L!|1]+\s?\S?\s?\W?[I1!|lt\xEC-\xEF]+\s?\S?\s?\W?S\b#                                          CIALIS
+\bH+\s?\S?\s?\W?[e\xE3\xE8-\xEB]+\s?\S?\s?\W?R+\s?\S?\s?\W?B+\s?\S?\s?\W?[a\xA4\xE0-\xE6@]+\s?\S?\s?\W?[L!|1]\b#                                                              HERBAL
+\bP+\s?\S?\s?\W?H+\s?\S?\s?\W?[a\xA4\xE0-\xE6@]+\s?\S?\s?\W?R+\s?\S?\s?\W?M+\s?\S?\s?\W?[a\xA4\xE0-\xE6@]+\s?\S?\s?\W?C#                                                      PHARMAC... Y, EUTICAL, etc...
+\bP+\s?\S?\s?\W?[e\xE3\xE8-\xEB]+\s?\S?\s?\W?(?:\/\|\/|N)+\s?\S?\s?\W?[I1!|lt\xEC-\xEF]+\s?\S?\s?\W?[S$5]\b#                                                               PENIS
+\bR+\s?\S?\s?\W?[e\xE3\xE8-\xEB]+\s?\S?\s?\W?F+\s?\S?\s?\W?[I1!|lt\xEC-\xEF]+\s?\S?\s?\W?[L!|1]+\s?\S?\s?\W?[L!|1]\b#                                                      REFILL
+\bR+\s?\S?\s?\W?[e\xE3\xE8-\xEB]+\s?\S?\s?\W?P+\s?\S?\s?\W?[L!|1]+\s?\S?\s?\W?[I1!|lt\xEC-\xEF]+\s?\S?\s?\W?C+\s?\S?\s?\W?[a\xA4\xE0-\xE6@]\b#                                REPLICA
+\bR+\s?\S?\s?\W?[O0\xF2-\xF6]+\s?\S?\s?\W?[L!|1]+\s?\S?\s?\W?[e\xE3\xE8-\xEB]+\s?\S?\s?\W?X\b#                                                                             ROLEX
+\bX+\s?\S?\s?\W?[a\xA4\xE0-\xE6@]+\s?\S?\s?\W?(?:\/\|\/|N)+\s?\S?\s?\W?[a\xA4\xE0-\xE6@]+\s?\S?\s?\W?X\b#                                                                     XANAX
+\b[e\xE3\xE8-\xEB]+\s?\S?\s?\W?(?:\/\|\/|N)+\s?\S?\s?\W?[L!|1]+\s?\S?\s?\W?[a\xA4\xE0-\xE6@]+\s?\S?\s?\W?R+\s?\S?\s?\W?G+\s?\S?\s?\W?[e\xE3\xE8-\xEB]\b#                         ENLARGE
+\b[e\xE3\xE8-\xEB]+\s?\S?\s?\W?R+\s?\S?\s?\W?[e\xE3\xE8-\xEB]+\s?\S?\s?\W?C+\s?\S?\s?\W?T+\s?\S?\s?\W?[I1!|lt\xEC-\xEF]+\s?\S?\s?\W?[O0\xF2-\xF6]+\s?\S?\s?\W?(?:\/\|\/|N)\b# ERECTION
+\b[S$5]+\s?\S?\s?\W?P+\s?\S?\s?\W?[U\xB5\xF9-\xFC]+\s?\S?\s?\W?R+\s?\S?\s?\W?M#                                                                                         SPURM
+\b[U\xB5\xF9-\xFC]+\s?\S?\s?\W?(?:\/\|\/|N)+\s?\S?\s?\W?[I1!|lt\xEC-\xEF]+\s?\S?\s?\W?(?:\\\/|V)+\s?\S?\s?\W?[e\xE3\xE8-\xEB]+\s?\S?\s?\W?R+\s?\S?\s?\W?[S$5]+\s?\S?\s?\W?[I1!|lt\xEC-\xEF]+\s?\S?\s?\W?T+\s?\S?\s?\W?Y\b.*?\bD+\s?\S?\s?\W?[e\xE3\xE8-\xEB]+\s?\S?\s?\W?G+\s?\S?\s?\W?R+\s?\S?\s?\W?[e\xE3\xE8-\xEB]+\s?\S?\s?\W?[e\xE3\xE8-\xEB]\b# UNIVERSITY followed anywhere by DEGREE
+\bp+\s?\S?\s?\W?[I1!|lt\xEC-\xEF]+\s?\S?\s?\W?[L!|1]+\s?\S?\s?\W?[L!|1]+\s?\S?\s?\W?[S$5]+\b# pills
+
+\s?v+.i+.a+.g+.r+.a+\s?
+\bXJS\*C4JDBQADN1\.NSBN3\*2IDNEN\*GTUBE-STANDARD-ANTI-UBE-TEST-EMAIL\*C\.34X

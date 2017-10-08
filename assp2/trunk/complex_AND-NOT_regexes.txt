@@ -1,0 +1,56 @@
+################################
+## complex AND-NOT of match and notmatch words
+##
+##
+## !!! this will only work on perl 5.10 (5.010000) or higher !!!!
+##
+##
+## to activate this regex, remove the ; in front of the lines
+## and change/add/remove the words/regexes to your needs
+#
+## the regex will match if:
+## - the count of match- words/regexes is reached AND
+##   the count of notmatch- words/regexes is NOT reached
+## - OR any other defined match- word/regexes  matches
+#
+## It is possible to define more than one of these regexes in one file.
+## Notice, that if you define single words between two of these regexes,
+## these regexes will processed first (before any single words outside the regexes).
+## Doing this, could lead in confusing output of the assp-analyzing tools.
+#
+## It is possible to define such complex regex in a include file.
+#
+# the next line prevents assp from optimizing this complex regex
+;assp-do-not-optimize-regex
+# if it is possible and you want to weigth the regex (**)
+# write the needed ~ in front of the next line
+;^(?=.*?(((?!)   
+# write your match words or regexes in the next lines
+;\bmatch1\b
+;\bmatch2\b
+# end of the match words
+;(?!)).*?(?!\g{-1})){1})(?!.*?(((?!) 
+#                    ^
+#                    |
+#    minimum count of needed different match words to match the regex
+#
+# not-match words or regexes follows
+;\bnotmatch1\b
+;\bnotmatch2\b
+;\bnotmatch3\b
+;\bnotmatch4\b
+# end of not-match words
+#
+# write a possible weigth extension ~=>number
+# at the end of the next line
+;(?!)).*?(?!\g{-1})){2})  
+#                    ^
+#                    |
+#      minimum count of needed different not-match words to fail the regex
+#
+# end of the complex AND-NOT regex
+# any other match word or regexes or complex regex can follow here
+#
+;nextmatch1
+;nextmatch2
+################################

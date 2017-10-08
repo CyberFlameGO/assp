@@ -1,0 +1,63 @@
+Red Mercury Labs
+Scott Corley’s blog about what’s going on in and out of the labs
+
+BlogAbout
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+
+« City LightsThe True Meaning of Windows XP? »
+--------------------------------------------------------------------------------
+
+perl Out of memory! (with solution)
+Published by scott August 30th, 2006 in Eclectic Tech. 4 Comments 
+On occassion, I will run a perl script and be shocked when I get an “Out of memory!” error back from perl. The shock is always a result of the fact that I’m doing something relatively benign, running a small script that generates some data but certainly not enough to overrun the massive capabilities of the box I’m running the script on.
+
+It happened to me again today, and I thought I’d put a little post here about it to perhaps save somebody some frustration.
+
+Today’s perl Out of memory error happened while I was upgrading SpamAssassin on the Red Mercury mail server. You wouldn’t think that something as simple as upgrading a few perl modules would be enough to run out of memory, particularly since this machine had nothing else running on it at the time, and the machine has a gig or so of RAM backed by a couple gigs of swap space.
+
+The answer, in my case anyway, always turns out to be “ulimit”. What is “ulimit”? If you live inside a unix world, you probably know all about ulimit. For mere mortals like myself, it’s something that I only care about when it prevents me from doing what I need to do.
+
+“ulimit” is short for “user limit” – it limits the amount of resources that a particular user can consume. This is of course very useful as it prevents any particular user from hogging all of the memory or CPU time on a system. If you run a process from the command line that goes absolutely crazy, ulimit can be the sanity check that keeps the rest of the box humming along nicely.
+
+“ulimit” is usually a built-in shell command, so it varies from shell to shell. I happen to be using zshell on an OpenBSD box, but even if what I describe here doesn’t match exactly what you have on your machine, it should get you headed in the right direction (in fact, just saying “ulimit” may be enough to get you headed in the right direction). It could be that the stock ulimit settings on OpenBSD are smaller than on other default installs, but when I first had this problem, I saw a LOT of people asking this question.
+So first, I type “ulimit” to see what’s up:
+
+[ultrabox]: ulimit
+unlimited
+
+Ok no problem, right? But as it turns out, with no command line arguments, my ulimit will default to showing me my limit on file size, and that is unlimited. Let’s find out what all of the limits are:
+
+[ultrabox]: ulimit -a
+cpu time (seconds) ulimited
+file size (blocks) unlimited
+data seg size (kbytes) 65536
+stack size (kbytes) 4096
+resident set size (kbytes) 1446704
+…(and some others)…
+
+Now we’re seeing some interesting things. The stack size is 4MB. That might be small. The “resident set size” is set to almost the size of the RAM in the machine (well over a gigabyte) and it is maxed out and can’t go any higher. The “data seg size” is 64MB (65536 kbytes above) – that should be enough for anything, right?
+
+It has been my experience that, when working with perl, a 64MB data seg size is too small. I have to make it larger before running most of my reasonably-complex data processing scripts. And, today, I had to make it larger before doing something simple like upgrading SpamAssassin via CPAN. Even though I ran the upgrade with “sudo”, I still had to raise the data seg size ulimit in my shell, since it was limiting the data seg size for everything run from that shell.
+
+So, Greg Graffin, I HAVE THE ANSWER!!!
+
+Simply boost the size of your data seg and make that stupid perl Out of Memory! error go away:
+
+[ultrabox]: ulimit -d 200000
+
+[ultrabox]: perl irsProcessAllUSTaxReturns.pl
+
+Processing… 130,728,360 tax returns… Finished!
+[ultrabox]:
+
+It worked!
+
+For scripts that I run often, or from a cron job, I make a little shell script that first sets the “ulimit -d 200000? and then runs the script. Other possibilities would be to set the needed ulimit settings in a login script, or to bump up the default system-wide (though the method for doing this system-wide varies by system and you might not have the required permissions to do it anyway).
+
+Please note the number of zeros there in the ulimit setting – five zeros – this sets the ulimit to close to 200MB up from the 64MB it was set at previously. You may need more. You may need less! On the less side it doesn’t matter so much – this is just a top limit, it doesn’t mean everything will use 200MB of data segment space, it just allows things to use that much space.
+
+Now, as for the bigger question of WHY perl needs over 64MB of data segment space to do something like install spamassassin… well, in the words of a Gary Sommer, guy I used to work with, “that’s beyond my attention span.”
+

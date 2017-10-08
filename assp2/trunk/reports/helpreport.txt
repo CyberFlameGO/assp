@@ -1,0 +1,45 @@
+ASSP Help
+We are using one of the most advanced SPAM filters on the internet.
+It continually adapts itself to detect spam.
+
+For the most part it does a good job, but occasionally a spam slips
+through.
+
+When you receive a spam, you have a choice to either just delete it
+and move on, or report it to the spam filter to help improve its
+performance. To report the spam select the message in your inbox,
+right-click and select "Forward as attachment." (If your email
+software doesn't support "Forward as attachment" simply forward
+the mail.) Address it to assp-spam@mydomain.com and click send.
+You've done your duty and added the evil spam to the spam filter's
+collection.
+
+Just to remind you of the basic operation of our spam filter:
+1) Anyone you email will never have a message blocked.
+2) Never email a spammer -- you validate their address authorizing
+them to spam us.
+3) Don't forward spam -- it makes the spam filter think we like it.
+4) Report spam by forwarding it to the assp-spam@mydomain.com
+address.
+5) The spam filter keeps track of mail we send and spam we receive --
+if an incoming message is not from someone we've emailed and it's
+more like the mail we send than the spam we receive then it gets
+through. Otherwise it's blocked and the sender gets the message,
+"Mail appears to be unsolicited -- report errors to
+postmaster@ourhost.com"
+6) If you become aware that mail you want is being blocked send the
+sender an email so their mail isn't blocked any more.
+
+Function of special adresses 
+
+assp-spam 			- spam report
+assp-notspam 		- false-positive report
+
+assp-white 			- request to add addresses to the whitelist
+assp-notwhite 		- request to remove addresses from the whitelist
+
+assp-persblack      - request to add addresses to your personal blacklist
+assp-persnotblack   - request to remove addresses from your personal blacklist
+
+You can force a complete report about all your personal black list entries by defining 
+an email address that begins with 'reportpersblack' in a remove request : eg: reportpersblack@anydomain.com

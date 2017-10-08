@@ -1,0 +1,17 @@
+﻿# this file (assp/Plugins/nodecompress.txt) is used by the ASSP_AFC.pm Plugin to skip
+# decopmression of files with a defined filename extension
+#
+# lines starting with (#) are comments - comments are not allowed within a definition line
+# leading and trailing whitespaces are ignored
+# define one extension per line, do not define the dot in front of the extension
+#
+# the syntax of a line is as follows:
+#
+# ext  
+#
+# for example: 
+#
+# ext
+# emz
+#
+##########################################################################################

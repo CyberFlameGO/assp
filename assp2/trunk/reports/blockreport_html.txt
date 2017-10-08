@@ -1,0 +1,59 @@
+# This file will be used to generate hint text in HTML format in top of every Block Report
+# lines starting with a  #  are comments
+#
+# The text will be part of a HTML table. Any HTML tag to format the text is allowed.
+#
+# Every line in this text, will result in one line in the report.
+#
+# The following case sensitive literals will be replaced:
+#
+# REPORTDAYS   - with the number of days for which the report is generated
+# ASSPNAME     - with the ASSP-hostname config: 'myName'
+# EMAILADDRESS - with the emailaddress for which the report is generated
+# NUMBER       - the number of found blocked emails
+#
+# You can define different text for ALL, USERS (no Admins), ADMINS, EMAILADDRESSES, DOMAINS using
+# the following XML like style:
+#
+# <ALL>
+# text for all
+# </ALL>
+# 
+# <USERS>
+# text for the users
+# </USERS>
+# 
+# <ADMINS>
+# text for the admins
+# </ADMINS>
+#
+# <email-address>
+# text for the email-adress
+# </email-address>
+#
+# <domain-name>
+# text for the domain-name
+# </domain-name>
+#
+# The section marks <...> must begin in front of a line without space(s).
+# HTML tags like <center> <h2> and so on must have a leading space, if a line starts with them!
+#
+# The resulting text will contain the text in the sections in the following order:
+# <ALL> + <USERS> or <ADMINS> + <email-address> or <domain-name>
+ 
+<ALL>
+ <br />
+ <center><strong class="title";>ASSP-Block-Report for the last REPORTDAYS day(s)<br />
+ on host ASSPNAME</strong></center>
+</ALL>
+
+<USERS>
+ <br /><center>This is an automated message. The following list shows <b>(NUMBER)</b> email senders to you <b>(EMAILADDRESS)</b>
+that where recently (REPORTDAYS days ) blocked as SPAM.
+If you recognize any of these senders and wish to have them <b>whitelisted</b>
+(allowed to pass through the SPAM filter) send them an email by clicking on the address.</center>
+</USERS>
+
+<ADMINS>
+ <center>found <strong>NUMBER</strong> blocked messages for <b>EMAILADDRESS</b></center>
+</ADMINS>

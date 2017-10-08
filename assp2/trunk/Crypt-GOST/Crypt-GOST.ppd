@@ -1,0 +1,24 @@
+<SOFTPKG NAME="Crypt-GOST" VERSION="1.01">
+    <ABSTRACT>The GOST Encryption Algorithm</ABSTRACT>
+    <AUTHOR></AUTHOR>
+    <IMPLEMENTATION>
+        <ARCHITECTURE NAME="MSWin32-x86-multi-thread-5.12" />
+        <CODEBASE HREF="Crypt-GOST_512.tar.gz" />
+    </IMPLEMENTATION>
+    <IMPLEMENTATION>
+        <ARCHITECTURE NAME="MSWin32-x86-multi-thread-5.14" />
+        <CODEBASE HREF="Crypt-GOST_514.tar.gz" />
+    </IMPLEMENTATION>
+    <IMPLEMENTATION>
+        <ARCHITECTURE NAME="MSWin32-x86-multi-thread-5.16" />
+        <CODEBASE HREF="Crypt-GOST_516.tar.gz" />
+    </IMPLEMENTATION>
+    <IMPLEMENTATION>
+        <ARCHITECTURE NAME="MSWin32-x86-multi-thread-64int-5.18" />
+        <CODEBASE HREF="Crypt-GOST_518.tar.gz" />
+    </IMPLEMENTATION>
+    <IMPLEMENTATION>
+        <ARCHITECTURE NAME="MSWin32-x86-multi-thread-64int-5.20" />
+        <CODEBASE HREF="Crypt-GOST_520.tar.gz" />
+    </IMPLEMENTATION> 
+</SOFTPKG>

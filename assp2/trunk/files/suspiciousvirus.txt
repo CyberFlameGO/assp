@@ -1,0 +1,16 @@
+Phishing\.=>0.75
+Email.Spam\d{1,4}-SecuriteInfo=>0.67
+~(Email|HTML|Sanesecurity)\.(Phishing|Spear|(Spam|Scam)[a-z0-9]?)\.~=>0.75
+~Sanesecurity\.(Hdr|Img|ImgO|Junk|Doc|Casino)\.~=>1
+~Sanesecurity\.(Lott|Fake|SpamImg|Job|Stk)\.~=>1
+~Sanesecurity\.(Loan|Porn|Bou|Dipl|Cred)\.~=>1
+Sanesecurity\.Jurlbl\.Auto\.=>0.26
+Sanesecurity\.Jurlbl\.=>0.43
+winnow\.phish\.=>1
+winnow\.spam\.=>0.34
+INetMsg\.SpamDomain-2w\.=>0.33
+INetMsg\.=>0.16
+MSRBL-Images\.=>0.34
+MSRBL-SPAM\.=>0.84
+Safebrowsing=>0.2
+Heuristics=>0.2

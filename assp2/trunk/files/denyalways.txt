@@ -1,0 +1,241 @@
+#
+# denyalways
+#
+#5.0.0.0/8           # old bogon
+#14.0.0.0/8          # old bogon
+#23.0.0.0/8          # old bogon
+#27.0.0.0/8          # old bogon
+#36.0.0.0/8          # old bogon
+#39.0.0.0/8          # old bogon
+41.129.0.0/22       # AS24863 EG/EG LINKdotNET-AS
+41.130.52.0/22      # AS24863 EG/EG LINKdotNET-AS
+41.131.244.0/22     # AS24863 EG/EG LINKdotNET-AS
+41.199.0.0/16       # AS15475 EG/EG NOL
+41.201.112.0/20     # AS36947 DZ/DZ FAWRI-AS
+41.207.192.0/19     # AS29571 CI/CI CITelecom-AS
+41.210.0.0/18       # AS29614 GH/GH GHANATEL-AS
+41.222.40.0/23      # AS37004 NG/NG SUBURBAN-AS
+41.240.0.0/13       # AS5713 ZA/ZA SAIX-NET
+#42.0.0.0/8          # old bogon
+58.9.0.0/18         # AS17552 TH/TH TRUE-AS-AP True Corporation Co.,Ltd.
+58.27.128.0/24      # AS38264 PK/PK WATEEN-IMS-PK-AS-AP National WiMAX/IMS environment
+58.48.0.0/15        # AS4134 CN/CN CHINANET-BACKBONE No.31,Jin-rong Street
+58.55.64.0/18       # AS4134 CN/CN CHINANET-BACKBONE No.31,Jin-rong Street
+58.140.0.0/17       # AS10036 KR/KR CNM-AS-KR C&M Communication Co.,Ltd.
+58.187.32.0/20      # AS18403 VN/VN FPT-AS-AP The Corporation for Financing & Promoting Technology
+59.34.48.0/20       # AS4134 CN/CN CHINANET-BACKBONE No.31,Jin-rong Street
+59.44.128.0/17      # AS17799 CN/CN CHINATELECOM-LN-AS-AP asn for Liaoning Provincial Net of CT
+59.88.0.0/18        # AS9829 IN/IN BSNL-NIB National Internet Backbone
+59.88.0.0/20        # AS9829 IN/IN BSNL-NIB National Internet Backbone
+59.161.64.0/18      # AS10199 IN/IN TATA-AS Tata Communications Ltd
+59.177.0.0/18       # AS17813 IN/IN MTNL-AP Mahanagar Telephone Nigam Ltd.
+59.178.192.0/19     # AS17813 IN/IN MTNL-AP Mahanagar Telephone Nigam Ltd.
+60.176.0.0/12       # AS4134 CN/CN CHINANET-BACKBONE No.31,Jin-rong Street
+61.17.0.0/17        # AS17908 IN/IN TCISL Tata Communications
+61.216.0.0/18       # AS3462 TW/TW HINET Data Communication Business Group
+62.108.229.24/32    # Boraso
+62.108.229.81/32    # Boraso
+62.108.229.82/32    # Boraso
+62.108.229.150/32   # Boraso
+62.108.229.151/32   # Boraso
+62.108.229.152/32   # Boraso
+62.108.229.153/32   # Boraso
+62.108.229.154/32   # Boraso
+64.18.128.0/24      # RackVibe LLC spammers
+72.27.36.0/24       # AS10292 JM/JM CWJAM ASN-CWJAMAICA
+77.28.0.0/16        # AS6821 MK/MK MT-AS-OWN Makedonski Telekom
+77.51.44.0/23       # AS25515 RU/RU CTCNET-AS Joint-Stock Central Telecommunication Company Autonomous System
+77.70.0.0/17        # AS35141 BG/BG MEGALAN Megalan - Autonomous System of Megalan Network Ltd.
+77.127.0.0/20       # AS9116 IL/IL GOLDENLINES-ASN 012 Smile Communications Main Autonomous System
+78.36.0.0/15        # AS8997 RU/RU ASN-SPBNIT OJSC North-West Telecom Autonomous System
+78.96.0.0/15        # AS6746 RO/RO ASTRAL UPC Romania Srl, Romania
+78.160.0.0/17       # AS9121 TR/TR TTNET TTnet Autonomous System
+78.187.0.0/17       # AS9121 TR/TR TTNET TTnet Autonomous System
+80.174.0.0/17       # AS16338 ES/ES AUNA_TELECOM-AS Cableuropa - ONO
+80.174.128.0/17     # AS16338 ES/ES AUNA_TELECOM-AS Cableuropa - ONO
+81.20.164.0/22      # AS24665 RU/RU SUTC-AS Autonomous System for ru.dion LIR located in Chelyabinsk City
+81.88.224.0/20      # mailupnet.it (Italy)
+81.88.225.208/29    # mailupnet.it (Italy)
+81.88.228.224/27    # mailupnet.it (Italy)
+81.88.234.16/28     # mailupnet.it (Italy)
+81.88.237.160/28    # mailupnet.it (Italy)
+81.92.192.0/19      # AS25137 PT/PT NFSI NFSi Telecom, Lda.
+81.215.0.0/17       # AS9121 TR/TR TTNET TTnet Autonomous System
+82.119.204.236/32   # Interconsult
+82.141.128.0/18     # AS12301 HU/HU INVITEL Invitel, Hungary
+82.200.128.0/19     # AS9198 KZ/KZ KAZTELECOM-AS Kazakhtelecom Corporate Sales Administration
+83.0.0.0/11         # AS5617 PL/PL TPNET Polish Telecom_s commercial IP network
+83.136.144.0/21     # mailupnet.it (Italy)
+83.217.0.0/20       # AS31138 RU/RU PROEKT-AS IP Telecom (LTD _Proekt_) AS
+83.244.96.0/20      # AS12975 PS/PS PALTEL-AS PALTEL Autonomous System
+84.22.32.0/19       # AS33983 CS/CS ARTMOTION-AS National IP network of ARTMOTION.Net
+84.51.0.0/18        # AS34104 TR/TR GLOBAL-AS Global Iletisim Hizmetleri A.S.
+84.247.64.0/18      # AS12310 RO/RO INES iNES Group SRL
+85.30.192.0/18      # AS42610 RU/RU NCNET-AS National Cable Networks
+85.48.0.0/19        # AS12479 ES/ES UNI2-AS Uni2 - Lince telecomunicaciones
+85.109.0.0/17       # AS9121 TR/TR TTNET TTnet Autonomous System
+85.161.0.0/16       # AS28725 CZ/CZ CZ-EUROTEL-AS AS of Eurotel Praha
+86.97.192.0/18      # AS5384 AE/AE EMIRATES-INTERNET Emirates Internet
+87.244.8.0/22       # AS21335 RU/RU TSNET-AS TSNET Autonomous System
+87.251.96.0/19      # AS8443 RU/RU SKHDSV-AS Open Joint Stock Company _Far East Telecommunications Company_
+88.84.192.0/19      # AS21453 RU/RU FLEX-AS Autonomus System for Wireless Network in Moscow region Russia
+88.234.128.0/17     # AS9121 TR/TR TTNET TTnet Autonomous System
+88.235.0.0/17       # AS9121 TR/TR TTNET TTnet Autonomous System
+88.242.0.0/17       # AS9121 TR/TR TTNET TTnet Autonomous System
+88.246.0.0/17       # AS9121 TR/TR TTNET TTnet Autonomous System
+89.40.112.0/20      # AS41950 RO/RO NETLOG-AS SC NETLOG COMPUTER SRL
+89.41.192.0/18      # AS42143 RO/RO AIR-BITES-AS SC AIR BITES SRL
+89.97.195.145/32    # Interconsult
+89.136.0.0/15       # AS6746 RO/RO ASTRAL UPC Romania Srl, Romania
+89.237.192.0/18     # AS12997 KG/KG KTNET Kyrgyztelecom_s Network
+89.254.192.0/21     # AS25436 RU/RU KIROV-CAIT-AS CAIT affiliate of Kirov branch of JSC _VolgaTelecom_
+90.151.0.0/20       # AS28719 RU/RU HMFES OJSC _Uralsviazinform_
+91.144.136.0/22     # AS42683 RU/RU ERTH-OREN-AS ZAO _ER-Telecom_ Company_ Orenburg AS
+92.46.0.0/18        # AS9198 KZ/KZ KAZTELECOM-AS Kazakhtelecom Corporate Sales Administration
+92.83.0.0/16        # AS9050 RO/RO RTD ROMTELECOM S.A
+92.113.128.0/18     # AS6849 UA/UA UKRTELNET JSC UKRTELECOM,
+92.245.76.0/23      # AS20922 HU/HU DW-AS DunaWeb Kft.
+93.72.0.0/13        # AS25229 UA/UA VOLIA-AS Volia Autonomous System
+93.86.0.0/15        # AS8400 RS/RS TELEKOM-AS _TELEKOM SRBIJA_ a.d.
+93.95.216.111/32    # Serverplan (alias.it)
+#93.174.64.0/21      # mailupnet.it (Italy)
+94.25.0.0/17        # AS12389 RU/RU ROSTELECOM-AS JSC Rostelecom
+94.241.192.0/18     # AS25436 RU/RU KIROV-CAIT-AS CAIT affiliate of Kirov branch of JSC _VolgaTelecom_
+94.248.0.0/18       # AS42396 UA/UA PPLNETUA-AS PEOPLEnet Autonomous System
+95.24.0.0/13        # AS8402 RU/RU CORBINA-AS Corbina Telecom
+95.170.192.0/19     # AS21277 IQ/IQ NWRZ Newroz Telecom Ltd. AS Number
+109.96.0.0/16       # AS9050 RO/RO RTD ROMTELECOM S.A
+109.169.128.0/17    # AS15500 RU/RU Samara Telegraph
+109.184.0.0/16      # AS25405 RU/RU NMTS-AS OJSC VolgaTelecom, Nizhny Novgorod
+109.187.0.0/16      # AS28812 RU/RU JSCBIS-AS BashInformSvyaz Autonomous System
+110.36.32.0/20      # AS38264 PK/PK WATEEN-IMS-PK-AS-AP National WiMAX/IMS environment
+110.138.160.0/22    # AS17974 ID/ID TELKOMNET-AS2-AP PT Telekomunikasi Indonesia
+113.170.128.0/19    # AS7643 VN/VN VNN-AS-AP Vietnam Posts and Telecommunications (VNPT)
+115.73.64.0/18      # AS7552 VN/VN VIETEL-AS-AP Vietel Corporation
+115.75.64.0/18      # AS7552 VN/VN VIETEL-AS-AP Vietel Corporation
+115.96.96.0/19      # AS17488 IN/IN HATHWAY-NET-AP Hathway IP Over Cable Internet
+116.68.200.0/21     # AS23923 BD/BD AGNI-AS Agni Systems Limited
+116.71.0.0/18       # AS17557 PK/PK PKTELECOM-AS-PK Pakistan Telecommunication Company Limited
+117.1.192.0/18      # AS7552 VN/VN VIETEL-AS-AP Vietel Corporation
+117.2.0.0/18        # AS7552 VN/VN VIETEL-AS-AP Vietel Corporation
+117.4.192.0/18      # AS7552 VN/VN VIETEL-AS-AP Vietel Corporation
+117.102.0.0/18      # AS38710 PK/PK WORLDCALL-AS-LHR Worldcall Broadband Limited
+117.192.0.0/18      # AS9829 IN/IN BSNL-NIB National Internet Backbone
+117.241.64.0/18     # AS9829 IN/IN BSNL-NIB National Internet Backbone
+118.68.0.0/18       # AS18403 VN/VN FPT-AS-AP The Corporation for Financing & Promoting Technology
+118.96.0.0/16       # AS17974 ID/ID TELKOMNET-AS2-AP PT Telekomunikasi Indonesia
+118.96.200.0/22     # AS17974 ID/ID TELKOMNET-AS2-AP PT Telekomunikasi Indonesia
+118.136.112.0/20    # AS23700 ID/ID BM-AS-ID PT. Broadband Multimedia, Tbk
+118.136.216.0/21    # AS23700 ID/ID BM-AS-ID PT. Broadband Multimedia, Tbk
+118.137.48.0/21     # AS23700 ID/ID BM-AS-ID PT. Broadband Multimedia, Tbk
+118.195.128.0/18    # AS4134 CN/CN CHINANET-BACKBONE No.31,Jin-rong Street
+119.82.64.0/24      # AS10029 IN/IN SPECTRANET FIRST FIBRE BROADBAND NETWORK IN NEW DELHI, INDIA
+119.138.240.0/20    # AS4134 CN/CN CHINANET-BACKBONE No.31,Jin-rong Street
+119.152.4.0/22      # AS17557 PK/PK PKTELECOM-AS-PK Pakistan Telecommunication Company Limited
+119.152.8.0/21      # AS17557 PK/PK PKTELECOM-AS-PK Pakistan Telecommunication Company Limited
+119.152.24.0/21     # AS17557 PK/PK PKTELECOM-AS-PK Pakistan Telecommunication Company Limited
+119.192.0.0/12      # AS4766 KR/KR KIXS-AS-KR Korea Telecom
+120.32.0.0/13       # AS4134 CN/CN CHINANET-BACKBONE No.31,Jin-rong Street
+120.141.0.0/18      # AS38322 MY/MY P1NETWORKS-MY-AP Packet One Networks Sdn Bhd, Internet Services Provider
+121.128.0.0/11      # AS4766 KR/KR KIXS-AS-KR Korea Telecom
+121.243.128.0/17    # AS17908 IN/IN TCISL Tata Communications
+122.161.48.0/21     # AS24560 IN/IN AIRTELBROADBAND-AS-AP Bharti Airtel Ltd., Telemedia Services
+122.163.102.0/23    # AS24560 IN/IN AIRTELBROADBAND-AS-AP Bharti Airtel Ltd., Telemedia Services
+122.169.0.0/17      # AS24560 IN/IN AIRTELBROADBAND-AS-AP Bharti Airtel Ltd., Telemedia Services
+123.4.0.0/14        # AS4837 CN/CN CHINA169-BACKBONE CNCGROUP China169 Backbone
+123.8.0.0/13        # AS4837 CN/CN CHINA169-BACKBONE CNCGROUP China169 Backbone
+123.16.0.0/18       # AS7643 VN/VN VNN-AS-AP Vietnam Posts and Telecommunications (VNPT)
+123.18.160.0/19     # AS45899 VN/VN VNPT-AS-VN VNPT Corp
+123.20.0.0/18       # AS7643 VN/VN VNN-AS-AP Vietnam Posts and Telecommunications (VNPT)
+123.22.0.0/19       # AS7643 VN/VN VNN-AS-AP Vietnam Posts and Telecommunications (VNPT)
+123.23.208.0/20     # AS7643 VN/VN VNN-AS-AP Vietnam Posts and Telecommunications (VNPT)
+123.27.0.0/19       # AS7643 VN/VN VNN-AS-AP Vietnam Posts and Telecommunications (VNPT)
+123.110.0.0/20      # AS4780 TW/TW SEEDNET Digital United Inc.
+123.236.0.0/24      # AS18101 IN/IN RIL-IDC Reliance Infocom Ltd Internet Data Centre,
+123.242.128.0/21    # AS38450 TH/TH EGOV-AS-TH Ministry of Infomation Communication Technology
+124.48.0.0/12       # AS17858 KR/KR KRNIC-ASBLOCK-AP KRNIC
+124.105.64.0/19     # AS9299 PH/PH IPG-AS-AP Philippine Long Distance Telephone Company
+124.121.64.0/18     # AS17552 TH/TH TRUE-AS-AP True Corporation Co.,Ltd.
+124.123.0.0/17      # AS18209 IN/IN BEAMCABLE-AS-IN Beam Telecom Pvt Ltd
+124.124.0.0/16      # AS18101 IN/IN RIL-IDC Reliance Infocom Ltd Internet Data Centre,
+124.172.0.0/15      # AS4134 CN/CN CHINANET-BACKBONE No.31,Jin-rong Street
+124.217.32.0/19     # AS9497 PH/PH DIGITELONE Digital Telecommunications Philippines Inc.
+124.225.0.0/17      # AS4134 CN/CN CHINANET-BACKBONE No.31,Jin-rong Street
+125.24.64.0/18      # AS9737 TH/TH TOTNET-TH-AS-AP TOT Public Company Limited
+125.25.0.0/19       # AS9737 TH/TH TOTNET-TH-AS-AP TOT Public Company Limited
+125.26.96.0/19      # AS9737 TH/TH TOTNET-TH-AS-AP TOT Public Company Limited
+125.112.0.0/12      # AS4134 CN/CN CHINANET-BACKBONE No.31,Jin-rong Street
+125.160.224.0/19    # AS17974 ID/ID TELKOMNET-AS2-AP PT Telekomunikasi Indonesia
+125.161.88.0/21     # AS17974 ID/ID TELKOMNET-AS2-AP PT Telekomunikasi Indonesia
+125.161.192.0/18    # AS17974 ID/ID TELKOMNET-AS2-AP PT Telekomunikasi Indonesia
+125.162.232.0/21    # AS17974 ID/ID TELKOMNET-AS2-AP PT Telekomunikasi Indonesia
+125.163.116.0/22    # AS17974 ID/ID TELKOMNET-AS2-AP PT Telekomunikasi Indonesia
+125.163.248.0/21    # AS17974 ID/ID TELKOMNET-AS2-AP PT Telekomunikasi Indonesia
+125.164.224.0/20    # AS17974 ID/ID TELKOMNET-AS2-AP PT Telekomunikasi Indonesia
+125.164.240.0/20    # AS17974 ID/ID TELKOMNET-AS2-AP PT Telekomunikasi Indonesia
+125.166.0.0/15      # AS17974 ID/ID TELKOMNET-AS2-AP PT Telekomunikasi Indonesia
+125.167.218.0/24    # AS17974 ID/ID TELKOMNET-AS2-AP PT Telekomunikasi Indonesia
+151.1.208.102/32    # Boraso
+151.1.208.103/32    # Boraso
+151.1.208.104/32    # Boraso
+151.1.208.105/32    # Boraso
+151.9.234.80/28     # Interconsult
+151.13.67.128/25    # Boraso
+165.145.0.0/16      # AS5713 ZA/ZA SAIX-NET
+187.40.0.0/19       # AS7738 BR/BR Telecomunicacoes da Bahia S.A.
+188.161.128.0/18    # AS12975 PS/PS PALTEL-AS PALTEL Autonomous System
+189.11.192.0/18     # AS8167 BR/BR TELESC - Telecomunicacoes de Santa Catarina SA
+189.41.224.0/20     # AS16735 BR/BR Companhia de Telecomunicacoes do Brasil Central
+189.49.128.0/18     # AS7738 BR/BR Telecomunicacoes da Bahia S.A.
+189.72.0.0/18       # AS8167 BR/BR TELESC - Telecomunicacoes de Santa Catarina SA
+189.92.0.0/18       # AS22085 BR/BR Telet S.A.
+189.105.160.0/19    # AS7738 BR/BR Telecomunicacoes da Bahia S.A.
+189.106.64.0/19     # AS7738 BR/BR Telecomunicacoes da Bahia S.A.
+189.107.224.0/19    # AS7738 BR/BR Telecomunicacoes da Bahia S.A.
+189.131.32.0/19     # AS8151 MX/MX Uninet S.A. de C.V.
+189.138.0.0/16      # AS8151 MX/MX Uninet S.A. de C.V.
+189.171.128.0/19    # AS8151 MX/MX Uninet S.A. de C.V.
+190.59.32.0/19      # AS5639 TT/TT Telecommunication Services of Trinidad and Tobago
+190.66.0.0/24       # AS3816 CO/CO COLOMBIA TELECOMUNICACIONES S.A. ESP
+190.100.0.0/18      # AS22047 CL/CL VTR BANDA ANCHA S.A.
+190.147.0.0/19      # AS10620 CO/CO TV Cable S.A.
+190.178.0.0/15      # AS22927 AR/AR Telefonica de Argentina
+190.245.64.0/18     # AS10318 AR/AR CABLEVISION S.A.
+195.12.181.0/24     # AS8764 LT/LT TEOLTAB TEO LT AB Autonomous System
+195.210.128.0/18    # AS8359 RU/RU COMSTAR COMSTAR-Direct global network
+200.62.136.0/21     # AS12252 PE/PE Telmex Peru S.A.
+200.84.0.0/16       # AS8048 VE/VE CANTV Servicios, Venezuela
+200.107.128.0/24    # AS6147 PE/PE Telefonica del Peru S.A.A.
+200.116.0.0/24      # AS13489 CO/CO EPM Telecomunicaciones S.A. E.S.P.
+200.194.192.0/19    # AS3549 BR/US GBLX Global Crossing Ltd.
+201.9.64.0/18       # AS7738 BR/BR Telecomunicacoes da Bahia S.A.
+201.66.0.0/18       # AS8167 BR/BR TELESC - Telecomunicacoes de Santa Catarina SA
+201.66.64.0/18      # AS8167 BR/BR TELESC - Telecomunicacoes de Santa Catarina SA
+201.67.0.0/18       # AS8167 BR/BR TELESC - Telecomunicacoes de Santa Catarina SA
+201.80.0.0/20       # AS28573 BR/BR NET Servicos de Comunicao S.A.
+201.88.0.0/18       # AS8167 BR/BR TELESC - Telecomunicacoes de Santa Catarina SA
+201.137.0.0/16      # AS8151 MX/MX Uninet S.A. de C.V.
+201.145.0.0/19      # AS8151 MX/MX Uninet S.A. de C.V.
+201.246.64.0/18     # AS7418 CL/CL Terra Networks Chile S.A.
+202.83.168.0/24     # AS23888 PK/PK NTC-AS-AP National Telecommunication Corporation HQ,
+202.91.28.0/24      # AS24528 ID/ID SINERGI-AS-ID PT. Sinergitama Komindo
+203.154.0.0/19      # AS4618 TH/TH INET-TH-AS Internet Thailand Company Limited
+203.210.192.0/20    # AS7643 VN/VN VNN-AS-AP Vietnam Posts and Telecommunications (VNPT)
+210.210.46.0/24     # AS9583 IN/IN SIFY-AS-IN Sify Limited
+212.165.128.0/17    # AS17175 NL/US NSS-UK New Skies Satellites UK AS
+212.192.224.0/19    # AS2848 RU/EU MSU Moscow State University
+212.239.14.51/32    # accasoftware.it - spam senza optout
+213.87.44.0/22      # AS13174 RU/RU MTSNET OJSC _Mobile TeleSystems_ Autonomous System
+213.136.96.0/19     # AS29571 CI/CI CITelecom-AS
+213.183.112.0/21    # AS25446 RU/RU ASN-TOMLINE TomTrunk, ISP in Tomsk and Tomsk region
+213.228.120.0/21    # AS8382 RU/RU IRTEL-AS Irkutsk Central Telegraph autonomous system
+217.218.0.0/17      # AS12880 IR/IR DCI-AS DCI Autonomous System
+218.15.208.0/20     # AS4134 CN/CN CHINANET-BACKBONE No.31,Jin-rong Street
+218.26.0.0/16       # AS4837 CN/CN CHINA169-BACKBONE CNCGROUP China169 Backbone
+218.87.96.0/20      # AS4134 CN/CN CHINANET-BACKBONE No.31,Jin-rong Street
+220.92.0.0/14       # AS4766 KR/KR KIXS-AS-KR Korea Telecom
+220.174.0.0/17      # AS4134 CN/CN CHINANET-BACKBONE No.31,Jin-rong Street
+221.217.192.0/18    # AS4808 CN/CN CHINA169-BJ CNCGROUP IP network China169 Beijing Province Network
+222.136.0.0/13      # AS4837 CN/CN CHINA169-BACKBONE CNCGROUP China169 Backbone
+222.139.152.0/24    # AS4837 CN/CN CHINA169-BACKBONE CNCGROUP China169 Backbone
+222.252.96.0/19     # AS7643 VN/VN VNN-AS-AP Vietnam Posts and Telecommunications (VNPT)

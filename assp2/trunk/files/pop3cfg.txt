@@ -1,0 +1,24 @@
+# possible config file content
+# COMMON:=POP3password=common_pass,POP3server=common_PO3server:port,SMTPsender=common_Address,SMTPsendto=common_Address,SMTPserver=common_SMTP-server:port,SMTPHelo=myhelo,SMTPAUTHuser=common-smtpuser,SMTPAUTHpassword=common-smtppass,POP3SSL=0/1,SIZElimit=number_of_bytes
+# POP3username<num>:=POP3password=pop3_pass,POP3server=mail.gmail.com,SMTPsender=addr@domain,SMTPsendto=demo@demo_exchange.local,SMTPserver=localhost,SMTPHelo=myhelo,SMTPAUTHuser=smtpuser,SMTPAUTHpassword=smtppass,POP3SSL=0/1,SIZElimit=number_of_bytes
+#
+# resulting accounts hash
+# our %accounts = (
+#            'the pop3 user name' => {'POP3password'     => 'pop3_pass',
+#                                     'POP3server'       => 'mail.gmail.com',
+#                                     'SMTPsender'       => 'demox@demo_exchange.local',
+#                                     'SMTPsendto'       => 'demo@demo_exchange.local',
+#                                     'SMTPserver'       => 'localhost',
+#                                     'SMTPHelo'         => 'myHelo',
+#                                     'SMTPAUTHuser'     => 'smtpuser',
+#                                     'SMTPAUTHpassword' => 'smtppass',
+#                                     'POP3SSL'          => '0' or '1'
+#                                     'SIZElimit'        => maximum number of bytes in a single message
+#                                    }
+#            );
+#
+# POP3SSL, SIZElimit, SMTPsender, SMTPHelo, SMTPAUTHuser and SMTPAUTHpassword are optional
+# If SMTPsender is not defined, the original FROM: address will be used - if this is not found the POP3username will be used.
+# If POP3SSL is set 1 - POP3S will be done
+# If SIZElimit is exceeded by a single message, the message will not be collected
+#

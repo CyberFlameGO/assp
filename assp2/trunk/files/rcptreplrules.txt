@@ -1,0 +1,167 @@
+# This file defines the recipient replacement rules an should be in base/files
+#
+# lines starting with # are comments and will be ignored
+#
+# Syntax:
+#
+# rule number<=>rule_type<=>recipient<=>replace_with<=>when_sender<=>next_rule_if<=>jump_target'
+#
+# for example:
+#
+#     01<=>S<=>*@mydomain.*<=>*@myotherdomain.*<=>*.myfriendsname@myfriendsdomain.com<=>1<=>03
+#
+#     witch means: if the recipient has any [name] (store it in first *) in domain <mydomain> at any [toplevel domain] (store it second *)
+#                  and the sender is anyone from my friends family
+#                  then replace the recipient with [name]@myotherdomain.[toplevel domain]
+#                  and jump to rule 03 if rule 03 exists
+#                  if rule 03 does not exists, stop processing
+#
+# rule_number : number of replacement rule - rules are processed in alphabetical order of this field
+#               if there are more than one rule with the same <rule number> only the last one will be processed
+#               an empty value is not permitted
+#
+# rule_type   : empty or S = simple syntax  R = regular expression  - any other value skips the rule
+#               any value is permitted, but it has to be defined
+#               if S is defined : * is a wildchar for any character and any count (0 included)
+#
+#               for example: *.myname@mydomain.*<=>*myname@myotherdomain.* and the recipient address is foo.mayname@mydomain.bar
+#                     the replacement result will be foo.myname@myotherdomain.bar
+#               or you want to replace the whole domain : *@mydomain.com<=>*@myotherdomain.com
+#               or you want to replace the userpart : name.myname@*<=>othername.whatever@*
+#               or you want to remove the sublevel domain : *@*.mydomain.com<=>*@mydomain.com
+#
+#               if R is defined : perl regular expressions are expected for <recipient>,<replace with> and <when sender> - you have to know, what you are doing
+#                    if you are capturing parts with brackets like (.*) in <recipient> you may use the results with $1,$2,$.. in <replace with>
+#
+# recipient   : the string for the recipient - the syntax depends on <rule_type>
+#               one * or an empty value will match any address
+#
+# replace_with: the replacement for <recipient>
+#               where the first * reflects to the first * in <recipient> , the second * to the second * and so on
+#
+# when_sender : the replacement will only be done, if the "mail from" address matches this value
+#               the syntax depends on <rule_type>
+#               wildchar * is permitted (see <rule_type>)
+#               one * or an empty value will match any address
+#
+# next_rule if: 0 = process next rule (or jump) anytime
+#               1 = stop processing (or jump) if the recipient address matches <recipient> and the sender address
+#                   matches <when_sender> (the replacement is done) [see also <jump_target> !!!]
+#               2 = stop processing (or jump) if the recipient address does not match <recipient> or the sender address
+#                   does not match <when_sender> (the replacement is not done) [see also <jump_target> !!!]
+#               only 0,1,2 are permitted values
+#
+# jump target : jump to the rule with this number
+#               only forward jumping is permitted
+#               do not stop processing on <next_rule_if> - just jump to the target rule
+#               if a condition <next_rule_if> for a jump is true and the jump target rule does not exist, processing is stopped
+#               if no <jump_target> is defined, processing is done on <next_rule_if>
+#               the special value  END  stops rule processing anyway, after the rule is processed
+#
+# here is an example for a possible structure of that file:
+#
+# if your  sendAllSpam = spam@yourdomain.com
+#          ccSpamAlways = alwaysspam@yourdomain.com
+#          sendHamInbound = haminbound@yourdomain.com
+#          sendHamOutbound = hamoutbound@yourdomain.com
+#
+# it is possible to do the following
+#
+#
+# main section:
+#----------------------------------------------------------------------------------
+#
+# 001<=>S<=>spam@yourdomain.com<=>spam@yourdomain.com<=><=>1<=>100
+# 002<=>S<=>alwaysspam@yourdomain.com<=>alwaysspam@yourdomain.com<=><=>1<=>200
+# 003<=>S<=>haminbound@yourdomain.com<=>haminbound@yourdomain.com<=><=>1<=>300
+# 004<=>S<=>hamoutbound@yourdomain.com<=>hamoutbound@yourdomain.com<=><=>1<=>400
+# ....
+# .... here may follow the rules for replacement of normal mails up to rule number 098
+# ....
+# 099<=>S<=>*<=>*<=><=>1<=>END
+# .... rule number 099 stops processing in any case
+# .... rules 001 to 004 are separating the types of mails and jumping to the right section of rules
+#
+#
+# sendAllSpam section:
+#----------------------------------------------------------------------------------
+#
+# 100<=> what ever you want to do with spam@yourdomain.com
+# ....
+# .... here may follow the rules for replacement of sendAllSpam mails up to rule number 198
+# ....
+# 199<=>S<=>*<=>*<=><=>1<=>END
+# .... rule number 199 stops processing in any case
+#
+#
+# ccSpamAlways section:
+#----------------------------------------------------------------------------------
+#
+# 200<=> what ever you want to do with alwaysspam@yourdomain.com
+# ....
+# .... here may follow the rules for replacement of ccSpamAlways mails up to rule number 298
+# ....
+# 299<=>S<=>*<=>*<=><=>1<=>END
+# .... rule number 299 stops processing in any case
+#
+#
+# sendHamInbound section:
+#----------------------------------------------------------------------------------
+#
+# 300<=> what ever you want to do with haminbound@yourdomain.com
+# ....
+# .... here may follow the rules for replacement of sendHamInbound mails up to rule number 398
+# ....
+# 399<=>S<=>*<=>*<=><=>1<=>END
+# .... rule number 399 stops processing in any case
+#
+#
+# sendHamOutbound section:
+#----------------------------------------------------------------------------------
+#
+# 400<=> what ever you want to do with hamoutbound@yourdomain.com
+# ....
+# .... here may follow the rules for replacement of sendHamOutbound mails up to rule number 498
+# ....
+# 499<=>S<=>*<=>*<=><=>1<=>END
+# .... rule number 499 stops processing in any case
+#
+# here may follow any other section of your choice ......
+#
+###################################################################################
+
+#001<=>S<=>spam@yourdomain.com<=>spam@yourdomain.com<=><=>1<=>100
+#002<=>S<=>alwaysspam@yourdomain.com<=>alwaysspam@yourdomain.com<=><=>1<=>200
+#003<=>S<=>haminbound@yourdomain.com<=>haminbound@yourdomain.com<=><=>1<=>300
+#004<=>S<=>hamoutbound@yourdomain.com<=>hamoutbound@yourdomain.com<=><=>1<=>400
+
+099<=>S<=>*<=>*<=><=>1<=>END
+
+# sendAllSpam section:
+#----------------------------------------------------------------------------------
+#
+
+199<=>S<=>*<=>*<=><=>1<=>END
+#
+#
+# ccSpamAlways section:
+#----------------------------------------------------------------------------------
+#
+
+299<=>S<=>*<=>*<=><=>1<=>END
+#
+#
+# sendHamInbound section:
+#----------------------------------------------------------------------------------
+#
+
+399<=>S<=>*<=>*<=><=>1<=>END
+#
+# sendHamOutbound section:
+#----------------------------------------------------------------------------------
+#
+
+499<=>S<=>*<=>*<=><=>1<=>END
+
+
+# End of File

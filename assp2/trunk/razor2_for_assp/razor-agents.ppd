@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SOFTPKG NAME="razor-agents" VERSION="2,84,0,0">
+  <TITLE>razor-agents</TITLE>
+  <ABSTRACT>Collaborative, content-based spam filtering network agent.</ABSTRACT>
+  <AUTHOR>Vipul Ved Prakash &lt;mail@vipul.net&gt;</AUTHOR>
+  <IMPLEMENTATION>
+    <OS NAME="MSWin32" />
+    <ARCHITECTURE NAME="MSWin32-x86-multi-thread-5.10" />
+    <CODEBASE HREF="razor-agents_510.tar.gz" />
+  </IMPLEMENTATION>
+  <IMPLEMENTATION>
+    <OS NAME="MSWin32" />
+    <ARCHITECTURE NAME="MSWin32-x86-multi-thread-5.12" />
+    <CODEBASE HREF="razor-agents_512.tar.gz" />
+  </IMPLEMENTATION>
+  <IMPLEMENTATION>
+    <OS NAME="MSWin32" />
+    <ARCHITECTURE NAME="MSWin32-x86-multi-thread-5.14" />
+    <CODEBASE HREF="razor-agents_514.tar.gz" />
+  </IMPLEMENTATION>
+  <IMPLEMENTATION>
+    <OS NAME="MSWin32" />
+    <ARCHITECTURE NAME="MSWin32-x86-multi-thread-5.16" />
+    <CODEBASE HREF="razor-agents_516.tar.gz" />
+  </IMPLEMENTATION>
+  <IMPLEMENTATION>
+    <OS NAME="MSWin32" />
+    <ARCHITECTURE NAME="MSWin32-x86-multi-thread-64int-5.20" />
+    <CODEBASE HREF="razor-agents_520.tar.gz" />
+  </IMPLEMENTATION>
+</SOFTPKG>

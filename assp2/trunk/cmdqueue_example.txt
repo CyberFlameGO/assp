@@ -1,0 +1,20 @@
+# This file could be used to start tasks.
+# 
+# Create a file 'assp/cmdqueue' and write a single line for each task to start like (case sensitive)
+#
+RunTask fillUpImportDBDir
+RunTask ImportMysqlDB
+RunTask ExportMysqlDB
+RunTask forceLDAPcrossCheck
+RunTask RunRebuildNow
+RunTask BlockReportNow
+#
+# Read the Web-interface about the functions of these tasks - supported tasks are
+# fillUpImportDBDir, ImportMysqlDB, ExportMysqlDB, forceLDAPcrossCheck, RunRebuildNow and BlockReportNow
+#
+# The file will be removed by assp after reading and processing , so you must create the file every time
+# you want to start a task using this file.
+#
+# This file also supports to schedule and start advanced functions in ASSP !
+# Writing NONSENSE in to this file could prevent assp from running, could cause assp to die or
+# could damage your complete system
