@@ -1,3 +1,25 @@
+2017-10-08
+fixed in assp 2.5.6 *Fortress* build 17281:
+
+- active connection counting and limiting was not working if clinets/servers used the STARTTLS command
+
+- analyzing the memory usage in the threads cause a SEGV in 'Devel::Size' on newer perl versions - this feature is deactivated in the code permanently
+
+
+changed:
+
+- Because sourceforge is discontinuing the CVS support, the versioning support for the ASSP development is sitched to SVN.
+  Starting with this build the download location is changed to:
+  
+  https://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk
+  
+  The folder structure and file location in SVN is the same like it was in CVS.
+  
+  Previouse versions (including V1) and builds are still available at CVS for download, as long as souceforge provides browser access to CVS.
+  
+  http://assp.cvs.sourceforge.net
+
+
 2017-10-03
 fixed in assp 2.5.6 *Fortress* build 17276:
 
