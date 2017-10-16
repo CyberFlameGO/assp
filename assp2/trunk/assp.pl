@@ -193,7 +193,7 @@ our $shamod;
 #
 sub setVersion {
 $version = '2.5.6';
-$build   = '17281';        # 08.10.2017 TE
+$build   = '17289';        # 16.10.2017 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -571,7 +571,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'A98303678597DC5916A60E768467677092196886'; }
+sub __cs { $codeSignature = 'B2800D1F8CF778AA7149520FACE5BF9CE0891D94'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -2930,7 +2930,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  <div class="cfgnotes">Notes On SPF</div>
  <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/spf.txt\',3);" /> ',undef,undef,'msg003660','msg003661'],
 ['DoDMARC','Enable DMARC Check',0,\&checkbox,'1','(.*)',undef,
-  'If enabled and ValidateSPF and DoDKIM are enabled and the sending domain has published a DMARC-record/policy, assp will act on the mail according to the senders DMARC-policy using the results of the SPF and DKIM check. It is save to leave this feature ON, it will not produce false positives!<br />
+  'If enabled and ValidateSPF and DoDKIM are enabled and the sending domain has published a DMARC-record/policy, assp will act on the mail according to the senders DMARC-policy using the results of the SPF and DKIM check. It is save to leave this feature ON, it will not produce false positives! The blocking mode (block, score, testmode) is adapted from less aggressive setting of ValidateSPF and DoDKIM - and the published DMARC record ([p][sp]=[reject][quarantine]). Scoring is done using spfValencePB.<br />
   If you have published a DMARC-record and you want to collect statisical data, look at <a href="https://dmarcian.com" rel="external">dmarcian.com</a>',undef,undef,'msg010410','msg010411'],
 ['noDMARCDomain','Don\'t Check DMARC for these Addresses/Domains*',80,\&textinput,'','(.*)','ConfigMakeSLRe',
  'Put any sender domain (or address) in to this list, for which you want to disable the DMARC check - for example if an invalid DMARC record is published.<br />
@@ -4442,7 +4442,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg007
    The stats are available via browser or telnet (or telnet similar socket). Using telnet, press ENTER two times to get the healthy state (\' $webStatHealthyResp [CRLF]\' or \' $webStatNotHealthyResp [CRLF]\' in a single line), this is the recommended methods to get the \'UP\'-state of assp from nagios or any other external script.<br />
    Type \'stat[ENTER][ENTER]\' to get the STATS in raw text where each line is terminated with \'[CR]LF\' (CR is send in any case, if the request contains CR).<br />
    The HTML/browser output are LF terminated STAT lines.<br />
-   If you have configured " exportExtremeBlack ", your firewall (pfsense/pfBlockerNG or snort) may download the extreme black IP list using this interface - append "/extremeblack" to the URL.<br />
+   If you have configured " exportExtremeBlack ", your firewall (for example pfsense/pfBlockerNG or snort) may download the extreme black IP list using this interface - append "/extremeblack" to the URL.<br />
    The download URL, used by your firewall, should look like: http://assp.domain.local:55553/extremeblack<br />
    <p><small><i>Examples:</i> 55553, 192.168.0.5:12345</small></p>',undef,undef,'msg007670','msg007671'],
 ['enableWebStatSSL','Use https instead of http',0,\&checkbox,'','(.*)','ConfigChangeEnableStatSSL',
@@ -12071,7 +12071,7 @@ $headers .= "
 " if $WebIP{$ActWebSess}->{user} eq 'root';
 $headers .= "
 	<div onclick=\"return popFileEditor(\'/notes/config.txt\',8);\"><img src=\"$noIcon\" alt=\"#\" /> Config Descriptions</div>
-	<div onclick=\"return popFileEditor(\'/notes/privat_notes.txt\',8);\"><img src=\"$noIcon\" alt=\"#\" /> Privat Config Notes</div>
+	<div onclick=\"return popFileEditor(\'/notes/privat_notes.txt\',3);\"><img src=\"$noIcon\" alt=\"#\" /> Privat Config Notes</div>
 ";
 $headers .= "
 </div>
