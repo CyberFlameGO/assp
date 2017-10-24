@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 4.65 2017/09/21 11:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 4.70 2017/10/19 12:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -52,7 +52,16 @@ our $checkExeExternalForce; # same as $checkExeExternal - but called weather the
                               # ....
                               # type - contains the previous detected executable type description or undef
 
-# max length of a file name part in a copressed file
+our %libarchiveFatal = (                   # if these FATAL values are returned by libachive, try to use the next decompression engine instead detecting a wrong attachment
+-30 => 'Unrecognized archive format',      # first the error number
+-25 => 'Unsupported.+?method'              # second a regex for the error text
+);
+
+our %libarchiveWarn = (                    # if these WARN values are returned by libachive, try to use the next decompression engine instead detecting a wrong attachment
+-20 => 'cannot be converted from|to current locale'       # first the error number
+);                                         # second a regex for the error text
+
+# max length of a file name part in a compressed file
 our $maxArcNameLength = 255;
 
 # *************************************************************************************************
@@ -190,9 +199,9 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.65 2017/09/21 11:00:00 TE Exp $' =~ /,v ([\d.]+) /);
-our $MINBUILD = '(15264)';
-our $MINASSPVER = '2.4.5'.$MINBUILD;
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.70 2017/10/19 12:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+our $MINBUILD = '(17292)';
+our $MINASSPVER = '2.5.5'.$MINBUILD;
 our $plScan = 0;
 
 $main::ModuleList{'Plugins::ASSP_AFC'} = $VERSION.'/'.$VERSION;
@@ -908,7 +917,7 @@ sub process {
 
             if ($main::DoBlockExes &&
                 $filename &&
-                isAttachment($part) &&
+                &main::isAttachment($part) &&
                 ($self->{select} == 1 or $self->{select} == 3)) {
                 
                 my $attname = $filename;
@@ -938,20 +947,8 @@ sub process {
                     $attre[0] .= $main::AttachRules{$addr}->{'good'} . '|' . $main::AttachRules{$addr}->{'good-'.$dir} . '|' if $addr;
                     $attre[1] .= $main::AttachRules{$addr}->{'block'} . '|' . $main::AttachRules{$addr}->{'block-'.$dir} . '|' if $addr;
 
-                    my @remove;  # remove -+ext and the corresponding ext
-                    @remove = ( $attre[0] =~ /(?:^|\|)\-\+([^\|]+)/go );
-                    map { $attre[0] =~ s/(?:^|\|)(?:\-\+)?\Q$_\E(?:$|\|)/\|/ig } @remove;
-                    @remove = ( $attre[1] =~ /(?:^|\|)\-\+([^\|]+)/go );
-                    map { $attre[1] =~ s/(?:^|\|)(?:\-\+)?\Q$_\E(?:$|\|)/\|/ig } @remove;
-
-                    $attre[0] =~ s/\|\|+/\|/go;
-                    $attre[1] =~ s/\|\|+/\|/go;
-
-                    $attre[0] =~ s/^\|//o;
-                    $attre[1] =~ s/^\|//o;
-
-                    $attre[0] =~ s/\|$//o;
-                    $attre[1] =~ s/\|$//o;
+                    &main::makeRunAttachRe($attre[0]);
+                    &main::makeRunAttachRe($attre[1]);
 
                     if ($attre[0] || $attre[1]) {
                         $attre[0] = qq[\\.(?:$attre[0])\$] if $attre[0];
@@ -1749,20 +1746,8 @@ sub isZipOK {
         $attZipre[0] .= $main::AttachZipRules{$addr}->{'good'} . '|' . $main::AttachZipRules{$addr}->{'good-'.$dir} . '|' if $addr;
         $attZipre[1] .= $main::AttachZipRules{$addr}->{'block'} . '|' . $main::AttachZipRules{$addr}->{'block-'.$dir} . '|' if $addr;
 
-        my @remove;  # remove -+ext and the corresponding ext
-        @remove = ( $attZipre[0] =~ /(?:^|\|)\-\+([^\|]+)/go );
-        map { $attZipre[0] =~ s/(?:^|\|)(?:\-\+)?\Q$_\E(?:$|\|)/\|/ig } @remove;
-        @remove = ( $attZipre[1] =~ /(?:^|\|)\-\+([^\|]+)/go );
-        map { $attZipre[1] =~ s/(?:^|\|)(?:\-\+)?\Q$_\E(?:$|\|)/\|/ig } @remove;
-
-        $attZipre[0] =~ s/\|\|+/\|/go;
-        $attZipre[1] =~ s/\|\|+/\|/go;
-
-        $attZipre[0] =~ s/^\|//o;
-        $attZipre[1] =~ s/^\|//o;
-
-        $attZipre[0] =~ s/\|$//o;
-        $attZipre[1] =~ s/\|$//o;
+        &main::makeRunAttachRe($attZipre[0]);
+        &main::makeRunAttachRe($attZipre[1]);
 
         if ($attZipre[0] || $attZipre[1]) {
             $attZipre[0] = qq[\\.(?:$attZipre[0])\$] if $attZipre[0];
@@ -1843,16 +1828,6 @@ sub analyzeZIP {
         $self->{typemismatch}->{file} = $tfile;
     }
     return get_zip_filelist($self,$tfile);
-}
-
-sub isAttachment {
-    my $part = shift;
-    return 0 unless ref($part);
-    return &main::isAttachment($part) if defined *{'main::isAttachment'};
-    return 1 if $part->header("Content-Disposition") =~ /attachment|inline/io;
-    return 1 if $part->header('Content-Type') =~ /(?:application|video|audio|image|chemical|x-conference|model|message)\//io;
-    return 1 if $part->header('Content-Type') =~ /text\/(?!html|plain|xml|sgml|css|csv)/io;
-    return 0;
 }
 
 sub Glob {
@@ -2182,7 +2157,8 @@ sub X_decompress {
                     mlog(0,"info: extracted '$file' - used libarchive") if $main::AttachmentLog > 1;
                 } elsif ($ok < ARCHIVE_WARN) {
                     mlog(0,"warning: fatal - libarchive extract '$file' - <$ok> - $error");
-                    if ($ok == -30 && $error =~ /Unrecognized archive format/oi) {
+                    if (exists $libarchiveFatal{$ok} && eval{ $error =~ /$libarchiveFatal{$ok}/i })
+                    {
                         $ok = undef;      # force a retry with 7z or ZIP for this compression format
                         $ae = undef;
                         $la = undef;
@@ -2195,7 +2171,8 @@ sub X_decompress {
                     }
                 } else {
                     mlog(0,"warning: warn - libarchive extract '$file' - <$ok> - $error");
-                    if ($ok == -20 && $error =~ /cannot be converted from|to current locale/io) {
+                    if (exists $libarchiveWarn{$ok} && eval{ $error =~ /$libarchiveWarn{$ok}/i })
+                    {
                         $ok = undef;      # force a retry with 7z or ZIP for this compression format
                         $ae = undef;
                         $la = undef;
