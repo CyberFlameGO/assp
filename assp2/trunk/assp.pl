@@ -571,7 +571,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'BD2C6C0010CD22C6385245643D9E9EFF0B6CCE0A'; }
+sub __cs { $codeSignature = 'BA84F4976F097873F416FD0F7B8930DA6825B7E1'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -50427,10 +50427,10 @@ sub ConfigAnalyze {
                             $fm .= "<b><font color='orange'>&bull; attachment : $self->{exetype}</font></b><br />";
                         }
 
-                        $ASSP_AFC::attZipre[0] =~ s/^(?:\(\?[^:]*:)+\\\.(?:\(\?[^:]*:)+//o;
-                        $ASSP_AFC::attZipre[0] =~ s/[\)\$]+$//o;
-                        $ASSP_AFC::attZipre[1] =~ s/^(?:\(\?[^:]*:)+\\\.(?:\(\?[^:]*:)+//o;
-                        $ASSP_AFC::attZipre[1] =~ s/[\)\$]+$//o;
+#                        $ASSP_AFC::attZipre[0] =~ s/^(?:\(\?[^:]*:)+\\\.(?:\(\?[^:]*:)+//o;
+#                        $ASSP_AFC::attZipre[0] =~ s/[\)\$]+$//o;
+#                        $ASSP_AFC::attZipre[1] =~ s/^(?:\(\?[^:]*:)+\\\.(?:\(\?[^:]*:)+//o;
+#                        $ASSP_AFC::attZipre[1] =~ s/[\)\$]+$//o;
                         my $rcpt = [split(/ /o,$Con{$tmpfh}->{rcpt})]->[0];
                         if ($ASSP_AFC::attZipre[1]) {
                             $fm .= " <b><font color='blue'>&bull;</font></b> ZIP: $Con{$tmpfh}->{mailfrom} -&gt; $rcpt =&gt; <font color='blue'>block =&gt;</font> $ASSP_AFC::attZipre[1]<br />";
