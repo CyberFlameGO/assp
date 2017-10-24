@@ -193,7 +193,7 @@ our $shamod;
 #
 sub setVersion {
 $version = '2.5.6';
-$build   = '17289';        # 16.10.2017 TE
+$build   = '17297';        # 24.10.2017 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -571,7 +571,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'B2800D1F8CF778AA7149520FACE5BF9CE0891D94'; }
+sub __cs { $codeSignature = 'BD2C6C0010CD22C6385245643D9E9EFF0B6CCE0A'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -3180,7 +3180,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   Extension regular expression template names have to start with a single tilde. Allowed name characters are A-Z, a-z, 0-9 and underscrore. Names are case sensitive.<br /><br />
 
   It is also possible to define rule templates and to use them in combination with any other rule definitions or rule templates.<br />
-  Rule templates starts with two tilde (~~template). Allowed name characters are A-Z, a-z, 0-9 and underscrore. Names are case sensitive. For example:<br /><br />
+  Rule templates <b>starts with two tilde (~~template)</b>. Allowed name characters are A-Z, a-z, 0-9 and underscrore. Names are case sensitive. For example:<br /><br />
   ~~commonRule=>block=>~executables|~scripts|xls,block-in=>:MSOM,block-out=>:CSC<br />
   ~~devRule=>~~commonRule=>block-out=>:WIN|:ELF<br />
   ~~allowALL=>good=>.*<br />
@@ -3190,6 +3190,11 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   Notice the leading -- in front of the --doc regular expression in the last example. The leading -- removes all occurences of this regular expression from the resulting entry, here from "block-in" (NOT from block!) at configuration time. You would need to define --doc in the "block=>" entry as well, to remove such occurences there.<br />
   Because the -- exceptions are processed at configuration time, such a definition will not overwrite an opposit rule definition: sender &gt; recipient and recipient &gt; sender - which are combined at runtime (attachment check).<br />
   If you want assp to process such a "remove extension directive" at runtime (to make the recipient &lt;&gt; sender rule overwrite working for this address), use for example -+doc instead of --doc. Be carefull creating weak blocking rules using the -+ directive. Make sure the sender and recipient address can NOT be faked (eg. SPF-strict, DKIM)<br />
+  It is possible to combine multipe -- as well as multiple -+ exceptions in regular expression style, for example:<br /><br />
+  ~allowExe => --(?:cmd|com|cpl|exe|exe\-bin|lnk|pif) - which is the same like: --cmd|--com|--cpl|--exe|--exe\-bin|--lnk|--pif <br />
+  ~forceAllowExe => -+(?:cmd|com|cpl|exe|exe\-bin|lnk|pif)<br />
+  [IT]=>~~devRule , block-out=>~allowExe , block-in => ~forceAllowExe<br /><br />
+  Do <b>NOT use nested brackets</b> like in --(?:c<b>(?:md|om|pl)</b>|exe<b>(?:\-bin)?</b>|lnk|pif) to define any exception!<br />
   ASSP will resolve all extension regular expression templates and all rule tempates and will combine them all in to one resulting domain or user attachment rule.<br />
   ASSP will throw a warning, if a rule template is define multipe times - like: *@domain.com=~~commonRule,~~devRule - here ~~devRule already contains ~~commonRule<br />
   It may happen, that the resulting attachment rule contains one or more extension regular expressions multiple times - this is harmless and will be internaly corrected, but try to prevent it.<br /><br />
@@ -13991,7 +13996,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.65;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.70;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.05;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -34957,6 +34962,24 @@ sub isAttachment {
     return 0;
 }
 
+# make AttachmenRegex at runtime
+sub makeRunAttachRe {
+    my @remove;  # remove -+ext and the corresponding ext
+    while ($_[0] =~ s/(?:^|\|)\-\+(\((?:\?\:)?([^\)]*)\))/\|/o) {
+         push @remove, $1;
+         my $part = $2;
+         for (split(/\|+/o,$part)) {
+             s/^\-\+//o;
+             push @remove, $_;
+         }
+    }
+    push @remove , ( $_[0] =~ /(?:^|\|)\-\+([^\|]+)/go );
+    map { $_[0] =~ s/(?:^|\|)(?:\-\+)?\Q$_\E(?:$|\|)/\|/ig } @remove;
+    $_[0] =~ s/\|\|+/\|/go;
+    $_[0] =~ s/^\|//o;
+    $_[0] =~ s/\|$//o;
+}
+
 # checks for blocked attachments
 sub CheckAttachments {
     my ( $fh, $block, $bd, $attachlog, $done ) = @_;
@@ -35024,20 +35047,8 @@ sub CheckAttachments {
         $attre[0] .= $AttachRules{$addr}->{'good'} . '|' . $AttachRules{$addr}->{'good-'.$dir} . '|' if $addr;
         $attre[1] .= $AttachRules{$addr}->{'block'} . '|' . $AttachRules{$addr}->{'block-'.$dir} . '|' if $addr;
 
-        my @remove;  # remove -+ext and the corresponding ext
-        @remove = ( $attre[0] =~ /(?:^|\|)\-\+([^\|]+)/go );
-        map { $attre[0] =~ s/(?:^|\|)(?:\-\+)?\Q$_\E(?:$|\|)/\|/ig } @remove;
-        @remove = ( $attre[1] =~ /(?:^|\|)\-\+([^\|]+)/go );
-        map { $attre[1] =~ s/(?:^|\|)(?:\-\+)?\Q$_\E(?:$|\|)/\|/ig } @remove;
-
-        $attre[0] =~ s/\|\|+/\|/go;
-        $attre[1] =~ s/\|\|+/\|/go;
-
-        $attre[0] =~ s/^\|//o;
-        $attre[1] =~ s/^\|//o;
-
-        $attre[0] =~ s/\|$//o;
-        $attre[1] =~ s/\|$//o;
+        makeRunAttachRe($attre[0]);
+        makeRunAttachRe($attre[1]);
 
         if ($attre[0] || $attre[1]) {
             $attre[0] = qq[\\.(?:$attre[0])\$] if $attre[0];
@@ -50019,7 +50030,7 @@ sub ConfigAnalyze {
                 my $gpexplnk =
 "<a href=\"javascript:void(0);\" onclick=\"javascript:popFileEditor('files/groups_export/$k.txt',8);\" onmouseover=\"showhint('show group details in exported file files/groups_export/$k.txt', this, event, '250px', '1'); return true;\">$k</a>";
                 $fm .=
-"<b><font color=#66CC66>&bull;</font> <a href=$grouphint>Group</a> $gpexplnk</b> match for: '$mf' $cfglist<br />\n"
+"<b><font color=#66CC66>&bull;</font><a href=$grouphint>Group</a> $gpexplnk</b> match for: '$mf' $cfglist<br />\n"
                     if ($v && $mf && eval{$mf =~ /$v/i});
                 $fm .=
 "<b><font color=#66CC66>&bull;</font> <a href=$grouphint>Group</a> $gpexplnk</b> match for: '$mfd' $cfglist<br />\n"
@@ -50389,7 +50400,15 @@ sub ConfigAnalyze {
 
                 my $self;
                 if ($orgname && ${'DoASSP_AFC'} && $ASSP_AFC::VERSION >= '3.08' && eval{$self = ASSP_AFC->new()} ) {
+                    my $ualink = "<a href='./#UserAttach'>UserAttach</a>";
+                    if ($Config{'UserAttach'} =~ /\s*file\s*:\s*(.+)$/i) {
+                        my $file = $1;
+                        $ualink =
+"<a href=\"javascript:void(0);\" onclick=\"javascript:popFileEditor('$file',1);\" onmouseover=\"showhint('edit file $file', this, event, '250px', '1'); return true;\">UserAttach</a>";
+                    }
+
                     $Con{$tmpfh} = {};
+                    $Con{$tmpfh}->{relayok} = $reportedBy ? 1 : 0;
                     $self->{detectBinEXE} = 1;
                     $self->{blockEncryptedZIP} = ${'ASSP_AFCblockEncryptedZIP'};
                     $self->{attZipRun} = sub { return 1 };
@@ -50397,10 +50416,93 @@ sub ConfigAnalyze {
                     $Con{$tmpfh}->{rcpt} = "$reportedBy " if $reportedBy;
                     $Con{$tmpfh}->{rcpt} .= join(' ',keys %to);
                     $Con{$tmpfh}->{mailfrom} = $mailfrom;
+                    @ASSP_AFC::attZipre = ();
                     if (my $exetype = $self->isAnEXE( \$part->body) ) {
                         $fm .= "<b><font color='orange'>&bull; attachment $orgname is or contains an executable - $exetype</font></b><br />";
-                    } elsif (! $self->isZipOK( $Con{$tmpfh}, \$part->body, $orgname )) {
-                        $fm .= "<b><font color='orange'>&bull; attachment : $self->{exetype}</font></b><br />";
+                    }
+                    delete $self->{exetype};
+
+                    if (scalar keys %AttachZipRules) {
+                        if (! $self->isZipOK( $Con{$tmpfh}, \$part->body, $orgname )) {
+                            $fm .= "<b><font color='orange'>&bull; attachment : $self->{exetype}</font></b><br />";
+                        }
+
+                        $ASSP_AFC::attZipre[0] =~ s/^(?:\(\?[^:]*:)+\\\.(?:\(\?[^:]*:)+//o;
+                        $ASSP_AFC::attZipre[0] =~ s/[\)\$]+$//o;
+                        $ASSP_AFC::attZipre[1] =~ s/^(?:\(\?[^:]*:)+\\\.(?:\(\?[^:]*:)+//o;
+                        $ASSP_AFC::attZipre[1] =~ s/[\)\$]+$//o;
+                        my $rcpt = [split(/ /o,$Con{$tmpfh}->{rcpt})]->[0];
+                        if ($ASSP_AFC::attZipre[1]) {
+                            $fm .= " <b><font color='blue'>&bull;</font></b> ZIP: $Con{$tmpfh}->{mailfrom} -&gt; $rcpt =&gt; <font color='blue'>block =&gt;</font> $ASSP_AFC::attZipre[1]<br />";
+                            $fm .= " <b><font color='red'>&bull; ZIP: bad compressed attachment $orgname</font></b><br />" if $orgname =~ /$ASSP_AFC::attZipre[1]/i;
+                        } else {
+                            $fm .= " <b><font color='blue'>&bull;</font></b> ZIP: $Con{$tmpfh}->{mailfrom} -&gt; $rcpt =&gt; no 'block' rule found for compressed attachments<br />";
+                        }
+                        if ($ASSP_AFC::attZipre[0]) {
+                            $fm .= " <b><font color='blue'>&bull;</font></b> ZIP: $Con{$tmpfh}->{mailfrom} -&gt; $rcpt =&gt; <font color='blue'>good =&gt;</font> $ASSP_AFC::attZipre[0]<br />";
+                            $fm .= " <b><font color='red'>&bull; ZIP: not good compressed attachment $orgname</font></b><br />" if $orgname !~ /$ASSP_AFC::attZipre[0]/i;
+                        } else {
+                            $fm .= " <b><font color='blue'>&bull;</font></b> ZIP: $Con{$tmpfh}->{mailfrom} -&gt; $rcpt =&gt; no 'good' rule found for compressed attachments<br />";
+                        }
+                        @ASSP_AFC::attZipre = ();
+                    }
+
+                    $self->{attRun} = sub { return 0 };
+                    $self->{attZipRun} = sub { return 0; };
+
+                    my @attre;
+                    if (scalar keys %AttachRules) {
+                        my $rcpt = [split(/ /o,$Con{$tmpfh}->{rcpt})]->[0];
+                        my $dir = ($Con{$tmpfh}->{relayok}) ? 'out' : 'in';
+                        my $addr;
+                        $addr = &matchHashKey('AttachRules', &batv_remove_tag('',$Con{$tmpfh}->{mailfrom},''), 1);
+                        $attre[0] = $AttachRules{$addr}->{'good'} . '|' . $AttachRules{$addr}->{'good-'.$dir} . '|' if $addr;
+                        $attre[1] = $AttachRules{$addr}->{'block'} . '|' . $AttachRules{$addr}->{'block-'.$dir} . '|' if $addr;
+                        $addr = &matchHashKey('AttachRules', &batv_remove_tag('',$rcpt,''), 1);
+                        $attre[0] .= $AttachRules{$addr}->{'good'} . '|' . $AttachRules{$addr}->{'good-'.$dir} . '|' if $addr;
+                        $attre[1] .= $AttachRules{$addr}->{'block'} . '|' . $AttachRules{$addr}->{'block-'.$dir} . '|' if $addr;
+
+                        &makeRunAttachRe($attre[0]);
+                        &makeRunAttachRe($attre[1]);
+
+                        if ($attre[0] || $attre[1]) {
+                            my @att = @attre;
+                            $attre[0] = qq[\\.(?:$attre[0])\$] if $attre[0];
+                            $attre[1] = qq[\\.(?:$attre[1])\$] if $attre[1];
+                            $self->{attRun} = sub { return
+                                ($attre[1] && $_[0] =~ /$attre[1]/i ) ||
+                                ($attre[0] && $_[0] !~ /$attre[0]/i );
+                            };
+                            $self->{skipBinEXE} = undef;
+                            $self->{exetype} = '';
+                            delete $self->{typemismatch};
+                            delete $self->{fileList};
+                            delete $self->{isEncrypt};
+                            delete $self->{skipBin};
+                            delete $self->{skipBinEXE};
+
+                            if ( $self->{attRun}->($orgname) ) {
+                                $fm .= "<b><font color='red'>&bull; extension : $orgname would be blocked</font></b> by $ualink <br />";
+                            } else {
+                                $fm .= "<b><font color='green'>&bull; extension : $orgname passed</font></b> $ualink <br />";
+                            }
+                            if ($attre[1]) {
+                                $fm .= " <b><font color='blue'>&bull;</font></b> $Con{$tmpfh}->{mailfrom} -&gt; $rcpt =&gt; <font color='blue'>block =&gt;</font> $att[1]<br />";
+                                $fm .= " <b><font color='red'>&bull; bad attachment $orgname</font></b><br />" if $orgname =~ /$attre[1]/i;
+                            } else {
+                                $fm .= " <b><font color='blue'>&bull;</font></b> $Con{$tmpfh}->{mailfrom} -&gt; $rcpt =&gt; no 'block' rule found<br />";
+                            }
+                            if ($attre[0]) {
+                                $fm .= " <b><font color='blue'>&bull;</font></b> $Con{$tmpfh}->{mailfrom} -&gt; $rcpt =&gt; <font color='blue'>good =&gt;</font> $att[0]<br />";
+                                $fm .= " <b><font color='red'>&bull; not good attachment $orgname</font></b><br />" if $orgname !~ /$attre[0]/i;
+                            } else {
+                                $fm .= " <b><font color='blue'>&bull;</font></b> $Con{$tmpfh}->{mailfrom} -&gt; $rcpt =&gt; no 'good' rule found<br />";
+                            }
+                        } else {
+                            $fm .= " <b><font color='blue'>&bull;</font></b> $Con{$tmpfh}->{mailfrom} -&gt; $rcpt =&gt; no $ualink rule found<br />";
+                        }
+                    } elsif ($BadAttachL1 || $BadAttachL2 || $BadAttachL3 || $GoodAttach) {
+                        $fm .= "<b>&bull;</b> legacy attachment levels are not checked - please configure $ualink<br />";
                     }
                 }
             }
@@ -60208,10 +60310,10 @@ sub updateUserAttach {
 
     while (@new) {
         my $zip;
-        my $line = lc(shift @new);
+        my $line = shift @new;
         next unless $line;
         my @entry = split(/\s*(?:[=-]\>|[,;])\s*|\s+/o,$line);
-        ($user = shift @entry) or next;
+        ($user = lc(shift(@entry))) or next;
         my $desc = "$name - $user";
         %seenRule = ();
         @entry = $eproc->('*',@entry);
@@ -60228,7 +60330,7 @@ sub updateUserAttach {
         foreach my $u (split(/\|/o,$user)) {
             my @e = @entry;
             while (@e) {
-                my $what = $c->(shift @e);
+                my $what = lc($c->(shift @e));
                 my $re = $c->(shift @e);
                 next if (! ($re && $what));
                 if ($zip) {
@@ -60276,14 +60378,34 @@ sub updateAttachCleanRe {
     my $re = shift;
     my %seen;
     my %remove;
-    my @attRe = map {my $t = $_; $remove{lc $t} = 1 if $t =~ s/^--+//o; $t;} split(/\|+/o,$re);
+    my $scope = 0;
+    while ($re =~ s/(?:^|\|)--+(\((?:\?\:)?([^\)]*)\))/\|/o) {
+        $remove{$scope}->{lc $1} = 1;
+         my $part = $2;
+         for (split(/\|+/o,$part)) {
+             $remove{$scope}->{lc $_} = 1;
+         }
+    }
+    my @attRe = map { my $t = $_;
+                      $t =~ /(\((?{$scope++}))(*FAIL)/;
+                      $t =~ /(\)(?{$scope--}))(*FAIL)/;
+                      $remove{$scope}->{lc $t} = 1 if $t =~ s/^--+//o; $t;
+                    } split(/\|+/o,$re);
+    if ($scope != 0) {
+        mlog(0,"error: missmatch for '(' and ')' in '$re' - missing '".($scope > 0 ? (')' x $scope): ('(' x abs($scope)))."'") if $WorkerNumber == 0;
+        return;
+    }
     my @newRe;
+
+    $scope = 0;
     for (@attRe) {
         my $e = lc $_;
         next unless $e;
-        next if $seen{$e};
-        $seen{$e} = 1;
-        next if $remove{$e};
+        $e =~ /(\((?{$scope++}))(*FAIL)/;
+        $e =~ /(\)(?{$scope--}))(*FAIL)/;
+        next if $seen{$scope}->{$e};
+        $seen{$scope}->{$e} = 1;
+        next if $remove{$scope}->{$e};
         my $old = $_;
         if (s/^([\*\+])/.$1/o) {
             mlog(0,"warning: corrected invalid regular expression '$old' in '$re' to '$_'") if $WorkerNumber == 0;

@@ -1,3 +1,12 @@
+2017-10-24
+fixed in assp 2.5.6 *Fortress* build 17297:
+
+- upper case UserAttach templates caused an exception in attachment processing
+  ASSP_AFC 4.70 is required too, to fix this issue
+  NOTICE: build 17297 is at least required to use ASSP_AFC version 4.70 !
+    
+
+
 2017-10-16
 fixed in assp 2.5.6 *Fortress* build 17289:
 
