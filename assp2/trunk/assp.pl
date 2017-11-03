@@ -193,7 +193,7 @@ our $shamod;
 #
 sub setVersion {
 $version = '2.5.6';
-$build   = '17297';        # 24.10.2017 TE
+$build   = '17307';        # 03.11.2017 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -474,7 +474,7 @@ our $WorkerScanConLimit = 1;             # (number >= 0) connection count limit 
 
 our $fakeAUTHsuccess = 0;                # (0/1/2) fake a 235 reply for AUTH success - move the connection to NULL - collect the mail in spam - used for honeypots - 2=with damping
 our $fakeAUTHsuccessSendFake = 0;        # (0/1) send the faked mails from the honeypot - make the spammers believe of success - attention: moves assp in to something like an open relay for these mails
-our $AUTHrequireTLSDelay = 5;            # (number) seconds to damp connections that used AUTH without using SSL (to prevent DDoS)
+our $AUTHrequireTLSDelay = 5;            # (number) seconds to damp connections that used AUTH without using SSL (to prevent DoS)
 
 our $delayGripLow = 0.4;                 # 0 <= value <= 1 IP's with a GripList value lower or equal to the defined value will be not delayed/greylisted - default is 0.4
 
@@ -563,7 +563,7 @@ our $PBscoreNoDelay = 1;     # score noDelay messages
 
 our $dbBackupVersions = 10;  # (3- ...) min=3, default=10 - number of database backup and export version that are keeped
 
-our $reReadSpamFolderInterval = 120;  # reread interval of the spamfolder content for MaxAllowedDups to prevent possible DDoS attacks
+our $reReadSpamFolderInterval = 120;  # reread interval of the spamfolder content for MaxAllowedDups to prevent possible DoS attacks
 
 our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per tag per worker
     'info'    => 60,             # to prevent log flooding with equal loglines - default to 60 seconds for each tag
@@ -571,7 +571,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'BA84F4976F097873F416FD0F7B8930DA6825B7E1'; }
+sub __cs { $codeSignature = '4A5C0E54FA2155395B4C89955BE83757F4AF3CB2'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -594,6 +594,9 @@ our $fallBackSSLBuf = 16384; # fall back to this SSL (receive/send) buffersize, 
 our $SSL_read_ahead = 1;               # try the SSL readahead
 our $SSL_read_ahead_wait = 2;          # poll/select socket wait time in milliseconds for the read ahead
 our $SSL_read_ahead_max_time = 50;     # time in milliseconds used for read ahead
+
+# the SSL/TLS renegotiation counter will be reset after this number of seconds without a renegotiation request and any regular data are sent or received
+our $maxSSLRenegDuration = 10;
 
 our $tlds_alpha_URL = 'http://data.iana.org/TLD/tlds-alpha-by-domain.txt';
 our $tlds2_URL = 'http://george.surbl.org/two-level-tlds';
@@ -1520,7 +1523,7 @@ sub assp_socket_blocking {
 }
 
 sub defConfigArray {
- # last used msg number 010611
+ # last used msg number 010621
 
  # still unused msg numbers
  #
@@ -2793,7 +2796,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['spfValencePB','SPF Failed, default=10 +',10,\&textinput,10,$ValencePBRE,'ConfigChangeValencePB','Message/IP scoring',undef,undef,'msg003200','msg003201'],
 ['srsValencePB','SRS Validate Bounce Failed Score, default=10 +',10,\&textinput,10,$ValencePBRE,'ConfigChangeValencePB','For Message/IP scoring in SRSValidateBounce',undef,undef,'msg003210','msg003211'],
 ['stValencePB','Penalty Trap Address, default=50 +',10,\&textinput,50,$ValencePBRE,'ConfigChangeValencePB', 'For Message/IP scoring',undef,undef,'msg003220','msg003221'],
-['tlsValencePB','OK, Is a SSL/TLS connection, default=-10 +',10,\&textinput,-10,$ValencePB2RE,'ConfigChangeValencePB', '<span class="positive">Message Scoring/IP scoring Bonus for SSL/TLS connections</span>',undef,undef,'msg003230','msg003231'],
+['tlsValencePB','OK, Is a SSL/TLS connection, default=0 +',10,\&textinput,0,$ValencePB2RE,'ConfigChangeValencePB', '<span class="positive">Message Scoring/IP scoring Bonus for SSL/TLS connections</span>',undef,undef,'msg003230','msg003231'],
 ['uriblnValencePB','URIBL Neutral, default=20 +',10,\&textinput,20,$ValencePBRE,'ConfigChangeValencePB','Message/IP scoring',undef,undef,'msg003240','msg003241'],
 ['uriblValencePB','URIBL Failed, default=25 +',10,\&textinput,25,$ValencePBRE,'ConfigChangeValencePB','Message/IP scoring',undef,undef,'msg003250','msg003251'],
 ['vsValencePB','Virus suspicious, default=25',3,\&textinput,25,'(\d+)','ConfigChangeValencePB','Message scoring',undef,undef,'msg003260','msg003261'],
@@ -4764,6 +4767,9 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
   'Define the number of SSL/TLS negotiation retries done with a half second delay after SSLtimeout , if the peer was not ready after STARTTLS or at the listenPortSSL , because of a "SSL want a read/write first" SSL handshake error.',undef,undef,'msg008270','msg008271'],
 ['SSLtimeout','SSL Timeout (0-999)',4,\&textinput,5,'(\d{1,3})',undef,
  'SSL/TLS negotiation will timeout after this many seconds. default is : 5 seconds.',undef,undef,'msg008280','msg008281'],
+['maxSSLRenegotiations','Maximum Allowed SMTP SSL Client-Initiated-Renegotiations',4,\&textinput,2,'(\d+)',undef,
+ 'Maxumum count of allowed SSL/TLS client initiated renegotiations to prevent DoS.<br />
+ If this count is exceeded in a connection within 10 seconds, the connection is terminated, the connected IP is registered in banFailedSSLIP and new connections from this IP address are rejected for 15-30 minutes. An IP-Score of PenaltyExtreme but at least 150 is used for the IP address. Zero disables this feature - default is : 2 attempts.',undef,undef,'msg010620','msg010621'],
 ['SSLDEBUG','Debug Level for SSL/TLS','0:no Debug|1:level 1|2:level 2|3:level 3',\&listbox,0,'(\d*)',undef,'Set the debug-level for SSL/TLS. Than higher the level, than more information are written to STDOUT!',undef,undef,'msg008290','msg008291'],
 
 ['webSSLRequireClientCert','Web-Client requires valid SSL Certificate for GUI Requests',0,\&checkbox,'','(.*)','ConfigChangeSSL',
@@ -5182,7 +5188,7 @@ The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries.
   <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/pop3collect.txt\',3);" />',undef,undef,'msg009090','msg009091']
 );
 
- # last used msg number 010611
+ # last used msg number 010621
 
  &loadModuleVars;
  -d "$base/language" or mkdirOP("$base/language",'0755');
@@ -7772,7 +7778,7 @@ if ($@) {
 sub write_rebuild_module {
 my $curr_version = shift;
 
-my $rb_version = '7.35';
+my $rb_version = '7.40';
 my $keepVersion;
 
 if (open my $ADV, '<',"$base/lib/rebuildspamdb.pm") {
@@ -9894,7 +9900,8 @@ sub rb_uploadgriplist {
         &rb_mlog("processing Logfile $File");
         next unless (open( my $FLogFile, '<', "$File" ));
         while (<$FLogFile>) {
-            if ( ( $ip ) = /(?:$gooddays) .*\s($IPRe)[ \]].* to: \S+/i) {
+            my ($auth,$fake,$DoS);
+            if ( ( $ip, $auth, $fake, $DoS ) = /(?:$gooddays) .*?\s($IPRe)[ \]](?:.*? to: \S+|(warning: SMTP authentication failed|(info: faked authentication success for honeypot)|(info: SSL DoS using consecutive renegotiations detected)))/i) {
                 next if $ip =~ /$IPprivate/o;                         # ignore private IP ranges
                 next if &main::matchIP($ip,'acceptAllMail',0,1);
                 $ip = &main::ipNetwork($ip, 1);
@@ -9903,11 +9910,14 @@ sub rb_uploadgriplist {
                     #Good IP
                     $GpCnt{ $ip } += 1;
                     $GpOK{ $ip }  += 1;
-                } elsif (! $main::noGripListUpload && /$main::SpamTagRE|\[PenaltyDelay\]/o)
+                } elsif (! $main::noGripListUpload && ($auth || /$main::SpamTagRE|\[PenaltyDelay\]/o))
                 {
                     next if /\[PersonalBlack\]/io;
                     #Bad IP
                     $GpCnt{ $ip } += 1;
+                    $GpCnt{ $ip } += 2 if $auth;  # an AUTH error
+                    $GpCnt{ $ip } += 5 if $fake;  # an AUTH error caused by a fake AUTH success
+                    $GpCnt{ $ip } += 20 if $DoS;  # an SSL-DoS attack was detected
                 }
             }
             next if $main::DoNotCollectBounces;
@@ -10053,7 +10063,7 @@ EOF
         &rb_mlog("unable to connect to $main::gripListUpHost to upload griplist");
     }
     return;
-} ## end sub upload griplist
+} ## end sub rb upload griplist
 
 sub rb_fixPath {
     my ($path) = @_;
@@ -16467,7 +16477,8 @@ sub switchUsers { my ($uid,$gid,$sgids)=@_;
   }
   if ($uid) {
 # do it both ways so linux and bsd are happy
-   $< = $> = $uid;
+    $< = $uid;
+    $> = $uid;
     if ($> == $uid) {
       mlog(0,"switched effective uid to $uid ($uname)");
       $switchedUser = 1;
@@ -17761,15 +17772,16 @@ sub mlog {
     if ($canNotify &&
         ! $noNotify &&
         scalar keys %NotifyRE &&
-        $m =~ /$NotifyReRE/ &&
+        $m =~ /($NotifyReRE)/ &&
         $m !~ /$NoNotifyReRE/ &&
         NotifyFrequencyOK($comment) )
     {
         my $rcpt;
         my $sub;
         while (my ($k,$v) = each %NotifyRE) {
-            if ($m =~ /$k/i) {
+            if ($m =~ /($k)/i) {
                 ($rcpt = $v) or next;
+                my $match = $1;
                 $sub = $NotifySub{$k} . " from $myName" if exists $NotifySub{$k};
                 $sub ||= "ASSP event notification from $myName [".substr($comment,0,40).']';
                 &sendNotification(
@@ -17777,7 +17789,8 @@ sub mlog {
                   $rcpt,
                   $sub,
                   "log event on host $myName:\r\n\r\n$comment\r\n\r\n".
-                  "full line in log is:\r\n\r\n$m\r\n");
+                  "full line in log is:\r\n\r\n$m\r\n\r\n".
+                  "match in 'NotifyRe' was: >$match< - for regular expression: >$k<");
             }
         }
     }
@@ -18117,9 +18130,10 @@ sub NewSMTPConnectionConnect {
 
     my $st = Time::HiRes::time();
     my $ip;
-    while ((! $client || ! $client->connected) && (Time::HiRes::time() - $st) < $tout) {
-        eval{$ip = $client->peerhost();} if ($client = $fhh->accept);
-    }
+    eval{$ip = $client->peerhost();} if ($client = $fhh->accept);
+#    while ((! $client || ! $client->connected) && (Time::HiRes::time() - $st) < $tout) {
+#        eval{$ip = $client->peerhost();} if ($client = $fhh->accept);
+#    }
 
     my $enqueue;
     if ($client && $client->connected) {
@@ -18721,16 +18735,41 @@ sub SMTPTraffic {
     if ($hasSSLrwerr) {
         ThreadYield();
         $Con{$fh}->{sslwantrw} ||= time;
+        $Con{$fh}->{sslrenegotiations}++;
+        $Con{$fh}->{lastsslrenegotiation} = time;
+        my $renegcount = int(($Con{$fh}->{sslrenegotiations} + 1)/2);
+        d("SSL-renegotiation count: $renegcount - abs: $Con{$fh}->{sslrenegotiations} - in read");
         if (! length($SMTPbuf)) {
             if (time - $Con{$fh}->{sslwantrw} > $SSLtimeout) {
                 my $lastcmd = "- last command was \'$Con{$fh}->{lastcmd}\'";
                 $lastcmd = '' unless $Con{$fh}->{lastcmd};
-                mlog($fh,"info: can't read from SSL-Socket (renegotiation took too long) for at least $SSLtimeout seconds - close connection - $! $lastcmd") if ($ConnectionLog);
+                mlog($fh,"info: can't read from SSL-Socket (renegotiation did take too long) for at least $SSLtimeout seconds - close connection - $! $lastcmd") if ($ConnectionLog);
                 delete $Con{$fh}->{sslwantrw};
                 setSSLfailed($ip);
+                if ($Con{$fh}->{type} eq 'C') {
+                    $Con{$fh}->{oldfh} ? $Stats{smtpConnTLSIdleTimeout}++ : $Stats{smtpConnSSLIdleTimeout}++;
+                }
+                done2($fh);
+            }
+            if ($Con{$fh}->{type} eq 'C' && $maxSSLRenegotiations && $renegcount > $maxSSLRenegotiations) {
+                my $lastcmd = "- last command was \'$Con{$fh}->{lastcmd}\'";
+                $lastcmd = '' unless $Con{$fh}->{lastcmd};
+                mlog($fh,"info: SSL DoS using consecutive renegotiations detected - connection exceeded maxSSLRenegotiations($maxSSLRenegotiations) - close connection and ban IP for 15-30 minutes (EmergencyBlock) $lastcmd");
+                pbAdd($fh,$ip,(max($PenaltyExtreme,150) + 5),'SSL-DoS',2,1);
+                delete $Con{$fh}->{sslwantrw};
+                setSSLfailed($ip);
+                $EmergencyBlock{$ip} = time;
+                $Stats{denyConnectionA}++;
                 done2($fh);
             }
             return;
+        }
+    } else {
+        if ($maxSSLRenegotiations && $maxSSLRenegDuration && exists($Con{$fh}->{lastsslrenegotiation}) && ($Con{$fh}->{lastsslrenegotiation} + $maxSSLRenegDuration) < time) {
+            delete $Con{$fh}->{sslrenegotiations};
+            delete $Con{$fh}->{lastsslrenegotiation};
+            mlog($fh,'info: SSL-renegotiation counter was reset') if $ConnectionLog > 1;
+            d('info: SSL-renegotiation counter was reset');
         }
     }
     delete $Con{$fh}->{sslwantrw};
@@ -19058,15 +19097,42 @@ sub SMTPWrite {
 
         if (exists $Con{$fh}->{sslwritestate}) {  # check ssltimeout in case of a rehandshake
             $Con{$fh}->{sslwantrw} ||= time;
+            $Con{$fh}->{sslrenegotiations}++;
+            $Con{$fh}->{lastsslrenegotiation} = time;
+            my $renegcount = int(($Con{$fh}->{sslrenegotiations} + 1)/2);
+            d("SSL-renegotiation count: $renegcount - abs: $Con{$fh}->{sslrenegotiations} - in write");
             if (time - $Con{$fh}->{sslwantrw} > $SSLtimeout) {
                 my $lastcmd = "- last command was \'$Con{$fh}->{lastcmd}\'";
                 $lastcmd = '' unless $Con{$fh}->{lastcmd};
                 $werr .= " - $IO::Socket::SSL::SSL_ERROR";
-                mlog($fh,"info: can't write to SSL-Socket (renegotiation took too long) for at least $SSLtimeout seconds - close connection - $werr $lastcmd") if ($ConnectionLog);
+                mlog($fh,"info: can't write to SSL-Socket (renegotiation did take too long) for at least $SSLtimeout seconds - close connection - $werr $lastcmd") if ($ConnectionLog);
                 delete $Con{$fh}->{sslwantrw};
                 setSSLfailed(ITR($fh->peerhost()));
+                if ($Con{$fh}->{type} eq 'C') {
+                    $Con{$fh}->{oldfh} ? $Stats{smtpConnTLSIdleTimeout}++ : $Stats{smtpConnSSLIdleTimeout}++;
+                }
                 done2($fh);
                 return;
+            }
+            if ($Con{$fh}->{type} eq 'C' && $maxSSLRenegotiations && $renegcount > $maxSSLRenegotiations) {
+                my $ip = ITR($fh->peerhost());
+                my $lastcmd = "- last command was \'$Con{$fh}->{lastcmd}\'";
+                $lastcmd = '' unless $Con{$fh}->{lastcmd};
+                mlog($fh,"info: SSL DoS using consecutive renegotiations detected - connection exceeded maxSSLRenegotiations($maxSSLRenegotiations) - close connection and ban IP for 15-30 minutes (EmergencyBlock) $lastcmd");
+                pbAdd($fh,$ip,(max($PenaltyExtreme,150) + 5),'SSL-DoS',2,1);
+                delete $Con{$fh}->{sslwantrw};
+                setSSLfailed($ip);
+                $EmergencyBlock{$ip} = time;
+                $Stats{denyConnectionA}++;
+                done2($fh);
+                return;
+            }
+        } else {
+            if ($maxSSLRenegotiations && $maxSSLRenegDuration && exists($Con{$fh}->{lastsslrenegotiation}) && ($Con{$fh}->{lastsslrenegotiation} + $maxSSLRenegDuration) < time) {
+                delete $Con{$fh}->{sslrenegotiations};
+                delete $Con{$fh}->{lastsslrenegotiation};
+                mlog($fh,'info: SSL-renegotiation counter was reset') if $ConnectionLog > 1;
+                d('info: SSL-renegotiation counter was reset');
             }
         }
         delete $Con{$fh}->{sslwantrw} if $written;
@@ -20909,7 +20975,7 @@ sub done2 {
         if ($ip &&
             $ConnectionLog &&
             !(matchIP($ip,'noLog',0,1)) &&
-            (($Con{$fh}->{movedtossl} && "$fh" =~/SSL/io) or (!$Con{$fh}->{movedtossl})))
+            (($Con{$fh}->{movedtossl} && "$fh" =~/SSL/io) || (!$Con{$fh}->{movedtossl})))
         {
             $Con{$fh}->{writtenDataToFriend} -= 6;
             $Con{$fh}->{writtenDataToFriend} = 0 if $Con{$fh}->{writtenDataToFriend} < 0;
@@ -20935,7 +21001,7 @@ sub done2 {
         d("closing $what $fh $ip");
         # close it
         sockclose($fh) ||
-        (($ConnectionLog || $SessionLog) && mlog(0,"error: unable to close Socket $fh - $@ - $!"));
+        (($ConnectionLog > 1 || $SessionLog > 1) && mlog(0,"error: unable to close Socket $fh - $@ - $!"));
         $@ = $! = undef;
         
         d('delete the Connection data');
@@ -28532,6 +28598,7 @@ sub downloadHTTP {
     # Set useragent to ASSP version
     $ua->agent("ASSP/$version$modversion ($^O; Perl/$]; LWP::Simple/$LWP::VERSION)");
     $ua->timeout(20);
+    push @{ $ua->requests_redirectable }, 'POST';
 
     if ($proxyserver) {
         my $user = $proxyuser ? "http://$proxyuser:$proxypass\@": "http://";
@@ -35439,8 +35506,8 @@ sub pbAdd {
         $sr =~ s/\s*:.*$//os;
         $sr =~ s/^\s+//o;
 #        lock(%ScoreStats) if is_shared(%ScoreStats);
-        $ScoreStats{$sr}++;
-        $this->{scores}->{$sr} += $score[0];
+        $ScoreStats{$sr}++ if $sr;
+        $this->{scores}->{$sr} += $score[0] if $sr;
         if (exists $this->{rememberMessageScore} && $score[0] > 0) {
             unless ($this->{noprocessing} & 1) {
                 $this->{rememberMessageScore}->{noprocessing} += $score[0];
@@ -35457,7 +35524,7 @@ sub pbAdd {
         $sr =~ s/\s*:.*$//os;
         $sr =~ s/^\s+//o;
 #        lock(%ScoreStats) if is_shared(%ScoreStats);
-        $ScoreStats{$sr}++;
+        $ScoreStats{$sr}++ if $sr;
     }
 
     return if $this->{relayok};
@@ -45297,7 +45364,6 @@ sub Maillog {
          && (    $Con{$fh}->{mailloglength} > $Con{$fh}->{storecompletemail}
              || $Con{$fh}->{allDATAseen}
              || $Con{$fh}->{recreatelog}
-#             || ( $ccMaxBytes && $Con{$fh}->{mailloglength} > $MaxBytes + $Con{$fh}->{headerlength} )
             )
         )
     {
@@ -47997,7 +48063,7 @@ for (sort {lc($main::a) cmp lc($main::b)} qw(
  MaxDuplicateRcpt MaxErrors MessageOK MissingMX MissingMXA Msg-IDinvalid Msg-IDmissing Msg-IDnotvalid Msg-IDsuspicious
  MSGID-signature-failed NeedRecipient NoCountryNoOrg NoSpoofing penaltytrap PTRinvalid PTRmissing RelayAttempt SIZE
  SpamCollectAddress SPFerror SPFfail SPFfail-strict SPFneutral SPFneutral-strict SPFnone SPFnone-strict SPFpass
- SPFsoftfail SPFsoftfail-strict SRS_Not_Signed SSL-TLS-connection-OK SuspiciousVirus-ClamAV
+ SPFsoftfail SPFsoftfail-strict SRS_Not_Signed SSL-TLS-connection-OK SSL-DoS SuspiciousVirus-ClamAV
  SuspiciousVirus-FileScan TimeOut URIBLfailed URIBLneutral ValidHELO virus-ClamAV virus-FileScan WhiteSenderBase)
  )
 {
@@ -50427,10 +50493,10 @@ sub ConfigAnalyze {
                             $fm .= "<b><font color='orange'>&bull; attachment : $self->{exetype}</font></b><br />";
                         }
 
-#                        $ASSP_AFC::attZipre[0] =~ s/^(?:\(\?[^:]*:)+\\\.(?:\(\?[^:]*:)+//o;
-#                        $ASSP_AFC::attZipre[0] =~ s/[\)\$]+$//o;
-#                        $ASSP_AFC::attZipre[1] =~ s/^(?:\(\?[^:]*:)+\\\.(?:\(\?[^:]*:)+//o;
-#                        $ASSP_AFC::attZipre[1] =~ s/[\)\$]+$//o;
+                        $ASSP_AFC::attZipre[0] =~ s/^\\\.\(\?\://o;
+                        $ASSP_AFC::attZipre[0] =~ s/[\)\$]+$//o;
+                        $ASSP_AFC::attZipre[1] =~ s/^\\\.\(\?\://o;
+                        $ASSP_AFC::attZipre[1] =~ s/[\)\$]+$//o;
                         my $rcpt = [split(/ /o,$Con{$tmpfh}->{rcpt})]->[0];
                         if ($ASSP_AFC::attZipre[1]) {
                             $fm .= " <b><font color='blue'>&bull;</font></b> ZIP: $Con{$tmpfh}->{mailfrom} -&gt; $rcpt =&gt; <font color='blue'>block =&gt;</font> $ASSP_AFC::attZipre[1]<br />";
@@ -62630,7 +62696,7 @@ sub cleanCacheEmergencyBlock {
             mlog(0,"EmergencyBlock: lifted the EMERENCY blocking for IP $k") if $MaintenanceLog;
         }
     }
-    mlog(0,"EmergencyBlock: cleaning cache finished: IP\'s before=$ips_before, deleted=$ips_deleted") if  $MaintenanceLog && $ips_before > 0;
+    mlog(0,"EmergencyBlock: cleaning cache finished: IP\'s before=$ips_before, deleted=$ips_deleted") if $MaintenanceLog && $ips_before > 0;
     $noDBCache = $savenoDBCache;
 }
 
@@ -69305,6 +69371,7 @@ sub registerGlobalClient {
     my $ua = LWP::UserAgent->new();
     $ua->agent("ASSP/$version$modversion ($^O; Perl/$]; LWP::UserAgent/$LWP::VERSION)");
     $ua->timeout(20);
+    push @{ $ua->requests_redirectable }, 'POST';
 
     if ($proxyserver) {
        my $user = $proxyuser ? "http://$proxyuser:$proxypass\@": "http://";
@@ -69372,7 +69439,8 @@ sub sendGlobalFile {
     my $ua = LWP::UserAgent->new();
     $ua->agent("ASSP/$version$modversion ($^O; Perl/$]; LWP::UserAgent/$LWP::VERSION)");
     $ua->timeout(20);
-
+    push @{ $ua->requests_redirectable }, 'POST';
+    
     if ($proxyserver) {
        my $user = $proxyuser ? "http://$proxyuser:$proxypass\@": "http://";
        $ua->proxy( 'http', $user . $proxyserver );
@@ -69433,9 +69501,11 @@ _
         }
     }
     if ($res =~ /licdate\:(\d\d\d\d)(\d\d)(\d\d)\r?\n/io) {
-        $globalClientLicDate = "$3.$2.$1";
-        $Config{globalClientLicDate}=$globalClientLicDate;
-        $chgcfg = 1;
+        if ($globalClientLicDate ne "$3.$2.$1") {
+            $globalClientLicDate = "$3.$2.$1";
+            $Config{globalClientLicDate}=$globalClientLicDate;
+            $chgcfg = 1;
+        }
     }
     pos($res) = 0;
     while ($res =~ s/asspcmd\:([^\r\n]+)\r?\n//is) {

@@ -1,3 +1,38 @@
+2017-11-03
+fixed in assp 2.5.6 *Fortress* build 17307:
+
+- switching the effective and real UID on BSD based OS may have been failed
+
+- If ASSP was unable to accept a client socket connection, a retry may has caused a SEGV on some OS. The retry is now skipped.
+
+- The output of the used UserAttach ZIP: regular expression in the analyzer is now normalized.
+
+
+
+changed:
+
+- The default value of 'tlsValencePB' 'OK, Is a SSL/TLS connection, default=0 +' is changed from -10 to zero.
+
+- IP's with AUTH errors, faked AUTH-errors and SSL-renegotiation attacks are now reported to the Grip-list server
+
+- Notification emails are now showing the matched log-text and the used regular expression at the end of the email.
+
+
+added:
+
+- To prevent DoS attacks in SSL renegotiations the hidden configuration variable 'maxSSLRenegDuration' is added - the default value is 10 seconds.
+# the SSL/TLS renegotiation counter will be reset after this number of seconds without a renegotiation request and any regular data are sent or received
+our $maxSSLRenegDuration = 10;
+
+
+'maxSSLRenegotiations','Maximum Allowed SMTP SSL Client-Initiated-Renegotiations'
+ 'Maxumum count of allowed SSL/TLS client initiated renegotiations to prevent DoS.
+ If this count is exceeded in a connection within 10 seconds, the connection is terminated, the connected IP is registered in banFailedSSLIP and new connections
+ from this IP address are rejected for 15-30 minutes. An IP-Score of PenaltyExtreme but at least 150 is used for the IP address.
+ Zero disables this feature - default is : 2 attempts.'
+
+
+
 2017-10-24
 fixed in assp 2.5.6 *Fortress* build 17297:
 
