@@ -193,7 +193,7 @@ our $shamod;
 #
 sub setVersion {
 $version = '2.5.6';
-$build   = '17307';        # 03.11.2017 TE
+$build   = '17310';        # 06.11.2017 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -571,7 +571,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '4A5C0E54FA2155395B4C89955BE83757F4AF3CB2'; }
+sub __cs { $codeSignature = 'F998E330F6329FA93D6F03ACFD0A838EBE618E09'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -4292,7 +4292,7 @@ For example: mysql/dbimport<br />
   If this value is set to \'download and install\', ASSP will try an autoupdate of the new available modules. It is possible, that some modules could not be installed, because the XS module parts are still in use. In this case follow the instruction - click the "new available perl modules" button above. To disable the automatic Perl module update - set "noModuleAutoUpdate" below.<br />
   Click this button to see the log file for the updated modules&nbsp;&nbsp;<input type="button" value="module upgrade log" onclick="javascript:popFileEditor(\'notes/upgraded_Perl_Modules.log\',1);" /><br />
   The perl module <a href="http://search.cpan.org/dist/Compress-Zlib/" rel="external">Compress::Zlib</a> is required to use this feature.',undef,undef,'msg008810','msg008811'],
-['noModuleAutoUpdate','No Automatic Perl Module update','0:no skip - update all|1:skip all|2:skip installed but not used by assp',\&listbox,'0','(.*)',undef,'If set, ASSP will skip the automatic Perl module update for the selected.<br />
+['noModuleAutoUpdate','No Automatic Perl Module update','0:no skip - update all|1:skip all|2:skip installed but not used by assp',\&listbox,'2','(.*)',undef,'If set, ASSP will skip the automatic Perl module update for the selected. Default is: skip installed but not used by assp<br />
   On NIX systems this value is ignored, if runAsUser is used! The automatic perl module upgrade is only done, if assp is running as OS user \'root\'.',undef,undef,'msg007900','msg007901'],
 ['AutoRestartCmd','OS-shell command for AutoRestart',100,\&textinput,'','(.*)',undef,'The OS level shell-command that is used to autorestart ASSP, if it runs not as a windows service! A possible value for your system is:<br />
  <font color=blue>'.$dftrestartcmd.'</font><br />
@@ -18419,11 +18419,13 @@ sub NewSMTPConnection {
 
     my $bip = &ipNetwork( $ip, $PenaltyUseNetblocks);
 
+    my ( $ct, $ut, $freq, $pbval, $sip, $reason );
     if (   $DelayIP
         && $DelayIPTime
   		&& $doIPcheck
     	&& ! $allTestMode
-    	&& (my $pbval = [split(/\s+/o,$PBBlack{$bip})]->[3]) > $DelayIP
+        && ( ( $ct, $ut, $freq, $pbval, $sip, $reason ) = split( / /o, $PBBlack{$bip} ) )
+        && $pbval > $DelayIP
     	&& ( ! $DelayIPPB{$bip} || ($DelayIPPB{$bip} + $DelayIPTime > time))
         && $ip !~ /$IPprivate/o
         && ! exists $PBWhite{$bip}
@@ -18431,11 +18433,12 @@ sub NewSMTPConnection {
     {
         $DelayIPPB{$bip} = time unless $DelayIPPB{$bip};
         $Stats{delayConnection}++;
+        $ScoreStats{'GLOBALPB-Black'}++ if ($reason =~ /GLOBALPB/o);
         $Con{$client}->{type} = 'C';
         &NoLoopSyswrite($client,"451 4.7.1 Please try again later\r\n",0);
         $Con{$client}->{error} = '5';
         done($client);
-        mlog(0,"delayed ip $ip, because PBBlack($pbval) is higher than DelayIP($DelayIP)- last penalty reason was: " . [split(/\s+/o,$PBBlack{$bip})]->[5] , 1) if $ConnectionLog >= 2 || $SessionLog;
+        mlog(0,"delayed ip $ip, because PBBlack($pbval) is higher than DelayIP($DelayIP)- last penalty reason was: $reason", 1) if $ConnectionLog >= 2 || $SessionLog;
         return;
     } elsif (   $DelayIP
              && $DelayIPTime
@@ -34301,6 +34304,7 @@ sub PBOK_Run {
     my($ct,$ut,$level,$totalscore,$sip,$reason)=split(/\s+/o,$PBBlack{$ip});
     $this->{messagereason}="totalscore for $myip is $totalscore, last bad penalty was '$reason'";
     return 1 if $totalscore<$PenaltyLimit;
+    $ScoreStats{'GLOBALPB-Black'}++ if ($reason =~ /GLOBALPB/o);
     $this->{prepend}='[PenaltyBox]';
 
     if ($DoPenalty == 2 || $DoPenalty == 3) {
@@ -34391,8 +34395,9 @@ sub PBExtremeOK {
 
     my $tlit = tlit($main::DoPenaltyExtreme);
 
-    my ( $ct, $ut, $level, $totalscore, $sip, $reason, $counter ) =
+    my ( $ct, $ut, $level, $totalscore, $sip, $reason ) =
       split( ' ', $PBBlack{&ipNetwork( $myip, $PenaltyUseNetblocks )} );
+    $ScoreStats{'GLOBALPB-Black'}++ if ($reason =~ /GLOBALPB/o);
     if ( $totalscore >= $PenaltyLimit && $totalscore < $PenaltyExtreme ) {
         $this->{messagereason} = "Bad IP History ($myip)";
         pbAdd( $fh, $myip, 'pbValencePB', 'BadHistory', 1 );
@@ -35585,8 +35590,10 @@ sub pbBlackAdd {
 
         $freq++;
         my $text;
-        $text = " to GLOBALPB entry ($oldscore)"
-          if $PenaltyLog >= 2 && $sreason =~ /^GLOBALPB/o;
+        if ($sreason =~ /^GLOBALPB/o) {
+            $text = " to GLOBALPB entry ($oldscore)" if $PenaltyLog >= 2;
+            $ScoreStats{'GLOBALPB-Black'}++;
+        }
         $sreason = $reason if $score > 0;
         my $data = "$ct $t $freq $newscore $myip $sreason";
         $PBBlack{$myip} = $data;
@@ -45305,7 +45312,7 @@ sub Maillog {
    } # end if defined parm
 
     if (! $Con{$fh}->{storecompletemail} ) {
-        $Con{$fh}->{storecompletemail} = $StoreCompleteMail;
+        $Con{$fh}->{storecompletemail} = max($StoreCompleteMail,($MaxBytes + $Con{$fh}->{headerlength}));
         $Con{$fh}->{storecompletemail} = 999999999 if !$StoreCompleteMail && $Con{$fh}->{alllog};
         $Con{$fh}->{storecompletemail} = 999999999 if $ccSpamAlways && allSL( $Con{$fh}->{rcpt}, $Con{$fh}->{mailfrom}, 'ccSpamAlways' );
         d("Maillog - set storecompletemail to $Con{$fh}->{storecompletemail}");
@@ -45313,7 +45320,7 @@ sub Maillog {
 
     if (my $h = $Con{$fh}->{maillogfh}) {
         if (! $Con{$fh}->{spambuf}) {
-            my $written = $h->syswrite($text,min(length($text),max($Con{$fh}->{storecompletemail},$MaxBytes)));
+            my $written = $h->syswrite($text,min(length($text),$Con{$fh}->{storecompletemail}));
             $Con{$fh}->{mailloglength} = $Con{$fh}->{spambuf} = ($written || 0);
             $Con{$fh}->{maillogbuf} = $text;
         } else {
@@ -48058,7 +48065,7 @@ for (sort {lc($main::a) cmp lc($main::b)} qw(
  ASSP_AFC ASSP_DCC ASSP_OCR ASSP_Razor ASSP_FakeMX AUTHErrors Backscatter-failed BadAttachment BadHistory BATV-check-failed Bayesian Bayesian-HAM
  BlacklistedDomain BlacklistedHelo BlackOrg BlockedCountry BombBlack BombCharSets BombData BombHeaderRe bombRe BombScript
  BombSenderHelo BombSenderIP BombSenderMailFrom BombSubjectRe bombSuspiciousRe CountryCode DKIMfailed DKIMpass DMARC-failed DNSBLfailed
- DNSBLneutral EarlyTalker ExtremeHistory ForgedHELO From-missing griplist HMM HMM-HAM HomeCountry internaladdress InvalidAddress
+ DNSBLneutral EarlyTalker ExtremeHistory ForgedHELO From-missing GLOBALPB-Black griplist HMM HMM-HAM HomeCountry internaladdress InvalidAddress
  InvalidHELO InvalidLocalSender InWhiteBox IPfrequency IPinHELO IPinHELOmismatch KnownGoodHelo LimitingIP LimitingIPDomain LimitingSameSubject
  MaxDuplicateRcpt MaxErrors MessageOK MissingMX MissingMXA Msg-IDinvalid Msg-IDmissing Msg-IDnotvalid Msg-IDsuspicious
  MSGID-signature-failed NeedRecipient NoCountryNoOrg NoSpoofing penaltytrap PTRinvalid PTRmissing RelayAttempt SIZE
