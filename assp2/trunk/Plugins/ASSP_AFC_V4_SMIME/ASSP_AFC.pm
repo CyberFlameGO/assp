@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 4.70 2017/10/19 12:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 4.71 2017/11/10 18:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -199,7 +199,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.70 2017/10/19 12:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.71 2017/11/10 18:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(17292)';
 our $MINASSPVER = '2.5.5'.$MINBUILD;
 our $plScan = 0;
@@ -897,6 +897,11 @@ sub process {
                 mlog($fh,"info: digital signature file $filename found, without related Content-Type definition 'multipart/signed'") if $main::AttachmentLog >= 2;
                 $this->{signed} = 1;
             }
+
+            if ($filename && defined &main::attachmentExtension && &main::isAttachment($part) ) {
+                ($ext, $filename) = &main::attachmentExtension($fh, $filename, $part);
+            }
+            
             my $orgname = $filename;
 
             my ($imghash,$imgprob);
