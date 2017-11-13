@@ -193,7 +193,7 @@ our $shamod;
 #
 sub setVersion {
 $version = '2.5.6';
-$build   = '17310';        # 06.11.2017 TE
+$build   = '17317';        # 13.11.2017 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -444,6 +444,7 @@ our $noRelayNotSpamTag = 1;              # (0/1) do per default the NOTSPAMTAG f
 our $DKIMpassAction = 7;                 # (0..7) if DKIM pass: bit-0 = set rwlok to 1 (medium trust status), bit-1 = skip penaltybox-check, bit-2 = set IP-score to zero - default is 7 (all bits set)
 our $removePersBlackOnAutoWhite = 1;     # (0/1) remove the PersBlack entry for autowhite addresses in outgoing mails
 our $resetIntCacheAtStartup = 1;         # (0/1) reset internal Caches at startup - default is 1 (YES)
+our $BackDNSTTL = 72;                    # (number > 0) time in hours after downloaded BackDNS entries will expire - default is 72 (3 days)
 
 our $checkCRLF = 1;                      # (0/1) check line terminator mistakes (single [CR] or [LF]) in SMTP-commands of incoming mails (correction is done every time) - default = 1
 our $CCignore8BitMIME = 0;               # (0/1) CCham, ForwardSpam and resend will ignore a missing 8BITMIME extension
@@ -571,7 +572,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'F998E330F6329FA93D6F03ACFD0A838EBE618E09'; }
+sub __cs { $codeSignature = '0C7E10A969715143D564568184D29A4F92F24838'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -14006,7 +14007,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.70;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.71;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.05;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -17809,6 +17810,14 @@ sub mlog {
         threads->yield();
     }
 
+    if ($CanUseCorrectASSPcfg && defined &CorrectASSPcfg::custom_mlog) {
+        if (@m) {
+            &CorrectASSPcfg::custom_mlog($fh,$_) for (@m);
+        } else {
+            &CorrectASSPcfg::custom_mlog($fh,$m);
+        }
+    }
+    
     return 1 if($noLogLineRe && $m =~ /$noLogLineReRE/);
 
     if ($this) {
@@ -17828,7 +17837,7 @@ sub mlog {
     
     threads->yield();
     if (@m) {
-        $mlogQueue{$WorkerNumber}->enqueue(Time::HiRes::time.' '.$_) for @m;
+        $mlogQueue{$WorkerNumber}->enqueue(Time::HiRes::time.' '.$_) for (@m);
     } else {
         $mlogQueue{$WorkerNumber}->enqueue(Time::HiRes::time.' '.$m);
     }
@@ -35082,6 +35091,7 @@ sub CheckAttachments {
                       || attrHeader($part,'Content-Disposition','name');
             if ($name && isAttachment($part) ) {
                 mlog($fh,"info: attachment $name found for Level-$block") if ($AttachmentLog >= 2);
+                (my $ext, $name) = attachmentExtension($fh, $name ,$part);
                 push(@name,$name);
             }
             if (! $this->{signed} && $part->header("Content-Type") =~ /application\/(?:(?:pgp|(?:x-)?pkcs7)-signature|pkcs7-mime)/io) {
@@ -35170,6 +35180,44 @@ sub CheckAttachments {
         }
     }
     return 1;
+}
+
+# extract the filename extension from the filename
+# otherwise try to detect the Content-Type, get the possible extensions for this
+# use the first found extension and set the filename accordingly
+sub attachmentExtension {
+    my ($fh, $filename, $part) = @_;
+    return unless $filename;
+    my $ext;
+    $ext = $filename =~ /(\.[^\.]+)$/o ? $1 : '';
+    if (! $ext) {
+        mlog($fh,"info: found attachment '$filename' without a filename extension") if $AttachmentLog >= 2;
+        $ext = undef;
+        if ($part->header('Content-Type') =~ /\s*(([^\/]+)\/([^\/; ]+))/oi) {
+            my ($ct,$hightype,$lowtype) = ($1,$2,$3);
+            mlog($fh,"info: Content-Type '$ct' detected for attachment '$filename'") if $AttachmentLog >= 2;
+            if ($CanUseMTY && lc($ct) ne 'application/octetstream' ) {
+                if (my $ty = eval{MIME::Types->new()->type($ct);}) {
+                    my @ext = map {my $t = '.'.$_;$t;} eval{$ty->extensions;};
+                    if (@ext) {
+                        $ext = (grep { ('.'.lc($lowtype)) eq lc($_) } @ext) ? '.'.lc($lowtype) : $ext[0];
+                        $filename =~ s/\.+$//o;
+                        $filename .= $ext;
+                        mlog($fh,"info: normalized attachment filename to '$filename'") if $AttachmentLog >= 2;
+                    } else {
+                        mlog($fh,"info: unable to find a valid filename extension for Content-Type '$ct' in MIME::Types") if $AttachmentLog >= 2;
+                    }
+                } else {
+                    mlog($fh,"warning: MIME::Types is unable to find Content-Type '$ct' for attachment '$filename'") if $AttachmentLog >= 2;
+                }
+            } elsif (! $CanUseMTY) {
+                mlog($fh,"warning: can't determine filename extension for Content-Type '$ct' / attachment '$filename' - missing Perl module MIME::Types");
+            } else {
+                mlog($fh,"info: unable to determine filename extension for attachment '$filename', Content-Type is '$ct'") if $AttachmentLog >= 2;
+            }
+        }
+    }
+    return wantarray ? ($ext, $filename) : $ext;
 }
 
 sub makeMyheader {
@@ -44148,7 +44196,7 @@ sub mergeBackDNS {
     my $tc = 0;
     my $records = 0;
     my %tempbackdns;
-    my $time = (time + 3600 * 30 - $BackDNSInterval * 3600 * 24)  . ' 1';
+    my $time = (time + 3600 * $BackDNSTTL - $BackDNSInterval * 3600 * 24)  . ' 1';
     (open $f,'<' ,"$file") or return 0;
     binmode $f;
     while (my $line = (<$f>)) {
@@ -50469,6 +50517,7 @@ sub ConfigAnalyze {
                               || attrHeader($part,'Content-Disposition','filename')
                               || attrHeader($part,'Content-Type','name')
                               || attrHeader($part,'Content-Disposition','name');
+                (my $ext, $filename) = attachmentExtension(0, $filename ,$part) if ($filename && isAttachment($part) );
                 my $orgname = $filename;
 
                 my $self;
