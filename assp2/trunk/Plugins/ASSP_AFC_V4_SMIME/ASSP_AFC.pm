@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 4.71 2017/11/10 18:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 4.72 2017/11/18 10:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -199,7 +199,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.71 2017/11/10 18:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.72 2017/11/18 10:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(17292)';
 our $MINASSPVER = '2.5.5'.$MINBUILD;
 our $plScan = 0;
@@ -1076,7 +1076,7 @@ sub process {
                     $modified = 2;
                     my $text = $self->{rvtext};
                     $text =~ s/FILENAME/$orgname/g;
-                    $text =~ s/VIRUS/$this->{averror}/g;
+                    $text =~ s/VIRUS/$this->{messagereason}/g;
                     eval{
                         $text = Encode::encode('UTF-8',$text);
                         $text = $main::UTF8BOM . $text;
@@ -1105,7 +1105,7 @@ sub process {
                             $part->name_set( undef );
                         };
                     }
-                    mlog( $fh, "$this->{averror} - replaced attachment '$oldname' with '$attname'" ) if ($main::AttachmentLog);
+                    mlog( $fh, "$this->{messagereason} - replaced attachment '$oldname' with '$attname'" ) if ($main::AttachmentLog);
                     $badimage-- if $foundBadImage;
                     next;
                 }
@@ -1127,7 +1127,7 @@ sub process {
                 my $text = $self->{rvtext};
                 $text =~ s/FILENAME/MIME-TEXT.eml/g;
                 eval{$part->body_set( $text );1;} or eval{$part->body_set( $self->{rvtext} );1;} or eval{$part->body_set( 'virus removed' );1;} or eval{$part->body_set( undef );1;};
-                mlog( $fh,"$this->{averror} - replaced virus-mail-part with simple text");
+                mlog( $fh,"$this->{messagereason} - replaced virus-mail-part with simple text");
                 $badimage-- if $foundBadImage;
                 next;
             }
@@ -1215,7 +1215,7 @@ sub process {
         my $logsub =
         ( $main::subjectLogging ? " $main::subjectStart$this->{originalsubject}$main::subjectEnd" : '' );
         mlog( $fh, "file path changed to $fn", 0, 2 ) if $fn;
-        my $reason =  ($modified == 2) ? $this->{averror} : $this->{attachcomment};
+        my $reason =  ($modified == 2) ? $this->{messagereason} : $this->{attachcomment};
         mlog( $fh, "[spam found] $reason $logsub$fn", 0, 2 );
         $this->{sayMessageOK} = 'already';
 
