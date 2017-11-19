@@ -10,7 +10,7 @@
            * Auxiliary Support and Service Proxy for SMTP *
            ************************************************
 
-          (c) Thomas Eckardt 2008 under the terms of the GPL
+          (c) Thomas Eckardt since 2008 under the terms of the GPL
 
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -193,7 +193,7 @@ our $shamod;
 #
 sub setVersion {
 $version = '2.5.6';
-$build   = '17317';        # 13.11.2017 TE
+$build   = '17323';        # 19.11.2017 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -572,7 +572,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '0C7E10A969715143D564568184D29A4F92F24838'; }
+sub __cs { $codeSignature = 'A5247A5CA17BF20E2B0A4754A10F0105A9481421'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -3234,9 +3234,9 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['ScanNP','Scan No Processing Senders',0,\&checkbox,'','(.*)',undef,'',undef,undef,'msg004240','msg004241'],
 ['ScanLocal','Scan Local Senders',0,\&checkbox,'','(.*)',undef,'',undef,undef,'msg004250','msg004251'],
 ['ScanCC','Scan Copied Spam and Forwarded Ham Mails',0,\&checkbox,'','(.*)',undef,'',undef,undef,'msg004260','msg004261'],
-['AvError','Reply Code to Refuse Infected Messages',80,\&textinput,'554 5.7.1 Mail appears infected with \[$infection\].','([25]\d\d .*)',undef,
+['AvError','Reply Code to Refuse Infected Messages',80,\&textinput,'554 5.7.1 Mail appears infected with [$infection].','([25]\d\d .*)',undef,
  'Reply code to refuse infected messages. The string $infection is replaced with the name of the detected virus.<br />
- For example: 554 5.7.1 Mail appears infected with \[$infection\] -- disinfect and resend.',undef,undef,'msg004270','msg004271'],
+ For example: 554 5.7.1 Mail appears infected with [$infection] -- disinfect and resend.',undef,undef,'msg004270','msg004271'],
 ['EmailVirusReportsTo','Send Virus Report To These Addresses',80,\&textinput,'','((?:(?:IN:|OUT:)?'.$EmailAdrRe.'\@'.$EmailDomainRe.')(?:\|(?:IN:|OUT:)?'.$EmailAdrRe.'\@'.$EmailDomainRe.')*|)',undef,
  'If set, an email containing the Message ID, Remote IP, Message Subject, Sender email address, Recipient email address, and the virus detected will be sent to these addresses. For example: admin@domain.com .<br />
  It is possible to define multiple addresses separated by pipe (|) e.g: admin@domain.com|virusalert@domain.com .<br />
@@ -4769,7 +4769,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
 ['SSLtimeout','SSL Timeout (0-999)',4,\&textinput,5,'(\d{1,3})',undef,
  'SSL/TLS negotiation will timeout after this many seconds. default is : 5 seconds.',undef,undef,'msg008280','msg008281'],
 ['maxSSLRenegotiations','Maximum Allowed SMTP SSL Client-Initiated-Renegotiations',4,\&textinput,2,'(\d+)',undef,
- 'Maxumum count of allowed SSL/TLS client initiated renegotiations to prevent DoS.<br />
+ 'Maximum count of allowed SSL/TLS client initiated renegotiations to prevent DoS.<br />
  If this count is exceeded in a connection within 10 seconds, the connection is terminated, the connected IP is registered in banFailedSSLIP and new connections from this IP address are rejected for 15-30 minutes. An IP-Score of PenaltyExtreme but at least 150 is used for the IP address. Zero disables this feature - default is : 2 attempts.',undef,undef,'msg010620','msg010621'],
 ['SSLDEBUG','Debug Level for SSL/TLS','0:no Debug|1:level 1|2:level 2|3:level 3',\&listbox,0,'(\d*)',undef,'Set the debug-level for SSL/TLS. Than higher the level, than more information are written to STDOUT!',undef,undef,'msg008290','msg008291'],
 
@@ -11803,6 +11803,7 @@ $JavaScript .= '</script>';
  $headerHTTP = 'HTTP/1.1 200 OK
 Content-type: text/html
 Cache-control: no-cache
+x-xss-protection: 0
 ';
  $headerDTDStrict = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
@@ -20487,6 +20488,7 @@ sub WebTraffic {
             $haswritten = &NoLoopSyswrite($fh, <<"EOT" ,$WebTrafficTimeout);
 HTTP/1.1 200 OK
 Content-type: text/html
+x-xss-protection: 0
 
 <html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">
 <head></head>
@@ -45947,8 +45949,10 @@ sub FileScanOK_Run {
     my $cmd;
     my $res;
     my $virusname;
-    my $lb = length($$bd);
     $this->{filescandone} = 1;
+
+    my $lb = length($$bd);
+    return 1 unless $lb;
 
     if (! $this->{scanfile} && $NoScanRe && $$bd=~/($NoScanReRE)/) {
         mlogRe(($1||$2),'NoScanRe','novirusscan');
@@ -45962,18 +45966,40 @@ sub FileScanOK_Run {
     $mtype = "file $this->{scanfile}" if $this->{scanfile};
 
     my $file = $FileScanDir . "/a.$WorkerNumber." . int(rand(100000)) . "$maillogExt";
+    d("FileScan - scan file - $file");
     mlog($fh,"diagnostic: FileScan will scan file - $file") if $ScanLog == 3;
     my $SF;
-    eval {
-        open $SF,'>' ,"$file";
-        binmode $SF;
-        print $SF substr($$bd,0,$lb);
-        $SF->close if $SF;
-    };
+    my $written;
+
+    {
+        local $SIG{ALRM} = sub { die "__alarm__\n"; };
+        alarm(2);
+        eval {
+            d("FileScan - try to open $file");
+            open($SF,'>' ,"$file");
+            $SF->binmode;
+            $SF->blocking(0);
+            flock($SF,6);
+            d("FileScan - exlusive flocked and try to write $file - $lb bytes");
+            $written = $SF->syswrite($$bd,$lb);
+            d("FileScan - written $file - $lb bytes");
+            d("FileScan - try to close $file");
+            $SF->close;
+            d("FileScan - try to unflock $file");
+            flock($SF,8);
+            d("FileScan - finished $file");
+        };
+        alarm(0);
+        $written = 0 if ($@);
+    }
     my $wait;
-    $wait = $1 if ($FileScanCMD =~ /^\s*NORUN\s*\-\s*(\d+)/io);
+    if ($FileScanCMD =~ /^\s*NORUN\s*\-\s*(\d+)/io) {
+        $wait = $1 || 0;
+        mlog(0,"info: FileScan will now wait $wait ms for the online filesystem virus scanner analysis of file $file") if $ScanLog > 1;
+    }
     $ThreadIdleTime{$WorkerNumber} += (Time::HiRes::sleep($wait / 1000)) / 1000 if $wait;
-    if (-r $file) {
+    d("FileScan - read check of file $file");
+    if ($written && open($SF,'<' ,"$file") && $SF->sysread(my $buff,$written) > 0 && $SF->close) {
         if ($FileScanCMD !~ /^\s*NORUN/io) {
             my $runfile = $file;
             my $rundir = $FileScanDir;
@@ -46274,6 +46300,9 @@ sub ClamScanOK_Run {
     $fh = 0 if $fh =~ /^\d+$/o;
     $this->{clamscandone} = 1 ;
 
+    my $lb = length($$bd);
+    return 1 unless $lb;
+    
     if (! $this->{scanfile} && $NoScanRe && $$bd=~/($NoScanReRE)/) {
         mlogRe(($1||$2),'NoScanRe','novirusscan');
         return 1;
@@ -46285,7 +46314,6 @@ sub ClamScanOK_Run {
     $mtype = "local message"         if $this->{relayok};
     $mtype = "file $this->{scanfile}" if $this->{scanfile};
 
-    my $lb = length($$bd);
     my $timeout = $ClamAVtimeout;
     my ( $code, $virus, $host, $port );
 
@@ -48633,6 +48661,7 @@ sub ConfigStatsXml {
 HTTP/1.1 200 OK
 Content-type: text/xml
 Cache-control: no-cache
+x-xss-protection: 0
 
 <?xml version='1.0' encoding='UTF-8' standalone='yes'?>
 <stats>
@@ -48712,6 +48741,7 @@ sub ConfigStatsPlot {
 
     my $out = "HTTP/1.1 200 OK
 Content-type: text/html
+x-xss-protection: 0
 
 ";
     $out .= '<?xml version="1.0" encoding="UTF-8" standalone="no"?>'."\n";
@@ -48833,6 +48863,7 @@ Content-type: text/html
 
     $out .= "HTTP/1.1 200 OK
 Content-type: text/html
+x-xss-protection: 0
 
 ";
     $out .= '<?xml version="1.0" encoding="UTF-8" standalone="no"?>'."\n";
@@ -48885,6 +48916,7 @@ sub ConfigConfidencePlot {
     $qs = $$qsref if $qsref;
     my $out = "HTTP/1.1 200 OK
 Content-type: text/html
+x-xss-protection: 0
 
 ";
     $out .= '<?xml version="1.0" encoding="UTF-8" standalone="no"?>'."\n";
@@ -49024,6 +49056,7 @@ Content-type: text/html
 
     $out .= "HTTP/1.1 200 OK
 Content-type: text/html
+x-xss-protection: 0
 
 ";
     $out .= '<?xml version="1.0" encoding="UTF-8" standalone="no"?>'."\n";
@@ -62749,7 +62782,7 @@ sub cleanCacheEmergencyBlock {
         if ($EmergencyBlock{$k} <= $t) {
             delete $EmergencyBlock{$k};
             $ips_deleted++;
-            mlog(0,"EmergencyBlock: lifted the EMERENCY blocking for IP $k") if $MaintenanceLog;
+            mlog(0,"EmergencyBlock: lifted the EMERGENCY blocking for IP $k") if $MaintenanceLog;
         }
     }
     mlog(0,"EmergencyBlock: cleaning cache finished: IP\'s before=$ips_before, deleted=$ips_deleted") if $MaintenanceLog && $ips_before > 0;
@@ -65490,6 +65523,7 @@ EOT
 
          $s = "HTTP/1.1 200 OK
 Content-type: text/html
+x-xss-protection: 0
 
 <html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">
 <head><meta http-equiv=\"Refresh\" content=\"1; URL=./adminusers\">
