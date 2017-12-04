@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 4.73 2017/11/27 18:30:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 4.74 2017/12/01 10:30:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -199,7 +199,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.73 2017/11/27 18:30:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.74 2017/12/01 10:30:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(17292)';
 our $MINASSPVER = '2.5.5'.$MINBUILD;
 our $plScan = 0;
@@ -352,7 +352,8 @@ sub get_config {
  :CERTPDF - certificate signed adobe PDF file<br />
  :JSPDF - adobe PDF file with JavaScript inside - notice: well known malicious JavaScript combinations will be blocked, even this option is defined<br />
  :URIPDF - adobe PDF file with URIs to download exeutables from the web or to open local files<br />
- :MSOM - Microsoft Office Macros and MS Compound File Binary (OLE)<br /><br />
+ :MSOLE - Microsoft Office Compound File Binary (OLE)<br />
+ :MSOM - Microsoft Office Macros<br /><br />
  The following compression formats are supported by the common perl module Archive::Extract: tar.gz,tgz,gz,tar,zip,jar,ear,war,par,tbz,tbz2,tar.bz,tar.bz2,bz2,Z,lzma,txz,tar.xz,xz.<br />
  The detection of compressed files is done content based not filename extension based. The perl modules File::Type and MIME::Types are required in every case!<br />
  Depending on your Perl distribution, it could be possible that you must install additionally \'IO::Compress::...\' (for example: IO::Compress:Lzma) modules to support the compression methodes with Archive::Extract.<br />
@@ -1494,7 +1495,7 @@ sub CheckAttachments {
 sub setSkipExe {
     my ($self,$what,$where) = @_;
     
-    for my $re (qw(WIN MOS PEF ELF WSH MMC ARC CSC MSOM PDF CERTPDF JSPDF URIPDF)) {
+    for my $re (qw(WIN MOS PEF ELF WSH MMC ARC CSC MSOM MSOLE PDF CERTPDF JSPDF URIPDF)) {
         $self->{$where} .= ":$re" if $self->{$what}->('.:'.$re);
     }
     if (ref($SkipExeTags) eq 'ARRAY') {
@@ -1607,7 +1608,7 @@ sub isAnEXE {
 #
 # Microsoft Compound File Binary File Format, Version 3 and 4
 #
-    } elsif ($sk !~ /:MSOM/oi && $buff =~ /^(?:\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1|\x0e\x11\xfc\x0d\xd0\xcf\x11\x0e)/o) {
+    } elsif ($sk !~ /:MSOLE/oi && $buff =~ /^(?:\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1|\x0e\x11\xfc\x0d\xd0\xcf\x11\x0e)/o) {
         $type = 'MS Compound File Binary';
 #
 # various scripts (perl, sh, java, etc...)
