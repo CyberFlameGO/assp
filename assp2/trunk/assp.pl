@@ -156,8 +156,8 @@ use MIME::Base64();
 use MIME::QuotedPrint();
 use Storable();
 
-STDOUT->autoflush;
-STDERR->autoflush;
+STDOUT->autoflush(1);
+STDERR->autoflush(1);
 $SIG{ALRM} = sub {};
 
 our $MAINVERSION;
@@ -189,11 +189,14 @@ our $islendian = (unpack("h*", pack("s", 1)) =~ /^1/) ;
 our ($SAVEOUT, $SAVEERR);
 our $lockOUT:shared;
 our $shamod;
+our %Con; keys %Con = 64;
+our %StatConH;
+our %WebConH;
 
 #
 sub setVersion {
 $version = '2.5.6';
-$build   = '17323';        # 19.11.2017 TE
+$build   = '17338';        # 04.12.2017 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -252,18 +255,6 @@ sub disableUnicode {
     $unicodeName = sub { $_[0];};
 }
 BEGIN { disableUnicode(); }
-
-sub sockclose {
-    my $socket = shift;
-    $@ = $! = undef;
-    return 1 unless ref($socket);
-    return 1 if eval {$socket->close;};
-    return 1 if eval {close($socket);};
-    if ("$socket" =~ /SSL/io) {
-        return eval{IO::Socket::SSL::kill_socket($socket);};
-    }
-    return 0;
-}
 
 our $utf8on =  sub { Encode::_utf8_on( ${$_[0]} );};
 # alternative  our $utf8on =  sub { utf8::upgrade(${$_[0]});return;};
@@ -359,6 +350,8 @@ our $Gid;
 our $Sgids;
 our $DNSCheckInterval:shared = 60;
 our $DNSErrorCheckInterval:shared = 5;
+our %SSLServerContext;
+our %SSLServerContextList;
 #our %startupMem:shared;
 
 
@@ -431,6 +424,7 @@ our $BlockReportAdminPassword = {};      # the password must be anywhere startin
 our $enableBRtoggleButton = 1;           # (0/1) show the "toggle view" button in HTML BlockReports
 
 # some more
+our $enablePermanentSSLContext = 1;      # (0/1) enable usage of permanent SSL Context - maxunused = 1 hour, max lifetime = 1 day (default = 1)
 our $SPF_max_dns_interactive_terms = 15; # (number > 0) max_dns_interactive_terms max number of SPF-mechanism per domain (defaults to 10)
 our $SPF_max_allowed_IP = 0;             # maximum allowed IP (v4 and v6) adrresses in a SPF-record - default is 0 (disabled) - 2**17 seems to be OK
 our $disableEarlyTalker = 0;             # (0/1) disable the EarlyTalker check
@@ -572,7 +566,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'A5247A5CA17BF20E2B0A4754A10F0105A9481421'; }
+sub __cs { $codeSignature = '601188E5A319EF6B0998B522C9A18209CD23BF91'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -598,6 +592,8 @@ our $SSL_read_ahead_max_time = 50;     # time in milliseconds used for read ahea
 
 # the SSL/TLS renegotiation counter will be reset after this number of seconds without a renegotiation request and any regular data are sent or received
 our $maxSSLRenegDuration = 10;
+our $SSLContextMaxAge = 24 * 3600;
+our $SSLContextMaxUnused = 3600;
 
 our $tlds_alpha_URL = 'http://data.iana.org/TLD/tlds-alpha-by-domain.txt';
 our $tlds2_URL = 'http://george.surbl.org/two-level-tlds';
@@ -625,6 +621,38 @@ our $RegexGroupingOnly = 1;
 
 # enables fast import of GPB in case RDBM is used
 our $GPBFastImport = 1;
+
+sub sockclose {
+    my $socket = shift;
+    my %closeparms;
+    $@ = $! = undef;
+
+    return 1 unless ref($socket);
+
+    # destroy the SMTP SSL context on close if requested or required
+    # otherwise we keep the existing SSL context
+    if ("$socket" =~ /SSL/io) {
+        if ($enablePermanentSSLContext) {
+            %closeparms = ('SSL_ctx_free' => 1) if (${*$socket}{_SSL_arguments}->{SSL_ctx_free});
+        } else {
+            %closeparms = ('SSL_ctx_free' => 1) if (${*$socket}{_SSL_arguments}->{SSL_ctx_free});
+            %closeparms = ('SSL_ctx_free' => 1) if (exists $Con{$socket} && $Con{$socket}->{type} eq 'S');
+            %closeparms = ('SSL_ctx_free' => 1) if (! exists $Con{$socket} && ! exists $WebConH{$socket} && ! exists $StatConH{$socket});
+        }
+    }
+
+    if ($closeparms{'SSL_ctx_free'} && (my $ctx = ${*$socket}{'_SSL_ctx'})) {
+        delete $SSLServerContext{$SSLServerContextList{$ctx}};
+        delete $SSLServerContextList{$ctx};
+    }
+
+    return 1 if eval {("$socket" =~ /SSL/io) ? $socket->close(\%closeparms) : $socket->close ;};
+    return 1 if eval {close($socket);};
+    if ("$socket" =~ /SSL/io) {
+        return 1 if eval{IO::Socket::SSL::kill_socket($socket);};
+    }
+    return 0;
+}
 
 # static config sharing vars
 ## end ccc ##
@@ -1711,7 +1739,9 @@ sub defConfigArray {
 ['relayAuthPass','Password to Authenticate to Relay Host',80,\&passinput,'','(.*)',undef,'The password used for SMTP AUTH authentication to the relayhost ! Leave this blank, if you do not want use this feature.','Basic',undef,'msg009050','msg009051'],
 ['relayPort','Relay Port',80,\&textinput,'',$GUIHostPort,'ConfigChangeRelayPort','Tell your mail server to connect to this IP/port as its smarthost / relayhost. For example: 225<br />
  Note that you\'ll want to keep the relayPort protected from external access by your firewall. To restrict access to the relayPort per IP address or network, use allowRelayCon .<br />
- You can supply an interface:port to limit connections. Separate multiple entries by "|".<p><small><i>Examples:</i> 225, 127.0.0.1:225, 192.168.1.1:225|192.168.2.1:225 !</small></p>',undef,undef,'msg001180','msg001181'],
+ You can supply an interface:port to limit connections.<br />
+ To define a SSL listener, write \'SSL:\' in front of the host:port.<br />
+ Separate multiple entries by "|".<p><small><i>Examples:</i> 225, 225|SSL:325, 127.0.0.1:225, 192.168.1.1:225|192.168.2.1:225|SSL:192.168.1:325 !</small></p>',undef,undef,'msg001180','msg001181'],
 ['allowRelayCon','Allow Relay Connection from these IP\'s*',80,\&textinput,'','(\S*)','ConfigMakeIPRe','Enter any addresses that are allowed to use the relayPort , separated by pipes (|). If empty, any ip address is allowed to connect to the relayPort. If this option is defined, keep in mind : Addresses defined in acceptAllMail are <b>NOT</b> automatically included and have to be also defined here, if them should allow to use the relayPort. For example: 127.0.0.1|172.16..<br />
  If you use MS Office 365, you should define the <a href="http://technet.microsoft.com/en-us/library/dn163583(v=exchg.150).aspx" target="_blank">EOP IP addresses</a> here and you should configure your firewall to redirect connection from the hosted Exchange server to the relayPort .','Basic','7','msg008830','msg008831'],
 ['RelayOnlyLocalSender','Allow Relaying Only for Local Sender',0,\&checkbox,'','(.*)',undef,'If set, the envelope sender (MAIL FROM:) is immediately checked after the DATA command is received (to be valid). If the sender address could not be validated, the connection is dropped.<br />
@@ -2206,7 +2236,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   [sendergroup]=>[recipientgroup]<br />
   [sendergroup1]|[sendergroup2]|*@domain=>[recipientgroup1]|[recipientgroup2]|user@local_domain<br /><br />
   NOTICE - that the local email addresses and domains are not checked to be local once.<br />
-  To define special characters like \'* and ?\' - use there hexadecimal regex representation like \'\\x2A and \\x3F\'.',undef,undef,'msg000850','msg000851'],
+  To define special characters like \'* and ?\' - use their hexadecimal regex representation like \'\\x2A and \\x3F\'.',undef,undef,'msg000850','msg000851'],
 ['ValidateRWL','Enable Realtime Whitelist Validation',0,\&checkbox,'','(.*)','configUpdateRWL','RWL: Real-time white list. These are lists of IP addresses that have
  somehow been verified to be from a known good host. Senders that pass RWL validation will pass IP-based filters. This requires an installed <a href="http://search.cpan.org/search?query=Net::DNS" rel="external">Net::DNS</a> module in PERL. ',undef,undef,'msg000870','msg000871'],
 ['RWLwhitelisting','Whitelist all RWL Validated Addresses',0,\&checkbox,'','(.*)',undef,'If set, the message will also pass Bayesian Filter and URIBL.',undef,undef,'msg000880','msg000881'],
@@ -2438,7 +2468,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   [sendergroup]=>[recipientgroup]<br />
   [sendergroup1]|[sendergroup2]|*@domain=>[recipientgroup1]|[recipientgroup2]|user@local_domain<br /><br />
   NOTICE - that the local email addresses and domains are not checked to be local once.<br />
-  To define special characters like \'* and ?\' - use there hexadecimal regex representation like \'\\x2A and \\x3F\'.',undef,undef,'msg001690','msg001691'],
+  To define special characters like \'* and ?\' - use their hexadecimal regex representation like \'\\x2A and \\x3F\'.',undef,undef,'msg001690','msg001691'],
 
 ['DoMsgID','Check Message IDs','0:disabled|2:monitor|3:score',\&listbox,3,'(\d*)',undef,
   'Score messages with missing/suspicious/invalid Message-ID. Scoring is done by midmValencePB / midsValencePB / midiValencePB .',undef,undef,'msg001700','msg001701'],
@@ -2533,7 +2563,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   [sendergroup]=>[recipientgroup]<br />
   [sendergroup1]|[sendergroup2]|*@domain=>[recipientgroup1]|[recipientgroup2]|user@local_domain<br /><br />
   NOTICE - that the local email addresses and domains are not checked to be local once.<br />
-  To define special characters like \'* and ?\' - use there hexadecimal regex representation like \'\\x2A and \\x3F\'.',undef,undef,'msg010520','msg010521'],
+  To define special characters like \'* and ?\' - use their hexadecimal regex representation like \'\\x2A and \\x3F\'.',undef,undef,'msg010520','msg010521'],
 
 ['SenderInvalidError','Sender Validation Error',80,\&textinput,'554 5.7.1 REASON .','^([245]\d\d .*)$',undef,
   'SMTP error message to reject invalid senders. The literal REASON is replaced by (missing MX, missing PTR, invalid Helo, invalid user, missing signature) depending on the check.<br /><hr />
@@ -2948,7 +2978,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['EnableSRS','Enable Sender Rewriting Scheme',0,\&checkbox,'','(.*)','updateSRS',
   'Enable Sender Rewriting Scheme as described at <a href="http://www.openspf.org/SRS" rel="external">www.openspf.org/SRS</a>.<br />
   This requires an installed <a href="http://www.openspf.org/Implementations" rel="external">Mail::SRS</a> module in PERL. This module is disabled in the configuration per default - first enable it using useMailSRS .<br />
-  You should use SRS if your message handling system forwards email for domains with published spf records and there SPF record not includes your MX.<br />
+  You should use SRS if your message handling system forwards email for domains with published spf records and their SPF record not includes your MX.<br />
   NOTICE: In case your local users are forwarding mails (e.g. from external domains) to external domains (external mail accounts) and these foreign domains bounces back (e.g. out_of_office / vacation), your MTA (smtpDestination) will possibly get mails from external domains to be delivered to external domains!<br />
   Note that you have to setup the outgoing path (Relay Host and Port) to let ASSP see and rewrite your outgoing traffic.<br />
   Testmode is set with srsTestMode.',undef,undef,'msg003670','msg003671'],
@@ -3127,7 +3157,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   Separate entries with a pipe |. The dot . is assumed to precede these, so don\'t include it.<br />
   For example:<br />
   ad[ep]|asx|ba[st]|chm|cmd|com|cpl|crt|dbx|exe|exe\-bin|hlp|ht[ab]|in[fs]|isp|js|jse|lnk|md[abez]|mht|ms[cipt]|nch|pcd|pif|prf|ps1?|reg|sc[frt]|sh[bs]|vb|vb[es]|wms|ws[cfh]<br />
-  If you\'ve installed the ASSP_AFC Plugin (at least version 2.10) and \'exe-bin\' is defined (on any level), the Plugin will detect executable files based on there binary content. Detected will be all executables, libraries and scripts for DOS and Windows (except .com files), MS office macros(VBA), MAC-OS and linux ELF (for all processor architectures).<br />
+  If you\'ve installed the ASSP_AFC Plugin (at least version 2.10) and \'exe-bin\' is defined (on any level), the Plugin will detect executable files based on their binary content. Detected will be all executables, libraries and scripts for DOS and Windows (except .com files), MS office macros(VBA), MAC-OS and linux ELF (for all processor architectures).<br />
   If you want to skip the detection for a specific executable type, define any combination of the tags below like: \'exe-bin|:WSH|:MSOM|:WIN\' - notice the leading collon for the exceptions!<br /><br />
  :WIN - windows executables<br />
  :MOS - Mach-O executables<br />
@@ -3141,7 +3171,8 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  :CERTPDF - certificate signed adobe PDF file<br />
  :JSPDF - adobe PDF file with JavaScript inside - notice: well known malicious JavaScript combinations will be blocked, even this option is defined<br />
  :URIPDF - adobe PDF file with URIs to download exeutables from the web or to open local files<br />
- :MSOM - microsoft office macros<br />',undef,undef,'msg004120','msg004121'],
+ :MSOLE - Microsoft Office Compound File Binary (OLE)<br />
+ :MSOM - Microsoft Office Macros<br />',undef,undef,'msg004120','msg004121'],
 ['BadAttachL2','Level 2 rejected File Extensions',80,\&textinput,'','(.*)','updateBadAttachL2',
   'This regular expression is used to identify Level 2 attachments that should be blocked.<br />
   Level 2 already includes all rejected extensions from Level 1. <br />
@@ -4243,7 +4274,7 @@ For example: mysql/dbimport<br />
 ['ConsoleCharset','Charset for STDOUT and STDERR',$Charsets,\&listbox,'0','(.*)',undef,
  'Set the characterset/codepage for the console output to your local needs. Default is "System Default" - default conversion. To display nonASCII characters on the console screen, setup UseUnicode4MaillogNames . <span class=\'negative\'>Restart is required!</span>',undef,undef,'msg007410','msg007411'],
 ['normalizeUnicode','Normalize Unicode to NFKC',0,\&checkbox,'1','(.*)','ConfigChangeNormUnicode',
- 'If set (which is the default and recommended), all regular expressions and both, the Bayesian and the HMM engine, are normalizing all characters in there setup and the checked content, according to unicode <a href="http://www.unicode.org/reports/tr15/ target=_blank">NFKC</a>.<br />
+ 'If set (which is the default and recommended), all regular expressions and both, the Bayesian and the HMM engine, are normalizing all characters in their setup and the checked content, according to unicode <a href="http://www.unicode.org/reports/tr15/ target=_blank">NFKC</a>.<br />
  In addition some extended (assp unique) unicode normalization is done for the unicode blocks "Enclosed Alphanumerics", "Enclosed Alphanumeric Supplement" , "Enclosed CJK Letters And Months" and "Enclosed Ideographic Supplement" - like: &#9312; &#9313; &#9331; &#9332; &#9352; &#9451; &#9461; &#9424; &#9398; &#127280; &#12809; &#12853; &#13003; &#127559;. Those characters are decomposed by compatibility, then recomposed by canonical equivalence (eg. to LATIN or CJK).<br />
  If this value is changed, and your system processes alot of NON-Latin mails, it is recommended to run a rebuildspamdb.<br />
  This feature requires a Perl version 5.012000 (5.12.0) or higher.<br />
@@ -4253,7 +4284,7 @@ For example: mysql/dbimport<br />
   For this reason, these tags are removed from the HTML/XML content to get the clean text of the email.<br />
   The assp buildin regular expression HTML-parser is now used for decades. It got large improvements over the time, how ever - the correctness is only 95%.
   But assp is able to use HTML::Strip or HTML::TreeBuilder, which are powerfull perl modules to parse HTML code nearly 100% correct.<br />
-  HTML::Strip and HTML::TreeBuilder are getting there best result, if the full HTML code is provided. In case you select any of the both modules, it is recommended to set MaxBytes to 50000 (be carefull on heavy load systems - spam bomb regular expressions will take longer using 50000!).<br />
+  HTML::Strip and HTML::TreeBuilder are getting their best result, if the full HTML code is provided. In case you select any of the both modules, it is recommended to set MaxBytes to 50000 (be carefull on heavy load systems - spam bomb regular expressions will take longer using 50000!).<br />
   HTML::Strip is the fastest module and the default setting, because it is written in C. If you can not install it, use the buildin or HTML::TreeBuilder.<br />
   HTML::TreeBuilder is the slowest way to parse HTML code, the assp buildin processing is three times faster, HTML::Strip is five times faster than HTML::TreeBuilder.<br />
   If you select any of the perl modules and this module is not installed, fails to load or it returns no content, assp falls back to the buildin code.','Basic',undef,'msg010610','msg010611'],
@@ -4768,10 +4799,11 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
   'Define the number of SSL/TLS negotiation retries done with a half second delay after SSLtimeout , if the peer was not ready after STARTTLS or at the listenPortSSL , because of a "SSL want a read/write first" SSL handshake error.',undef,undef,'msg008270','msg008271'],
 ['SSLtimeout','SSL Timeout (0-999)',4,\&textinput,5,'(\d{1,3})',undef,
  'SSL/TLS negotiation will timeout after this many seconds. default is : 5 seconds.',undef,undef,'msg008280','msg008281'],
-['maxSSLRenegotiations','Maximum Allowed SMTP SSL Client-Initiated-Renegotiations',4,\&textinput,2,'(\d+)',undef,
+['maxSSLRenegotiations','Maximum Allowed SMTP SSL Client-Initiated-Renegotiations',4,\&textinput,10,'(\d+)',undef,
  'Maximum count of allowed SSL/TLS client initiated renegotiations to prevent DoS.<br />
- If this count is exceeded in a connection within 10 seconds, the connection is terminated, the connected IP is registered in banFailedSSLIP and new connections from this IP address are rejected for 15-30 minutes. An IP-Score of PenaltyExtreme but at least 150 is used for the IP address. Zero disables this feature - default is : 2 attempts.',undef,undef,'msg010620','msg010621'],
-['SSLDEBUG','Debug Level for SSL/TLS','0:no Debug|1:level 1|2:level 2|3:level 3',\&listbox,0,'(\d*)',undef,'Set the debug-level for SSL/TLS. Than higher the level, than more information are written to STDOUT!',undef,undef,'msg008290','msg008291'],
+  If this count is exceeded in a connection within 10 seconds, the connection is terminated, the connected IP is registered in banFailedSSLIP and new connections from this IP address are rejected for 15-30 minutes. An IP-Score of PenaltyExtreme but at least 150 is used for the IP address. Zero disables this feature - default is : 2 attempts.<br />
+  This check is skipped for well known good IPs and senders as well as for privat IP ranges and outgoing mails.',undef,undef,'msg010620','msg010621'],
+['SSLDEBUG','Debug Level for SSL/TLS','0:no Debug|1:level 1|2:level 2|3:level 3',\&listbox,0,'(\d*)',undef,'Set the debug-level for SSL/TLS. Than higher the level, than more information are written to maillog.txt!',undef,undef,'msg008290','msg008291'],
 
 ['webSSLRequireClientCert','Web-Client requires valid SSL Certificate for GUI Requests',0,\&checkbox,'','(.*)','ConfigChangeSSL',
   'If enabled and enableWebAdminSSL is set to ON, each browser session is forced to provide a valid SSL client certificate. If no certificate is provided by the client, the connection will fail! To extend the verification of the certificate, use SSLWEBCertVerifyCB . Per default are used \'SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT | SSL_VERIFY_CLIENT_ONCE\'<br />
@@ -4824,13 +4856,13 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"bar.example.org" =&gt; "/full_path_to_file/bar-cert.pem",<br />
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# used when nothing matches or client does not support SNI<br />
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"" =&gt; "/full_path_to_file/server-cert.pem",<br />
-  &nbsp;&nbsp;&nbsp;&nbsp;}<br />
+  &nbsp;&nbsp;&nbsp;&nbsp;};<br />
   &nbsp;&nbsp;&nbsp;&nbsp;&#x24;parms->{SSL_key_file} = {<br />
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"foo.example.org" =&gt; "/full_path_to_file/foo-key.pem",<br />
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"bar.example.org" =&gt; "/full_path_to_file/bar-key.pem",<br />
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# used when nothing matches or client does not support SNI<br />
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"" =&gt; "/full_path_to_file/server-key.pem",<br />
-  &nbsp;&nbsp;&nbsp;&nbsp;}<br />
+  &nbsp;&nbsp;&nbsp;&nbsp;};<br />
   }<br /><br />
   Now, if you set this parameter to \'CorrectASSPcfg::configWebSSL\' - assp will call<br />
   CorrectASSPcfg::configWebSSL->(\%sslparms);<br /><br />
@@ -4839,23 +4871,26 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
   &nbsp;&nbsp;&nbsp;&nbsp;my &#x24;parms = shift;<br />
   &nbsp;&nbsp;&nbsp;&nbsp;my &#x24;listenerName = &amp;main::getSMTPListenerConfigName(&#x24;parms->{LocalAddr},&#x24;parms->{LocalPort}); # returns listenPort , listenPort2 , listenPortSSL , relayPort or undef - may be used to implement different parameter settings for some or each SMTP listener<br />
   &nbsp;&nbsp;&nbsp;&nbsp;if (&#x24;listenerName eq \'listenPortSSL\') { # enable SNI at the listenPortSSL <br />
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#x24;parms->{SSL_cert_file} = {<br />
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#x24;parms-&gt;{SSL_cert_file} = {<br />
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"foo.example.org" =&gt; "/full_path_ to_file/foo-cert.pem",<br />
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"bar.example.org" =&gt; "/full_path_to_file/bar-cert.pem",<br />
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# used when nothing matches or the SMTP peer does not support SNI<br />
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"" =&gt; "/full_path_to_file/server-cert.pem",<br />
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br />
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#x24;parms->{SSL_key_file} = {<br />
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;};<br />
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#x24;parms-&gt;{SSL_key_file} = {<br />
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"foo.example.org" =&gt; "/full_path_to_file/foo-key.pem",<br />
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"bar.example.org" =&gt; "/full_path_to_file/bar-key.pem",<br />
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# used when nothing matches or the SMTP peer does not support SNI<br />
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"" =&gt; "/full_path_to_file/server-key.pem",<br />
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br />
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;};<br />
   &nbsp;&nbsp;&nbsp;&nbsp;} # the next "elsif" and "else" code parts may be used or not, this depends on the requirements for the other listeners.<br />
   &nbsp;&nbsp;&nbsp;&nbsp;elsif (&#x24;listenerName eq \'listenPort2\') {... set parms here for listenPort2 ...}<br />
   &nbsp;&nbsp;&nbsp;&nbsp;elsif (&#x24;listenerName eq \'relayPort\') {... set parms here for relayPort ...}<br />
   &nbsp;&nbsp;&nbsp;&nbsp;else {... set parms here for listenPort (not recommended!) ...}<br />
   }<br /><br />
+  To set a single parameter, follow the HASH notation: &#x24;parms-&gt;{SSL_cert_file}-&gt;{your-domain} = "/full_path_ to_file/your-domain-cert.pem";<br /><br />
+  ASSP uses a permanent SSL-context in SSL server mode. ASSP will watch all your configurations made here and will renew the SSL-Server-Context, if this is required.<br />
+  If you want to manage ALL SSL settings including the SSL-context by your own code, store your IO::Socket::SSL::SSL_Context object in &#x24;parms-&gt;{SSL_reuse_ctx}. In this case, your settigs will be no longer watched by assp.<br />
   If you need to set different SNI parameters for different IP-addresses insite a listener, the "if" checks may depend on &#x24;parms->{LocalAddr} and &#x24;parms->{LocalPort} as well.<br />
   <b>NOTICE: This option will possibly not work if you use any self signed certificate!</b>',undef,undef,'msg010170','msg010171'],
 
@@ -4889,7 +4924,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
  'The Name of this global-client for registration on the global-server. This entry has to be the full qualified DNS-Name of the IP-address over which ASSP is doing HTTP-requests! If you are using a HTTP-Proxy, this should be the public IP-address of the last Proxy in chain! This DNS-Name has to be resolvable worldwide and the resolved IP-address has to match the ASSP-HTTP-connection-IP-address. It is not possible to use an IP-address in this field! Dynamic DNS-Names like "yourdomain.dyndns.org" are supported!<br />
  To become a member of the exclusive global-penalty-box-users, you will need a subscription and you will have to pay a yearly maintenance fee. To get registered and/or to get more information, please send an email with your personal/company details and the globalClientName to "assp.globalpb@thockar.com".<br />
  The name of this client has to be known by the global server <b>before</b> it can be registered from here. Please wait until you have confirmation that your client name is known by the global server.<br />
- If assp is unable to connect to the GPB-server for registration, check the IP - and - clientname relation! You may also try to set this parameter to the value \'<b>clean</b>\' one time - this will reset all GPB-internals and GPB-configuration parameters to there default value.<br />
+ If assp is unable to connect to the GPB-server for registration, check the IP - and - clientname relation! You may also try to set this parameter to the value \'<b>clean</b>\' one time - this will reset all GPB-internals and GPB-configuration parameters to their default value.<br />
  Make sure, the used assp version and the perl modules are uptodate!<br />
  In addition to <a href="http://search.cpan.org/search?query=Compress::Zlib" rel="external">Compress::Zlib</a> this requires an installed <a href="http://search.cpan.org/search?query=LWP::UserAgent" rel="external">LWP::UserAgent</a> module in PERL.',undef,undef,'msg008310','msg008311'],
 ['globalClientPass','GPB Client Registration Password',20,\&passnoinput,'','(.*)','configUpdateGlobalHidden','If the global client is registered on the global-server, you will see a number of "*" in this field. This field is readonly.',undef,undef,'msg008320','msg008321'],
@@ -4900,7 +4935,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
 ['DoGlobalWhite','Enable the Global-White-Penalty',0,\&checkbox,'','(.*)',undef,'Enables the merge of the White-Penalty-Box-Entries, if the client is registered on the global-PB-server. Upload and download of the white penalty entries are done independent from this setting as long as any of GPBDownloadLists or GPBautoLibUpdate is activated.',undef,undef,'msg008370','msg008371'],
 ['globalWhiteExpiration','Expiration for Global-PB-White Records(days)',3,\&textinput,7,'(\d*)',undef, 'Global-White-Penalties will expire after this number of days.',undef,undef,'msg008380','msg008381'],
 ['GPBDownloadLists','Download List and Regex Updates from GPB-Server','0:no download|1:download|2:download and install',\&listbox,2,'(\d*)',undef,'Select, if assp should download updates for lists and regular expressions from the global penaltybox server. Downloads will be done to the \'download\' folder. If install is selected, the downloaded lines will merged in to the defined files (file:...). If you want to disable a specific line in any of your files, do not delete the line, instead comment it out - putting a \'#\' or \';\' in front of the line. If any list is not configured using the \'file:...\' option, only the download will be done, even if install is selected. To disable a line that was added by the GPB-server to your file - simply commend the line out (# or ;). If you remove such a line, it could be possibly added again by the next GPB check. To change a line that was added by the GPB-server to your file - disable the line and customize a copied line to your needs.',undef,undef,'msg009370','msg009371'],
-['GPBautoLibUpdate','Download Plugin and Library Updates from GPB-Server','0:no download|1:download|2:download and install',\&listbox,2,'(\d*)',undef,'Select, if assp should download updates for Plugins or Library-Files (../lib) from the global penaltybox server. Downloads will be done to the \'download\' folder. If install is selected, the downloaded Plugins and/or modules will be installed in to there original location, if an older version of the file still exists. If an older version is not found, only the download will be done. To activate updated Plugins or modules a restart of assp is required. This feature will not force an automatic restart of assp!.
+['GPBautoLibUpdate','Download Plugin and Library Updates from GPB-Server','0:no download|1:download|2:download and install',\&listbox,2,'(\d*)',undef,'Select, if assp should download updates for Plugins or Library-Files (../lib) from the global penaltybox server. Downloads will be done to the \'download\' folder. If install is selected, the downloaded Plugins and/or modules will be installed in to their original location, if an older version of the file still exists. If an older version is not found, only the download will be done. To activate updated Plugins or modules a restart of assp is required. This feature will not force an automatic restart of assp!.
 <hr /><div class="cfgnotes">Notes On Global Penalty Box</div><input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/global_pb.txt\',3);" />',undef,undef,'msg009380','msg009381'],
 
 [0,0,0,'heading','Block Reporting - Schedule and Instant'],
@@ -5519,8 +5554,8 @@ sub strip50 {
 sub getPackMem {
     my $v = shift;
     my $count;
-return;
-    return if $v=~ /^(?:::)?main::/o;
+return if $v !~ /^(?:::)?main::/o;
+    return if $v =~ /^(?:::)?main::/o;
     for (keys %$v) {
        if (/\:\:$/o) {
            return &getPackMem($v.$_);
@@ -6274,8 +6309,8 @@ BEGIN {
  $assp =~ s/\\/\//og;
  $assp =~ s/\/+/\//og;
 
- STDOUT->autoflush;
- STDERR->autoflush;
+ STDOUT->autoflush(1);
+ STDERR->autoflush(1);
  &check_iThreads();
  &setVersion();
  if ($] lt '5.012003') {
@@ -7091,6 +7126,7 @@ our $ARINcounter:shared = 0;
 our $ActWebSess;
 our $BDBEnvLock:shared;
 our $BayesCont =  ($] lt '5.014000')  ? '\S' : '\p{Alnum}';
+our $ClearSSLContext;
 our $ConfigChanged:shared;
 our $DBOption;
 our $DBcntOption:shared ;
@@ -7310,8 +7346,8 @@ our %AvailPerlModules;
 our %BerkeleyDBHashes;
 our %BlockRepForwQueue;
 our %ComWorker:shared;
-our %Con; keys %Con = 64;
 our %ConDelete; keys %ConDelete = 64;
+our %ConToTLS;
 our %ConfigPos; keys %ConfigPos = 1024;
 our %ConfigNum:shared; keys %ConfigPos = 1024;
 our %ConfigNice; keys %ConfigNice = 1024;
@@ -7378,10 +7414,9 @@ our %SNMPag;
 our %SNMPAS;
 our %SocketCalls; keys %SocketCalls = 128;       #t
 our %SocketCallsNewCon;        #t
-our $SysLogObj;
 our %StatCon;
-our %StatConH;
 our %StatText;
+our $SysLogObj;
 our %Threads;
 our %ThreadHandler;
 our %ThreadIdleTime:shared;
@@ -7389,7 +7424,6 @@ our %ThreadQueue;
 our %URIBLweight;
 our %URIBLaddWeight;
 our %WebCon;
-our %WebConH;
 our %WebIP;
 our %WorkerLastAct :shared; # is locked
 our %availOptRE:shared;
@@ -7779,7 +7813,7 @@ if ($@) {
 sub write_rebuild_module {
 my $curr_version = shift;
 
-my $rb_version = '7.40';
+my $rb_version = '7.41';
 my $keepVersion;
 
 if (open my $ADV, '<',"$base/lib/rebuildspamdb.pm") {
@@ -7880,6 +7914,7 @@ our $IPRe = $main::IPRe;
 our $spamHMM;
 our $hamHMM;
 our $DoHMM;
+our $haveRedlist;
 our $attachments;
 our $rtText;
 our $mintime;
@@ -7896,7 +7931,6 @@ $SpamWordCount = 0;
 $HamWordCount = 0;
 $HMMIgnored = 0;
 $bayesIgnored = 0;
-$processedBytes = 0;
 $starttime = 0;
 $processTime = 0;
 $processedBytes = 0;
@@ -7916,6 +7950,7 @@ $mintime =~ s/\s//go;
 $movetime =~ s/\s//go;
 $mintime ||= 0;
 $movetime ||= 0;
+$haveRedlist = &main::getDBCount('main::Redlist','main::redlistdb');
 
 $RebuildDebug = -e "$main::base/rebuilddebug.txt";
 $RebuildDebug = 0 if $onlyNewCorrected;
@@ -7924,7 +7959,7 @@ my (@dbhint, $have_error);
 if ($RebuildDebug) {
     open($RebuildDebug ,'>',  "$main::base/rebuilddebug.txt" );
     binmode $RebuildDebug;
-    $RebuildDebug->autoflush;
+    $RebuildDebug->autoflush(1);
     print $RebuildDebug $main::UTF8BOM;
     rb_mlog("rebuild debug output is enabled to $main::base/rebuilddebug.txt");
     push @dbhint , "-rebuild debug output is enabled to $main::base/rebuilddebug.txt";
@@ -8220,7 +8255,7 @@ EOT
     }
     (open( $RebuildLog, '>', "$rebuildrun" )) or die "unable to open file for logging: $!";
     binmode $RebuildLog;
-    $RebuildLog->autoflush;
+    $RebuildLog->autoflush(1);
     print $RebuildLog $main::UTF8BOM;
     $starttime = time;
     &rb_printlog( "\n\n\nRebuildSpamDB-thread rebuildspamdb-version ".${'VERSION'}." started in ASSP version $main::version$main::modversion\n" );
@@ -8404,12 +8439,12 @@ EOT
     &rb_printlog(  "Not-Spam Weight:   " . &rb_commify($HamWordCount) . "\n\n" );
 
     if ($bayesIgnored && $bayesScores && $RebuildDebug) {
-        &rb_printlog("Bayesian pairs are ignored, if they occure only one time or there probability is in the useless range 0.4 < prob < 0.6\n");
+        &rb_printlog("Bayesian pairs are ignored, if they occure only one time or their probability is in the useless range 0.4 < prob < 0.6\n");
         my $pcent = sprintf("%.2f",(($bayesIgnored / ($bayesIgnored + $bayesScores)) * 100));
         &rb_printlog("ignored Bayesian pairs:   " . &rb_commify($bayesIgnored) . " - which are $pcent\% of all processed\n\n");
     }
     if ($HMMIgnored && $HMMScores && $RebuildDebug) {
-        &rb_printlog("HMM sequences are ignored, if there probability is in the useless range 0.4 < prob < 0.6\n");
+        &rb_printlog("HMM sequences are ignored, if their probability is in the useless range 0.4 < prob < 0.6\n");
         my $pcent = sprintf("%.2f",(($HMMIgnored / ($HMMIgnored + $HMMScores)) * 100));
         &rb_printlog("ignored HMM sequences :   " . &rb_commify($HMMIgnored) . " - which are $pcent\% of all processed\n\n" );
     }
@@ -9181,6 +9216,7 @@ sub rb_processfolder {
 #    $MaxFiles = &main::min($MaxFiles,$main::MaxFiles);
     $folderStartTime = time;
     $attachments = 0;
+    my $prebytes = $processedBytes;
     my $flr = $fldrpath;
     $fldrpath = $main::base.'/'.$fldrpath;
     $fldrpath = &rb_fixPath($fldrpath);
@@ -9260,6 +9296,7 @@ sub rb_processfolder {
     }
     if   ( time - $folderStartTime != 0 ) { $processFolderTime = time - $folderStartTime; }
     else                                  { $processFolderTime = 1; }
+    my $allpcount = $pcount;
     $pcount = $pcount - ( $RedCount + $WhiteCount );
     if ($RedCount) {
         &rb_printlog( "\nRemoved Red:\t" . &rb_commify($RedCount) );
@@ -9327,8 +9364,10 @@ sub rb_processfolder {
     }
 
 # &rb_printlog( "\nfolder $flr: " . &rb_commify($SpamWordCount) . " spam weight \nfolder $flr: " . &rb_commify($HamWordCount) . " non-spam weight." );
-    &rb_printlog("\nFinished in ".&rb_commify($processFolderTime)." second(s)\n");
-    &rb_mlog("Finished in ".&rb_commify($processFolderTime)." second(s)");
+    my $fps = sprintf("%.2f",($allpcount / $processFolderTime));
+    my $procbytes = &main::formatNumDataSize($processedBytes - $prebytes);
+    &rb_printlog("\nFinished in ".&rb_commify($processFolderTime)." seconds ($fps files/s - $procbytes)\n");
+    &rb_mlog("Finished in ".&rb_commify($processFolderTime)." seconds ($fps files/s - $procbytes)");
 
     $scanTime += $processFolderTime;
     $scanFiles += $pcount;
@@ -9396,6 +9435,7 @@ sub rb_checkspam {
         &rb_deletefile( $FileName, $reason );
         return 1;
     }
+    delete $Trashlist{$FileName};
     return 0;
 }
 
@@ -9412,6 +9452,7 @@ sub rb_checkham {
         &rb_deletefile( $FileName, "$reason" );
         return 1;
     }
+    delete $Trashlist{$FileName};
     return 0;
 }
 
@@ -9430,6 +9471,7 @@ sub rb_whitelisted {
         $WhiteCount++;
         return ( "Regex:White '" . $reason . q{'} );
     }
+
     $m =~ s/^($main::HeaderNameRe:$main::HeaderValueRe)+/$1/so;    # remove body
 
     my (@to,@from);
@@ -9490,9 +9532,9 @@ sub rb_redlisted {
     my $m = substr($$mm,0,$main::MaxBytes + 1000);
 
     # test against expression to recognize redlisted mail
-    if ( $main::DoNotCollectRedRe ) {    #skip Redre check, 1.3.5 and higher
+    if ( $main::DoNotCollectRedRe && $main::redRe) {    #skip Redre check, 1.3.5 and higher
         my $mrR = $main::redReRE;
-        if ( $main::redRe && $m =~ /($mrR)/ ) {
+        if ( $m =~ /($mrR)/ ) {
             my $reason = $1;
             $reason =~ s/\s+$/ /go;
             $reason =~ s/[\r\n\s]+/ /go;
@@ -9501,6 +9543,7 @@ sub rb_redlisted {
             return ( "Regex:Red '" . $reason . q{'} );
         }
     }
+    return 0 unless $haveRedlist;
     if ( $main::DoNotCollectRedList ) {    #skip Redlist check, 1.3.5 and higher
         $m =~ s/\n\r?\n.*$//so;                            # remove body
         while ( $m =~ /($main::EmailAdrRe\@$main::EmailDomainRe)/igo ) {
@@ -9546,7 +9589,7 @@ sub rb_get {
     my $dtime = $ftime - time;
     my $bodybytes = $mBytes * (($factor > 1) ? 4 : 2);
 
-    return if $dtime > 0 or exists $Trashlist{$fn};
+    return if $dtime > 0;
     my $file;
     $main::open->($file, '<', "$fn" ) or return;
 
@@ -9567,7 +9610,7 @@ sub rb_get {
     } else {
         return;
     }
-    return if $sub->( $fn, \substr($message, 0, $headlen + $mBytes ) );   # have i read this before?
+    return if $sub->( $fn, \substr($message, 0, $headlen + $mBytes ) );   # did I read this before?
 
     $processedBytes += length $message;
     return \$message, $headlen;
@@ -9604,10 +9647,9 @@ sub rb_add {
     }
 
     my $imgHash;
-    my $fsize = &main::fsize( $fn );
-    if ($doattach && ! $heloOnly && ($fsize < $main::npSize) && ! exists $Trashlist{$fn.'.att'}) {
+    if ($doattach && ! $heloOnly && ((my $fsize = &main::fsize( $fn )) < $main::npSize) && ! exists $Trashlist{$fn.'.att'}) {
         $imgHash = &main::AttachMD5File($fn);
-        $processedBytes += $fsize;
+        $processedBytes += $fsize - length($$content);
         if (rb_checkRunTime($startTime,"reached $movetime s after AttachMD5File on $fn")) {
             $Trashlist{$fn.'.att'} = time + (3600 * 24 * 5);
             $startTime = Time::HiRes::time();
@@ -9622,10 +9664,10 @@ sub rb_add {
     my $IPprivate = $main::IPprivate;
     my ($reportedBy,$domain);
     if ($header) {
-        $reportedBy = lc $1 if ($header =~ /X-Assp-Reported-By:\s*($main::EmailAdrRe\@$main::EmailDomainRe)/io);
-        $reportedBy ||= lc $1 if ($header =~ /X-Assp-Intended-For:\s*($main::EmailAdrRe\@$main::EmailDomainRe)/io);
-        $reportedBy ||= lc $1 if ($header =~ /^to:.*?<($main::EmailAdrRe\@$main::EmailDomainRe)>/io);
-        $reportedBy ||= lc $1 if ($header =~ /^to:.*?($main::EmailAdrRe\@$main::EmailDomainRe)/io);
+        $reportedBy = lc $1 if (   $header =~ /X-Assp-Reported-By:\s*($main::EmailAdrRe\@$main::EmailDomainRe)/io
+                                || $header =~ /X-Assp-Intended-For:\s*($main::EmailAdrRe\@$main::EmailDomainRe)/io
+                                || $header =~ /^to:.*?<($main::EmailAdrRe\@$main::EmailDomainRe)>/io
+                                || $header =~ /^to:.*?($main::EmailAdrRe\@$main::EmailDomainRe)/io);
         if ($reportedBy) {
             $domain = $1 if $reportedBy =~ /(\@$main::EmailDomainRe)$/o;
             $reportedBy = '' unless (($main::DoPrivatSpamdb & 1) && &main::localmailaddress(0,$reportedBy));
@@ -9722,6 +9764,7 @@ sub rb_add {
     foreach (keys %$imgHash) {
         if   ($isspam) { $SpamWordCount += $factor;}
         else           { $HamWordCount  += $factor;}
+
         ( $sfac, $tfac ) = split( q{ }, $spam->{ $_ } );
         $sfac += $isspam ? ($factor * 2) : 0;
         $tfac += ($factor * 2);
@@ -9744,9 +9787,10 @@ sub rb_add {
     if ($doattach && $i) {
         rb_d("$i ".($isspam ? 'spam-' : 'ham-')."attachment/image entries processed in file $fn");
     }
-    my $j = 0;
     rb_checkRunTime($startTime,"reached $movetime s in Bayes word pairs on $fn");
     my $ret = 1;
+    $i = 0;
+    my $sfactor = $isspam ? $factor : 0;
     use re 'eval';
     local $^R;
     while ( eval { $content =~ /([$BayesCont]{2,})(?{$1})/go } ) {
@@ -9754,7 +9798,7 @@ sub rb_add {
         (@Words = &main::BayesWordClean($^R)) or next;
         while (@Words) {
             $CurWord = substr(shift(@Words),0,37);
-            if ( ! $PrevWord ) {            # We only want word pairs
+            if ( ! $PrevWord ) {            # only collect the first word
                 $PrevWord = $CurWord;
                 push(@HMMspamWords,$CurWord) if $DoHMM && $isspam;
                 push(@HMMhamWords,$CurWord) if $DoHMM && ! $isspam;
@@ -9764,27 +9808,30 @@ sub rb_add {
 
             # increment global weights, they are not really word counts
             if   ($isspam) { $SpamWordCount += $factor; push(@HMMspamWords,$CurWord) if $DoHMM && $i < $main::HMMDBWords;}
-            else           { $HamWordCount  += $factor; push(@HMMhamWords,$CurWord) if $DoHMM && $i < $main::HMMDBWords;}
-            ( $sfac, $tfac ) = split( q{ }, $spam->{ "$PrevWord $CurWord" } );
-            $sfac += $isspam ? $factor : 0;
+            else           { $HamWordCount  += $factor; push(@HMMhamWords, $CurWord) if $DoHMM && $i < $main::HMMDBWords;}
+
+            my $tag = "$PrevWord $CurWord";
+            ( $sfac, $tfac ) = split( q{ }, $spam->{ $tag } );
+            $sfac += $sfactor;
             $tfac += $factor;
-            $spam->{ "$PrevWord $CurWord" } = "$sfac $tfac";
+            $spam->{ $tag } = "$sfac $tfac";
             if ($reportedBy) {
-                ( $sfac, $tfac ) = split( q{ }, $spam->{ "$reportedBy $PrevWord $CurWord" } );
-                $sfac += $isspam ? $factor : 0;
+                my $rtag = "$reportedBy $tag";
+                ( $sfac, $tfac ) = split( q{ }, $spam->{ $rtag } );
+                $sfac += $sfactor;
                 $tfac += $factor;
-                $spam->{ "$reportedBy $PrevWord $CurWord" } = "$sfac $tfac";
+                $spam->{ $rtag } = "$sfac $tfac";
             }
             if ($domain) {
-                ( $sfac, $tfac ) = split( q{ }, $spam->{ "$domain $PrevWord $CurWord" } );
-                $sfac += $isspam ? $factor : 0;
+                my $dtag = "$domain $tag";
+                ( $sfac, $tfac ) = split( q{ }, $spam->{ $dtag } );
+                $sfac += $sfactor;
                 $tfac += $factor;
-                $spam->{ "$domain $PrevWord $CurWord" } = "$sfac $tfac";
+                $spam->{ $dtag } = "$sfac $tfac";
             }
             $PrevWord = $CurWord;
             $i++;
         }
-        if ((++$j % 10 == 0) && rb_checkRunTime($startTime,'')) {$ret = undef; last;}
     } ## end while ( $content =~ /([$BayesCont]{2,})(?{$1})/go)
     if ($DoHMM) {
 #        &rb_mlog( 'Rebuild: adding HMM: H = ' .scalar(@HMMhamWords).', S = '.scalar(@HMMspamWords).' words'.' P = '.$reportedBy);
@@ -11990,7 +12037,7 @@ foreach (sort keys %Config1) {
  $headers .= "<a href=\"javascript:void(0);\" onclick=\"remember();return false;\" onmouseover=\"showhint('open the remember me window', this, event, '200px', '');return false;\"><img class=\"leftTopIcon\" src=\"get?file=images/remember.jpg\" /></a>\&nbsp;";
 
   if ($WebIP{$ActWebSess}->{user} eq 'root') {
-      $headers .= "<a href=\"./adminusers\" onmouseover=\"showhint('Manage Admin-Templates and Admin-Users and there Access Rights', this, event, '500px', '1');return false;\" onclick=\"eraseCookie('lastAnchor');return true;\"><img class=\"leftTopIcon\" src=\"get?file=images/admins.jpg\"></a>\&nbsp;";
+      $headers .= "<a href=\"./adminusers\" onmouseover=\"showhint('Manage Admin-Templates and Admin-Users and their Access Rights', this, event, '500px', '1');return false;\" onclick=\"eraseCookie('lastAnchor');return true;\"><img class=\"leftTopIcon\" src=\"get?file=images/admins.jpg\"></a>\&nbsp;";
   } elsif ($WebIP{$ActWebSess}->{user}) {
       $headers .= "<a href=\"./pwd\" onmouseover=\"showhint('Change your ASSP Password', this, event, '500px', '1');return false;\"><img class=\"leftTopIcon\" src=\"get?file=images/password.jpg\"></a>\&nbsp;";
   }
@@ -13929,6 +13976,8 @@ EOT
             *{IO::Socket::SSL::CAN_IPV6} = sub {'';};
         }
     }
+    ssldebug();
+    *{IO::Socket::SSL::DEBUG} = \&ssldebug;
     if (-e $SSLCertFile and -e $SSLKeyFile) {
         mlog(0,'found valid certificate and private key file - https and TLS/SSL is available');
         mlog(0,'found valid ca file - chained certificate validation is available') if $SSLCaFile && -e $SSLCaFile;
@@ -14008,7 +14057,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.71;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.74;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.05;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -14317,7 +14366,7 @@ EOT3
   delete $Config{clearBerkeleyDBEnv};
   &SaveConfig() if $unclean;
 
-  if ($pidfile) {open(my $PIDH,'>',"$base/$pidfile"); $PIDH->autoflush; print $PIDH $$; $PIDH->close}
+  if ($pidfile) {open(my $PIDH,'>',"$base/$pidfile"); $PIDH->autoflush(1); print $PIDH $$; $PIDH->close}
 
   if ($isNoWIN) {
       if ($setFilePermOnStart) {
@@ -14860,7 +14909,7 @@ If the step belongs to a BerkeleyDB hash,
   mlog(0,"info: POP3 collection is now allowed")
      if ($POP3Interval && -e "$base/assp_pop3.pl" && $POP3ConfigFile =~ /^ *file: *(?:.+)/io);
   &mlogWrite();
-  if ($pidfile) {open($PIDH,'>',"$base/$pidfile"); $PIDH->autoflush; print $PIDH $$;}
+  if ($pidfile) {open($PIDH,'>',"$base/$pidfile"); $PIDH->autoflush(1); print $PIDH $$;}
   &mlogWrite();
   activeRemoteSupport();
   &mlogWrite();
@@ -16232,6 +16281,12 @@ sub newListen {
     my @sinfo;
     return \@s,\@sinfo if ($DisableSMTPNetworking and $handler eq \&ConToThread);
     foreach my $portA (split(/\|/o, $port)) {
+        if ($portA =~ s/^SSL:\s*//oi) {
+            my ($ssl,$sslinfo) = newListenSSL($portA,$handler,$threadhandler);
+            push @s, @$ssl;
+            push @sinfo, @$sslinfo;
+            next;
+        }
         if ($portA !~ /$HostRe?:?$PortRe/o) {
             mlog(0,"wrong (host) + port definition in '$portA' -- entry will be ignored !");
             next;
@@ -16497,61 +16552,6 @@ sub switchUsers { my ($uid,$gid,$sgids)=@_;
       mlog(0,"failed to switch real uid to $uid ($uname) -- real uid=$<");
     }
   }
-}
-
-sub pollerror {
-    my $action = shift;
-    
-    my $what = $action eq $readable ? 'read' : 'write';
-    
-    my %calls = (
-        \&ConToThread       => 'ConToThread',
-        \&NewWebConnection  => 'NewWebConnection',
-        \&NewStatConnection => 'NewStatConnection',
-        \&WebTraffic        => 'WebTraffic',
-        \&StatTraffic       => 'StatTraffic',
-        \&ProxyTraffic      => 'ProxyTraffic',
-        \&SMTPTraffic       => 'SMTPTraffic'
-    );
-    my @errfh;
-    my @nvalfh;
-
-    if ($IOEngineRun == 0) {
-        @errfh = $action->handles(POLLERR);
-        @nvalfh = $action->handles(POLLNVAL);
-    } else {
-        @errfh = $action->has_exception($pollwait);
-    }
-
-    my $numerr = scalar(@errfh);
-    my $numnval = scalar(@nvalfh);
-    return $numerr + $numnval unless $numerr + $numnval;
-    mlog(0,"error: IO-subsystem error - $numerr error state $what handles") if (($numerr && $ConnectionLog == 3) || $debug || $ThreadDebug);
-    mlog(0,"error: IO-subsystem error - $numnval wrong $what handles") if (($numnval && $ConnectionLog == 3) || $debug || $ThreadDebug);
-    my %ErrorFH = ();
-    foreach my $fh (@errfh) {
-        $ErrorFH{$fh} = ' - error state';
-    }
-    foreach my $fh (@nvalfh) {
-        $ErrorFH{$fh} .= ' - invalid filedescriptor';
-        push @errfh,$fh;
-    }
-    foreach my $fh (@errfh) {
-        my $fhcon;
-        my $peercon;
-        my $fno;
-        my $ip;
-        eval{$fhcon = $fh->sockhost().":".$fh->sockport();};
-        $fhcon = 'n/a' unless $fhcon;
-        eval{$ip = $fh->peerhost();$peercon = $ip.":".$fh->peerport();};
-        $peercon = 'n/a' unless $peercon;
-        my $calltarget = $calls{$SocketCalls{$fh}};
-        eval{$fno = fileno($fh);};
-        mlog(0,"error: registered fd for $fh is not equal$ErrorFH{$fh}") if ($ConnectionLog == 3 && $fno && $Fileno{$fno} && $Fileno{$fno} ne $fh);
-        mlog(0,"error: IO-handle : $fh;  fileno : $fno; call : $calltarget; localIP : $fhcon; peerIP : $peercon;$ErrorFH{$fh}; - will remove handle") if $ConnectionLog == 3;
-        done($fh) if $CloseHandleOnPollError;
-    }
-    return $numerr + $numnval;
 }
 
 sub MainLoop {
@@ -16905,7 +16905,8 @@ sub detectGhostCon {
            delete $StatConH{$fh};
            next;
         }
-        next if (fileno($Con{$fh}->{self}));
+        $fh = $Con{$fh}->{self} if $Con{$fh}->{self};
+        next if (fileno($fh));
         next if $IOEngineRun == 0 && $readable->[3]{$fh};
         next if $IOEngineRun == 0 && $writable->[3]{$fh};
         next if (exists $ConDelete{$fh});
@@ -16925,6 +16926,7 @@ sub detectGhostCon {
         &printallCon($fh) if ($MaintenanceLog >= 2);
         if ($WorkerNumber > 0) {
             &done2($fh);      # MainThread (Worker_0) never closes SMTP sockets here
+            &done2($fh) if (exists $ConDelete{$fh});
             $what = 'SMTP';
         } else {
             unpoll($fh,$readable);
@@ -17580,6 +17582,8 @@ sub mlogWrite {
            $lastmlogWrite = time;
        }
     }
+    $LOG->flush if fileno($LOG);
+    $LOGBR->flush if fileno($LOGBR);
     tosyslog('info', \@tosyslog) if (@tosyslog && $sysLog && ($CanUseSyslog || ($sysLogPort && $sysLogIp)));
     $MainThreadLoopWait = 1;
 }
@@ -17601,7 +17605,7 @@ sub debugWrite {
         my $file = "$base/debug/".time.".dbg";
         open($DEBUG, '>',"$file");
         binmode($DEBUG);
-        $DEBUG->autoflush;
+        $DEBUG->autoflush(1);
         print $DEBUG $UTF8BOM;
         print $DEBUG "running ASSP version: $main::MAINVERSION\n\n";
         mlog(0,"info: starting partial debug mode to file $file");
@@ -17727,12 +17731,15 @@ sub mlog {
         if ($WorkerLogging) {
             $m .= " \[$WorkerName\]";
             if ("$fh" =~ /SSL/io or "$this->{friend}" =~ /SSL/io) {
-                $m .= ("$fh" =~ /SSL/io && $this->{oldfh})
-                    ? ' [TLS-in]' : ("$fh" =~ /SSL/io && ! $this->{oldfh})
+                my $s;
+                $s .= ("$fh" =~ /SSL/io && $this->{movedtossl})
+                    ? ' [TLS-in]' : ("$fh" =~ /SSL/io && ! $this->{movedtossl})
                     ? ' [SSL-in]' : '';
-                $m .= ("$this->{friend}" =~ /SSL/io && exists $Con{$this->{friend}} && $Con{$this->{friend}}->{oldfh})
-                    ? ' [TLS-out]' : ("$this->{friend}" =~ /SSL/io && exists $Con{$this->{friend}} && ! $Con{$this->{friend}}->{oldfh})
+                $s .= ("$this->{friend}" =~ /SSL/io && exists $Con{$this->{friend}} && $Con{$this->{friend}}->{movedtossl})
+                    ? ' [TLS-out]' : ("$this->{friend}" =~ /SSL/io && exists $Con{$this->{friend}} && ! $Con{$this->{friend}}->{movedtossl})
                     ? ' [SSL-out]' : '';
+                $this->{sslTag} = $s if length($s) >= length($this->{sslTag});
+                $m .= $this->{sslTag};
             }
         }
         $m .= " $this->{prepend}" if ($this->{prepend} && !$noprepend && ($tagLogging || $this->{prepend} eq '[MessageOK]'));
@@ -18003,8 +18010,9 @@ sub setSSLfailed {
 
 # switch the connected client to SSL (we are the SSL-server)
 sub switchSSLClient {
-    my $fh =shift;
+    my $fh = shift;
     my $sslfh;
+    my $oldfh = "$fh";
     my $try = $SSLRetryOnError || 0;
     my %parms = getSSLParms('SMTP',{'LocalAddr' => $fh->sockhost , 'LocalPort' => $fh->sockport});
 
@@ -18013,10 +18021,12 @@ sub switchSSLClient {
              SSL_startHandshake => 1,
              %parms
              });
+    $fh = $Con{$oldfh}->{self};
     mlog($fh,"info: retry ($try) SSL negotiation - client peer socket was not ready - $IO::Socket::SSL::SSL_ERROR") if !$try && "$sslfh" !~ /SSL/io;
     while ($try-- && "$sslfh" !~ /SSL/io && ($IO::Socket::SSL::SSL_ERROR eq eval('SSL_WANT_READ') ? 1 : $IO::Socket::SSL::SSL_ERROR eq eval('SSL_WANT_WRITE') ) )
     {
          &ThreadYield();
+         $fh = $Con{$oldfh}->{self};
          $ThreadIdleTime{$WorkerNumber} += Time::HiRes::sleep(0.5);
          mlog($fh,"info: retry ($try) SSL negotiation - client peer socket was not ready - $IO::Socket::SSL::SSL_ERROR");
          
@@ -18025,6 +18035,7 @@ sub switchSSLClient {
              %parms
              });
     }
+    $fh = $Con{$oldfh}->{self};
     if ("$sslfh" =~ /SSL/io) {
         eval{$sslfh->blocking(0);};
     } else {
@@ -18037,17 +18048,20 @@ sub switchSSLClient {
 sub switchSSLServer {
     my $fh =shift;
     my $sslfh;
+    my $oldfh = "$fh";
     my $try = $SSLRetryOnError || 0;
-    my %parms = getSSLParms(0,undef);
+    my %parms = getSSLParms(0,{'name' => $fh->peerhost.':'.$fh->peerport, 'type' => 'smtp'});
     eval{$fh->blocking(1);};
     $sslfh = IO::Socket::SSL->start_SSL($fh,{
              SSL_startHandshake => 1,
              %parms
              });
+    $fh = $Con{$oldfh}->{self};
     mlog($fh,"info: retry ($try) SSL negotiation - server peer socket was not ready - $IO::Socket::SSL::SSL_ERROR") if !$try && "$sslfh" !~ /SSL/io;
     while ($try-- && "$sslfh" !~ /SSL/io && ($IO::Socket::SSL::SSL_ERROR eq eval('SSL_WANT_READ') ? 1 : $IO::Socket::SSL::SSL_ERROR eq eval('SSL_WANT_WRITE') ) )
     {
          &ThreadYield();
+         $fh = $Con{$oldfh}->{self};
          $ThreadIdleTime{$WorkerNumber} += Time::HiRes::sleep(0.5);
          mlog($fh,"info: retry ($try) SSL negotiation - server peer socket was not ready - $IO::Socket::SSL::SSL_ERROR");
 
@@ -18056,6 +18070,7 @@ sub switchSSLServer {
              %parms
              });
     }
+    $fh = $Con{$oldfh}->{self};
     if ("$sslfh" =~ /SSL/io) {
         eval{$sslfh->blocking(0);};
     } else {
@@ -18173,7 +18188,7 @@ sub NewSMTPConnectionConnect {
         sockclose($client);
         $mlog->(0,"error: $WorkerName close failed on $fhh : $!") if ($!);
         $d->('NewSMTPConnectionConnect - denied accept_SSL');
-        exists $Con{$fhh} && delete $Con{$fhh};
+        delete $Con{$fhh};
         return;
     } elsif ($isSSL && $client && $client->connected) {
         eval{$fhh->blocking(1);};
@@ -18223,8 +18238,8 @@ sub NewSMTPConnectionConnect {
     }
     threadConDone($fhh);
     sockclose($fhh);
-    exists $Con{$fhh} && delete $Con{$fhh};
-    exists $Con{$client} && delete $Con{$client};
+    delete $Con{$fhh};
+    delete $Con{$client};
     delete $SSLfailed{ITR($ip)} if $isSSL && $ip;
     $SocketCalls{$client} = \&NewSMTPConnection;
     $SocketCallsNewCon{$client} = \&NewSMTPConnection;
@@ -18244,15 +18259,17 @@ sub NewSMTPConnectionConnect {
 
 sub NewSMTPConnection {
     my $client=shift;
-    my $tclient = $Con{$client}->{self};
+    my $tclient;
+    $tclient = $Con{$client}->{self} if exists $Con{$client};
     if ($tclient) {
         $client = $tclient;
     } else {
         eval {
             threadConDone($client);
+            sockclose($client);
             delete $SocketCallsNewCon{$client};
             delete $SocketCalls{$client};
-            sockclose($client);
+            delete $Con{$client};
         };
         return;
     }
@@ -18260,6 +18277,7 @@ sub NewSMTPConnection {
     my $fnoS;
     my $timeout;
     my $isSSL;
+    $isSSL = 1 if "$client" =~ /SSL/o;
     my $isRemoteSupport;
     my ($server, $destination, $relayok, $AVa, $relayused);
     delete $SocketCallsNewCon{$client};
@@ -18321,8 +18339,10 @@ sub NewSMTPConnection {
         my $out = "421 <$myName> Service not available, closing transmission channel\r\n";
         &NoLoopSyswrite($client,$out,0) if $ip;
         threadConDone($client);
-        delete $Con{$client};
         sockclose($client);
+        delete $Con{$client};
+        my $n = scalar keys %SocketCalls;
+        $ComWorker{$WorkerNumber}->{numActCon} = int(($n+1)/2);      # set the number of active connection in thread
         d('NewSMTPConnection - shutdown detected');
         return;
     }
@@ -18511,7 +18531,7 @@ sub NewSMTPConnection {
             d("try to connect to server at $destinationA$useSSL");
             mlog(0,"info: try to connect to server at $destinationA$useSSL") if $ConnectionLog >= 2;
             if ($useSSL) {
-                my %parms = getSSLParms(0,undef);
+                my %parms = getSSLParms(0,{'name' => $destinationA, 'type' => 'smtp'});
                 $parms{SSL_startHandshake} = 1;
                 my ($interface,$p)=$destinationA=~/($HostRe):($PortRe)$/o;
                 if ($interface) {
@@ -18748,10 +18768,14 @@ sub SMTPTraffic {
     if ($hasSSLrwerr) {
         ThreadYield();
         $Con{$fh}->{sslwantrw} ||= time;
-        $Con{$fh}->{sslrenegotiations}++;
-        $Con{$fh}->{lastsslrenegotiation} = time;
-        my $renegcount = int(($Con{$fh}->{sslrenegotiations} + 1)/2);
-        d("SSL-renegotiation count: $renegcount - abs: $Con{$fh}->{sslrenegotiations} - in read");
+        my $renegcount = 0;
+        if ($Con{$fh}->{type} eq 'C' && $maxSSLRenegotiations && ! skipCheck($Con{$fh},'aa','nd','ro','rw','nb','nbip','wl','np','ms','ispcip',sub{$ip =~ /$IPprivate/o;})) {
+            $Con{$fh}->{sslrenegotiations}++;
+            $Con{$fh}->{lastsslrenegotiation} = time;
+            $renegcount = int(($Con{$fh}->{sslrenegotiations} + 1)/2);
+            d("SSL-renegotiation count: $renegcount - abs: $Con{$fh}->{sslrenegotiations} - in read");
+            mlog(0,"SSL-renegotiation count: $renegcount - abs: $Con{$fh}->{sslrenegotiations} - in read") if $SSLDEBUG;
+        }
         if (! length($SMTPbuf)) {
             if (time - $Con{$fh}->{sslwantrw} > $SSLtimeout) {
                 my $lastcmd = "- last command was \'$Con{$fh}->{lastcmd}\'";
@@ -18760,7 +18784,7 @@ sub SMTPTraffic {
                 delete $Con{$fh}->{sslwantrw};
                 setSSLfailed($ip);
                 if ($Con{$fh}->{type} eq 'C') {
-                    $Con{$fh}->{oldfh} ? $Stats{smtpConnTLSIdleTimeout}++ : $Stats{smtpConnSSLIdleTimeout}++;
+                    $Con{$fh}->{movedtossl} ? $Stats{smtpConnTLSIdleTimeout}++ : $Stats{smtpConnSSLIdleTimeout}++;
                 }
                 done2($fh);
             }
@@ -18781,7 +18805,7 @@ sub SMTPTraffic {
         if ($maxSSLRenegotiations && $maxSSLRenegDuration && exists($Con{$fh}->{lastsslrenegotiation}) && ($Con{$fh}->{lastsslrenegotiation} + $maxSSLRenegDuration) < time) {
             delete $Con{$fh}->{sslrenegotiations};
             delete $Con{$fh}->{lastsslrenegotiation};
-            mlog($fh,'info: SSL-renegotiation counter was reset') if $ConnectionLog > 1;
+            mlog($fh,'info: SSL-renegotiation counter was reset') if $ConnectionLog > 1 || $SSLDEBUG;
             d('info: SSL-renegotiation counter was reset');
         }
     }
@@ -18889,6 +18913,7 @@ sub SMTPTraffic {
                         NoLoopSyswrite($fh, "521 $myName Service not available, closing transmission channel\r\n",0);
                         if ($Con{$fh}->{friend} && exists $Con{$Con{$fh}->{friend}} && $Con{$fh}->{lastcmd} !~ /DATA/io) {
                             $Con{$Con{$fh}->{friend}}->{getline} = \&skipok;
+                            $Con{$Con{$fh}->{friend}}->{getlinetxt} = 'skipok';
                             NoLoopSyswrite($Con{$fh}->{friend},"QUIT\r\n",0);
                         }
                         done($fh);
@@ -18913,6 +18938,9 @@ sub SMTPTraffic {
                    return;
                 }
                 $Con{$fh}->{getline}->($fh,$s);
+                if (exists $ConToTLS{$fh}) {   # the connection was moved to TLS in any reply... call - so the file handle is changed
+                    $fh = delete $ConToTLS{$fh};
+                }
                 mlog($fh,"info: received and processed all DATA") if $SessionLog > 2 && $Con{$fh}->{type} eq 'C' && $s =~ /^\.\x0D?\x0A$/os;
                 last if((exists $ConDelete{$fh} && $ConDelete{$fh}) || ! exists $Con{$fh} || $Con{$fh}->{closeafterwrite});  # it's possible that the connection can be deleted while there's still something in the buffer
                 if(($Con{$fh}->{inerror} || $Con{$fh}->{intemperror}) && $Con{$fh}->{cleanSMTPBuff}) { # 4/5xx from MTA after DATA
@@ -19110,10 +19138,14 @@ sub SMTPWrite {
 
         if (exists $Con{$fh}->{sslwritestate}) {  # check ssltimeout in case of a rehandshake
             $Con{$fh}->{sslwantrw} ||= time;
-            $Con{$fh}->{sslrenegotiations}++;
-            $Con{$fh}->{lastsslrenegotiation} = time;
-            my $renegcount = int(($Con{$fh}->{sslrenegotiations} + 1)/2);
-            d("SSL-renegotiation count: $renegcount - abs: $Con{$fh}->{sslrenegotiations} - in write");
+            my $renegcount = 0;
+            if ($Con{$fh}->{type} eq 'C' && $maxSSLRenegotiations && ! skipCheck($Con{$fh},'aa','nd','ro','rw','nb','nbip','wl','np','ms','ispcip',sub{$Con{$fh}->{ip} =~ /$IPprivate/o;})) {
+                $Con{$fh}->{sslrenegotiations}++;
+                $Con{$fh}->{lastsslrenegotiation} = time;
+                $renegcount = int(($Con{$fh}->{sslrenegotiations} + 1)/2);
+                d("SSL-renegotiation count: $renegcount - abs: $Con{$fh}->{sslrenegotiations} - in write");
+                mlog(0,"SSL-renegotiation count: $renegcount - abs: $Con{$fh}->{sslrenegotiations} - in write") if $SSLDEBUG;
+            }
             if (time - $Con{$fh}->{sslwantrw} > $SSLtimeout) {
                 my $lastcmd = "- last command was \'$Con{$fh}->{lastcmd}\'";
                 $lastcmd = '' unless $Con{$fh}->{lastcmd};
@@ -19122,7 +19154,7 @@ sub SMTPWrite {
                 delete $Con{$fh}->{sslwantrw};
                 setSSLfailed(ITR($fh->peerhost()));
                 if ($Con{$fh}->{type} eq 'C') {
-                    $Con{$fh}->{oldfh} ? $Stats{smtpConnTLSIdleTimeout}++ : $Stats{smtpConnSSLIdleTimeout}++;
+                    $Con{$fh}->{movedtossl} ? $Stats{smtpConnTLSIdleTimeout}++ : $Stats{smtpConnSSLIdleTimeout}++;
                 }
                 done2($fh);
                 return;
@@ -19144,7 +19176,7 @@ sub SMTPWrite {
             if ($maxSSLRenegotiations && $maxSSLRenegDuration && exists($Con{$fh}->{lastsslrenegotiation}) && ($Con{$fh}->{lastsslrenegotiation} + $maxSSLRenegDuration) < time) {
                 delete $Con{$fh}->{sslrenegotiations};
                 delete $Con{$fh}->{lastsslrenegotiation};
-                mlog($fh,'info: SSL-renegotiation counter was reset') if $ConnectionLog > 1;
+                mlog($fh,'info: SSL-renegotiation counter was reset') if $ConnectionLog > 1 || $SSLDEBUG;
                 d('info: SSL-renegotiation counter was reset');
             }
         }
@@ -19236,10 +19268,10 @@ sub SMTPTimeOut {
             if ($tmpNow > ($lastTimeoutCheck + 15)){
                 while (my ($tmpfh,$v) = each %Con){
                     next if("$tmpfh" eq "$sfh");
+                    $tmpfh = $Con{$tmpfh}->{self};
                     delete $Con{$tmpfh}->{doNotTimeout} if ($tmpNow - $Con{$tmpfh}->{doNotTimeout} > $NpWlTimeOut);
                     if ($Con{$tmpfh}->{type} =~ /CC?/o &&
                         $Con{$tmpfh}->{timelast} > 0 &&
-                        ! $Con{$tmpfh}->{movedtossl} &&
                         ! $Con{$tmpfh}->{doNotTimeout} &&
                         ! (($Con{$tmpfh}->{noprocessing} || $Con{$tmpfh}->{whitelisted}) && $tmpNow - $Con{$tmpfh}->{timelast} < $NpWlTimeOut) &&   # 20 minutes for realy large queued mails
                         (($smtpIdleTimeout && $tmpNow - $Con{$tmpfh}->{timelast} > $smtpIdleTimeout) ||
@@ -19280,7 +19312,7 @@ sub SMTPTimeOut {
                         $Con{$tmpfh}->{timestart} = 0;
                         my $type;
                         my $addPB = 0;
-                        if ($Con{$tmpfh}->{oldfh} && $Con{$tmpfh}->{ip}) {
+                        if ($Con{$tmpfh}->{movedtossl} && $Con{$tmpfh}->{ip}) {
                             setSSLfailed($Con{$tmpfh}->{ip});
                             $type = 'TLS-';
                             $Stats{smtpConnTLSIdleTimeout}++;
@@ -19293,30 +19325,29 @@ sub SMTPTimeOut {
                         }
                         if ($Con{$tmpfh}->{damping}) {
                             $Con{$tmpfh}->{messagescore} = 0;
-                            delete $ConDelete{$tmpfh};
                             $addPB = 0;
                         }
                         if ( ! $Con{$tmpfh}->{timedout} ) {
                             pbAdd( $tmpfh,$Con{$tmpfh}->{ip}, 'idleValencePB', "TimeOut",2 ) if $addPB;
                             mlog($tmpfh,$type."Connection idle for $smtpIdleTimeout secs - timeout",1) if $SessionLog;
                         } else {
-                            done($Con{$tmpfh}->{client});
+                            done($tmpfh);
                             next;
                         }
                         $Con{$tmpfh}->{timedout} = 1;
                         if ($Con{$tmpfh}->{lastcmd} =~ /STARTTLS/oi) {  # the socket may be blocked by the SSL modules
-                            done($Con{$tmpfh}->{client});
+                            done($tmpfh);
                             next;
                         }
                         if ($Con{$tmpfh}->{getline} != \&error) {
-                            seterror($Con{$tmpfh}->{client},"451 Connection timeout, try later\r\n",1);
+                            seterror($tmpfh,"451 Connection timeout, try later\r\n",1);
                         } else {
                             if (! $Con{$tmpfh}->{closeafterwrite}) {
-                                sendque($Con{$tmpfh}->{client},"451 Connection timeout, try later\r\n");
+                                sendque($tmpfh,"451 Connection timeout, try later\r\n");
                                 $Con{$tmpfh}->{closeafterwrite} = 1;
-                                unpoll($Con{$tmpfh}->{client}, $readable);
+                                unpoll($tmpfh, $readable);
                             } else {
-                                done($Con{$tmpfh}->{client});
+                                done($tmpfh);
                             }
                         }
                     }
@@ -20353,7 +20384,9 @@ sub NewWebConnection {
   if($allowAdminConnectionsFrom && ! matchIP($ip,'allowAdminConnectionsFrom',0,0)) {
     mlog(0,"admin connection from $ip:$port rejected by 'allowAdminConnectionsFrom'");
     $Stats{admConnDenied}++;
+    $WebConH{$s} = $s;
     sockclose($s);
+    delete $WebConH{$s};
     return;
   }
 # logging is done later (in webRequest()) due to /shutdown_frame page, which auto-refreshes
@@ -20614,7 +20647,9 @@ sub NewStatConnection {
   if($allowStatConnectionsFrom && ! matchIP($ip,'allowStatConnectionsFrom',0,0)) {
     mlog(0,"stat connection from $ip:$port rejected by allowStatConnectionsFrom");
     $Stats{statConnDenied}++;
+    $StatConH{$s} = $s;
     sockclose($s);
+    delete $StatConH{$s};
     return;
   }
 # logging is done later (in webRequest()) due to /shutdown_frame page, which auto-refreshes
@@ -20777,13 +20812,13 @@ sub WebDone {
      $ConDelete{$fh} = \&WebDone;
      return;
   }
+  delete $Con{$fh};
+  sockclose($fh);
   delete $SocketCalls{$fh};
   delete $WebCon{$fh};
   delete $StatCon{$fh};
   delete $WebConH{$fh};
   delete $StatConH{$fh};
-  delete $Con{$fh};
-  sockclose($fh);
 }
 
 sub ConCountSync {
@@ -20806,7 +20841,15 @@ sub ConCountSync {
 
 sub ConDone {
     my %isDamping = ();
-    while ( my ($con,$v) = each %ConDelete) {
+    my @handles = sort {       $Con{$a}->{type} cmp $Con{$b}->{type}
+                        || $Con{$a}->{timelast} <=> $Con{$b}->{timelast} } keys(%ConDelete);  # clent before server
+    while ( @handles ) {
+        my $con = shift(@handles);
+        unless ($con) {
+            delete $ConDelete{$con};
+            delete $Con{$con};
+            next;
+        }
         my $dampOffset = 0;
 #        $dampOffset = $DoDamping * 10 if ! $Con{$con}->{messagescore} && &pbBlackFind($Con{$con}->{ip});
         my $damptime ;$damptime = int(($Con{$con}->{messagescore} + $dampOffset) / $DoDamping) if $DoDamping;
@@ -20840,15 +20883,20 @@ sub ConDone {
             $isDamping{$con} = $ConDelete{$con};
             next if time - $Con{$con}->{timelast} < $damptime;
         }
-        $Stats{damptime} += $damptime if $Con{$con}->{damping};
-        $Con{$con}->{damptime} += $damptime if $Con{$con}->{damping};
-        $ConDelete{$con}->($con) if $con;
+        if ($Con{$con}->{damping}) {
+            $Stats{damptime} += $damptime;
+            $Con{$con}->{damptime} += $damptime;
+        }
+        $ConDelete{$con}->($con) if $con;    # mainly a call to done2
+        delete $isDamping{$con} if ! exists $Con{$con}; # remove the damping if done2 has removed the $Con{$con}
     }
     %ConDelete = %isDamping;
     undef %ConDelete unless keys %ConDelete;
     if ($WorkerNumber > 0 and $WorkerNumber < 10000) {
         my $n = scalar(keys %SocketCalls);
         $ComWorker{$WorkerNumber}->{numActCon} = int(($n+1)/2);      # set the number of active connection in thread
+#        mlog(0,"info: SocketCalls: ".join(' ',keys(%SocketCalls))) if $n && time > $nextConSync;
+        $nextConSync = time + 60;
     }
     if (time > $nextConSync && $WorkerNumber == 0) {
         &ConCountSync();
@@ -20861,17 +20909,24 @@ sub done {
   my $fh=shift;
   return unless $fh;
   d('done');
-  done2($Con{$fh}->{friend}) if $Con{$fh}->{friend};
+  done2($Con{$fh}->{friend}) if $Con{$fh}->{friend} && exists $Con{$Con{$fh}->{friend}};
   done2($fh);
 }
 
 # close a file handle & clean up associated records
 sub done2 {
-    my $fh=shift;
-    return unless $fh;
-    $fh = $Con{$fh}->{self} if exists $Con{$fh}->{self};   # get the real filehandle
-    my $oldfh = $Con{$fh}->{oldfh};
-    my @handles;
+    my $fh = shift;
+    my $ofh = $fh;
+    $fh = $Con{$fh}->{self} if exists $Con{$fh} && ref($Con{$fh}->{self}) =~ /socket/o;   # get the real filehandle
+
+#    mlog(0,"info: '$fh' != '$Con{$fh}->{self}'") if "$fh" ne "$Con{$fh}->{self}";
+#    if (ref($fh) !~ /socket/oi) {
+#        for (0..2) {
+#            (my $package, my $file, my $line, my $Subroutine, my $HasArgs, my $WantArray, my $EvalText, my $IsRequire) = caller($_);
+#            mlog(0,"info: done2_$_ - $fh is not a reference - caller: $package $file $Subroutine $line");
+#        }
+#    }
+
     delete $Con{$fh}->{prepend};
     if (! exists $ConDelete{$fh}) {
         $ConDelete{$fh} = \&done2;
@@ -20886,10 +20941,10 @@ sub done2 {
         }
         if ($Con{$fh}->{type} eq 'C') {
             T10StatAdd($fh) if $DoT10Stat;
-            done2($Con{$fh}->{friend})
+            done2($Con{$Con{$fh}->{friend}}->{self})
               if ($Con{$fh}->{friend} &&
                   ! exists $ConDelete{$Con{$fh}->{friend}} &&
-                  defined $Con{$Con{$fh}->{friend}} &&
+                  exists $Con{$Con{$fh}->{friend}} &&
                   length($Con{$Con{$fh}->{friend}}->{outgoing}) == 0);
         } else {
             if ($Con{$fh}->{friend} &&
@@ -20912,131 +20967,133 @@ sub done2 {
         }
         return;
     }
-    push @handles, $fh;
-    if ($oldfh && $oldfh ne $fh && ! exists $ConDelete{$oldfh}) {
-        delete $Con{$oldfh}->{timestart};
-        push @handles, $oldfh;
-    }
-    delete $SMTPSession{$oldfh} if $oldfh && $oldfh ne $fh;
 
     d('done2');
-    while (scalar @handles) {
-        my $fh = shift @handles;
-        next unless $fh;
-        removeCrashFile($fh);
-        mlog(0,"info: unable to close \$fh == '$fh'") unless $fh;
-        $Con{$Con{$fh}->{forwardSpam}}->{gotAllText} = 1 if $Con{$fh}->{forwardSpam} && exists $Con{$Con{$fh}->{forwardSpam}};
-        threadConDone($fh);
-        delete $dampedFH{$fh};
+    if (ref($fh)) {
+        unpoll($fh,$readable);
+        unpoll($fh,$writable);
+    }
+    removeCrashFile($fh);
+    $Con{$Con{$fh}->{forwardSpam}}->{gotAllText} = 1 if $Con{$fh}->{forwardSpam} && exists $Con{$Con{$fh}->{forwardSpam}};
+    threadConDone($fh);
+    delete $dampedFH{$fh};
+    delete $dampedFH{$ofh};
 
-        delete $Con{$fh}->{prepend};
+    delete $Con{$fh}->{prepend};
 
-        if (   $Con{$fh}->{type} eq 'C'
-            && $DoPenalty
-            && $Con{$fh}->{ipscore}
-            && (my $ip=$Con{$fh}->{ip})
-            && $PenaltyLog)
-        {
-            $ip = $Con{$fh}->{cip} if $Con{$fh}->{ispip} && $Con{$fh}->{cip};
-            $ip = &ipNetwork( $ip, $PenaltyUseNetblocks);
-            my ( $ct, $ut, $freq, $score, $sip, $sreason ) = split( / /o, $PBBlack{$ip} );
-            $score ||= 0;
-            mlog( $fh, "info: PB-IP-Score for '$ip' is $score, added $Con{$fh}->{ipscore} in this session",1,1,0);
+    if (   $Con{$fh}->{type} eq 'C'
+        && $DoPenalty
+        && $Con{$fh}->{ipscore}
+        && (my $ip=$Con{$fh}->{ip})
+        && $PenaltyLog)
+    {
+        $ip = $Con{$fh}->{cip} if $Con{$fh}->{ispip} && $Con{$fh}->{cip};
+        $ip = &ipNetwork( $ip, $PenaltyUseNetblocks);
+        my ( $ct, $ut, $freq, $score, $sip, $sreason ) = split( / /o, $PBBlack{$ip} );
+        $score ||= 0;
+        mlog( $fh, "info: PB-IP-Score for '$ip' is $score, added $Con{$fh}->{ipscore} in this session",1,1,0);
+    }
+    
+    $newReported{$Con{$fh}->{maillogfilename}} = 'spam' if ($Con{$fh}->{newReported} && $Con{$fh}->{maillogfilename});
+
+    if (   $Con{$fh}->{type} eq 'C'   # remove MaillogFile for possily incomplete transmitted mails
+        && ! $Con{$fh}->{spamfound}
+        && ! $Con{$fh}->{error}
+        && lc($Con{$fh}->{lastcmd}) ne 'quit'
+        && ! $Con{$fh}->{allDATAseen}
+        && $Con{$fh}->{maillogfh}
+        && $Con{$fh}->{maillogfilename}
+        && ! $Con{$fh}->{deleteMailLog}
+       )
+    {
+        if (! $Con{$fh}->{allDATAseen}) {
+            $Con{$fh}->{deleteMailLog} = 'incomplete good mail';
+            mlog(0,"info: will remove file '$Con{$fh}->{maillogfilename}' , because mail delivery was incomplete for a good mail") if $ConnectionLog;
+        } else {
+            mlog(0,"info: missing the QUIT command for a good mail - the transmission may be incomplete") if $ConnectionLog;
         }
-        
-        $newReported{$Con{$fh}->{maillogfilename}} = 'spam' if ($Con{$fh}->{newReported} && $Con{$fh}->{maillogfilename});
+    }
 
-        if (   $Con{$fh}->{type} eq 'C'   # remove MaillogFile for possily incomplete transmitted mails
-            && ! $Con{$fh}->{spamfound}
-            && ! $Con{$fh}->{error}
-            && lc($Con{$fh}->{lastcmd}) ne 'quit'
-            && ! $Con{$fh}->{allDATAseen}
-            && $Con{$fh}->{maillogfh}
-            && $Con{$fh}->{maillogfilename}
-            && ! $Con{$fh}->{deleteMailLog}
-           )
-        {
-            if (! $Con{$fh}->{allDATAseen}) {
-                $Con{$fh}->{deleteMailLog} = 'incomplete good mail';
-                mlog(0,"info: will remove file '$Con{$fh}->{maillogfilename}' , because mail delivery was incomplete for a good mail") if $ConnectionLog;
-            } else {
-                mlog(0,"info: missing the QUIT command for a good mail - the transmission may be incomplete") if $ConnectionLog;
-            }
-        }
+    my $ip = $Con{$fh}->{ip};
+    my $cmdlist = @{$Con{$fh}->{cmdlist}} ? "\'".join("," , @{$Con{$fh}->{cmdlist}})."\'" : "\'n/a\'";
+    my $ids;
+    $ids = " - processed ids @{$Con{$fh}->{allmsgtime}} " if scalar(@{$Con{$fh}->{allmsgtime}}) > 1;
+    @{$Con{$fh}->{allmsgtime}} = (); undef @{$Con{$fh}->{allmsgtime}};
+    @{$Con{$fh}->{sip}} = (); undef @{$Con{$fh}->{sip}};
+    @{$Con{$fh}->{senders}} = (); undef @{$Con{$fh}->{senders}};
+    @{$Con{$fh}->{cmdlist}} = (); undef @{$Con{$fh}->{cmdlist}};
+    @{$Con{$fh}->{AUTHClient}} = (); undef @{$Con{$fh}->{AUTHClient}};
+    @{$Con{$fh}->{trapaddr}} = (); undef @{$Con{$fh}->{trapaddr}};
+    %{$Con{$fh}->{rcptlist}} = (); undef %{$Con{$fh}->{rcptlist}};
+    %{$Con{$fh}->{torcpt}} = (); undef %{$Con{$fh}->{torcpt}};
+    %{$Con{$fh}->{ccrcpt}} = (); undef %{$Con{$fh}->{ccrcpt}};
+    %{$Con{$fh}->{bccrcpt}} = (); undef %{$Con{$fh}->{bccrcpt}};
+    %{$Con{$fh}->{authmethodes}} = (); undef %{$Con{$fh}->{authmethodes}};
+    %{$Con{$fh}->{userauth}} = (); undef %{$Con{$fh}->{userauth}};
+    %{$Con{$fh}->{Xheaders}} = (); undef %{$Con{$fh}->{Xheaders}};
+    %{$Con{$fh}->{scores}} = (); undef %{$Con{$fh}->{scores}};
+    %{$Con{$fh}->{rememberMessageScore}} = (); undef %{$Con{$fh}->{rememberMessageScore}};
+    %{$Con{$fh}->{SSLframeSize}} = (); undef %{$Con{$fh}->{SSLframeSize}};
 
-        my $ip=$Con{$fh}->{ip};
-        my $cmdlist = @{$Con{$fh}->{cmdlist}} ? "\'".join("," , @{$Con{$fh}->{cmdlist}})."\'" : "\'n/a\'";
-        my $ids;
-        $ids = " - processed ids @{$Con{$fh}->{allmsgtime}} " if scalar(@{$Con{$fh}->{allmsgtime}}) > 1;
-        @{$Con{$fh}->{allmsgtime}} = (); undef @{$Con{$fh}->{allmsgtime}};
-        @{$Con{$fh}->{sip}} = (); undef @{$Con{$fh}->{sip}};
-        @{$Con{$fh}->{senders}} = (); undef @{$Con{$fh}->{senders}};
-        @{$Con{$fh}->{cmdlist}} = (); undef @{$Con{$fh}->{cmdlist}};
-        @{$Con{$fh}->{AUTHClient}} = (); undef @{$Con{$fh}->{AUTHClient}};
-        @{$Con{$fh}->{trapaddr}} = (); undef @{$Con{$fh}->{trapaddr}};
-        %{$Con{$fh}->{rcptlist}} = (); undef %{$Con{$fh}->{rcptlist}};
-        %{$Con{$fh}->{torcpt}} = (); undef %{$Con{$fh}->{torcpt}};
-        %{$Con{$fh}->{ccrcpt}} = (); undef %{$Con{$fh}->{ccrcpt}};
-        %{$Con{$fh}->{bccrcpt}} = (); undef %{$Con{$fh}->{bccrcpt}};
-        %{$Con{$fh}->{authmethodes}} = (); undef %{$Con{$fh}->{authmethodes}};
-        %{$Con{$fh}->{userauth}} = (); undef %{$Con{$fh}->{userauth}};
-        %{$Con{$fh}->{Xheaders}} = (); undef %{$Con{$fh}->{Xheaders}};
-        %{$Con{$fh}->{scores}} = (); undef %{$Con{$fh}->{scores}};
-        %{$Con{$fh}->{rememberMessageScore}} = (); undef %{$Con{$fh}->{rememberMessageScore}};
-        %{$Con{$fh}->{SSLframeSize}} = (); undef %{$Con{$fh}->{SSLframeSize}};
+    $cmdlist = $ConnectionLog >= 2 ? "- command list was $cmdlist" : '';
+    if ($ip &&
+        $ConnectionLog &&
+        !(matchIP($ip,'noLog',0,1)))
+    {
+        $Con{$fh}->{writtenDataToFriend} -= 6;
+        $Con{$fh}->{writtenDataToFriend} = 0 if $Con{$fh}->{writtenDataToFriend} < 0;
+        my $sz = max($Con{$fh}->{spambuf},$Con{$fh}->{mailloglength});
+        $sz = $Con{$fh}->{maillength} unless $sz;
+        mlog($fh, 'finished message - received DATA size: ' . &formatNumDataSize($sz) . ' - sent DATA size: ' . &formatNumDataSize($Con{$fh}->{writtenDataToFriend}),1,1)
+            if ($Con{$fh}->{maillength} > 3);
+        my $sc;
+        $sc = " - used $Con{$fh}->{socketcalls} SocketCalls " if $ConnectionLog >= 2 && $Con{$fh}->{socketcalls};
+        my $ptime = $Con{$fh}->{timestart} ? time - $Con{$fh}->{timestart} : 0;
+        $Con{$fh}->{damptime} ||= 0 if $DoDamping;
+        delete $Con{$fh}->{damptime} if $ConnectionLog < 2 or $Con{$fh}->{relayok};
+        my $dtime = exists $Con{$fh}->{damptime} ? " - damped $Con{$fh}->{damptime} seconds" : '';
+        mlog($fh, "disconnected: session:$Con{$fh}->{SessionID} $ip $cmdlist$sc$ids- processing time $ptime seconds$dtime",1,1);
+    }
+    d('closing maillogfh');
 
-        $cmdlist = $ConnectionLog >= 2 ? "- command list was $cmdlist" : '';
-        if ($ip &&
-            $ConnectionLog &&
-            !(matchIP($ip,'noLog',0,1)) &&
-            (($Con{$fh}->{movedtossl} && "$fh" =~/SSL/io) || (!$Con{$fh}->{movedtossl})))
-        {
-            $Con{$fh}->{writtenDataToFriend} -= 6;
-            $Con{$fh}->{writtenDataToFriend} = 0 if $Con{$fh}->{writtenDataToFriend} < 0;
-            my $sz = max($Con{$fh}->{spambuf},$Con{$fh}->{mailloglength});
-            $sz = $Con{$fh}->{maillength} unless $sz;
-            mlog($fh, 'finished message - received DATA size: ' . &formatNumDataSize($sz) . ' - sent DATA size: ' . &formatNumDataSize($Con{$fh}->{writtenDataToFriend}),1,1)
-                if ($Con{$fh}->{maillength} > 3);
-            my $sc;
-            $sc = " - used $Con{$fh}->{socketcalls} SocketCalls " if $ConnectionLog >= 2 && $Con{$fh}->{socketcalls};
-            my $ptime = $Con{$fh}->{timestart} ? time - $Con{$fh}->{timestart} : 0;
-            $Con{$fh}->{damptime} ||= 0 if $DoDamping;
-            delete $Con{$fh}->{damptime} if $ConnectionLog < 2 or $Con{$fh}->{relayok};
-            my $dtime = exists $Con{$fh}->{damptime} ? " - damped $Con{$fh}->{damptime} seconds" : '';
-            mlog($fh, "disconnected: session:$Con{$fh}->{SessionID} $ip $cmdlist$sc$ids- processing time $ptime seconds$dtime",1,1);
-        }
-        d('closing maillogfh');
+    if ($Con{$fh}->{friend} && exists $Con{$Con{$fh}->{friend}}) {   # tell the peer connection that we are gone here
+        delete $Con{$Con{$fh}->{friend}}->{friend};
+    }
 
-        # close the maillog if it's still open
-        &MaillogClose($fh);
+    # close the maillog if it's still open
+    &MaillogClose($fh);
 
-        my $what = ($Con{$fh}->{type} eq 'C') ? 'client' : 'server';
+    my $what = ($Con{$fh}->{type} eq 'C') ? 'client' : 'server';
 
+    if (ref($fh)) {
         d("closing $what $fh $ip");
         # close it
         sockclose($fh) ||
         (($ConnectionLog > 1 || $SessionLog > 1) && mlog(0,"error: unable to close Socket $fh - $@ - $!"));
         $@ = $! = undef;
-        
-        d('delete the Connection data');
-        # delete the Connection data
-        delete $Con{$fh};
-        delete $ConDelete{$fh};
-
-        d('delete the Session data');
-        # delete the Session data.
-        if (exists $SMTPSession{$fh}) {
-            delete $SMTPSession{$fh};
-            threads->yield();
-            $smtpConcurrentSessions = 0 if (--$smtpConcurrentSessions < 0);
-            threads->yield();
-            $SMTPSessionIP{Total}--;
-            threads->yield();
-            delete $SMTPSessionIP{$ip} if (--$SMTPSessionIP{$ip} <= 0);
-            threads->yield();
-        }
-        d('finished closing connection');
     }
+    
+    d('delete the Connection data');
+    # delete the Connection data
+    delete $Con{$fh};
+    delete $ConDelete{$fh};
+    delete $Con{$ofh};
+    delete $ConDelete{$ofh};
+
+    d('delete the Session data');
+    # delete the Session data.
+    if (exists $SMTPSession{$fh}) {
+        delete $SMTPSession{$fh};
+        threads->yield();
+        $smtpConcurrentSessions = 0 if (--$smtpConcurrentSessions < 0);
+        threads->yield();
+        $SMTPSessionIP{Total}--;
+        threads->yield();
+        delete $SMTPSessionIP{$ip} if (--$SMTPSessionIP{$ip} <= 0);
+        threads->yield();
+    }
+    d('finished closing connection');
+
     undef %Con unless keys(%Con);
     undef %ConDelete unless keys(%ConDelete);
     undef %SocketCalls unless keys(%SocketCalls);
@@ -21077,7 +21134,7 @@ sub newCrashFile {
         $Con{$fh}->{crashfn} = $fn;
         open(my $crashfh,'>',$fn);
         binmode($crashfh);
-        $crashfh->autoflush;
+        $crashfh->autoflush(1);
         $Con{$fh}->{crashfh} = $crashfh;
         print $crashfh "+-+***+!+time:  ".timestring() .' / '. Time::HiRes::time()."+-+***+!+\r\n";
         print $crashfh "+-+***+!+connected IP:  $ip+-+***+!+\r\n";
@@ -21100,6 +21157,7 @@ sub addfh {
   keys %{$Con{$fh}} = 128;
   $Con{$fh}->{getline}  = $getline;
   $Con{$fh}->{friend}   = $friend;
+  $Con{$fh}->{self}     = $fh;
   $Con{$fh}->{timestart}= time;
   $Con{$fh}->{timelast} = $Con{$fh}->{timestart};
   $Con{$fh}->{socketcalls} = 0;
@@ -21122,16 +21180,31 @@ EOF
 }
 
 # adding a SSL socket to the Select structure and Con hash
+# remove the old structure
+# tell the calling subs that we changed the file handle
 sub addsslfh {
   my ($oldfh,$sslfh,$friend) =@_;
-  $SocketCalls{$sslfh}=$SocketCalls{$oldfh};
+  $SocketCalls{$sslfh} = delete $SocketCalls{$oldfh};
+
   $sslfh->blocking(0);
   binmode($sslfh);
-  %{$Con{$sslfh}} = %{$Con{$oldfh}};
+
+  &unpoll($Con{$oldfh}->{self},$readable);
+  &unpoll($Con{$oldfh}->{self},$writable);
+
+  $Con{$sslfh} = delete $Con{$oldfh};
+
+  $Con{$sslfh}->{movedtossl} = 1;
+  my $fno = $Con{$sslfh}->{fno};
   $Con{$sslfh}->{friend} = $friend;
+  $Con{$friend}->{friend} = $sslfh;
   $Con{$sslfh}->{self} = $sslfh;
-  $Con{$sslfh}->{oldfh} = $oldfh;
   delete $SMTPSession{$oldfh};
+  $ConToTLS{$oldfh} = $sslfh;   # tell the calling subs that we changed the file handle
+  if (exists $dampedFH{$oldfh}) {
+      delete $dampedFH{$oldfh};
+      $dampedFH{$sslfh} = $sslfh;
+  }
   if ($Con{$sslfh}->{type} eq 'C') {
     $SMTPSession{$sslfh} = $sslfh;
     $Con{$sslfh}->{client} = $sslfh;
@@ -21143,10 +21216,8 @@ sub addsslfh {
   }
   &dopoll($sslfh,$readable,POLLIN);
   &dopoll($sslfh,$writable,POLLOUT);
-  $Con{$oldfh}->{movedtossl} = 1;
-  my $fno = $Con{$oldfh}->{fno} ;
-  if (exists $ConFno{$fno}) {delete $ConFno{$fno};}
-  delete $Fileno{$fno} if (exists $Fileno{$fno});
+  delete $ConFno{$fno};
+  delete $Fileno{$fno};
   $Con{$sslfh}->{fno} = fileno($sslfh);
   $Con{$sslfh}->{sslversion} = $sslfh->get_sslversion();
   $Con{$sslfh}->{sslcipher} = $sslfh->get_cipher();
@@ -21186,20 +21257,31 @@ sub sendque {
 
 sub unpoll {
    my ($fhh,$action) = @_ ;
-   $fhh = $Con{$fhh}->{self} if exists $Con{$fhh} && $Con{$fhh}->{self};
+   $fhh = $Con{$fhh}->{self} if exists $Con{$fhh} && ref $Con{$fhh}->{self};
+   $fhh = $WebConH{$fhh} if exists $WebConH{$fhh} && ref $WebConH{$fhh};
+   $fhh = $StatConH{$fhh} if exists $StatConH{$fhh} && ref $StatConH{$fhh};
+   return unless ("$fhh" =~ /Socket/oi);
+   return unpoll_force($fhh,$action);
+}
+
+sub unpoll_force {
+   my ($fhh,$action) = @_ ;
    if ($IOEngineRun == 0) {
-       $fhh = $WebConH{$fhh} if exists $WebConH{$fhh};
-       $fhh = $StatConH{$fhh} if exists $StatConH{$fhh};
 
        eval{$action->mask($fhh => 0);};
 
        if (exists $Con{$fhh} && $ConTimeOutDebug) {
+           my $how = $action eq $readable ? 'readable' : 'writable';
            my $m = &timestring();
            my ($package, $file, $line) = caller;
            if ($Con{$fhh}->{type} eq 'C'){
-               $Con{$fhh}->{contimeoutdebug} .= "$m client unpoll from $package $file $line\n" ;
+               my $d = "$m client $fhh unpoll ($how) from $package $file $line\n";
+               $Con{$fhh}->{contimeoutdebug} .= $d;
+               d($d);
            } else {
-               $Con{$Con{$fhh}->{friend}}->{contimeoutdebug} .= "$m server unpoll from $package $file $line\n" if exists $Con{$Con{$fhh}->{friend}};
+               my $d = "$m server $fhh unpoll ($how) from $package $file $line\n";
+               $Con{$Con{$fhh}->{friend}}->{contimeoutdebug} .= $d if $Con{$fhh}->{friend} && exists $Con{$Con{$fhh}->{friend}};
+               d($d);
            }
        }
        if (my $fno = $action->[3]{$fhh}) {         # poll fd workaround
@@ -21213,12 +21295,17 @@ sub unpoll {
        }
    } else {
        if (exists $Con{$fhh} && $ConTimeOutDebug) {
+           my $how = $action eq $readable ? 'readable' : 'writable';
            my $m = &timestring();
              my ($package, $file, $line) = caller;
            if ($Con{$fhh}->{type} eq 'C'){
-               $Con{$fhh}->{contimeoutdebug} .= "$m client unselect from $package $file $line\n" ;
+               my $d = "$m client $fhh unselect ($how) from $package $file $line\n";
+               $Con{$fhh}->{contimeoutdebug} .= $d;
+               d($d);
            } else {
-               $Con{$Con{$fhh}->{friend}}->{contimeoutdebug} .= "$m server ununselect from $package $file $line\n" if exists $Con{$Con{$fhh}->{friend}};
+               my $d = "$m server $fhh unselect ($how) from $package $file $line\n";
+               $Con{$Con{$fhh}->{friend}}->{contimeoutdebug} .= $d if $Con{$fhh}->{friend} && exists $Con{$Con{$fhh}->{friend}};
+               d($d);
            }
        }
        $action->remove($fhh);
@@ -21227,12 +21314,12 @@ sub unpoll {
 
 sub dopoll {
    my ($fh,$action,$mask) = @_ ;
-   my $fno;
-   $fh = $Con{$fh}->{self} if exists $Con{$fh} && $Con{$fh}->{self};
-   $fh = $WebConH{$fh} if exists $WebConH{$fh};
-   $fh = $StatConH{$fh} if exists $StatConH{$fh};
+   $fh = $Con{$fh}->{self} if exists $Con{$fh} && ref $Con{$fh}->{self};
+   $fh = $WebConH{$fh} if exists $WebConH{$fh} && ref $WebConH{$fh};
+   $fh = $StatConH{$fh} if exists $StatConH{$fh} && ref $StatConH{$fh};
+   return unless (ref($fh) =~ /Socket/oi);
    if ($IOEngineRun == 0) {
-       $fno = fileno($fh);
+
        eval{$action->mask($fh => $mask);};
        if ($@) {
            if (exists $WebConH{$fh} or exists $StatConH{$fh}) {
@@ -21241,11 +21328,97 @@ sub dopoll {
                done($fh);
            }
        } else {
+           my $fno = fileno($fh);
            $action->[3]{$fh} = $fno if $fno;
        }
+       if (exists $Con{$fh} && $ConTimeOutDebug) {
+           my $how = $action eq $readable ? 'readable' : 'writable';
+           my $m = &timestring();
+           my ($package, $file, $line) = caller;
+           if ($Con{$fh}->{type} eq 'C'){
+               my $d = "$m client $fh poll ($how) from $package $file $line\n";
+               $Con{$fh}->{contimeoutdebug} .= $d;
+               d($d);
+           } else {
+               my $d = "$m server $fh poll ($how) from $package $file $line\n";
+               $Con{$Con{$fh}->{friend}}->{contimeoutdebug} .= $d if $Con{$fh}->{friend} && exists $Con{$Con{$fh}->{friend}};
+               d($d);
+           }
+       }
    } else {
+       if (exists $Con{$fh} && $ConTimeOutDebug) {
+           my $how = $action eq $readable ? 'readable' : 'writable';
+           my $m = &timestring();
+           my ($package, $file, $line) = caller;
+           if ($Con{$fh}->{type} eq 'C'){
+               my $d = "$m client $fh select ($how) from $package $file $line\n";
+               $Con{$fh}->{contimeoutdebug} .= $d;
+               d($d);
+           } else {
+               my $d = "$m server $fh select ($how) from $package $file $line\n";
+               $Con{$Con{$fh}->{friend}}->{contimeoutdebug} .= $d if $Con{$fh}->{friend} && exists $Con{$Con{$fh}->{friend}};
+               d($d);
+           }
+       }
        $action->add($fh);
    }
+}
+
+sub pollerror {
+    my $action = shift;
+
+    my $what = $action eq $readable ? 'read' : 'write';
+
+    my %calls = (
+        \&ConToThread       => 'ConToThread',
+        \&NewWebConnection  => 'NewWebConnection',
+        \&NewStatConnection => 'NewStatConnection',
+        \&WebTraffic        => 'WebTraffic',
+        \&StatTraffic       => 'StatTraffic',
+        \&ProxyTraffic      => 'ProxyTraffic',
+        \&SMTPTraffic       => 'SMTPTraffic'
+    );
+    my @errfh;
+    my @nvalfh;
+
+    if ($IOEngineRun == 0) {
+        @errfh = $action->handles(POLLERR);
+        @nvalfh = $action->handles(POLLNVAL);
+    } else {
+        @errfh = $action->has_exception($pollwait);
+    }
+
+    my $numerr = scalar(@errfh);
+    my $numnval = scalar(@nvalfh);
+    return $numerr + $numnval unless $numerr + $numnval;
+    mlog(0,"error: IO-subsystem error - $numerr error state $what handles") if (($numerr && $ConnectionLog == 3) || $debug || $ThreadDebug);
+    mlog(0,"error: IO-subsystem error - $numnval wrong $what handles") if (($numnval && $ConnectionLog == 3) || $debug || $ThreadDebug);
+    my %ErrorFH = ();
+    foreach my $fh (@errfh) {
+        $ErrorFH{$fh} = ' - error state';
+    }
+    foreach my $fh (@nvalfh) {
+        $ErrorFH{$fh} .= ' - invalid filedescriptor';
+        push @errfh,$fh;
+    }
+    foreach my $fh (@errfh) {
+        my $fhcon;
+        my $peercon;
+        my $fno;
+        my $ip;
+        eval{$fhcon = $fh->sockhost().":".$fh->sockport();};
+        $fhcon = 'n/a' unless $fhcon;
+        eval{$ip = $fh->peerhost();$peercon = $ip.":".$fh->peerport();};
+        $peercon = 'n/a' unless $peercon;
+        my $calltarget = $calls{$SocketCalls{$fh}};
+        eval{$fno = fileno($fh);};
+        mlog(0,"error: registered fd for $fh is not equal$ErrorFH{$fh}") if ($ConnectionLog == 3 && $fno && $Fileno{$fno} && $Fileno{$fno} ne $fh);
+        mlog(0,"error: IO-handle : $fh;  fileno : $fno; call : $calltarget; localIP : $fhcon; peerIP : $peercon;$ErrorFH{$fh}; - will remove handle") if $ConnectionLog == 3;
+        unpoll_force($fh,$readable);
+        unpoll_force($fh,$writable);
+        done($fh) if $CloseHandleOnPollError;
+    }
+    return $numerr + $numnval;
 }
 
 sub sayMessageOK {
@@ -21951,8 +22124,8 @@ sub localvrfy2MTA_Run {
       my $doSSL = $MTA =~ s/^SSL://oi || $port == 465;
       my %sslargs;
       if ($doSSL && $canssl) {
-          %sslargs = getSSLParms(0,undef);
           $port ||= 465;
+          %sslargs = getSSLParms(0,{'name' => "$MTA:$port", 'type' => 'smtp'});
           $sslargs{SSL} = 1;
       } elsif ($doSSL && ! $canssl) {
           mlog($fh,"info: SSL is not available for $h on $oMTA - skip MTA") if ($VRFYLog && $WorkerNumber != 10001);
@@ -21980,7 +22153,7 @@ sub localvrfy2MTA_Run {
           mlog($fh,"info: established SMTP to $MTA:$port - force RCPTO is ".($forceRCPTTO ? 'ON' : 'OFF')) if ($VRFYLog >= 2 && $WorkerNumber != 10001);
           if ($enableTLS4VRFY && !$doSSL && $CanUseIOSocketSSL && ($state = 'supports TLS') && $smtp->supports('STARTTLS')) {
               $state = 'STARTTLS';
-              if ((my $ok = eval{$smtp->starttls(getSSLParms(0,undef));}) && $VRFYLog >= 2 && $WorkerNumber != 10001) {
+              if ((my $ok = eval{$smtp->starttls(getSSLParms(0,{'name' => "$MTA:$port", 'type' => 'smtp'}));}) && $VRFYLog >= 2 && $WorkerNumber != 10001) {
                   mlog($fh,"info: TLS-session started for $MTA:$port") if $ok != 1;
               }
           }
@@ -22517,8 +22690,8 @@ sub LDAPcrossCheck {
               my $doSSL = $MTA =~ s/^SSL://oi || $port == 465;
               my %sslargs;
               if ($doSSL && $canssl) {
-                  %sslargs = getSSLParms(0,undef);
                   $port ||= 465;
+                  %sslargs = getSSLParms(0,{'name' => "$MTA:$port", 'type' => 'smtp'});
                   $sslargs{SSL} = 1;
               } elsif ($doSSL && ! $canssl) {
                   mlog(0,"info: SSL is not available for $oMTA - skip MTA") if ($VRFYLog && $WorkerNumber != 10001);
@@ -22542,7 +22715,7 @@ sub LDAPcrossCheck {
                   # changes here must be also done in sub localvrfy2MTA_Run
                   $forceRCPTTO = ($VRFYforceRCPTTO && $oMTA =~ /$VFRTRE/) ? 1 : 0;
                   if ($enableTLS4VRFY && !$doSSL && $CanUseIOSocketSSL && $smtp->supports('STARTTLS')) {
-                      eval{$smtp->starttls(getSSLParms(0,undef));};
+                      eval{$smtp->starttls(getSSLParms(0,{'name' => "$MTA:$port", 'type' => 'smtp'}));};
                   }
                   if (! $forceRCPTTO) {
                       $canvrfy = $smtp->supports('VRFY');   # was VRFY in EHLO Answer?
@@ -23696,11 +23869,13 @@ sub getRequiredCMD {
     my $this=$Con{$fh};
     if (! $this->{requiredCMD}) {          # no need to do anything - just process
         $this->{getline} = \&getline;
+        $this->{getlinetxt} = 'getline';
         delete $this->{requiredCMD};
         return getline($fh,$l);
     }
     if ($l =~ /^\s*(?:$this->{requiredCMD})/i) {    # the required command is used
         $this->{getline} = \&getline;
+        $this->{getlinetxt} = 'getline';
         delete $this->{requiredCMD};
         return getline($fh,$l);
     } elsif ($l =~ /^\s*help/io) {                # HELP was sent - tell the peer the required commands
@@ -23724,6 +23899,7 @@ sub getRequiredCMD {
         ($this->{lastcmd}) = $l =~ /^\s*(\S+)/;
         push(@{$this->{cmdlist}},$this->{lastcmd}) if $ConnectionLog >= 2 && $this->{lastcmd};
         $this->{getline} = \&getline;
+        $this->{getlinetxt} = 'getline';
         if($MaxErrors && ++$this->{serverErrors} > $MaxErrors) {
             $this->{outgoing} = '';
             MaxErrorsFailed($fh,
@@ -23778,6 +23954,7 @@ sub getline {
 
     if ($friend->{getline} eq \&replyEHLO) {
         $friend->{getline} = \&reply;
+        $friend->{getlinetxt} = 'reply';
     }
 
     if($l=~/^ *STARTTLS\s*\r\n/io) { # client requests TLS
@@ -23924,6 +24101,7 @@ sub getline {
         if ($l=~/^ *ehlo/io) {
            if ($friend->{noop} ne 'delete') {
                $friend->{getline} = \&reply;
+               $friend->{getlinetxt} = 'reply';
            } else {
                delete $friend->{noop};
            }
@@ -23940,6 +24118,7 @@ sub getline {
             mlog($fh,"info: sending EHLO instead of HELO to " . ITR($server->peerhost())) if $ConnectionLog;
             $this->{sentEHLO} = 1;
             $friend->{getline} = \&replyEHLO;
+            $friend->{getlinetxt} = 'replyEHLO';
         }
         my $helo2 = $this->{helo} = $helo;
         $helo=~s/(\W)/\\\$1/go;
@@ -24074,6 +24253,7 @@ sub getline {
         ) {
             NoLoopSyswrite($server,"STARTTLS\r\n",0);
             $friend->{getline} = \&replyTLS;
+            $friend->{getlinetxt} = 'replyTLS';
             $this->{TLSqueue} = $ffr;
             mlog($fh,"info: injected STARTTLS request to " . ITR($server->peerhost())) if $ConnectionLog;
             return;
@@ -24235,6 +24415,7 @@ sub getline {
         my $ip = $this->{ip};
         $this->{syncServer} = $se{$ip};
         $this->{getline} = \&syncRCVData;
+        $this->{getlinetxt} = 'syncRCVData';
         NoLoopSyswrite($fh,"250 OK start the config sync\r\n",0);
         return;
     } elsif ($l=~/^ *ASSPSYNCCONFIG\s*([^\r\n]+)?\r\n/o ) {
@@ -24318,6 +24499,7 @@ sub getline {
         ) {
             NoLoopSyswrite($server,"STARTTLS\r\n",0);
             $friend->{getline} = \&replyTLS;
+            $friend->{getlinetxt} = 'replyTLS';
             $this->{TLSqueue} = $ffr;
             mlog($fh,"info: injected STARTTLS request to " . ITR($server->peerhost())) if $ConnectionLog;
             return;
@@ -24370,6 +24552,7 @@ sub getline {
                  if defined $str and length $str;
             NoLoopSyswrite($server,'AUTH ' . $this->{AUTHclient}->mechanism . "\r\n",0);
             $friend->{getline} = \&replyAUTH;
+            $friend->{getlinetxt} = 'replyAUTH';
 
             return;
         }
@@ -25293,7 +25476,9 @@ sub getline {
         if ($transparentRecipients && matchSL( "$u$h", 'transparentRecipients' )) {
             mlog($fh,"info: the connection will now be moved in to the Full-Transparent-Proxy mode") if $ConnectionLog;
             $this->{getline}=\&TransClient;
+            $this->{getlinetxt}='TransClient';
             $friend->{getline}=\&TransServer;
+            $friend->{getlinetxt}='TransServer';
             sendque($server,$l);
             return;
         }
@@ -25664,6 +25849,7 @@ sub getline {
             if(lc $u eq lc "$EmailSpam\@") {
                 $this->{reportaddr} = 'EmailSpam';
   		        $this->{getline} = \&SpamReport;
+  		        $this->{getlinetxt} = 'SpamReport';
                 mlog( $fh, "email: spamreport", 1 ) if !($EmailErrorsModifyWhite || $EmailErrorsModifyNoP);
                 mlog( $fh, "email: combined spam & whitelist report", 1 ) if $EmailErrorsModifyWhite;
                 mlog( $fh, "email: combined spam & noprocessing report", 1 ) if $EmailErrorsModifyNoP;
@@ -25673,6 +25859,7 @@ sub getline {
             } elsif(lc $u eq lc "$EmailHam\@") {
                 $this->{reportaddr} = 'EmailHam';
 		        $this->{getline} = \&SpamReport;
+  		        $this->{getlinetxt} = 'SpamReport';
                 mlog( $fh, "email: hamreport", 1 ) if !($EmailErrorsModifyWhite == 1 || $EmailErrorsModifyNoP);
                 mlog( $fh, "email: combined ham & whitelist report", 1 ) if $EmailErrorsModifyWhite == 1;
                 mlog( $fh, "email: combined ham & noprocessing report", 1 ) if $EmailErrorsModifyNoP;
@@ -25682,6 +25869,7 @@ sub getline {
             } elsif(lc $u eq lc "$EmailWhitelistAdd\@") {
                 $this->{reportaddr} = 'EmailWhitelistAdd';
                 $this->{getline}=\&ListReport;
+  		        $this->{getlinetxt} = 'ListReport';
                 mlog($fh,"email whitelist addition report",1);
                 $Stats{rcptReportWhitelistAdd}++;
                 foreach my $ad (split(/ /o,$this->{rcpt})) {ListReportExec($ad,$this)};
@@ -25690,6 +25878,7 @@ sub getline {
             } elsif(lc $u eq lc "$EmailWhitelistRemove\@") {
                 $this->{reportaddr} = 'EmailWhitelistRemove';
                 $this->{getline}=\&ListReport;
+  		        $this->{getlinetxt} = 'ListReport';
                 mlog($fh,"email whitelist deletion report",1);
                 $Stats{rcptReportWhitelistRemove}++;
                 foreach my $ad (split(/ /o,$this->{rcpt})) {ListReportExec($ad,$this)};
@@ -25698,6 +25887,7 @@ sub getline {
             } elsif(lc $u eq lc "$EmailRedlistAdd\@") {
                 $this->{reportaddr} = 'EmailRedlistAdd';
                 $this->{getline}=\&ListReport;
+  		        $this->{getlinetxt} = 'ListReport';
                 mlog($fh,"email redlist addition report",1);
                 $Stats{rcptReportRedlistAdd}++;
                 foreach my $ad (split(/ /o,$this->{rcpt})) {ListReportExec($ad,$this)};
@@ -25706,6 +25896,7 @@ sub getline {
             } elsif(lc $u eq lc "$EmailRedlistRemove\@") {
                 $this->{reportaddr} = 'EmailRedlistRemove';
                 $this->{getline}=\&ListReport;
+  		        $this->{getlinetxt} = 'ListReport';
                 mlog($fh,"email redlist deletion report",1);
                 $Stats{rcptReportRedlistRemove}++;
                 foreach my $ad (split(/ /o,$this->{rcpt})) {ListReportExec($ad,$this)};
@@ -25714,24 +25905,28 @@ sub getline {
             } elsif(lc $u eq lc "$EmailHelp\@") {
                 $this->{reportaddr} = 'EmailHelp';
                 $this->{getline}=\&HelpReport;
+  		        $this->{getlinetxt} = 'HelpReport';
                 mlog($fh,"email help",1);
                 sendque($fh,"250 OK\r\n");
                 return;
             } elsif(lc $u eq lc "$EmailAnalyze\@") {
                 $this->{reportaddr} = 'EmailAnalyze';
                 $this->{getline}=\&AnalyzeReport;
+  		        $this->{getlinetxt} = 'AnalyzeReport';
                 sendque($fh,"250 OK\r\n");
                 return;
             } elsif(lc $u eq lc "$EmailBlockReport\@" or $u =~ /^RSBM_.+?\Q$maillogExt\E\@$/i) {
                 $this->{reportaddr} = 'EmailBlockReport';
                 $this->{rcpt}="$u$h";
                 $this->{getline}=\&BlockReport;
+  		        $this->{getlinetxt} = 'BlockReport';
                 mlog($fh,"blocked email report",1);
                 sendque($fh,"250 OK\r\n");
                 return;
             } elsif(lc $u eq lc "$EmailSpamLoverAdd\@") {
                 $this->{reportaddr} = 'EmailSpamLoverAdd';
                 $this->{getline}=\&ListReport;
+  		        $this->{getlinetxt} = 'ListReport';
                 mlog($fh,"email spamlover addition report",1);
                 foreach my $ad (split(/ /o,$this->{rcpt})) {ListReportExec($ad,$this)};
                 sendque($fh,"250 OK\r\n");
@@ -25739,6 +25934,7 @@ sub getline {
             } elsif(lc $u eq lc "$EmailSpamLoverRemove\@") {
                 $this->{reportaddr} = 'EmailSpamLoverRemove';
                 $this->{getline}=\&ListReport;
+  		        $this->{getlinetxt} = 'ListReport';
                 mlog($fh,"email spamlover deletion report",1);
                 foreach my $ad (split(/ /o,$this->{rcpt})) {ListReportExec($ad,$this)};
                 sendque($fh,"250 OK\r\n");
@@ -25746,6 +25942,7 @@ sub getline {
             } elsif(lc $u eq lc "$EmailNoProcessingAdd\@") {
                 $this->{reportaddr} = 'EmailNoProcessingAdd';
                 $this->{getline}=\&ListReport;
+  		        $this->{getlinetxt} = 'ListReport';
                 mlog($fh,"email noprocessing addition report",1);
                 foreach my $ad (split(/ /o,$this->{rcpt})) {ListReportExec($ad,$this)};
                 sendque($fh,"250 OK\r\n");
@@ -25753,6 +25950,7 @@ sub getline {
             } elsif(lc $u eq lc "$EmailNoProcessingRemove\@") {
                 $this->{reportaddr} = 'EmailNoProcessingRemove';
                 $this->{getline}=\&ListReport;
+  		        $this->{getlinetxt} = 'ListReport';
                 mlog($fh,"email noprocessing deletion report",1);
                 foreach my $ad (split(/ /o,$this->{rcpt})) {ListReportExec($ad,$this)};
                 sendque($fh,"250 OK\r\n");
@@ -25760,24 +25958,28 @@ sub getline {
             } elsif ( lc $u eq lc "$EmailBlackAdd\@" ) {
                 $this->{reportaddr} = 'EmailBlackAdd';
                 $this->{getline}    = \&ListReport;
+  		        $this->{getlinetxt} = 'ListReport';
                 mlog( $fh, "email blacklist addition report", 1 );
                 sendque( $fh, "250 OK\r\n" );
                 return;
             } elsif ( lc $u eq lc "$EmailBlackRemove\@" ) {
                 $this->{reportaddr} = 'EmailBlackRemove';
                 $this->{getline}    = \&ListReport;
+  		        $this->{getlinetxt} = 'ListReport';
                 mlog( $fh, "email blacklist deletion report", 1 );
                 sendque( $fh, "250 OK\r\n" );
                 return;
             } elsif ( lc $u eq lc "$EmailPersBlackAdd\@" ) {
                 $this->{reportaddr} = 'EmailPersBlackAdd';
                 $this->{getline}    = \&ListReport;
+  		        $this->{getlinetxt} = 'ListReport';
                 mlog( $fh, "email personal blacklist addition report", 1 );
                 sendque( $fh, "250 OK\r\n" );
                 return;
             } elsif ( lc $u eq lc "$EmailPersBlackRemove\@" ) {
                 $this->{reportaddr} = 'EmailPersBlackRemove';
                 $this->{getline}    = \&ListReport;
+  		        $this->{getlinetxt} = 'ListReport';
                 mlog( $fh, "email personal blacklist deletion report", 1 );
                 sendque( $fh, "250 OK\r\n" );
                 return;
@@ -25794,24 +25996,28 @@ sub getline {
             if(lc $u eq lc "$EmailHelp\@") {
                 $this->{reportaddr} = 'EmailHelp';
                 $this->{getline}=\&HelpReport;
+  		        $this->{getlinetxt} = 'HelpReport';
                 mlog($fh,"email help",1);
                 sendque($fh,"250 OK\r\n");
                 return;
             } elsif(lc $u eq lc "$EmailAnalyze\@") {
                 $this->{reportaddr} = 'EmailAnalyze';
                 $this->{getline}=\&AnalyzeReport;
+  		        $this->{getlinetxt} = 'AnalyzeReport';
                 sendque($fh,"250 OK\r\n");
                 return;
             } elsif(lc $u eq lc "$EmailBlockReport\@" or $u =~ /^RSBM_.+?\Q$maillogExt\E\@$/i) {
                 $this->{reportaddr} = 'EmailBlockReport';
                 $this->{rcpt}="$u$h";
                 $this->{getline}=\&BlockReport;
+  		        $this->{getlinetxt} = 'BlockReport';
                 mlog($fh,"blocked email report",1);
                 sendque($fh,"250 OK\r\n");
                 return;
             }
             ReturnMail($fh,$this->{mailfrom},"$base/$ReportFiles{EmailSenderNotOK}",'assp-error',\"\n");
         	$this->{getline} = \&NullFromToData;
+  		    $this->{getlinetxt} = 'NullFromToData';
         	&NullFromToData($fh,$l);
         	mlog($fh,"denied connection to email interface ($uh) because EmailSenderNotOK - moved to NULL-connection",1);
 	        return;
@@ -25825,6 +26031,7 @@ sub getline {
         {
             $this->{mailfrom} = &batv_remove_tag(0,$this->{mailfrom},'');
         	$this->{getline} = \&NullFromToData;
+  		    $this->{getlinetxt} = 'NullFromToData';
         	&NullFromToData($fh,$l);
         	mlog($fh,"denied connection to email interface ($uh) because EmailSenderIgnore - moved to NULL-connection",1);
 	        return;
@@ -25840,6 +26047,7 @@ sub getline {
         } elsif (! $this->{relayok} && matchSL([$uh,$this->{mailfrom}],'NullAddresses')) {
             mlog($fh,"connection moved to NULL-connection",1) if $ConnectionLog;
         	$this->{getline} = \&NullFromToData;
+  		    $this->{getlinetxt} = 'NullFromToData';
         	&NullFromToData($fh,$l);
 	        return;
         } elsif (! $foreignSRS && ($LocalAddresses_Flat || $DoLDAP || ($DoVRFY && (scalar(keys %DomainVRFYMTA) || scalar(keys %FlatVRFYMTA) )))) {
@@ -25876,6 +26084,7 @@ sub getline {
                 $l = "RCPT TO:\<$uhx\>\r\n";
                 if (matchSL($uhx,'NullAddresses')) {
                 	$this->{getline} = \&NullFromToData;
+  		            $this->{getlinetxt} = 'NullFromToData';
                 	&NullFromToData($fh,$l);
                         return;
                 }
@@ -25885,6 +26094,7 @@ sub getline {
                 $this->{rcptValidated}=1;
                 $Stats{rcptNonexistent}++;
                 $this->{getline} = \&NullFromToData;
+  		        $this->{getlinetxt} = 'NullFromToData';
                 &NullFromToData($fh,$l);
                 return;
             } elsif ($CatchAllAll) {
@@ -25900,6 +26110,7 @@ sub getline {
                 $l = "RCPT TO:\<$uhx\>\r\n";
                 if (matchSL($uhx,'NullAddresses')) {
                 	$this->{getline} = \&NullFromToData;
+  		            $this->{getlinetxt} = 'NullFromToData';
                 	&NullFromToData($fh,$l);
 			        return;
                 }
@@ -26145,6 +26356,7 @@ sub getline {
             $Stats{noprocessing}++;
 
             $this->{getline}=\&getheader;
+  		    $this->{getlinetxt} = 'getheader';
             if ( $this->{noprocessing} & 1 ) {
                 mlog($fh,"message proxied without processing (except checks enabled for noprocessing mails)");
             } else {
@@ -26252,6 +26464,7 @@ sub getline {
             MaillogStart($fh); # notify the stream logging to start logging
             &allocateMemory($fh);
             $this->{getline}=\&getheader;
+  		    $this->{getlinetxt} = 'getheader';
         }
     } elsif( $l=~/^ *RSET/io ) {
         $this->{lastcmd} = 'RSET';
@@ -26466,12 +26679,14 @@ sub getheader {
         if ($send250OK or ($this->{ispip} && $send250OKISP)) {
             mlog($fh,"info: connection is moved to NULL after MTA has sent an error reply in DATA part") if $ConnectionLog;
             $this->{getline}=\&NullData;
+  		    $this->{getlinetxt} = 'NullData';
             NullData($fh,$l);
             return;
         }
         $this->{cleanSMTPBuff} = 1;         # delete the SMTPbuff
         $this->{header} = '';
         $this->{getline}=\&getline;
+  		$this->{getlinetxt} = 'getline';
         getline($fh,$l);
         return;
     }
@@ -26546,6 +26761,7 @@ sub getheader {
             mlog($fh,"[spam found] (crash analyzer said: 'this mail will possibly crash ASSP', will no longer analyze and forward but collect the mail)$logsub".de8($fn),0,2);
             delayWhiteExpire($fh);
             $this->{getline}=\&NullData;
+  		    $this->{getlinetxt} = 'NullData';
             $this->{header} = 'NULL';
             $this->{intemperror} = 1;
             done2($this->{friend});
@@ -27201,9 +27417,13 @@ sub getheader {
                 $this->{header} = substr($this->{header},0,$lHeader);
                 $this->{maillength} = $lHeader;
                 &getbody($fh,$l);
-                $this->{getline}=\&getline unless $this->{error};
+                unless ($this->{error}) {
+                    $this->{getline}=\&getline;
+                    $this->{getlinetxt}='getline';
+                }
             } else {
                 $this->{getline}=\&getbody;
+                $this->{getlinetxt}='getbody';
             }
         } else {
             if ($done2) {
@@ -27278,6 +27498,7 @@ sub headerAddrCheckOK_Run {
                         }
                         if ($send250OK or ($this->{ispip} && $send250OKISP)) {
                             $this->{getline} = \&NullData;
+                            $this->{getlinetxt} = 'NullData';
                         } else {
                             sendque( $fh, $reply );
                             $this->{closeafterwrite} = 1;
@@ -27315,6 +27536,7 @@ sub headerAddrCheckOK_Run {
                         my $logsub = ( $subjectLogging && $this->{originalsubject} ? " $subjectStart$this->{originalsubject}$subjectEnd" : '' );
                         mlog($fh,"[spam found] $this->{messagereason}$logsub".de8($fn),0,2);
                         $this->{getline} = \&NullData;
+                        $this->{getlinetxt} = 'NullData';
                     } else {
                         mlog( $fh, "[spam found] $this->{messagereason}" );
                         sendque( $fh, $reply );
@@ -34073,6 +34295,7 @@ sub PersBlackOK_Run {
 
         if ($send250OK or ($this->{ispip} && $send250OKISP)) {
             $this->{getline} = \&NullData;
+            $this->{getlinetxt} = 'NullData';
         } else {
             sendque( $fh, $reply );
             $this->{closeafterwrite} = 1;
@@ -34683,8 +34906,10 @@ sub isnotspam {
   
   if($done) {
     $this->{getline}=\&getline;
+    $this->{getlinetxt}='getline';
   } else {
     $this->{getline}=\&whitebody;
+    $this->{getlinetxt}='whitebody';
   }
   d('isnotspam - end',1);
 }
@@ -34732,6 +34957,7 @@ sub whitebody {
     $utf8off->(\$this->{header});
     if ($done) {
         $this->{getline}=\&getline;
+        $this->{getlinetxt}='getline';
         if ($this->{myheader}) {
             &addMyheader($fh);
             $utf8off->(\$this->{header});
@@ -35465,7 +35691,10 @@ sub thisIsSpam {
                 isnotspam($fh,$done) unless $this->{skipnotspam};
             }
         } else {
-            $this->{getline}=\&getbody unless $this->{getline} eq \&getheader;
+            unless ($this->{getline} eq \&getheader) {
+                $this->{getline}=\&getbody;
+                $this->{getlinetxt}='getbody';
+            }
         }
         return 0;
     } else {
@@ -36148,6 +36377,7 @@ sub seterror {
         error($fh,".\r\n");
     } else {
         $this->{getline}=\&error;
+        $this->{getlinetxt}='error';
     }
 }
 
@@ -36182,6 +36412,7 @@ sub error {
           if ($this->{lastcmd} =~ /^DATA/io && $this->{header}) {     # we have received data - now waiting for QUIT
             sendque($fh,$out);
             $this->{getline} = \&errorQuit;
+            $this->{getlinetxt} = 'errorQuit';
           } elsif ($this->{lastcmd} =~ /^DATA/io && ! $this->{header}) {   # no data received - close connection
             sendque($fh,"$reply\r\n");
             $this->{closeafterwrite} = 1;
@@ -36231,6 +36462,7 @@ sub skipok {
     my ($fh,$l)=@_;
     if($l=~/^250/o) {
         $Con{$fh}->{getline}=\&reply;
+        $Con{$fh}->{getlinetxt}='reply';
     } else {
         reply($fh,$l);
     }
@@ -36240,7 +36472,10 @@ sub skipok {
 sub skipevery {
     d('skipevery');
     my ($fh,$l)=@_;
-    $Con{$fh}->{getline}=$Con{$fh}->{Xgetline} if $Con{$fh}->{Xgetline};
+    if ($Con{$fh}->{Xgetline}) {
+        $Con{$fh}->{getline}=$Con{$fh}->{Xgetline};
+        $Con{$fh}->{getlinetxt}='Xgetline';
+    }
     $Con{$fh}->{Xgetline}->($fh,$Con{$fh}->{Xreply}) if $Con{$fh}->{Xgetline} && $Con{$fh}->{Xreply};
     delete $Con{$fh}->{Xgetline};
 }
@@ -36282,6 +36517,7 @@ sub replyAUTH {
             delete $friend->{AUTHclient};
             &getline($Con{$fh}->{friend},$friend->{sendAfterAuth}) if $friend->{sendAfterAuth};
             $Con{$fh}->{getline}=\&reply;
+            $Con{$fh}->{getlinetxt}='reply';
         }
     } elsif ($l =~ /^235/o) {
         mlog($Con{$fh}->{friend}, "info: authentication successful") if $SessionLog >= 2;
@@ -36290,6 +36526,7 @@ sub replyAUTH {
         delete $friend->{AUTHclient};
         &getline($Con{$fh}->{friend},$friend->{sendAfterAuth}) if $friend->{sendAfterAuth};
         $Con{$fh}->{getline}=\&reply;
+        $Con{$fh}->{getlinetxt}='reply';
     } else {
         $l =~ s/\r|\n//go;
         mlog($Con{$fh}->{friend}, "error: authentication failed ($l) - try to continue unauthenticated");
@@ -36298,13 +36535,14 @@ sub replyAUTH {
         delete $friend->{AUTHclient};
         &getline($Con{$fh}->{friend},$friend->{sendAfterAuth}) if $friend->{sendAfterAuth};
         $Con{$fh}->{getline}=\&reply;
+        $Con{$fh}->{getlinetxt}='reply';
     }
 }
 
 # filter off the 220 OK response on STARTTLS command
 sub replyTLS {
-    d('replyTLS');
     my ($fh,$l)=@_;
+    d('replyTLS');
     my $oldfh = "$fh";
     my $ssl;
     my $cli = $Con{$fh}->{friend};
@@ -36326,7 +36564,7 @@ sub replyTLS {
         eval{eval{($ssl,$fh) = &switchSSLServer($fh);};
             if ("$ssl" !~ /SSL/io) {
               $fail = 1;
-              mlog($fh, "error: Couldn't start TLS for server $serIP: ".IO::Socket::SSL::errstr());
+              mlog($fh, "error: Couldn't start TLS for server $serIP: $IO::Socket::SSL::SSL_ERROR");
               setSSLfailed($serIP);
               delete $Con{$fh}->{fakeTLS};
               &dopoll($fh,$readable,POLLIN);
@@ -36335,24 +36573,25 @@ sub replyTLS {
               &getline($cli,$ffr);
               delete $Con{$cli}->{TLSqueue};
               $Con{$fh}->{getline}=\&reply;
+              $Con{$fh}->{getlinetxt}='reply';
             }
         };
         return if $fail;
         delete $SSLfailed{$serIP};
         addsslfh($oldfh,$ssl,$cli);
-        $Con{$cli}->{friend} = $ssl;
         mlog($ssl,"info: started TLS-SSL session for server $serIP - using $Con{$ssl}->{sslversion} , $Con{$ssl}->{sslcipher}") if ($ConnectionLog >=2);
-        delete $Con{$oldfh}->{fakeTLS};
         delete $Con{$ssl}->{fakeTLS};
         NoLoopSyswrite($ssl,"$Con{$cli}->{fullhelo}\r\n",0); # send the ehlo again
         mlog($ssl,"info: sent EHLO again to $serIP") if ($ConnectionLog >=2);
         $Con{$ssl}->{getline}=\&replyTLS2;
+        $Con{$ssl}->{getlinetxt}='replyTLS2';
     } else {  # STARTTLS rejected
     # process TLSqueue on client
         mlog($fh,"info: injected STARTTLS request rejected by $serIP") if $ConnectionLog >= 2;
         &getline($cli,"$ffr\r\n");
         delete $Con{$cli}->{TLSqueue};
         $Con{$fh}->{getline}=\&reply;
+        $Con{$fh}->{getlinetxt}='reply';
     }
 }
 
@@ -36382,6 +36621,7 @@ sub replyTLS2 {
     if ($l =~ /^250\s+/o) {
         my $ffr = $Con{$cli}->{TLSqueue};
         $Con{$fh}->{getline} = \&reply;
+        $Con{$fh}->{getlinetxt} = 'reply';
         &getline($cli,"$ffr\r\n");
         delete $Con{$cli}->{TLSqueue};
         my $serIP=ITR($fh->peerhost()).":".$fh->peerport();
@@ -36425,6 +36665,7 @@ sub replyEHLO {
         $l=~/^221/o)
     {
         $this->{getline} = \&reply;
+        $this->{getlinetxt} = 'reply';
     } else {
         if (! $this->{answertToHELO} && $l =~ /^250\s+/o) {  # we've got the EHLO Reply, now send 250 OK to the client
             if ((exists $Con{$cli}->{XCLIENT} || exists $Con{$cli}->{XFORWARD}) &&
@@ -36434,6 +36675,7 @@ sub replyEHLO {
                )
             {
                 $this->{Xgetline} = \&replyEHLO;
+                $this->{Xgetlinetxt} = 'replyEHLO';
                 $this->{Xreply} = "250 OK\r\n";
                 return if replyX($fh,$cli,ITR($fh->peerhost()),$Con{$cli}->{ip});
                 delete $this->{Xgetline};
@@ -36583,15 +36825,15 @@ sub reply {
     }
     if ($l=~/250-.*?($notAllowedSMTP|$BIT8)/i) {
         my $cmd = $1;
-        d("notAllowedSMTP: 250-sequenz - from server: \>$l\<");
+        d("notAllowedSMTP: 250-sequence - from server: \>$l\<");
         $l =~ s/250-\s*$cmd.*?\r\n//ig;
-        d("notAllowedSMTP: 250-sequenz - to client: \>$l\<");
+        d("notAllowedSMTP: 250-sequence - to client: \>$l\<");
         return if(length($l)==0);
     } elsif ($l=~/250 .*?($notAllowedSMTP|$BIT8)/i) {
         my $cmd = $1;
-        d("notAllowedSMTP: 250 sequenz - from server: \>$l\<");
+        d("notAllowedSMTP: 250 sequence - from server: \>$l\<");
         $l =~ s/250\s*$cmd.*?\r\n//ig;
-        d("notAllowedSMTP: 250 sequenz - to client: \>$l\<");
+        d("notAllowedSMTP: 250 sequence - to client: \>$l\<");
         if(length($l)==0){
             sendque($cli, "250 NOOP\r\n") unless $Con{$cli}->{sentEHLO};
             d('250 noop to client 1');
@@ -36604,32 +36846,32 @@ sub reply {
         $l =~ s/(SIZE) *\d*/$1 $maxSizeExternal/i;
         d("SIZE-offer-2: changed to $maxSizeExternal");
     } elsif($l=~/250-\s*(?:VRFY|EXPN)/io && $DisableVRFY && !$Con{$cli}->{relayok}) {        # VRFY EXPN
-        d("250-sequenz - from server: \>$l\<");
+        d("250-sequence - from server: \>$l\<");
         $l =~ s/250-\s*(?:VRFY|EXPN)\s*\r\n//igo;
-        d("250-sequenz - to client: \>$l\<");
+        d("250-sequence - to client: \>$l\<");
         return if(length($l)==0);
     } elsif($l=~/250\s+(?:VRFY|EXPN)/io && $DisableVRFY && !$Con{$cli}->{relayok}) {
-        d("250 sequenz - from server: \>$l\<");
+        d("250 sequence - from server: \>$l\<");
         $l =~ s/250\s*(?:VRFY|EXPN)\s*\r\n//igo;
-        d("250 sequenz - to client: \>$l\<");
+        d("250 sequence - to client: \>$l\<");
         if(length($l)==0){
             sendque($cli, "250 NOOP\r\n") unless $Con{$cli}->{sentEHLO};
             d('250 noop to client 1-1');
             return;
         }
     } elsif($l=~/250-\s*AUTH/io && $DisableAUTH && !$Con{$cli}->{relayok}) {        # AUTH
-        d("250-sequenz - from server: \>$l\<");
-        d("250-sequenz - to client: \>\<");
+        d("250-sequence - from server: \>$l\<");
+        d("250-sequence - to client: \>\<");
         return;
     } elsif($l=~/250\s+AUTH/io && $DisableAUTH && !$Con{$cli}->{relayok}) {
-        d("250 sequenz - from server: \>$l\<");
-        d("250 sequenz - to client: \>NOOP\<");
+        d("250 sequence - from server: \>$l\<");
+        d("250 sequence - to client: \>NOOP\<");
         sendque($cli, "250 NOOP\r\n") unless $Con{$cli}->{sentEHLO};
         return;
     } elsif (($l=~/(211|214)(?: |-)(?:.*?)(?:VRFY|EXPN)/io && $DisableVRFY && !$Con{$cli}->{relayok}) or
              ($l=~/(211|214)(?: |-)(?:.*?)AUTH/io && $DisableAUTH && !$Con{$cli}->{relayok}) or
              ($l=~/(211|214)(?: |-)(?:.*?)(?:$notAllowedSMTP|$BIT8)/i) ) {
-        d("$1 sequenz - from server: \>$l\<");
+        d("$1 sequence - from server: \>$l\<");
         $l =~ s/VRFY|EXPN//sigo if ($DisableVRFY && !$Con{$cli}->{relayok});
         $l =~ s/AUTH[^\r\n]+//sigo if ($DisableAUTH && !$Con{$cli}->{relayok});
         $l =~ s/$notAllowedSMTP|$BIT8/NOOP/sig;
@@ -36710,110 +36952,113 @@ sub reply {
             $Con{$cli}->{runTLS}=1;
             delete $this->{noop};
 
-          if ($DoTLS == 1 or &matchFH($cli,@TLStoProxyI)) {      # move to transparent proxy
-            delete $this->{fakeTLS};
-            $Con{$cli}->{outgoing}.=$l;
-            $SocketCalls{$fh}=\&ProxyTraffic;
-            $SocketCalls{$cli}=\&ProxyTraffic;
-            mlog($cli,"info: started TLS-proxy session for $serIP and $cliIP") if $ConnectionLog >= 2;
-            d("started TLS-proxy session for $serIP and $cliIP") if $ConnectionLog < 2;
-            return;
-          } elsif ($DoTLS == 2 && $CanUseIOSocketSSL) {                   #  do TLS
-            $IO::Socket::SSL::DEBUG = $SSLDEBUG;
-            my $oldfh = "$fh";
-            my $sslc;
-            my $ssls;
-            my $oldcli = "$cli";
-            if ($this->{fakeTLS} && ! $SSLfailed{$cliIP} && ! &matchIP($cliIP,'noTLSIP',$cli,1) && ! &matchFH($cli,@lsnNoTLSI)) {    # only set Client to TLS if we faked the 250-STARTTLS
-              if ("$cli" !~ /SSL/io) {
-                NoLoopSyswrite($cli, "220 Ready to start TLS - go on\r\n",0);
-                # set the client connection to SSL
-                unpoll($cli,$readable);
-                unpoll($cli,$writable);
-                my $fail = 0;
-                eval{eval{($ssls,$cli) = &switchSSLClient($cli);};
-                    if ("$ssls" !~ /SSL/io ) {
-                         $fail = 1;
-                         mlog($cli, "error: Couldn't upgrade to TLS for client $cliIP: ".IO::Socket::SSL::errstr());
-                         setSSLfailed($cliIP);
-                         delete $this->{fakeTLS};
-                         &dopoll($cli,$readable,POLLIN);
-                         &dopoll($cli,$writable,POLLOUT);
+            if ($DoTLS == 1 or &matchFH($cli,@TLStoProxyI)) {      # move to transparent proxy
+                delete $this->{fakeTLS};
+                $Con{$cli}->{outgoing}.=$l;
+                $SocketCalls{$fh}=\&ProxyTraffic;
+                $SocketCalls{$cli}=\&ProxyTraffic;
+                mlog($cli,"info: started TLS-proxy session for $serIP and $cliIP") if $ConnectionLog >= 2;
+                d("started TLS-proxy session for $serIP and $cliIP") if $ConnectionLog < 2;
+                return;
+            } elsif ($DoTLS == 2 && $CanUseIOSocketSSL) {                   #  do TLS
+                $IO::Socket::SSL::DEBUG = $SSLDEBUG;
+                my $oldfh = "$fh";
+                my $oldcli = "$cli";
+                my $sslc;
+                my $ssls;
+                if ($this->{fakeTLS} && ! $SSLfailed{$cliIP} && ! &matchIP($cliIP,'noTLSIP',$cli,1) && ! &matchFH($cli,@lsnNoTLSI)) {    # only set Client to TLS if we faked the 250-STARTTLS
+                    if ("$cli" !~ /SSL/io) {
+                        NoLoopSyswrite($cli, "220 Ready to start TLS - go on\r\n",0);
+                        # set the client connection to SSL
+                        unpoll($cli,$readable);
+                        unpoll($cli,$writable);
+                        my $fail = 0;
+                        eval{eval{($ssls,$cli) = &switchSSLClient($cli);};
+                            if ("$ssls" !~ /SSL/io ) {
+                                 $fail = 1;
+                                 mlog($cli, "error: Couldn't upgrade to TLS for client - $cliIP: $IO::Socket::SSL::SSL_ERROR");
+                                 setSSLfailed($cliIP);
+                                 delete $this->{fakeTLS};
+                                 &dopoll($cli,$readable,POLLIN);
+                                 &dopoll($cli,$writable,POLLOUT);
+                            }
+                        };
+                        return if $fail;
+
+                        delete $SSLfailed{$cliIP};
+                        addsslfh($oldcli,$ssls,$fh);
+                        $cli = $ssls;
+                        mlog($ssls,"info: started TLS-SSL session for client $cliIP - using $Con{$ssls}->{sslversion} , $Con{$ssls}->{sslcipher}") if ($ConnectionLog >= 2);
                     }
-                };
-                return if $fail;
-                
-                delete $SSLfailed{$cliIP};
-                addsslfh($oldcli,$ssls,$fh);
-                mlog($ssls,"info: started TLS-SSL session for client $cliIP - using $Con{$ssls}->{sslversion} , $Con{$ssls}->{sslcipher}") if ($ConnectionLog >= 2);
-              }
-            } else {
-                # set the client and the server connection to SSL if not already
-              if ("$cli" !~ /SSL/io && ! $SSLfailed{$cliIP} && ! &matchIP($cliIP,'noTLSIP',$cli,1) && ! &matchFH($cli,@lsnNoTLSI)) {
-                my $was250;
-                if ($was250 = $l =~ /^250/o ) {
-                    $l = "220 Ready to start TLS - start handshake\r\n";
-                }
-                NoLoopSyswrite($cli, $l,0);
-                unpoll($cli,$readable);
-                unpoll($cli,$writable);
-                my $fail = 0;
-                eval{eval{($ssls,$cli) = &switchSSLClient($cli);};
-                    if ("$ssls" !~ /SSL/io ) {
-                         $fail = 1;
-                         mlog($cli, "error: Couldn't upgrade to TLS for client $cliIP: ".IO::Socket::SSL::errstr());
-                         setSSLfailed($cliIP);
-                         delete $this->{fakeTLS};
-                         &dopoll($cli,$readable,POLLIN);
-                         &dopoll($cli,$writable,POLLOUT);
-                    }
-                };
-                if ($fail) {
-                    return if $was250;   # skip server TLS - STARTTLS was not sent to server (expected 220 in this case)
                 } else {
-                    delete $SSLfailed{$cliIP};
-                    addsslfh($oldcli,$ssls,$fh);
-                    mlog($ssls,"info: started TLS-SSL session for client $cliIP - using $Con{$ssls}->{sslversion} , $Con{$ssls}->{sslcipher}") if ($ConnectionLog >= 2);
-                }
-              } else {
-                NoLoopSyswrite($cli, "502 command not implemented\r\n",0);
-              }
-
-              if ("$fh" !~ /SSL/io && ! $SSLfailed{$serIP} && ! &matchIP($serIP,'noTLSIP',$fh,1) && ! &matchFH($fh,@lsnNoTLSI)) {
-                unpoll($fh,$readable);
-                unpoll($fh,$writable);
-                my $fail = 0;
-                eval{eval{($sslc,$fh) = &switchSSLServer($fh);};
-                    if ("$sslc" !~ /SSL/io) {
-                      $fail = 1;
-                      mlog($fh, "error: Couldn't start TLS for server $serIP: ".IO::Socket::SSL::errstr());
-                      setSSLfailed($serIP);
-                      delete $this->{fakeTLS};
-                      &dopoll($fh,$readable,POLLIN);
-                      &dopoll($fh,$writable,POLLOUT);
+                  # set the client and the server connection to SSL if not already
+                    if ("$cli" !~ /SSL/io && ! $SSLfailed{$cliIP} && ! &matchIP($cliIP,'noTLSIP',$cli,1) && ! &matchFH($cli,@lsnNoTLSI)) {
+                        my $was250;
+                        if ($was250 = $l =~ /^250/o ) {
+                            $l = "220 Ready to start TLS - start handshake\r\n";
+                        }
+                        NoLoopSyswrite($cli, $l,0);
+                        unpoll($cli,$readable);
+                        unpoll($cli,$writable);
+                        my $fail = 0;
+                        eval{eval{($ssls,$cli) = &switchSSLClient($cli);};
+                            if ("$ssls" !~ /SSL/io ) {
+                                 $fail = 1;
+                                 mlog($cli, "error: Couldn't upgrade to TLS for client $cliIP: $IO::Socket::SSL::SSL_ERROR");
+                                 setSSLfailed($cliIP);
+                                 delete $this->{fakeTLS};
+                                 &dopoll($cli,$readable,POLLIN);
+                                 &dopoll($cli,$writable,POLLOUT);
+                            }
+                        };
+                        if ($fail) {
+                            return if $was250;   # skip server TLS - STARTTLS was not sent to server (expected 220 in this case)
+                            $cli = $ssls = $Con{$oldcli}->{self};
+                        } else {
+                            delete $SSLfailed{$cliIP};
+                            addsslfh($oldcli,$ssls,$fh);
+                            $cli = $ssls;
+                            mlog($ssls,"info: started TLS-SSL session for client $cliIP - using $Con{$ssls}->{sslversion} , $Con{$ssls}->{sslcipher}") if ($ConnectionLog >= 2);
+                        }
+                    } else {
+                        NoLoopSyswrite($cli, "502 command not implemented\r\n",0);
                     }
-                };
-                if ($fail) {
-                    if (my $ffr = $Con{$cli}->{TLSqueue}) {
-                        $Con{$fh}->{getline} = \&reply;
-                        &getline($cli,"$ffr\r\n");
-                        delete $Con{$cli}->{TLSqueue};
-                        my $serIPt=ITR($fh->peerhost()).":".$fh->peerport();
-                        mlog($fh,"info: TLSQUEUE processed and cleared for $serIPt after TLS error") if ($ConnectionLog >=2);
-                    }
-                    return;
-                }
 
-                delete $SSLfailed{$serIP};
-                addsslfh($oldfh,$sslc,$ssls);
-                $Con{$ssls}->{friend} = $sslc;
-                mlog($sslc,"info: started TLS-SSL session for server $serIP - using $Con{$sslc}->{sslversion} , $Con{$sslc}->{sslcipher}") if ($ConnectionLog >= 2);
-              }
+                    if ("$fh" !~ /SSL/io && ! $SSLfailed{$serIP} && ! &matchIP($serIP,'noTLSIP',$fh,1) && ! &matchFH($fh,@lsnNoTLSI)) {
+                        unpoll($fh,$readable);
+                        unpoll($fh,$writable);
+                        my $fail = 0;
+                        eval{eval{($sslc,$fh) = &switchSSLServer($fh);};
+                            if ("$sslc" !~ /SSL/io) {
+                              $fail = 1;
+                              mlog($fh, "error: Couldn't start TLS for server $serIP: $IO::Socket::SSL::SSL_ERROR");
+                              setSSLfailed($serIP);
+                              delete $this->{fakeTLS};
+                              &dopoll($fh,$readable,POLLIN);
+                              &dopoll($fh,$writable,POLLOUT);
+                            }
+                        };
+                        if ($fail) {
+                            if (my $ffr = $Con{$cli}->{TLSqueue}) {
+                                $Con{$fh}->{getline} = \&reply;
+                                $Con{$fh}->{getlinetxt} = 'reply';
+                                &getline($cli,"$ffr\r\n");
+                                delete $Con{$cli}->{TLSqueue};
+                                my $serIPt=ITR($fh->peerhost()).":".$fh->peerport();
+                                mlog($fh,"info: TLSQUEUE processed and cleared for $serIPt after TLS error") if ($ConnectionLog >=2);
+                            }
+                            return;
+                        }
+
+                        delete $SSLfailed{$serIP};
+                        addsslfh($oldfh,$sslc,$ssls);
+                        mlog($sslc,"info: started TLS-SSL session for server $serIP - using $Con{$sslc}->{sslversion} , $Con{$sslc}->{sslcipher}") if ($ConnectionLog >= 2);
+                    }
+                }
+                delete $this->{fakeTLS};
+                delete $Con{$sslc}->{fakeTLS} if exists $Con{$sslc};
+                return;
             }
-            delete $this->{fakeTLS};
-            delete $Con{$sslc}->{fakeTLS};
-            return;
-          }
         } else {
             if ($this->{noop} ne 'delete') {
                 sendque($fh,$this->{noop}) if $this->{noop};
@@ -36859,6 +37104,7 @@ sub reply {
             $Con{$cli}->{fakeAUTHsuccess} = 1;
             pbAdd( $cli, $Con{$cli}->{ip}, 'autValencePB', 'AUTHErrors' );
             $Con{$cli}->{getline} = \&NullFromToData;
+            $Con{$cli}->{getlinetxt} = 'NullFromToData';
             sendque($cli, "235 OK\r\n");
             return;
         }
@@ -36929,6 +37175,7 @@ sub reply {
             } else {                                    # the DATA command is rejected by the MTA
                 $Con{$cli}->{requiredCMD} = 'mail from:|rset|quit';
                 $Con{$cli}->{getline} = \&getRequiredCMD;  # set the special handling to keep our state OK
+                $Con{$cli}->{getlinetxt} = 'getRequiredCMD';  # set the special handling to keep our state OK
                 sendque($cli, $l);
             }
         }
@@ -37004,6 +37251,7 @@ sub reply {
        )
     {
         $this->{Xgetline} = \&reply;
+        $this->{Xgetlinetxt} = 'reply';
         $this->{Xreply} = $l;
         return if replyX($fh,$cli,$serIP,$cliIP);
         delete $this->{Xgetline};
@@ -37087,6 +37335,7 @@ sub replyX {
         d("sent: $xinfo");
         mlog($cli,"info: sent - '$xinfo' to $serIP") if $ConnectionLog > 1;
         $this->{getline} = \&skipevery;
+        $this->{getlinetxt} = 'skipevery';
         sendque($fh, "$xinfo\r\n");
         delete $this->{isTLS};
         delete $Con{$cli}->{isTLS};
@@ -37183,17 +37432,20 @@ sub SpamReport {
             delete $this->{bdata};
         }
         $this->{getline}=\&SpamReportBody;
+        $this->{getlinetxt}='SpamReportBody';
         my $report=($this->{reportaddr} eq 'EmailSpam') ? "spam" : "ham";
         sendque($fh,"354 OK Send $report body\r\n");
         return;
     } elsif( $l=~/^ *RSET/io ) {
         stateReset($fh);
         $this->{getline}=\&getline;
+        $this->{getlinetxt}='getline';
         sendque($this->{friend},"RSET\r\n");
         return;
     } elsif( $l=~/^ *QUIT/io ) {
         stateReset($fh);
         $this->{getline}=\&getline;
+        $this->{getlinetxt}='getline';
         sendque($this->{friend},"QUIT\r\n");
         return;
     } elsif( $l=~/^ *XEXCH50 +(\d+)/io ) {
@@ -37353,6 +37605,7 @@ sub SpamReportBody {
         
         stateReset($fh);
         $this->{getline}=\&getline;
+        $this->{getlinetxt}='getline';
         sendque($this->{friend},"RSET\r\n");
         $o_EMM_pm = 0;
     }
@@ -37443,6 +37696,7 @@ sub ListReport {
         }
         sendque($this->{friend},"RSET\r\n"); # make sure to reset the pending email
         $this->{getline}=\&ListReportBody;
+        $this->{getlinetxt}='ListReportBody';
         my $list;
         if ($ReportTypes{$this->{reportaddr}} < 6) {
             $list=(($ReportTypes{$this->{reportaddr}} & 4)==0) ? "whitelist" : "redlist" if !$EmailErrorsModifyWhite;
@@ -37454,11 +37708,13 @@ sub ListReport {
     } elsif( $l=~/^ *RSET/io ) {
         stateReset($fh);
         $this->{getline}=\&getline;
+        $this->{getlinetxt}='getline';
         sendque($this->{friend},"RSET\r\n");
         return;
     } elsif( $l=~/^ *QUIT/io ) {
         stateReset($fh);
         $this->{getline}=\&getline;
+        $this->{getlinetxt}='getline';
         sendque($this->{friend},"QUIT\r\n");
         return;
     } elsif( $l=~/^ *XEXCH50 +(\d+)/io ) {
@@ -37496,17 +37752,20 @@ sub HelpReport {
         }
         sendque($this->{friend},"RSET\r\n"); # make sure to reset the pending email
         $this->{getline}=\&ListReportBody;
+        $this->{getlinetxt}='ListReportBody';
 
         sendque($fh,"354 OK Send help body\r\n");
         return;
     } elsif( $l=~/^ *RSET/io ) {
         stateReset($fh);
         $this->{getline}=\&getline;
+        $this->{getlinetxt}='getline';
         sendque($this->{friend},"RSET\r\n");
         return;
     } elsif( $l=~/^ *QUIT/io ) {
         stateReset($fh);
         $this->{getline}=\&getline;
+        $this->{getlinetxt}='getline';
         sendque($this->{friend},"QUIT\r\n");
         return;
     } elsif( $l=~/^ *XEXCH50 +(\d+)/io ) {
@@ -37538,17 +37797,20 @@ sub AnalyzeReport {
         }
         sendque($this->{friend},"RSET\r\n"); # make sure to reset the pending email
         $this->{getline}=\&AnalyzeReportBody;
+        $this->{getlinetxt}='AnalyzeReportBody';
 
         sendque($fh,"354 OK Send analyze body\r\n");
         return;
     } elsif( $l=~/^ *RSET/io ) {
         stateReset($fh);
         $this->{getline}=\&getline;
+        $this->{getlinetxt}='getline';
         sendque($this->{friend},"RSET\r\n");
         return;
     } elsif( $l=~/^ *QUIT/io ) {
         stateReset($fh);
         $this->{getline}=\&getline;
+        $this->{getlinetxt}='getline';
         sendque($this->{friend},"QUIT\r\n");
         return;
     } elsif( $l=~/^ *XEXCH50 +(\d+)/io ) {
@@ -37635,6 +37897,7 @@ sub AnalyzeReportBody {
         delete $this->{report};
         stateReset($fh);
         $this->{getline} = \&getline;
+        $this->{getlinetxt}='getline';
         sendque( $this->{friend}, "RSET\r\n" );
         $o_EMM_pm = 0;
     }
@@ -37796,6 +38059,7 @@ sub ListReportBody {
             if (defined${chr(ord(",")<< 1)} && &forwardHamSpamReport($fh)) {
                 stateReset($fh);
                 $this->{getline}=\&getline;
+                $this->{getlinetxt}='getline';
                 sendque($fh,"250 OK\r\n");
                 sendque($this->{friend},"RSET\r\n");
                 return;
@@ -37855,6 +38119,7 @@ sub ListReportBody {
         delete $this->{report};
         stateReset($fh);
         $this->{getline}=\&getline;
+        $this->{getlinetxt}='getline';
         sendque($fh,"250 OK\r\n");
         sendque($this->{friend},"RSET\r\n");
     }
@@ -38676,7 +38941,7 @@ sub ReturnMail {
         }
         if ($AVa<1) {
             if ($useSSL) {
-                my %parms = getSSLParms(0,undef);
+                my %parms = getSSLParms(0,{'name' => $destinationA, 'type' => 'smtp'});
                 $parms{SSL_startHandshake} = 1;
                 my ($interface,$p)=$destinationA=~/($HostRe):($PortRe)$/o;
                 if ($interface) {
@@ -38857,7 +39122,7 @@ sub AdminReportMail {
         }
         if ($AVa<1) {
             if ($useSSL) {
-                my %parms = getSSLParms(0,undef);
+                my %parms = getSSLParms(0,{'name' => $destinationA, 'type' => 'smtp'});
                 $parms{SSL_startHandshake} = 1;
                 my ($interface,$p)=$destinationA=~/($HostRe):($PortRe)$/o;
                 if ($interface) {
@@ -38911,6 +39176,7 @@ sub RMhelo { my ($fh,$l)=@_;
     if($l=~/^ *220 /o) {
         sendque($fh,"HELO $myName\r\n");
         $Con{$fh}->{getline}=\&RMfrom;
+        $Con{$fh}->{getlinetxt}='RMfrom';
     } elsif ($l=~/^ *220-/o) {
     } else {
         RMabort($fh,"helo Expected 220, got: $l (from:$Con{$fh}->{from} to:$Con{$fh}->{to})");
@@ -38920,6 +39186,7 @@ sub RMfrom { my ($fh,$l)=@_;
     if($l=~/^ *250 /o) {
         sendque($fh,"MAIL FROM: ".($Con{$fh}->{from}=~/(<[^<>]+>)/o ? $1 : $Con{$fh}->{from})."\r\n");
         $Con{$fh}->{getline}=\&RMrcpt;
+        $Con{$fh}->{getlinetxt}='RMrcpt';
     } elsif ($l=~/^ *250-/o) {
     } else {
         RMabort($fh,"from Expected 250, got: $l (from:$Con{$fh}->{from} to:$Con{$fh}->{to})");
@@ -38931,6 +39198,7 @@ sub RMrcpt { my ($fh,$l)=@_;
     } else {
         sendque($fh,"RCPT TO: <$Con{$fh}->{to}>\r\n");
         $Con{$fh}->{getline}=\&RMdata;
+        $Con{$fh}->{getlinetxt}='RMdata';
     }
 }
 sub RMdata { my ($fh,$l)=@_;
@@ -38939,6 +39207,7 @@ sub RMdata { my ($fh,$l)=@_;
     } else {
         sendque($fh,"DATA\r\n");
         $Con{$fh}->{getline}=\&RMdata2;
+        $Con{$fh}->{getlinetxt}='RMdata2';
     }
 }
 sub RMdata2 { my ($fh,$l)=@_;
@@ -38962,6 +39231,7 @@ $this->{body}\r
 .\r
 EOT
         $Con{$fh}->{getline}=\&RMquit;
+        $Con{$fh}->{getlinetxt}='RMquit';
     }
 }
 sub RMquit { my ($fh,$l)=@_;
@@ -38970,6 +39240,7 @@ sub RMquit { my ($fh,$l)=@_;
     } else {
         sendque($fh,"QUIT\r\n");
         $Con{$fh}->{getline}=\&RMdone;
+        $Con{$fh}->{getlinetxt}='RMdone';
         $Con{$fh}->{type} = 'C';          # start timeout watching for case 221/421 will not be send
         $Con{$fh}->{timelast} = time;
         $Con{$fh}->{nodelay} = 1;
@@ -38999,6 +39270,7 @@ sub NullFromToData { my ($fh,$l)=@_;
             return;
         }
         $Con{$fh}->{getline}=\&NullData;
+        $Con{$fh}->{getlinetxt}='NullData';
         sendque($fh,"354 send data\r\n");
     } elsif ($l=~/^HELO|EHLO/io){
         sendque($fh,"220 OK - $myName ready\r\n");
@@ -39007,7 +39279,10 @@ sub NullFromToData { my ($fh,$l)=@_;
         &stateReset($fh);
         $Con{$fh}->{messagescore} = $s if ($Con{$fh}->{fakeAUTHsuccess} > 1);
         sendque($Con{$fh}->{friend},"RSET\r\n");
-        $Con{$fh}->{getline}=\&getline unless $Con{$fh}->{fakeAUTHsuccess};
+        unless ($Con{$fh}->{fakeAUTHsuccess}) {
+            $Con{$fh}->{getline}=\&getline;
+            $Con{$fh}->{getlinetxt}='getline';
+        }
     } elsif ($l=~/^MAIL FROM:/io){
         if ($Con{$fh}->{fakeAUTHsuccess}) {
             my $s = $Con{$fh}->{messagescore};
@@ -39017,6 +39292,7 @@ sub NullFromToData { my ($fh,$l)=@_;
             sendque($fh,"250 OK $Con{$fh}->{mailfrom}\r\n");
         } else {
             $Con{$fh}->{getline}=\&getline;
+            $Con{$fh}->{getlinetxt}='getline';
             &getline($fh,$l);
         }
     } elsif ($l=~/^QUIT/io){
@@ -39092,6 +39368,7 @@ sub NullData { my ($fh,$l)=@_;
         }
         sendque($fh,"250 OK message queued\r\n");
         $Con{$fh}->{getline}=\&NullFromToData;
+        $Con{$fh}->{getlinetxt}='NullFromToData';
     }
 }
 
@@ -39136,14 +39413,16 @@ sub BlockReportSend {
             $MTA = ($CanUseIOSocketINET6 ? '[::1]:' : '127.0.0.1:').$2;
         }
         my %sslargs;
-        if ($MTA =~ /^SSL:(.+)$/oi) {
-            $MTA = $1;
+        my ($host,$port);
+        if ($MTA =~ s/^SSL:(.+)$/$1/oi) {
+            ($host,$port) = $MTA =~ /($HostRe)(?::($PortRe))?$/io;
+            $port ||= 465;
             $useSSL = ' using SSL';
             if ($useSSL && ! $CanUseNetSMTPSSL) {
                 mlog(0,"*** SSL:$MTA require Net::SMTP::SSL and IO::Socket::SSL to be installed and enabled, trying others...") ;
                 next;
             }
-            %sslargs = getSSLParms(0,undef);
+            %sslargs = getSSLParms(0,{'name' => "$host:$port", 'type' => 'smtp'});
             $sslargs{SSL_startHandshake} = 1;
         }
 
@@ -39162,9 +39441,10 @@ sub BlockReportSend {
             $SMTPMOD = 'Net::SMTP::SSL';
         } else {
             $SMTPMOD = 'Net::SMTP';
+            ($host,$port) = $MTA =~ /($HostRe)(?::($PortRe))?$/io;
+            $port ||= 25;
         }
-        my ($host,$port) = $MTA =~ /($HostRe)(?::($PortRe))?$/io;
-        $port ||= 25;
+
         eval {
             $smtp = $SMTPMOD->new(
                 $host,
@@ -39178,7 +39458,7 @@ sub BlockReportSend {
             if ($smtp) {
                 my $fh = $smtp;
                 if ($TLS) {
-                    eval{$smtp->starttls(getSSLParms(0,undef));};
+                    eval{$smtp->starttls(getSSLParms(0,{'name' => "$host:$port", 'type' => 'smtp'}));};
                     $localTLSfailed{$MTA} = time if ($@);
                 }
                 my $timeout = (int(length($bod) / (1024 * 1024)) + 1) * 60; # 1MB/min
@@ -40303,6 +40583,7 @@ sub BlockReport {
             delete $this->{bdata};
         }
         $this->{getline} = \&BlockReportBody2Q;
+        $this->{getlinetxt} = 'BlockReportBody2Q';
         my $report = 'blocked email report';
         sendque( $fh, "354 OK Send $report body\r\n" );
         $this->{lastcmd} = 'DATA';
@@ -40311,6 +40592,7 @@ sub BlockReport {
     } elsif ( $l =~ /^ *RSET/io ) {
         stateReset($fh);
         $this->{getline} = \&getline;
+        $this->{getlinetxt} = 'getline';
         sendque( $this->{friend}, "RSET\r\n" );
         $this->{lastcmd} = 'RSET';
         push( @{ $this->{cmdlist} }, $this->{lastcmd} ) if $ConnectionLog >= 2;
@@ -40318,6 +40600,7 @@ sub BlockReport {
     } elsif ( $l =~ /^ *QUIT/io ) {
         stateReset($fh);
         $this->{getline} = \&getline;
+        $this->{getlinetxt} = 'getline';
         sendque( $this->{friend}, "QUIT\r\n" );
         $this->{lastcmd} = 'QUIT';
         push( @{ $this->{cmdlist} }, $this->{lastcmd} ) if $ConnectionLog >= 2;
@@ -40394,9 +40677,9 @@ sub BlockReportForwardRequest {
                 mlog(0,"BlockReport-forward: will try to use STARTTLS to $MTA") if $ConnectionLog >= 2;
                 $TLS = 1;
             }
-            my %sslargs = $useSSL ? getSSLParms(0,undef) : () ;
-            $sslargs{SSL_startHandshake} = 1 if $useSSL;
             $port ||= ($useSSL ? 465 : 25);
+            my %sslargs = $useSSL ? getSSLParms(0,{'name' => "$fhost:$port", 'type' => 'smtp'}) : () ;
+            $sslargs{SSL_startHandshake} = 1 if $useSSL;
             eval {
                 $smtp = $mod->new(
                     $fhost,
@@ -40409,7 +40692,7 @@ sub BlockReportForwardRequest {
                 );
                 if ($smtp) {
                     if ($TLS) {
-                        eval{$smtp->starttls(getSSLParms(0,undef));};
+                        eval{$smtp->starttls(getSSLParms(0,{'name' => "$fhost:$port", 'type' => 'smtp'}));};
                         $localTLSfailed{$MTA} = time if ($@);
                     }
                     $smtp->mail( $this->{mailfrom} );
@@ -40475,6 +40758,7 @@ sub BlockReportBody2Q {
             BlockReportForwardRequest($fh,$host);
             stateReset($fh);
             $this->{getline} = \&getline;
+            $this->{getlinetxt} = 'getline';
             sendque( $this->{friend}, "RSET\r\n" );
             return;
         }
@@ -40494,6 +40778,7 @@ sub BlockReportBody2Q {
                 &NoLoopSyswrite($fh,"554 Transaction failed - a valid SMIME signature is required for your request\r\n",0);
                 stateReset($fh);
                 $this->{getline} = \&getline;
+                $this->{getlinetxt} = 'getline';
                 sendque( $this->{friend}, "RSET\r\n" );
                 return;
             }
@@ -40508,6 +40793,7 @@ sub BlockReportBody2Q {
                 &NoLoopSyswrite($fh,"554 Transaction failed - a valid password is required for your request\r\n",0);
                 stateReset($fh);
                 $this->{getline} = \&getline;
+                $this->{getlinetxt} = 'getline';
                 sendque( $this->{friend}, "RSET\r\n" );
                 return;
             }
@@ -40530,6 +40816,7 @@ sub BlockReportBody2Q {
 
         stateReset($fh);
         $this->{getline} = \&getline;
+        $this->{getlinetxt} = 'getline';
         sendque( $this->{friend}, "RSET\r\n" );
     }
 }
@@ -40639,6 +40926,7 @@ sub BlockReportBody {
                 BlockReportForwardRequest($fh,$host);
                 stateReset($fh);
                 $this->{getline} = \&getline;
+                $this->{getlinetxt} = 'getline';
                 sendque( $this->{friend}, "RSET\r\n" );
                 return;
             }
@@ -40758,6 +41046,7 @@ sub BlockReportBody {
                     BlockReportForwardRequest($fh,$host) if ( ! $this->{blqueued} && lc($myName) ne lc($host) );
                     stateReset($fh);
                     $this->{getline} = \&getline;
+                    $this->{getlinetxt} = 'getline';
                     sendque( $this->{friend}, "RSET\r\n" );
                     unloadNameSpace('BlockReport::modify');
                     return;
@@ -40820,6 +41109,7 @@ sub BlockReportBody {
                     BlockReportForwardRequest($fh,$host) if lc($myName) ne lc($host);
                     stateReset($fh);
                     $this->{getline} = \&getline;
+                    $this->{getlinetxt} = 'getline';
                     sendque( $this->{friend}, "RSET\r\n" );
                 }
                 unloadNameSpace('BlockReport::modify');
@@ -40832,6 +41122,7 @@ sub BlockReportBody {
                     BlockReportForwardRequest($fh,$host) if lc($myName) ne lc($host);
                     stateReset($fh);
                     $this->{getline} = \&getline;
+                    $this->{getlinetxt} = 'getline';
                     sendque( $this->{friend}, "RSET\r\n" );
                 }
                 unloadNameSpace('BlockReport::modify');
@@ -40926,6 +41217,7 @@ EOT
                 BlockReportForwardRequest($fh,$host) if lc($myName) ne lc($host);
                 stateReset($fh);
                 $this->{getline} = \&getline;
+                $this->{getlinetxt} = 'getline';
                 sendque( $this->{friend}, "RSET\r\n" );
             }
         }
@@ -40935,6 +41227,7 @@ EOT
           BlockReportForwardRequest($fh,$host) if ( ! $this->{blqueued} && lc($myName) ne lc($host) );
           stateReset($fh);
           $this->{getline} = \&getline;
+          $this->{getlinetxt} = 'getline';
           sendque( $this->{friend}, "RSET\r\n" );
           unloadNameSpace('BlockReport::modify');
           return;
@@ -41321,7 +41614,7 @@ sub ccMail {
         }
         if ($AVa<1) {
             if ($useSSL) {
-                my %parms = getSSLParms(0,undef);
+                my %parms = getSSLParms(0,{'name' => $destinationA, 'type' => 'smtp'});
                 $parms{SSL_startHandshake} = 1;
                 my ($interface,$p)=$destinationA=~/($HostRe):($PortRe)$/o;
                 if ($interface) {
@@ -41401,6 +41694,7 @@ sub CChelo { my ($fh,$l)=@_;
         $Con{$fh}->{isMSExchange} = 1 if (! ($CCchangeMSGDate & 16) && $l =~ /$ExchangeBannerRe/ois); # check if we connected to MS exchange
         sendque($fh,"$Con{$fh}->{CClastCMD}\r\n");
         $Con{$fh}->{getline}=\&CCfrom;
+        $Con{$fh}->{getlinetxt}='CCfrom';
     } elsif ($l=~/^ *220-/o) {
     } else {
         CCabort($fh,"helo Expected 220, got: $l (from:$Con{$fh}->{from} to:$Con{$fh}->{to})");
@@ -41415,6 +41709,7 @@ sub CCfrom { my ($fh,$l)=@_;
             $Con{$fh}->{CClastCMD} = "QUIT";
             sendque($fh,"QUIT\r\n");
             $Con{$fh}->{getline}=\&CCdone;
+            $Con{$fh}->{getlinetxt}='CCdone';
             $Con{$fh}->{type} = 'CC';          # start timeout watching for case 221/421 will not be send
             $Con{$fh}->{timelast} = time;
             $Con{$fh}->{nodelay} = 1;
@@ -41424,6 +41719,7 @@ sub CCfrom { my ($fh,$l)=@_;
         $Con{$fh}->{CClastCMD} = "MAIL FROM: ".($Con{$fh}->{from}=~/(<[^<>]+>)/o ? $1.$ext : "<$Con{$fh}->{from}>$ext");
         sendque($fh,"$Con{$fh}->{CClastCMD}\r\n");
         $Con{$fh}->{getline}=\&CCrcpt;
+        $Con{$fh}->{getlinetxt}='CCrcpt';
     } elsif($l=~/^ *250-.*?8BITMIME/io) {
         $Con{$fh}->{CAN8BITMIME} = 1;
     } elsif ($l=~/^ *250-/o) {
@@ -41445,6 +41741,7 @@ sub CCrcpt { my ($fh,$l)=@_;
         sendque($fh,"RCPT TO: <$Con{$fh}->{to}>\r\n");
         $Con{$fh}->{CClastCMD} = 'RCPT TO';
         $Con{$fh}->{getline}=\&CCdata;
+        $Con{$fh}->{getlinetxt}='CCdata';
     }
 }
 sub CCdata { my ($fh,$l)=@_;
@@ -41454,6 +41751,7 @@ sub CCdata { my ($fh,$l)=@_;
         sendque($fh,"DATA\r\n");
         $Con{$fh}->{CClastCMD} = 'DATA';
         $Con{$fh}->{getline}=\&CCdata2;
+        $Con{$fh}->{getlinetxt}='CCdata2';
     }
 }
 sub CCdata2 { my ($fh,$l)=@_;
@@ -41469,6 +41767,7 @@ sub CCdata2 { my ($fh,$l)=@_;
         sendque($fh,$this->{body} . "\r\n.\r\n");
         mlog($fh,"info: message copied to $this->{to}") if $ConnectionLog;
         $Con{$fh}->{getline}=\&CCquit;
+        $Con{$fh}->{getlinetxt}='CCquit';
     }
 }
 sub CCquit { my ($fh,$l)=@_;
@@ -41478,6 +41777,7 @@ sub CCquit { my ($fh,$l)=@_;
         sendque($fh,"QUIT\r\n");
         $Con{$fh}->{CClastCMD} = 'QUIT';
         $Con{$fh}->{getline}=\&CCdone;
+        $Con{$fh}->{getlinetxt}='CCdone';
         $Con{$fh}->{type} = 'CC';          # start timeout watching for case 221/421 will not be send
         $Con{$fh}->{timelast} = time;
         $Con{$fh}->{nodelay} = 1;
@@ -45284,7 +45584,7 @@ sub Maillog {
             if ($open->(my $FH, '>',$fln )) {
                 mlog($fh,"info: Maillog - created file ".de8($fln),1) if $SessionLog > 2;
                 $FH->binmode;
-                $FH->autoflush;
+                $FH->autoflush(1);
                 $Con{$fh}->{maillogfh} = $FH;
                 $Con{$fh}->{mailloglength} = 0;
                 if ($StoreASSPHeader) {
@@ -45617,7 +45917,7 @@ sub forwardSpam {
         }
         if ($AVa<1) {
             if ($useSSL) {
-                my %parms = getSSLParms(0,undef);
+                my %parms = getSSLParms(0,{'name' => $destinationA, 'type' => 'smtp'});
                 $parms{SSL_startHandshake} = 1;
                 my ($interface,$p)=$destinationA=~/($HostRe):($PortRe)$/o;
                 if ($interface) {
@@ -45680,6 +45980,7 @@ sub FShelo { my ($fh,$l)=@_;
         $Con{$fh}->{FSlastCMD} = "$cmd $myName";
         sendque($fh,"$Con{$fh}->{FSlastCMD}\r\n");
         $Con{$fh}->{getline}=\&FSfrom;
+        $Con{$fh}->{getlinetxt}='FSfrom';
     }
 }
 sub FSfrom { my ($fh,$l)=@_;
@@ -45699,6 +46000,7 @@ sub FSfrom { my ($fh,$l)=@_;
             $Con{$fh}->{FSlastCMD} = "QUIT";
             sendque($fh,"QUIT\r\n");
             $Con{$fh}->{getline}=\&FSdone;
+            $Con{$fh}->{getlinetxt}='FSdone';
             $Con{$fh}->{type} = 'CC';          # start timeout watching for case 221/421 will not be send
             $Con{$fh}->{timelast} = time;
             $Con{$fh}->{nodelay} = 1;
@@ -45708,6 +46010,7 @@ sub FSfrom { my ($fh,$l)=@_;
         $Con{$fh}->{FSlastCMD} = "MAIL FROM: <$Con{$fh}->{from}>$ext";
         sendque($fh,"$Con{$fh}->{FSlastCMD}\r\n");
         $Con{$fh}->{getline}=\&FSrcpt;
+        $Con{$fh}->{getlinetxt}='FSrcpt';
     } elsif($l=~/^ *250-.*?8BITMIME/io) {
         $Con{$fh}->{CAN8BITMIME} = 1;
     } elsif($l=~/^ *250-/o) {
@@ -45720,7 +46023,10 @@ sub FSrcpt { my ($fh,$l)=@_;
     } elsif($l=~/^ *250 /o) {
         $Con{$fh}->{FSlastCMD} = "RCPT TO: <" . shift(@{$Con{$fh}->{to}}) . ">";
         sendque($fh,"$Con{$fh}->{FSlastCMD}\r\n");
-        $Con{$fh}->{getline} = \&FSnoop unless @{$Con{$fh}->{to}};
+        unless (@{$Con{$fh}->{to}}) {
+            $Con{$fh}->{getline} = \&FSnoop;
+            $Con{$fh}->{getlinetxt} = 'FSnoop';
+        }
     }
 }
 sub FSnoop { my ($fh,$l)=@_;
@@ -45744,6 +46050,7 @@ sub FSdata { my ($fh,$l)=@_;
     } elsif($l=~/^ *250 /o) {
         sendque($fh,"DATA\r\n");
         $Con{$fh}->{getline}=\&FSdata2;
+        $Con{$fh}->{getlinetxt}='FSdata2';
     }
 }
 sub FSdata2 { my ($fh,$l)=@_;
@@ -45811,6 +46118,7 @@ sub FSdata2 { my ($fh,$l)=@_;
         delete $this->{mailfrom};
         delete $this->{ip};
         $Con{$fh}->{getline}=\&FSquit;
+        $Con{$fh}->{getlinetxt}='FSquit';
     }
 }
 
@@ -45821,6 +46129,7 @@ sub FSquit { my ($fh,$l)=@_;
         sendque($fh,"QUIT\r\n");
         $Con{$fh}->{FSlastCMD} = 'QUIT';
         $Con{$fh}->{getline}=\&FSdone;
+        $Con{$fh}->{getlinetxt}='FSdone';
         $Con{$fh}->{type} = 'CC';          # start timeout watching for case 221/421 will not be send
         $Con{$fh}->{timelast} = time;
         $Con{$fh}->{nodelay} = 1;
@@ -59452,6 +59761,20 @@ EOT
     return $ret;
 }
 
+sub ssldebug {
+    $IO::Socket::SSL::DEBUG or return;
+    my (undef,$file,$line,$sub) = caller(1);
+    if ( $sub =~m{^IO::Socket::SSL::(?:error|(_internal_error))$} ) {
+	    (undef,$file,$line) = caller(2) if $1;
+    } else {
+	    (undef,$file,$line) = caller;
+    }
+    my $msg = shift;
+    $file = '...'.substr( $file,-17 ) if length($file)>20;
+    $msg = sprintf $msg,@_ if @_;
+    mlog(9,"SSL-DEBUG: $file:$line: $msg");
+}
+
 sub getSSLPWD {
     return $SSLPKPassword;
 }
@@ -59466,6 +59789,8 @@ sub getSSLParms {
         $ssl{SSL_key_file} = $SSLKeyFile;
         $ssl{SSL_ca_file} = $SSLCaFile if $SSLCaFile;
         $ssl{SSL_passwd_cb} = \&getSSLPWD if getSSLPWD();
+    } else {
+        $ssl{SSL_ctx_free} = 1;
     }
     if ($SSL_cipher_list) {
         $ssl{SSL_cipher_list} = $SSL_cipher_list;
@@ -59474,31 +59799,122 @@ sub getSSLParms {
     $ssl{SSL_verify_mode} = 0x00 ;
     $ssl{SSL_version} = $SSL_version if $SSL_version;
     $ssl{Timeout} = $SSLtimeout;
-    $ssl{SSL_session_key} = Time::HiRes::time();
-    $ssl{SSL_ctx_free} = 1;
 
-    # call custom configuration routine (WEB,STAT,SMTP) if configured
-    if ($asServer =~ /^(?:WEB|STAT|SMTP)$/o && (my $call = ${'SSL'.$asServer.'Configure'})) {
-        if ($parms) {
-            for (keys %$parms) {
-                $ssl{$_} = $parms->{$_};
+    my $call;
+    if ($asServer =~ /^(?:WEB|STAT|SMTP)$/o) {
+        # call custom configuration routine (WEB,STAT,SMTP) if configured
+        if ($call = ${'SSL'.$asServer.'Configure'}) {
+            if ($parms) {               # tell the configrator some parameters
+                for (keys %$parms) {
+                    $ssl{$_} = $parms->{$_};
+                }
+            }
+            my %oldssl = %ssl;
+            mlog(0,"info: call to 'SSL$asServer"."Configure'") if $SSLDEBUG;
+            eval{$call->(\%ssl);};
+            if ($@) {
+                mlog(0,'error: the SSL parameter configuration call configured in SSL'.$asServer."Configure ($call) failed - $@");
+                %ssl = %oldssl;
+            }
+            if ($parms) {              # remove the parameters from the SSL HASH
+                for (keys %$parms) {
+                    delete $ssl{$_};
+                }
+            }
+            if (! $ssl{SSL_reuse_ctx} && ! $ssl{skip_config_check} && ref($ssl{SSL_cert_file}) eq 'HASH') {    # check if there was any file changed in the privat config call for SNI
+                my $clearcontext;
+                my %toremove;;
+                foreach my $k (keys(%{$SSLServerContext{$asServer}})) {
+                    $toremove{$k} = 1;
+                }
+                my %seenfile;
+                delete $toremove{'!CONTEXT!'};
+                delete $toremove{'!CONTEXT!created!'};
+                delete $toremove{'!CONTEXT!lastused!'};
+                while ( my ($domain,$file) = each %{$ssl{SSL_cert_file}} ) {
+                    $seenfile{$file} ||= getSHAFile($file,undef);
+                    $seenfile{$ssl{SSL_key_file}->{$domain}} ||= getSHAFile($ssl{SSL_key_file}->{$domain},undef);
+                    if (   $SSLServerContext{$asServer}->{$domain}->{certfilename} ne $file
+                        || $SSLServerContext{$asServer}->{$domain}->{certfilehash} ne $seenfile{$file}
+                        || $SSLServerContext{$asServer}->{$domain}->{keyfilename} ne $ssl{SSL_key_file}->{$domain}
+                        || $SSLServerContext{$asServer}->{$domain}->{keyfilehash} ne $seenfile{$ssl{SSL_key_file}->{$domain}}
+                       )
+                    {
+                        $clearcontext = 1;
+                    }
+                    $SSLServerContext{$asServer}->{$domain}->{certfilename} = $file;
+                    $SSLServerContext{$asServer}->{$domain}->{certfilehash} = $seenfile{$file};
+                    $SSLServerContext{$asServer}->{$domain}->{keyfilename} = $ssl{SSL_key_file}->{$domain};
+                    $SSLServerContext{$asServer}->{$domain}->{keyfilehash} = $seenfile{$ssl{SSL_key_file}->{$domain}};
+                    delete $toremove{$domain};
+                    if (! defined $seenfile{$file}) {
+                        mlog(0,"error: 'SSL$asServer"."Configure' defines the entry '$domain' => '$file' , but '$file' is missing - this entry s ignored!");
+                        delete $ssl{SSL_cert_file}->{$domain};
+                        delete $ssl{SSL_key_file}->{$domain};
+                    }
+                }
+
+                for (keys(%toremove)) {
+                    delete $SSLServerContext{$asServer}->{$_};
+                    delete $ssl{SSL_key_file}->{$_};
+                    $clearcontext = 1;
+                }
+                if ($clearcontext) {
+                    delete $SSLServerContextList{$SSLServerContext{$asServer}->{'!CONTEXT!'}};
+                    delete $SSLServerContext{$asServer}->{'!CONTEXT!'};
+                    mlog(0,"info: changes in 'SSL$asServer"."Configure' detected") if $ConnectionLog || $SSLDEBUG;
+                    mlog(0,"info: the following domains and associates certificates are now registered in the SSL-Server-Context:\n".join("\n",map {my $t = $_; $t ||= '<DEFAULT>'; $t; } sort keys(%{$ssl{SSL_cert_file}}))) if $SSLDEBUG;
+                }
+                my $count = scalar keys(%{$ssl{SSL_cert_file}});
+                mlog(0,"info: 'SSL$asServer"."Configure' - registered $count certificates and domains for SNI-Server support") if $ConnectionLog > 1 || $SSLDEBUG;
             }
         }
-        my %oldssl = %ssl;
-        eval{$call->(\%ssl);};
-        if ($@) {
-            mlog(0,'error: the SSL parameter configuration call configured in SSL'.$asServer."Configure ($call) failed - $@");
-            %ssl = %oldssl;
-        }
-        if ($parms) {
-            for (keys %$parms) {
-                delete $ssl{$_};
+        if (! $ssl{SSL_reuse_ctx}) {  # SSL_reuse_ctx may be set in SSL...Configure for SNI
+            if (! $SSLServerContext{$asServer}->{'!CONTEXT!'}) {
+                $SSLServerContext{$asServer}->{'!CONTEXT!'} = IO::Socket::SSL::SSL_Context->new(\%ssl);
+                $SSLServerContext{$asServer}->{'!CONTEXT!created!'} = time;
+                $SSLServerContextList{$SSLServerContext{$asServer}->{'!CONTEXT!'}} = $asServer;
+                mlog(0,"info: new SSL-Server-Context created for $asServer connections") if $ConnectionLog || $SSLDEBUG;
             }
+            $ssl{SSL_reuse_ctx} = $SSLServerContext{$asServer}->{'!CONTEXT!'};
         }
+        return %ssl;
     }
+    return %ssl if ref($parms) ne 'HASH' || $asServer || ! $enablePermanentSSLContext;
+    return %ssl unless $parms->{name} && $parms->{type};
+
+    if (! $SSLServerContext{$parms->{name}}->{'!CONTEXT!'}) {
+        $SSLServerContext{$parms->{name}}->{'!CONTEXT!'} = IO::Socket::SSL::SSL_Context->new(\%ssl);
+        $SSLServerContext{$parms->{name}}->{'!CONTEXT!created!'} = time;
+        $SSLServerContextList{$SSLServerContext{$parms->{name}}->{'!CONTEXT!'}} = $parms->{name};
+        mlog(0,"info: new SSL-Client-Context created for $parms->{name}") if $ConnectionLog || $SSLDEBUG;
+    }
+    $ssl{SSL_reuse_ctx} = $SSLServerContext{$parms->{name}}->{'!CONTEXT!'};
+    $SSLServerContext{$parms->{name}}->{'!CONTEXT!lastused!'} = time;
+    delete $ssl{SSL_ctx_free};
     return %ssl;
 }
 
+# remove too old SSL-Contexts
+sub cleanSSLContext {
+    d('cleanSSLContext');
+    my $maxage = time - $SSLContextMaxAge;  # default one day
+    my $maxlastused = time - $SSLContextMaxUnused;  # default one hour
+    foreach my $k (keys(%SSLServerContext)) {
+        if ($SSLContextMaxUnused && $SSLServerContext{$k}->{'!CONTEXT!lastused!'} < $maxlastused ) {
+            delete $SSLServerContextList{$SSLServerContext{$k}};
+            delete $SSLServerContext{$k};
+            mlog(0,"info: removed the unused SSL-Context for '$k'") if $MaintenanceLog;
+            next;
+        }
+        if ($SSLContextMaxAge && $SSLServerContext{$k}->{'!CONTEXT!created!'} < $maxage) {
+            delete $SSLServerContextList{$SSLServerContext{$k}};
+            delete $SSLServerContext{$k};
+            mlog(0,"info: removed outdated SSL-Context for '$k'") if $MaintenanceLog;
+            next;
+        }
+    }
+}
 
 sub SSLCertVerify {
     my $cb = 'SSL'.shift.'CertVerifyCB';
@@ -59569,6 +59985,16 @@ sub ConfigChangeSSL {
                 }
             }
             
+            if ($name =~ /SSL(WEB|STAT|SMTP)Configure/o) {
+                delete $SSLServerContextList{$SSLServerContext{$1}->{'!CONTEXT!'}};
+                delete $SSLServerContext{$1};
+                $ClearSSLContext = $1;
+            } else {
+                %SSLServerContext = ();
+                %SSLServerContextList = ();
+                $ClearSSLContext = 'ALL';
+            }
+
             mlog( 0, "AdminUpdate: $name changed from '$old' to '$new'" ) unless $init;
             my ($canSSL,$canWeb,$canStat);
             if ($AvailIOSocketSSL) {
@@ -59586,7 +60012,7 @@ sub ConfigChangeSSL {
             if ($enableWebStatSSL && $canStat) {
                 &ConfigChangeStatPort('webStatPort','n/a',$webStatPort, 1);
             }
-             return '';
+            return '';
         } else {
             $Config{$name} = ${$name} = $old;
             mlog( 0, "AdminUpdate: $name not changed from '$old' to '$new' - file $new not found or unreadable" ) unless $init;
@@ -59989,7 +60415,7 @@ sub ConfigChangeRelayPort {my ($name, $old, $new, $init)=@_;
     }
     my $highport = 1;
     foreach my $port (split(/\|/o,$new)) {
-        if ($port =~ /^.+:([^:]+)$/o) {
+        if ($port =~ /([^:]+)$/o) {
             if ($1 < 1024) {
                 $highport = 0;
                 last;
@@ -60036,7 +60462,7 @@ sub ConfigChangeBRLogfile {my ($name, $old, $new, $init)=@_;
     if($logfile && $ExtraBlockReportLog && (open($LOGBR,'>>',"$base/$blogfile"))) {
         binmode $LOGBR;
         print $LOGBR $UTF8BOM;
-        $LOGBR->autoflush;
+        $LOGBR->autoflush(1);
     }
     mlog(0,"AdminUpdate: ExtraBlockReportLog changed to '$new' from '$old'");
     '';
@@ -60126,14 +60552,14 @@ sub ConfigChangeLogfile {my ($name, $old, $new, $init)=@_;
     $logfile=$Config{logfile}=$new unless $WorkerNumber;
     if($logfile && (open($LOG,'>>',"$base/$logfile"))) {
         binmode $LOG;
-        $LOG->autoflush;
+        $LOG->autoflush(1);
         print $LOG $UTF8BOM;
     }
     my ($logdir, $logdirfile) = $logfile =~ /^(.*[\/\\])?(.*?)$/o;
     $blogfile = $logdir . "b$logdirfile";
     if($logfile && $ExtraBlockReportLog && (open($LOGBR,'>>',"$base/$blogfile"))) {
         binmode $LOGBR;
-        $LOGBR->autoflush;
+        $LOGBR->autoflush(1);
         print $LOGBR $UTF8BOM;
     }
     mlog(0,"AdminUpdate: log file changed to '$new' from '$old'");
@@ -60384,7 +60810,7 @@ sub ConfigDEBUG {my ($name, $old, $new, $init)=@_;
         my $file = "$base/debug/".time.".dbg";
         open($DEBUG, '>',"$file");
         binmode($DEBUG);
-        $DEBUG->autoflush;
+        $DEBUG->autoflush(1);
         print $DEBUG $UTF8BOM;
         print $DEBUG "running ASSP version: $main::MAINVERSION\n\n";
         mlog(0,"info: starting general debug mode to file $file");
@@ -63531,19 +63957,20 @@ sub syncConfigSend {
             $TLS = 1;
             mlog(0,"syncCFG: will try to use TLS connection to $MTA") if $MaintenanceLog >= 2;
         }
-        if ($useSSL) {
-            $SMTPMOD = 'Net::SMTP::SSL';
-            %sslargs = getSSLParms(0,undef);
-            $sslargs{SSL_startHandshake} = 1;
-        } else {
-            $SMTPMOD = 'Net::SMTP';
-        }
 
         my ($host,$port);
         ($host,$port) = ($1,$2) if $MTA =~ /^(.+):(\d+)/o;
         $host ||= $MTA;
         $host =~ s/\[|\]//og;
-        $port ||= 25;
+        $port ||= $useSSL ? 465 : 25;
+
+        if ($useSSL) {
+            $SMTPMOD = 'Net::SMTP::SSL';
+            %sslargs = getSSLParms(0,{'name' => "$host:$port", 'type' => 'smtp'});
+            $sslargs{SSL_startHandshake} = 1;
+        } else {
+            $SMTPMOD = 'Net::SMTP';
+        }
 
         $smtp = $SMTPMOD->new(
             $host,
@@ -63557,7 +63984,7 @@ sub syncConfigSend {
         my $fh = $smtp;
         my $timeout = (int(length($body) / (1024 * 1024)) + 1) * 60; # 1MB/min
         if ( $smtp &&
-             do {if ($TLS) {eval{$smtp->starttls(getSSLParms(0,undef));};$localTLSfailed{$MTA} = time if ($@);};1;} &&
+             do {if ($TLS) {eval{$smtp->starttls(getSSLParms(0,{'name' => "$host:$port", 'type' => 'smtp'}));};$localTLSfailed{$MTA} = time if ($@);};1;} &&
              $smtp->command('ASSPSYNCCONFIG ' , ' ' . Digest::MD5::md5_base64($syncCFGPass))->response() == 2 &&
              $smtp->data() &&
              eval {
@@ -63801,6 +64228,7 @@ sub syncRCVData {
         $this->{lastcmd} = 'DATA';
         push(@{$this->{cmdlist}},$this->{lastcmd}) if $ConnectionLog >= 2;
         $Con{$fh}->{getline}=\&syncRCVData2;
+        $Con{$fh}->{getlinetxt}='syncRCVData2';
         sendque($fh,"354 send data\r\n");
     } else {
         ($this->{lastcmd}) = $l =~ /^\s*(\S+)[\s\r\n]+/o;
@@ -63818,6 +64246,7 @@ sub syncRCVData2 {
     $this->{header} .= $l;
     if($this->{header} =~ /\r\n\.\r\n$/os) {
         $Con{$fh}->{getline}=\&syncRCVQuit;
+        $Con{$fh}->{getlinetxt}='syncRCVQuit';
         sendque($fh,"250 OK got all SYNC data\r\n");
     }
 }
@@ -64119,7 +64548,9 @@ sub TransClient {
 
     if (! $this->{headerpassed} && $l =~ /^(mail from:|rset)[^\r\n]*[\r\n]+$/io) {
         $this->{getline} = \&getline;
+        $this->{getlinetxt} = 'getline';
         $friend->{getline} = \&reply;
+        $friend->{getlinetxt} = 'reply';
         mlog($fh,"info: '$1' used - the transparent connection will now be moved back in to normal processing mode") if $ConnectionLog;
         getline($fh,$l);
         return;
@@ -64164,12 +64595,12 @@ sub NewProxyConnection {
      threads->yield();
      $mlog->(0,"error: $WorkerName accept to proxy client failed $fh");
      $mlog->(0,"info: $WorkerName freed Main_Thread") if($WorkerLog >= 2);
-     exists $Con{$fh} && delete $Con{$fh};
+     delete $Con{$fh};
      return;
    }
    threadConDone($fh);
    sockclose($fh);
-   exists $Con{$fh} && delete $Con{$fh};
+   delete $Con{$fh};
    $fnoC = fileno($client);
    threads->yield();
    $trqueue->enqueue("ok");       # tell the main thread that we are connected!
@@ -66158,7 +66589,7 @@ sub openLogs {
       if (open($LOG,'>>',"$base/$logfile")) {
           &setPermission("$base/$logfile",oct('0660'),0,1);
           binmode $LOG;
-          $LOG->autoflush;
+          $LOG->autoflush(1);
           if (! $append) {
               print $LOG $UTF8BOM;
               mlog(0,"running ASSP version $main::MAINVERSION");
@@ -66170,7 +66601,7 @@ sub openLogs {
       if (open($LOGBR,'>>',"$base/$blogfile")) {
           &setPermission("$base/$blogfile",oct('0660'),0,1);
           binmode $LOGBR;
-          $LOGBR->autoflush;
+          $LOGBR->autoflush(1);
           print $LOGBR $UTF8BOM unless $append;
       }
   }
@@ -66179,7 +66610,7 @@ sub openLogs {
       open($DEBUG, '>', "$file");
       &setPermission("$file",oct('0660'),0,1);
       binmode($DEBUG);
-      $DEBUG->autoflush;
+      $DEBUG->autoflush(1);
       print $DEBUG $UTF8BOM;
       print $DEBUG "running ASSP version: $main::MAINVERSION\n\n";
       mlog(0,"info: starting general debug mode to file $file");
@@ -66797,6 +67228,7 @@ sub getBestWorker {
 
 sub threadConDone {
     my $fhh = shift;
+    delete $SocketCalls{$fhh};
     return unless($fhh);
     my $fno;
     if (exists $Con{$fhh} && $Con{$fhh}->{self}) {
@@ -66807,7 +67239,6 @@ sub threadConDone {
     }
     unpoll($fhh,$readable);
     unpoll($fhh,$writable);
-    delete $SocketCalls{$fhh};
     delete $Fileno{$fno};
     delete $ConFno{$fno};
 }
@@ -66893,6 +67324,7 @@ sub ThreadStart {
       $ComWorker{$WorkerNumber}->{CANSIG} = 0;
       mlog (0,"Info: auto restart died worker $WorkerName") if ($ComWorker{$Iam}->{run} && $autoRestartDiedThreads);
       &clearDBCon();
+      %ConToTLS = ();
       delete $ComWorker{$Iam}->{numActCon};
       foreach my $fh (keys %Con) {
           printallCon($fh,$exception);
@@ -67191,7 +67623,7 @@ sub ThreadStatus {
     my $Iam = shift;
     while ( my ($c,$v) = each %Con) {
       return unless $ThreadsDoStatus;
-      if (($Con{$c}->{type} eq 'C' || $Con{$c}->{isreport}) && ! $Con{$c}->{movedtossl}) {
+      if ($Con{$c}->{type} eq 'C' || $Con{$c}->{isreport}) {
         my $fno = $Con{$c}->{fno} ;
         if (! $Con{$c}->{timestart}) {
             delete $ConFno{$fno};
@@ -67212,8 +67644,8 @@ sub ThreadStatus {
         eval{$ConFno{$fno}->{writtenDataToFriend} = $Con{$c}->{writtenDataToFriend};};
         eval{$ConFno{$fno}->{messagescore} = $Con{$c}->{messagescore};};
         eval{$ConFno{$fno}->{worker} = $Iam;};
-        eval{$ConFno{$fno}->{ssl} = $Con{$c}->{oldfh} ? '*' : '_' ;};
-        eval{$ConFno{$fno}->{friendssl} = $Con{$Con{$c}->{friend}}->{oldfh} ? '*' : '_' ;};
+        eval{$ConFno{$fno}->{ssl} = $Con{$c}->{movedtossl} ? '*' : '_' ;};
+        eval{$ConFno{$fno}->{friendssl} = $Con{$Con{$c}->{friend}}->{movedtossl} ? '*' : '_' ;};
         eval{$ConFno{$fno}->{damping} = $Con{$c}->{damping};};
         eval{$ConFno{$fno}->{noprocessing} = $Con{$c}->{noprocessing};};
         eval{$ConFno{$fno}->{whitelisted} = $Con{$c}->{whitelisted};};
@@ -67260,11 +67692,13 @@ sub tellThreadsReReadConfig {
             my $newDelay = $_ >= 10000 ? time + $NumComWorkers + 1 + $_ - 10000 : time + $_;
             $ComWorker{$_}->{rereadconfig} = $newDelay if $ComWorker{$_}->{rereadconfig} < $newDelay;
         }
+        $ComWorker{$_}->{ClearSSLContext} = $ClearSSLContext if $ClearSSLContext;
         threads->yield();
         next if $_ >= 10000;
         $ThreadQueue{$_}->enqueue('run') if ($ComWorker{$_}->{issleep});
         ThreadYield();
     }
+    undef $ClearSSLContext;
     reloadGriplist();
     while (my ($k,$v) = each %ModuleWatch) {
         if (-e $v->{file} && $v->{filetime} != ftime($v->{file})) {
@@ -67314,6 +67748,16 @@ sub ThreadReReadConfig {
         }
     }
     $CCchangeMSGDate = 31 if $CCchangeMSGDate & 1;  # bit 1 (setting 1) is backward compatible and sets all bits
+    if (my $what = delete $ComWorker{$Iam}->{ClearSSLContext}) {
+        threads->yield();
+        if ($what eq 'ALL') {
+            %SSLServerContext = ();
+            %SSLServerContextList = ();
+        } else {
+            delete $SSLServerContextList{$SSLServerContext{$what}->{'!CONTEXT!'}};
+            delete $SSLServerContext{$what};
+        }
+    }
     $ComWorker{$Iam}->{rereadconfig} = 0;
     threads->yield();
     mlog(0,"$WorkerName finished reloading configuration") if ($WorkerLog);
@@ -67388,7 +67832,7 @@ sub ThreadGoSleep {
       my @read = $readable->handles();
       while (@read) {
          my $fh = shift @read;
-         unpoll($fh,$readable);
+         unpoll_force($fh,$readable);
          mlog(0,"error: $WorkerName removed orphaned connection handle read: $fh , please report") if $ConnectionLog > 2;
          done2($fh);
       }
@@ -67396,7 +67840,7 @@ sub ThreadGoSleep {
       my @write = $writable->handles();
       while (@write) {
          my $fh = shift @write;
-         unpoll($fh,$writable);
+         unpoll_force($fh,$writable);
          mlog(0,"error: $WorkerName removed orphaned connection handle write: $fh , please report") if $ConnectionLog > 2;
          done2($fh);
       }
@@ -67407,16 +67851,17 @@ sub ThreadGoSleep {
       }
       &ConDone();
       while ( my ($fh,$v) = each %Con) {
-         done2($fh) if "$fh" =~ /socket/io;
+         done2($fh);
       }
       &ConDone();
       mlog(0,"$WorkerName prepare to sleep") if ($WorkerLog >= 2 && ! $thread_nolog && $ComWorker{$Iam}->{run} != 2);
-      %Con=();
-      undef %Con;
+      %Con = ();
       %Fileno = ();
-      undef %Fileno;
+      %ConToTLS = ();
+      %ConDelete = ();
       %SocketCalls = ();
       $ComWorker{$Iam}->{numActCon} = 0;
+      threads->yield();
       return if $ComWorker{$Iam}->{run} == 2;  # we got a Quit - there is nothing more to do
       d('sleeping');
       mlog(0,"$WorkerName will sleep now") if ($WorkerLog && (! $thread_nolog || $WorkerLog == 3));
@@ -68837,6 +69282,7 @@ sub ThreadMain {
     while (@canread) {
         my $fh = shift @canread;
         return $numActCon if(! $ComWorker{$Iam}->{run});
+        next if (delete $ConToTLS{$fh});
         next unless(fileno($fh));
         &NewSMTPConCall();
         $numActCon = $ComWorker{$Iam}->{numActCon};
@@ -68907,10 +69353,6 @@ sub ThreadMain {
     &sigon(__LINE__);
     $numActCon = $ComWorker{$Iam}->{numActCon};
     while ( my ($fh,$dfh) = each %dampedFH) {
-        if (! $fh || ! $dfh || ! fileno($dfh)) {
-            delete $dampedFH{$fh};
-            next;
-        }
         my $dampOffset = 0;
 #        $dampOffset = $DoDamping * 10 if ! $Con{$fh}->{messagescore} && &pbBlackFind($Con{$fh}->{ip});
         my $damptime; $damptime = int(($Con{$fh}->{messagescore} + $dampOffset) / $DoDamping) if $DoDamping;
@@ -68933,9 +69375,33 @@ sub ThreadMain {
             mlog($fh,"info: damping - stolen $damptime seconds",1) if $ConnectionLog >= 2 ;
         }
     }
+
+    # remove orphaned connection data, if there wee procuced in socketcalls
+    my $i;
+    while ( my ($fh,$dfh) = each %Con) {
+        if (! $fh || ! $dfh || ! $dfh->{self} || ! fileno($dfh->{self}) || ! exists $SocketCalls{$dfh->{self}} || ! exists $SocketCalls{$fh}) {
+            $i++;
+            d("removed orphaned connection data in threadmain - $fh - $dfh");
+            mlog(0,"info: removed orphaned connection data in threadmain - $fh - $dfh") if $SessionLog > 2 && $ConnectionLog > 2;
+            delete $dampedFH{$fh};
+            delete $Con{$fh};
+            threadConDone($fh);
+            delete $dampedFH{$dfh->{self}};
+            delete $Con{$dfh->{self}};
+            threadConDone($dfh->{self});
+        }
+    }
+    if ($i) {
+        my $n = scalar keys %SocketCalls;
+        $ComWorker{$Iam}->{numActCon} = int(($n+1)/2);      # set the number of active connection in thread
+        threads->yield();
+    }
+    
     if (time > $nextdetectGhostCon) {
         &sigoff(__LINE__);
         &detectGhostCon();
+        &ConDone();
+        cleanSSLContext();
         $nextdetectGhostCon = time + 300;
         &sigon(__LINE__);
     }
@@ -69049,6 +69515,15 @@ sub ThreadMain2 {
         $ThreadDebug = 0;
     }
     &ThreadYield();
+    if (scalar @canread) {
+        # youngest first, than reply before data
+        my $time = time;
+        @canread = map  { $_->[0] }
+                   sort { $main::a->[1] <=> $main::b->[1]   # youngest connections first
+                                         ||
+                          $main::b->[2] cmp $main::a->[2] } # 'S' before 'C'
+                   map  { [$_, $Con{$_}->{timestart}, $Con{$_}->{type}] } @canread;
+    }
     while (@canread) {
         my $fh = shift @canread;
         return if(! $ComWorker{$Iam}->{run});
@@ -70085,7 +70560,8 @@ sub printallCon {
     my $this = $Con{$fh};
     return unless $this;
     return unless scalar(keys %$this);
-    my $friend = $Con{$this->{friend}};
+    my $friend;
+    $friend = $Con{$this->{friend}} if exists $Con{$this->{friend}};
     my $c = 1;
     while (-s "$base/debug/con$c.txt") {$c++}
     my $file = "$base/debug/con$c.txt";
@@ -70098,36 +70574,40 @@ sub printallCon {
     print $OUT "last debug step was: $lastd{$WorkerNumber}\n";
     print $OUT "last sigoff was    : $lastsigoff{$WorkerNumber}\n";
     print $OUT "last sigon  was    : $lastsigon{$WorkerNumber}\n\n";
-    print $OUT "this --------------------------------------\n";
-    while (my ($k,$v) = each %$this) {
+    print $OUT "this -------------------------------------- type $this->{type}\n";
+    foreach my $k (sort keys %$this) {
+       my $v = $this->{$k};
        $v =~ s/\n/\[LF\]\n/go;
        $v =~ s/\r/\[CR\]/go;
-       print $OUT "this->$k = $v\n";
+       my $t = $v =~ /^\d{10}$/o ? ' '.timestring($v) : undef;
+       print $OUT "this->$k = $v$t\n";
        eval {
            if (ref($v) eq 'HASH') {
                print $OUT "values of HASH this->$k :\n";
-               print $OUT "this->$k = $_ => ${$v}{$_}\n" foreach (keys %{$v});
+               print $OUT "this->$k = $_ => ${$v}{$_}\n" foreach (sort keys %{$v});
            }
            if (ref($v) eq 'ARRAY') {
                print $OUT "values of ARRAY this->$k :\n";
-               print $OUT "this->$k = $_\n" for (@{$v});
+               print $OUT "this->$k = $_\n" for (sort @{$v});
            }
        }
     }
     if ($friend) {
-        print $OUT "\nfriend --------------------------------------\n";
-        while (my ($k,$v) = each %$friend) {
+        print $OUT "\nfriend -------------------------------------- type $friend->{type}\n";
+        foreach my $k (sort keys %$friend) {
+           my $v = $friend->{$k};
            $v =~ s/\n/\[LF\]\n/go;
            $v =~ s/\r/\[CR\]/go;
-           print $OUT "friend->$k = $v\n";
+           my $t = $v =~ /^\d{10}$/o ? ' '.timestring($v) : undef;
+           print $OUT "friend->$k = $v$t\n";
            eval {
                if (ref($v) eq 'HASH') {
                    print $OUT "values of HASH friend->$k :\n";
-                   print $OUT "friend->$k = $_ => ${$v}{$_}\n" foreach (keys %{$v});
+                   print $OUT "friend->$k = $_ => ${$v}{$_}\n" foreach (sort keys %{$v});
                }
                if (ref($v) eq 'ARRAY') {
                    print $OUT "values of ARRAY friend->$k :\n";
-                   print $OUT "friend->$k = $_\n" for (@{$v});
+                   print $OUT "friend->$k = $_\n" for (sort @{$v});
                }
            }
         }
@@ -70287,7 +70767,7 @@ sub tlit {
 }
 
 sub printVars {
-return;
+return if $printVars;
     return unless $printVars;
     return unless $WorkerNumber == 0 or $WorkerNumber == 1 or $WorkerNumber > 999;
     &printVarsOn();
@@ -71081,7 +71561,7 @@ sub email_send_X {
     delete $args{LocalAddr} unless $args{LocalAddr};
 
     if ($smtp_class eq 'Net::SMTP::SSL') {
-        my %parms = getSSLParms(0,undef);
+        my %parms = getSSLParms(0,{'name' => "$host:$args{Port}", 'type' => 'smtp'});
         $parms{SSL_startHandshake} = 1;
         $args{sslParms} = \%parms;
     }
@@ -71114,7 +71594,7 @@ sub email_send_X {
 
     if ($tls) {
         mlog(0,"info: $smtp_class uses STARTTLS") if $ConnectionLog > 2;
-        if (! eval{$SMTP->starttls(getSSLParms(0,undef));}) {
+        if (! eval{$SMTP->starttls(getSSLParms(0,{'name' => "$host:$args{Port}", 'type' => 'smtp'}));}) {
             mlog(0,"error: Couldn't start TLS to $host:$args{Port} using '$smtp_class': $@");
             return 0;
         }
@@ -71706,7 +72186,7 @@ package Net::SMTP;
 sub assp_starttls {
 	my $me = shift;
     return unless $me;
-    my %sslparms = @_ ? @_ : &main::getSSLParms(0,undef);
+    my %sslparms = @_ ? @_ : &main::getSSLParms(0,{'name' => ${*$me}{'net_smtp_host'}.':'.${*$me}{'net_smtp_port'}, 'type' => 'smtp'});
     return 1 if ${*$me}{'net_smtp_ssl'};
     return 1 if exists $main::localTLSfailed{${*$me}{'net_smtp_host'}.':'.${*$me}{'net_smtp_port'}};
     return 1 if &main::matchIP(${*$me}{'net_smtp_host'},'noTLSIP',0,0);
@@ -71776,7 +72256,8 @@ sub NSSL_new {
     %arg  = @_;
     $host = delete $arg{Host};
   }
-  my %sslParms = $arg{sslParms} ? %{$arg{sslParms}} : &main::getSSLParms(0,undef);
+  my $port = $arg{Port} || 465;
+  my %sslParms = $arg{sslParms} ? %{$arg{sslParms}} : &main::getSSLParms(0,{'name' => "$host:$port", 'type' => 'smtp'});
   $sslParms{SSL_startHandshake} = 1 unless $arg{sslParms};
   
   $IO::Socket::SSL::DEBUG = $main::SSLDEBUG;
@@ -71786,7 +72267,7 @@ sub NSSL_new {
 
   my $obj = $type->SUPER::new(
       PeerAddr => $host,
-      PeerPort => $arg{Port} || 465,
+      PeerPort => $port,
       LocalAddr => $arg{LocalAddr},
       LocalPort => $arg{LocalPort},
       Proto     => 'tcp',

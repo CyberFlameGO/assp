@@ -1,3 +1,49 @@
+2017-12-04
+fixed in assp 2.5.6 *Fortress* build 17338:
+
+- orphaned connection data and handles may caused errors like:
+  - too many open files
+  - invalid filehandle
+  - ....
+  It was also possible, that the connection screen and the worker status screen have shown incorrect data.
+  On some systems those orphaned connections caused unexpected high CPU and memory usage.
+
+changed:
+
+- 'maxSSLRenegotiations' is only checked for incoming mails, not for local and outgoing mails
+
+- the default value for 'maxSSLRenegotiations','Maximum Allowed SMTP SSL Client-Initiated-Renegotiations' is changed to 10
+
+- SSLDEBUG now writes the debug information of the SSL handling to maillog.txt
+
+- For all SSL listeners and STARTTLS connections where assp acts as server and all SSL/TLS connections to defined destinations only a single SSL-Context is used
+  for each peer to speedup the SSL connections and to reduce memory usage.
+  Setting the hidden configuration parameter 'enablePermanentSSLContext' to zero or 'undef' will force the old behavior (create and delete the SSL-Context for each connection).
+  Setting the hidden configuration parameter 'enablePermanentSSLContext' to zero or 'undef' is not related to SNI configurations. For SNI server configurations a permanent
+  SSL-Context is used every time.
+
+- improved SNI support for environments with a large amount of SSL-certificates and keys
+
+- speed improvement of the rebuildspamdb task
+
+- It is now possible to define a SSL-listener for 'relayPort' - to do this write SSL: in front of the listener definition.
+  Examples:
+  225
+  SSL:325
+  225|SSL:325
+  127.0.0.1:225
+  192.168.1.1:225|192.168.2.1:225|SSL:192.168.1:325
+
+added:
+
+- ASSP_AFC version 4.74 is able to check for 'Microsoft Office Compound File Binary (OLE)' attachments - the exception tag is :MSOLE
+
+- The above referenced hidden configuration variable 'enablePermanentSSLContext' is added  
+  our $enablePermanentSSLContext = 1;      # (0/1) enable usage of permanent SSL Context - maxunused = 1 hour, max lifetime = 1 day (default = 1)
+  If set, assp will reuse an available SSL-Context unitl this context is not older than one day or it was unused for over one hour.
+
+
+
 2017-11-19
 fixed in assp 2.5.6 *Fortress* build 17323:
 
@@ -85,7 +131,7 @@ fixed in assp 2.5.6 *Fortress* build 17289:
 2017-10-08
 fixed in assp 2.5.6 *Fortress* build 17281:
 
-- active connection counting and limiting was not working if clinets/servers used the STARTTLS command
+- active connection counting and limiting was not working if clients/servers used the STARTTLS command
 
 - analyzing the memory usage in the threads cause a SEGV in 'Devel::Size' on newer perl versions - this feature is deactivated in the code permanently
 
