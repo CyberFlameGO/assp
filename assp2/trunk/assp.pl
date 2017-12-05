@@ -196,7 +196,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.5.6';
-$build   = '17338';        # 04.12.2017 TE
+$build   = '17339';        # 05.12.2017 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -566,7 +566,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '601188E5A319EF6B0998B522C9A18209CD23BF91'; }
+sub __cs { $codeSignature = 'A80357D3349DC1EFBF6CA3E0E5091E7E96B48922'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -630,22 +630,23 @@ sub sockclose {
     return 1 unless ref($socket);
 
     # destroy the SMTP SSL context on close if requested or required
-    # otherwise we keep the existing SSL context
+    # otherwise we keep the existing permanent SSL context
     if ("$socket" =~ /SSL/io) {
-        if ($enablePermanentSSLContext) {
-            %closeparms = ('SSL_ctx_free' => 1) if (${*$socket}{_SSL_arguments}->{SSL_ctx_free});
+        if ($enablePermanentSSLContext) {   # permanent SSL context is enabled
+            %closeparms = ('SSL_ctx_free' => 1) if (${*$socket}{_SSL_arguments}->{SSL_ctx_free});  # SSL_ctx_free was defined at context or connection creation
         } else {
-            %closeparms = ('SSL_ctx_free' => 1) if (${*$socket}{_SSL_arguments}->{SSL_ctx_free});
-            %closeparms = ('SSL_ctx_free' => 1) if (exists $Con{$socket} && $Con{$socket}->{type} eq 'S');
-            %closeparms = ('SSL_ctx_free' => 1) if (! exists $Con{$socket} && ! exists $WebConH{$socket} && ! exists $StatConH{$socket});
+            %closeparms = ('SSL_ctx_free' => 1) if (${*$socket}{_SSL_arguments}->{SSL_ctx_free});  # SSL_ctx_free was defined at context or connection creation
+            %closeparms = ('SSL_ctx_free' => 1) if (exists $Con{$socket} && $Con{$socket}->{type} eq 'S'); # we are the SSL client and used temp context
+            %closeparms = ('SSL_ctx_free' => 1) if (! exists $Con{$socket} && ! exists $WebConH{$socket} && ! exists $StatConH{$socket}); # not a SMTP, WEB or stat socket
         }
     }
 
     if ($closeparms{'SSL_ctx_free'} && (my $ctx = ${*$socket}{'_SSL_ctx'})) {
-        delete $SSLServerContext{$SSLServerContextList{$ctx}};
-        delete $SSLServerContextList{$ctx};
+        delete $SSLServerContext{$SSLServerContextList{$ctx}};   # remove the SSL-Context from the context list
+        delete $SSLServerContextList{$ctx};                      # remove the SSL-Context object itself
     }
 
+    # try to close the socket anyway
     return 1 if eval {("$socket" =~ /SSL/io) ? $socket->close(\%closeparms) : $socket->close ;};
     return 1 if eval {close($socket);};
     if ("$socket" =~ /SSL/io) {
@@ -1633,12 +1634,13 @@ sub defConfigArray {
   Before you enable or disable IPv6, please check every IP listener and destination definition in assp and correct the settings. <b>After changing this option a restart of assp is recommended.</b> IPv4 addresses are defined for example 192.168.0.1 or 192.168.0.1:25 - IPv6 addresses are defined like [FE80:1:0:0:0:0:0:1]:25 or [FE80:1::1]:25 ! If an IPv4 address is defined for a listener, assp will listen only on the IPv4 socket. If an IPv6 address is defined for a listener, assp will listen only on the IPv6 socket. If only a port is defined for a listener, assp will listen on both IPv4 and IPv6 sockets.<br />
   For the definition of destination IP\'s applies the same. You are free to define hostnames instead of IP addresses like myhost.mydomain.com:25 - how ever, because of the needed IP address resolving, this will possibly slow down assp.',undef,undef,'msg009480','msg009481'],
 ['listenPort','SMTP Listen Port',80,\&textinput,'25',$GUIHostPort,'ConfigChangeMailPort',
-  'The port number on which ASSP will listen for incoming SMTP connections (normally 25). You can specify both an IP address and port number to limit connections to a specific interface. Separate multiple entries by "|".<p><small><i>Examples:</i> 25, 127.0.0.1:25, 127.0.0.1:25|127.0.0.2:25|[FE80:1::1]:25 </small></p>','Basic',undef,'msg000020','msg000021'],
+  'The port number on which ASSP will listen for incoming SMTP connections (normally 25). You can specify both an IP address and port number to limit connections to a specific interface. Separate multiple entries by "|".<br />
+  To define a SSL listener, write \'SSL:\' in front of the host:port - e.g. SSL:host:port.<br />
+  <p><small><i>Examples:</i> 25, 127.0.0.1:25, 127.0.0.1:25|127.0.0.2:25|SSL:[FE80:1::1]:25 </small></p>','Basic',undef,'msg000020','msg000021'],
 ['smtpDestination','SMTP Destination',80,\&textinput,'125',$GUIHostPort,undef,
   'The IP <b>number!</b> and port number of your primary SMTP <a href=http://en.wikipedia.org/wiki/Mail_transfer_agent>mail transfer agent</a> (MTA). If multiple servers are listed and the first listed MTA does not respond, each additional MTA will be tried. If only a port number is entered, or the dynamic keyword <b>INBOUND</b> is used with a port number, then the connection will be established to the local IP address on which the connection was received. This is useful when you have several IP addresses with different domains or profiles in your MTA. If INBOUND:PORT is used, ReportingReplies (Analyze,Help,etc and CopyMail will go to 127.0.0.1:PORT or [::1]:PORT. If your needs are different, use smtpReportServer (SMTP Reporting Destination) and sendAllDestination (Copy Spam SMTP Destination). Separate multiple entries by "|".<br />
   If you need to connect to the SMTP destination host using native SSL, write \'SSL:\' in front of the IP/host definition. In this case the Perl module <a href="http://search.cpan.org/search?query=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> must be installed and enabled ( useIOSocketSSL ).<br />
-  <br />
-  <small><i>Examples:</i> 125,  127.0.0.1:125, 127.0.0.1:125|127.0.0.5:125|SSL:127.0.0.1:465, INBOUND:125</small>','Basic',undef,'msg000030','msg000031'],
+  <small><i>Examples:</i> 125, 127.0.0.1:125, 127.0.0.1:125|127.0.0.5:125|SSL:127.0.0.1:465, INBOUND:125</small>','Basic',undef,'msg000030','msg000031'],
 ['smtpDestinationRT','SMTP Destination Routing Table*',80,\&textinput,'','^((?:(?:\s*'.$HostRe.'\s*=>\s*'.$HostPortRe.'\s*)(?:\|\s*'.$HostRe.'\s*=>\s*'.$HostPortRe.'\s*)*)|\s*file\s*:\s*.+|)$','configChangeRT',
   'If INBOUND is used in the SMTP Destination field, the rules specified here are used to route the inbound IP address to a different outbound IP address. You must specify a port number with the outbound IP address. <p><small><i>Example:</i>141.120.110.1=>141.120.110.129:25|141.120.110.2=>141.120.110.130:125|141.120.110.3=>SSL:141.120.110.130:125</small></p>',undef,undef,'msg000040','msg000041'],
 ['smtpLocalIPAddress','SMTP and Proxy - Destination to Local IP-address Mapping*',40,\&textinput,'','^(\s*file\s*:\s*.+|)$','configChangeLocalIPMap',
@@ -1658,13 +1660,15 @@ sub defConfigArray {
   * => 172.16.1.1                # default - if not defined, the system default is used<br /><br />
   NOTICE: assp will NOT check, that the local IP address is available and bound to a local interface! It will also NOT check the system routing table! YOU SHOULD KNOW WHAT YOU DO!',undef,undef,'msg010430','msg010431'],
 ['listenPortSSL','SMTP Secure Listen Port',80,\&textinput,'',$GUIHostPort,'ConfigChangeMailPortSSL',
-  'The port number on which ASSP will listen for incoming secure (SSL only) SMTP connections (normally 465). You can specify both an IP address and port number to limit connections to a specific interface. Separate multiple entries by "|".<p><small><i>Examples:</i> 465, 127.0.0.1:465, 127.0.0.1:465|127.0.0.2:465 </small></p>. More configuration options are smtpSSLRequireClientCert, SSLSMTPCertVerifyCB and SSLSMTPConfigure .',undef,undef,'msg000050','msg000051'],
+  'The port number on which ASSP will listen for incoming secure (SSL only) SMTP connections (normally 465). You can specify both an IP address and port number to limit connections to a specific interface. Separate multiple entries by "|" and do NOT write SSL: in front of definition.<p><small><i>Examples:</i> 465, 127.0.0.1:465, 127.0.0.1:465|127.0.0.2:465 </small></p>. More configuration options are smtpSSLRequireClientCert, SSLSMTPCertVerifyCB and SSLSMTPConfigure .',undef,undef,'msg000050','msg000051'],
 ['smtpDestinationSSL','SSL Destination',80,\&textinput,'',$GUIHostPort,undef,
   'The IP <b>address!</b> and port number to connect to when mail is received on the SSL listen port. If the field is blank, the primary SMTP destination will be used.<br />
   If you need to connect to the SSL destination host using native SSL, write \'SSL:\' in front of the IP/host definition. In this case the Perl module <a href="http://search.cpan.org/search?query=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> must be installed and enabled ( useIOSocketSSL ).<br />
   <p><small><i>Examples:</i>127.0.0.1:565, 565</small></p>',undef,undef,'msg000060','msg000061'],
 ['listenPort2','Second SMTP Listen Port',80,\&textinput,'',$GUIHostPort,'ConfigChangeMailPort2',
-  'A secondary port number on which ASSP can accept SMTP connections. This is useful as a dedicated port for VPN clients or for those who cannot directly send mail to a mail server outside of their ISP\'s network because the ISP is blocking port 25. You may also specify an IP address to limit connections to a specific interface. Separate multiple entries by "|".<p><small><i>Examples:</i> 2525, 127.0.0.1:2525, 192.168.0.100:25000</small></p>',undef,undef,'msg000070','msg000071'],
+  'A secondary port number on which ASSP can accept SMTP connections. This is useful as a dedicated port for VPN clients or for those who cannot directly send mail to a mail server outside of their ISP\'s network because the ISP is blocking port 25. You may also specify an IP address to limit connections to a specific interface. Separate multiple entries by "|".<br />
+  To define a SSL listener, write \'SSL:\' in front of the host:port - e.g. SSL:host:port.<br />
+  <p><small><i>Examples:</i> 2525, 127.0.0.1:2525, SSL:192.168.0.100:25000</small></p>',undef,undef,'msg000070','msg000071'],
 ['smtpAuthServer','Second SMTP Destination',80,\&textinput,'',$GUIHostPort,undef,
   'The IP address and port number to connect to when mail is received on the second SMTP listen port. If the field is blank, the primary SMTP destination will be used. The purpose of this setting is to allow remote users to make authenticated connections and transmit their email without encountering SPF failures.
   If you need to connect to the second SMTP destination host using native SSL, write \'SSL:\' in front of the IP/host definition. In this case the Perl module <a href="http://search.cpan.org/search?query=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> must be installed and enabled ( useIOSocketSSL ).<br />
@@ -1740,7 +1744,7 @@ sub defConfigArray {
 ['relayPort','Relay Port',80,\&textinput,'',$GUIHostPort,'ConfigChangeRelayPort','Tell your mail server to connect to this IP/port as its smarthost / relayhost. For example: 225<br />
  Note that you\'ll want to keep the relayPort protected from external access by your firewall. To restrict access to the relayPort per IP address or network, use allowRelayCon .<br />
  You can supply an interface:port to limit connections.<br />
- To define a SSL listener, write \'SSL:\' in front of the host:port.<br />
+ To define a SSL listener, write \'SSL:\' in front of the host:port - e.g. SSL:host:port.<br />
  Separate multiple entries by "|".<p><small><i>Examples:</i> 225, 225|SSL:325, 127.0.0.1:225, 192.168.1.1:225|192.168.2.1:225|SSL:192.168.1:325 !</small></p>',undef,undef,'msg001180','msg001181'],
 ['allowRelayCon','Allow Relay Connection from these IP\'s*',80,\&textinput,'','(\S*)','ConfigMakeIPRe','Enter any addresses that are allowed to use the relayPort , separated by pipes (|). If empty, any ip address is allowed to connect to the relayPort. If this option is defined, keep in mind : Addresses defined in acceptAllMail are <b>NOT</b> automatically included and have to be also defined here, if them should allow to use the relayPort. For example: 127.0.0.1|172.16..<br />
  If you use MS Office 365, you should define the <a href="http://technet.microsoft.com/en-us/library/dn163583(v=exchg.150).aspx" target="_blank">EOP IP addresses</a> here and you should configure your firewall to redirect connection from the hosted Exchange server to the relayPort .','Basic','7','msg008830','msg008831'],
@@ -4455,7 +4459,9 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg007
 ['proxyuser','Proxy User',20,\&passinput,'','(\S*)',undef,'The Proxy-UserName that is used to authenticate to the proxy.',undef,undef,'msg007610','msg007611'],
 ['proxypass','Proxy Password',20,\&passinput,'','(\S*)',undef,'The password for Proxy-UserName that is used to authenticate to the proxy.',undef,undef,'msg007620','msg007621'],
 ['webAdminPort','Web Admin Port',20,\&textinput,55555,$GUIHostPort,'ConfigChangeAdminPort',
-  'The port on which ASSP will listen for http connections to the web administration interface. If you change this, after you click Apply you must change the URL on your browser to reconnect. You may also supply an IP address or hostname to limit connections to a specific interface. Separate multiple entries by pipe "|"!<p><small><i>Examples:</i> 55555, 192.168.0.5:12345, myhost:12345, 192.168.0.5:22345|myhost:12345</small></p>',undef,undef,'msg007630','msg007631'],
+  'The port on which ASSP will listen for http connections to the web administration interface. If you change this, after you click Apply Changes you must change the URL on your browser to reconnect. You may also supply an IP address or hostname to limit connections to a specific interface. Separate multiple entries by pipe "|"!<br />
+  To define a SSL listener, write \'SSL:\' in front of the host:port - e.g. SSL:host:port.<br />
+  <p><small><i>Examples:</i> 55555, 192.168.0.5:12345, SSL:myhost:12345, 192.168.0.5:22345|myhost:12345</small></p>',undef,undef,'msg007630','msg007631'],
 ['enableWebAdminSSL','Use https instead of http',0,\&checkbox,'','(.*)','ConfigChangeEnableAdminSSL',
  'If selected the web admin interface will be only accessible via https. If you change this, after you click Apply you must change the URL on your browser to reconnect.
   This requires an installed <a href="http://search.cpan.org/search?query=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> module in PERL.<br />
@@ -4484,9 +4490,10 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg007
    The HTML/browser output are LF terminated STAT lines.<br />
    If you have configured " exportExtremeBlack ", your firewall (for example pfsense/pfBlockerNG or snort) may download the extreme black IP list using this interface - append "/extremeblack" to the URL.<br />
    The download URL, used by your firewall, should look like: http://assp.domain.local:55553/extremeblack<br />
-   <p><small><i>Examples:</i> 55553, 192.168.0.5:12345</small></p>',undef,undef,'msg007670','msg007671'],
+   To define a SSL listener, write \'SSL:\' in front of the host:port - e.g. SSL:host:port.<br />
+   <p><small><i>Examples:</i> 55553, 192.168.0.5:12345|SSL:192.168.0.6:12345</small></p>',undef,undef,'msg007670','msg007671'],
 ['enableWebStatSSL','Use https instead of http',0,\&checkbox,'','(.*)','ConfigChangeEnableStatSSL',
- 'The web stat interface will be only accessible via https.
+ 'The web stat interface will be only accessible via https.<br />
   This requires an installed <a href="http://search.cpan.org/search?query=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> module in PERL.<br />
   A server-certificate-file "certs/server-cert.pem" and a server-key-file "certs/server-key.pem" must exits and must be valid! More configuration options are statSSLRequireClientCert, SSLSTATCertVerifyCB and SSLSTATConfigure .',undef,undef,'msg007680','msg007681'],
 ['allowStatConnectionsFrom','Only Allow Raw Statistics Connections From*',80,\&textinput,'127.0.0.1','(\S*)','ConfigMakeIPRe',
@@ -4888,10 +4895,11 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
   &nbsp;&nbsp;&nbsp;&nbsp;elsif (&#x24;listenerName eq \'relayPort\') {... set parms here for relayPort ...}<br />
   &nbsp;&nbsp;&nbsp;&nbsp;else {... set parms here for listenPort (not recommended!) ...}<br />
   }<br /><br />
-  To set a single parameter, follow the HASH notation: &#x24;parms-&gt;{SSL_cert_file}-&gt;{your-domain} = "/full_path_ to_file/your-domain-cert.pem";<br /><br />
+  To set a single parameter (e.g. init SSL_cert_file and SSL_key_file like &#x24;parms-&gt;{SSL_cert_file} = {}; or delete &#x24;parms-&gt;{SSL_key_file}; before switching them from scalar to an anonymous hash), follow the HASH notation: &#x24;parms-&gt;{SSL_cert_file}-&gt;{your-domain} = "/full_path_ to_file/your-domain-cert.pem"; <br /><br />
   ASSP uses a permanent SSL-context in SSL server mode. ASSP will watch all your configurations made here and will renew the SSL-Server-Context, if this is required.<br />
   If you want to manage ALL SSL settings including the SSL-context by your own code, store your IO::Socket::SSL::SSL_Context object in &#x24;parms-&gt;{SSL_reuse_ctx}. In this case, your settigs will be no longer watched by assp.<br />
   If you need to set different SNI parameters for different IP-addresses insite a listener, the "if" checks may depend on &#x24;parms->{LocalAddr} and &#x24;parms->{LocalPort} as well.<br />
+  If you don\'t want assp to check your SNI configuration, even you don\'t created a SSL-Context object, set &#x24;parms-&gt;{skip_config_check} = 1; . For more information have a look in to sub  getSSLParms  in the assp.pl code.<br />
   <b>NOTICE: This option will possibly not work if you use any self signed certificate!</b>',undef,undef,'msg010170','msg010171'],
 
 ['statSSLRequireClientCert','Client requires valid SSL Certificate for STAT Requests',0,\&checkbox,'','(.*)','ConfigChangeSSL',
@@ -7485,7 +7493,9 @@ our @TLStoProxyI;
 our @PossibleOptionFiles;
 our @RealTimeLog;
 our @StatSocket;
+our @StatSocketI:shared;
 our @WebSocket;
+our @WebSocketI:shared;
 our @backsctrlist:shared;
 our @badattachRE;        #t
 our @batv_secrets;
@@ -14802,12 +14812,12 @@ If the step belongs to a BerkeleyDB hash,
   my @dummy;
   if ($CanUseIOSocketSSL && $enableWebAdminSSL) {
       my ($WebSocket,$dummy)  = newListenSSL($webAdminPort,\&NewWebConnection);
-      @WebSocket = @$WebSocket;
+      @WebSocket = @$WebSocket; @WebSocketI = @$dummy;
       for (@$dummy) {s/:::/\[::\]:/o;}
       mlog(0,"listening for admin HTTPS connections on ".join(' , ',@$dummy)) if @WebSocket;
   } else {
       my ($WebSocket,$dummy)  = newListen($webAdminPort,\&NewWebConnection);
-      @WebSocket = @$WebSocket;
+      @WebSocket = @$WebSocket;  @WebSocketI = @$dummy;
       for (@$dummy) {s/:::/\[::\]:/o;}
       mlog(0,"listening for admin HTTP connections on ".join(' , ',@$dummy)) if @WebSocket;
   }
@@ -14815,12 +14825,12 @@ If the step belongs to a BerkeleyDB hash,
 
   if ($CanUseIOSocketSSL && $enableWebStatSSL) {
       my ($StatSocket,$dummy) = newListenSSL($webStatPort,\&NewStatConnection);
-      @StatSocket = @$StatSocket;
+      @StatSocket = @$StatSocket; @StatSocketI = @$dummy;
       for (@$dummy) {s/:::/\[::\]:/o;}
       mlog(0,"listening for stat HTTPS connections on ".join(' , ',@$dummy)) if @StatSocket;
   } else {
       my ($StatSocket,$dummy) = newListen($webStatPort,\&NewStatConnection);
-      @StatSocket = @$StatSocket;
+      @StatSocket = @$StatSocket;  @StatSocketI = @$dummy;
       for (@$dummy) {s/:::/\[::\]:/o;}
       mlog(0,"listening for stat HTTP connections on ".join(' , ',@$dummy)) if @StatSocket;
   }
@@ -16371,6 +16381,7 @@ sub newListenSSL {
     my $isSMTPListen = $handler eq \&ConToThread;
     $IO::Socket::SSL::DEBUG = $SSLDEBUG;
     foreach my $portA (split(/\|/o, $port)) {
+        $portA =~ s/^SSL:\s*//io;
         if ($portA !~ /$HostRe?:?$PortRe/o) {
             mlog(0,"wrong (host) + port definition in '$portA' -- entry will be ignored !");
             next;
@@ -16477,7 +16488,7 @@ sub newListenSSL {
             $ThreadHandler{$s} = $threadhandler if $threadhandler;    # tell thread what to do
             &dopoll($s,$readable,POLLIN);
             push @s,$s;
-            push @sinfo,$s->sockhost . ':' . $s->sockport;
+            push @sinfo,'SSL:'.$s->sockhost . ':' . $s->sockport;
             if ($s->sockhost eq '[::]' && ! ${*$s}{'io_socket_isv6only'}) {
                 push @sinfo,'0.0.0.0:'.$s->sockport;
                 mlog(0,"info: the operating system IPv6 is configured to bind the universal IPv6 address [::] not only to IPv6 - it binds to IPv4 (0.0.0.0) also");
@@ -18092,6 +18103,7 @@ sub matchFH {
 
     while (@fhlist) {
         my $lfh = shift @fhlist;
+        $lfh =~ s/^SSL:\s*//io;
         if ($lfh =~ /^(?:0\.0\.0\.0|\[::\])(:\d+)$/o) {
             my $p = $1;
             return 1 if ($sinfo =~ /$p$/);
@@ -18112,6 +18124,7 @@ sub getSMTPListenerConfigName {
         my @fhlist = @_;
         while (@fhlist) {
             my $lfh = shift @fhlist;
+            $lfh =~ s/^SSL:\s*//io;
             if ($lfh =~ /^(?:0\.0\.0\.0|\[::\])(:\d+)$/o) {
                 my $p = $1;
                 return 1 if ($sinfo =~ /$p$/);
@@ -59526,7 +59539,7 @@ sub ConfigChangeMailPort {my ($name, $old, $new, $init)=@_;
     my $highport = 1;
     return if $new eq $old;
     foreach my $port (split(/\|/o,$new)) {
-        if ($port =~ /^.+:([^:]+)$/o) {
+        if ($port =~ /([^:]+)$/o) {
             if ($1 < 1024) {
                 $highport = 0;
                 last;
@@ -59567,7 +59580,7 @@ sub ConfigChangeMailPort2 {my ($name, $old, $new, $init)=@_;
     my $highport = 1;
     return if $new eq $old;
     foreach my $port (split(/\|/o,$new)) {
-        if ($port =~ /^.+:([^:]+)$/o) {
+        if ($port =~ /([^:]+)$/o) {
             if ($1 < 1024) {
                 $highport = 0;
                 last;
@@ -59608,7 +59621,7 @@ sub ConfigChangeMailPortSSL {
     my $highport = 1;
     return if $new eq $old;
     foreach my $port (split(/\|/o,$new)) {
-        if ($port =~ /^.+:([^:]+)$/o) {
+        if ($port =~ /([^:]+)$/o) {
             if ($1 < 1024) {
                 $highport = 0;
                 last;
@@ -59621,7 +59634,7 @@ sub ConfigChangeMailPortSSL {
         }
     }
     $highport = 1 if $ignorePrivilegedPorts;
-    $Config{listenPortSSL}=$listenPortSSL = $new;
+    $Config{listenPortSSL} = $listenPortSSL = $new;
     if($> == 0 || $highport || $isWIN) {
 
         # change the listenportSSL
@@ -59782,6 +59795,7 @@ sub getSSLPWD {
 sub getSSLParms {
     my ($asServer,$parms) = @_;
     my %ssl;
+    # set the default SSL parameters
     if ($asServer) {
         $ssl{SSL_server} = 1;
         $ssl{SSL_use_cert} = 1;
@@ -59791,6 +59805,7 @@ sub getSSLParms {
         $ssl{SSL_passwd_cb} = \&getSSLPWD if getSSLPWD();
     } else {
         $ssl{SSL_ctx_free} = 1;
+        $ssl{SSL_session_cache_size} = 128;
     }
     if ($SSL_cipher_list) {
         $ssl{SSL_cipher_list} = $SSL_cipher_list;
@@ -59800,98 +59815,131 @@ sub getSSLParms {
     $ssl{SSL_version} = $SSL_version if $SSL_version;
     $ssl{Timeout} = $SSLtimeout;
 
-    my $call;
-    if ($asServer =~ /^(?:WEB|STAT|SMTP)$/o) {
+    my %failssl;
+    foreach my $k (keys(%ssl)) {
+        $failssl{$k} = $ssl{$k};
+    }
+
+    # there may be custom SSL/SNI configurations defined for the listener
+    if ($asServer =~ /^(?:WEB|STAT|SMTP)$/o) {  # a listener is defined
+        my $call;
         # call custom configuration routine (WEB,STAT,SMTP) if configured
-        if ($call = ${'SSL'.$asServer.'Configure'}) {
-            if ($parms) {               # tell the configrator some parameters
+        if ($call = ${'SSL'.$asServer.'Configure'}) { # a configuration sub is set for this type of listener
+            if ($parms) {               # tell the custom configrator some parameters
                 for (keys %$parms) {
                     $ssl{$_} = $parms->{$_};
                 }
             }
-            my %oldssl = %ssl;
+            my %oldssl = %ssl;          # remember the settings
             mlog(0,"info: call to 'SSL$asServer"."Configure'") if $SSLDEBUG;
-            eval{$call->(\%ssl);};
+            eval{$call->(\%ssl);};      # call the defined routine
             if ($@) {
                 mlog(0,'error: the SSL parameter configuration call configured in SSL'.$asServer."Configure ($call) failed - $@");
-                %ssl = %oldssl;
+                %ssl = %oldssl;         # reset all parameters if the routine failed
             }
-            if ($parms) {              # remove the parameters from the SSL HASH
-                for (keys %$parms) {
+            if ($parms) {               # remove the parameters from the SSL HASH
+                for (keys %$parms) {    # they are not needed in IO::Socket::SSL
                     delete $ssl{$_};
                 }
             }
+
+            #     context created          skip_config_check not set     a SNI configuration is available
             if (! $ssl{SSL_reuse_ctx} && ! $ssl{skip_config_check} && ref($ssl{SSL_cert_file}) eq 'HASH') {    # check if there was any file changed in the privat config call for SNI
+                mlog(0,"info: parsing SNI configuration for '$asServer'") if $ConnectionLog > 1 || $SSLDEBUG;
                 my $clearcontext;
                 my %toremove;;
-                foreach my $k (keys(%{$SSLServerContext{$asServer}})) {
+                while ( my($k,$v) = each(%{$SSLServerContext{$asServer}})) {   # remember all current context keys
                     $toremove{$k} = 1;
                 }
                 my %seenfile;
-                delete $toremove{'!CONTEXT!'};
+                delete $toremove{'!CONTEXT!'};            # do not watch these values
                 delete $toremove{'!CONTEXT!created!'};
                 delete $toremove{'!CONTEXT!lastused!'};
-                while ( my ($domain,$file) = each %{$ssl{SSL_cert_file}} ) {
-                    $seenfile{$file} ||= getSHAFile($file,undef);
+                while ( my ($domain,$file) = each %{$ssl{SSL_cert_file}} ) {      # check each SNI definition for changes
+                    # ATTENTION:  here is no file or certificate or key validation done - IO::Socket::SSL will do this later
+                    $seenfile{$file} ||= getSHAFile($file,undef);                 # this file was already processed
                     $seenfile{$ssl{SSL_key_file}->{$domain}} ||= getSHAFile($ssl{SSL_key_file}->{$domain},undef);
-                    if (   $SSLServerContext{$asServer}->{$domain}->{certfilename} ne $file
+                    if (   $SSLServerContext{$asServer}->{$domain}->{certfilename} ne $file             # if anything was changed
                         || $SSLServerContext{$asServer}->{$domain}->{certfilehash} ne $seenfile{$file}
                         || $SSLServerContext{$asServer}->{$domain}->{keyfilename} ne $ssl{SSL_key_file}->{$domain}
                         || $SSLServerContext{$asServer}->{$domain}->{keyfilehash} ne $seenfile{$ssl{SSL_key_file}->{$domain}}
                        )
                     {
-                        $clearcontext = 1;
+                        $clearcontext = 1;                                        # we will have to clear and renew the context
                     }
-                    $SSLServerContext{$asServer}->{$domain}->{certfilename} = $file;
-                    $SSLServerContext{$asServer}->{$domain}->{certfilehash} = $seenfile{$file};
+                    $SSLServerContext{$asServer}->{$domain}->{certfilename} = $file;             # store the SNI configuration - we need these data for comparsion at the next call
+                    $SSLServerContext{$asServer}->{$domain}->{certfilehash} = $seenfile{$file};  # we remember the SHA1 hash of files, not there time properties
                     $SSLServerContext{$asServer}->{$domain}->{keyfilename} = $ssl{SSL_key_file}->{$domain};
                     $SSLServerContext{$asServer}->{$domain}->{keyfilehash} = $seenfile{$ssl{SSL_key_file}->{$domain}};
-                    delete $toremove{$domain};
-                    if (! defined $seenfile{$file}) {
-                        mlog(0,"error: 'SSL$asServer"."Configure' defines the entry '$domain' => '$file' , but '$file' is missing - this entry s ignored!");
+                    delete $toremove{$domain};                                    # this config is valid and should not be removed
+                    if (! defined $seenfile{$file}) {   # the cert file was not found - delete this domain configuration
+                        mlog(0,"error: 'SSL$asServer"."Configure' defines the entry '$domain' => '$file' , but '$file' is missing - this entry is ignored!");
                         delete $ssl{SSL_cert_file}->{$domain};
                         delete $ssl{SSL_key_file}->{$domain};
                     }
                 }
 
-                for (keys(%toremove)) {
+                for (keys(%toremove)) {                                           # remove obsolet old SNI configurations
                     delete $SSLServerContext{$asServer}->{$_};
                     delete $ssl{SSL_key_file}->{$_};
-                    $clearcontext = 1;
+                    $clearcontext = 1;                                            # we will have to clear and renew the context
                 }
-                if ($clearcontext) {
-                    delete $SSLServerContextList{$SSLServerContext{$asServer}->{'!CONTEXT!'}};
-                    delete $SSLServerContext{$asServer}->{'!CONTEXT!'};
-                    mlog(0,"info: changes in 'SSL$asServer"."Configure' detected") if $ConnectionLog || $SSLDEBUG;
+                if ($clearcontext) {      # clear the old context if required
+                    delete $SSLServerContextList{$SSLServerContext{$asServer}->{'!CONTEXT!'}};  # delete the context from the context list hash
+                    delete $SSLServerContext{$asServer}->{'!CONTEXT!'};                         # delete the context object itself
+                    $SSLServerContext{$asServer}->{'!CONTEXT!lastused!'};                       # delete the time values
+                    $SSLServerContext{$asServer}->{'!CONTEXT!created!'};
+                    mlog(0,"info: changes detected in SSL configuration data provided by 'SSL$asServer"."Configure' - removed old SSL-Context for '$asServer'") if $ConnectionLog || $SSLDEBUG;
                     mlog(0,"info: the following domains and associates certificates are now registered in the SSL-Server-Context:\n".join("\n",map {my $t = $_; $t ||= '<DEFAULT>'; $t; } sort keys(%{$ssl{SSL_cert_file}}))) if $SSLDEBUG;
                 }
-                my $count = scalar keys(%{$ssl{SSL_cert_file}});
+                my $count = scalar keys(%{$ssl{SSL_cert_file}});                  # write some info to the maillog.txt if requested
                 mlog(0,"info: 'SSL$asServer"."Configure' - registered $count certificates and domains for SNI-Server support") if $ConnectionLog > 1 || $SSLDEBUG;
+            } elsif (ref($ssl{SSL_cert_file}) ne 'HASH') {
+                mlog(0,"info: nothing to parse in SNI configuration for '$asServer' - \$ssl{SSL_cert_file} is not a HASH ref") if $ConnectionLog > 1 || $SSLDEBUG;
             }
         }
-        if (! $ssl{SSL_reuse_ctx}) {  # SSL_reuse_ctx may be set in SSL...Configure for SNI
-            if (! $SSLServerContext{$asServer}->{'!CONTEXT!'}) {
-                $SSLServerContext{$asServer}->{'!CONTEXT!'} = IO::Socket::SSL::SSL_Context->new(\%ssl);
-                $SSLServerContext{$asServer}->{'!CONTEXT!created!'} = time;
-                $SSLServerContextList{$SSLServerContext{$asServer}->{'!CONTEXT!'}} = $asServer;
-                mlog(0,"info: new SSL-Server-Context created for $asServer connections") if $ConnectionLog || $SSLDEBUG;
+        if (! $ssl{SSL_reuse_ctx}) {  # SSL_reuse_ctx was not set - e.g. a SSL-Context object was not created
+            if (! $SSLServerContext{$asServer}->{'!CONTEXT!'}) {    # there is no SSL-Context object available - create and register one
+                if ( $SSLServerContext{$asServer}->{'!CONTEXT!'} = eval{IO::Socket::SSL::SSL_Context->new(\%ssl)} ) {
+                    $SSLServerContext{$asServer}->{'!CONTEXT!created!'} = time;   # set the time values
+                    $SSLServerContextList{$SSLServerContext{$asServer}->{'!CONTEXT!'}} = $asServer;  # add the SSL-Context to the current SSL-Context list
+                    mlog(0,"info: new SSL-Server-Context created for $asServer connections") if $ConnectionLog || $SSLDEBUG;
+                } else {
+                    mlog(0,"error: can't create SSL-Context for '$asServer' - $@ - $IO::Socket::SSL::ERROR");
+                    delete $SSLServerContext{$asServer};
+                    return %failssl;
+                }
             }
-            $ssl{SSL_reuse_ctx} = $SSLServerContext{$asServer}->{'!CONTEXT!'};
+            $ssl{SSL_reuse_ctx} = $SSLServerContext{$asServer}->{'!CONTEXT!'};  # set the SSL_reuse_ctx for IO::Socket::SSL to the new context object
+            $SSLServerContext{$asServer}->{'!CONTEXT!lastused!'} = time;        # set the time value
+        } else {                     # SSL_reuse_ctx was set - e.g. a SSL-Context object was created
+            $SSLServerContext{$asServer}->{'!CONTEXT!'} = $ssl{SSL_reuse_ctx};               # remember the SSL-Context object itself
+            $SSLServerContextList{$SSLServerContext{$asServer}->{'!CONTEXT!'}} = $asServer;  # add the SSL-Context to the current SSL-Context list
+            $SSLServerContext{$asServer}->{'!CONTEXT!lastused!'} = time;                     # set the time values
+            $SSLServerContext{$asServer}->{'!CONTEXT!created!'} ||= time;
         }
-        return %ssl;
+        delete $ssl{skip_config_check};    # this must be removed everytime - it is for internal usage only
+        return %ssl;                       # return the calculated SSL parameters
     }
+    #              no parms                 a listener    permanent context disabled
     return %ssl if ref($parms) ne 'HASH' || $asServer || ! $enablePermanentSSLContext;
-    return %ssl unless $parms->{name} && $parms->{type};
+    #                  no name           no type
+    return %ssl unless $parms->{name} && $parms->{type};  # $parms->{name} contains the host:port - $parms->{type} contains the connection type, e.g. smtp (type is currently not used)
 
-    if (! $SSLServerContext{$parms->{name}}->{'!CONTEXT!'}) {
-        $SSLServerContext{$parms->{name}}->{'!CONTEXT!'} = IO::Socket::SSL::SSL_Context->new(\%ssl);
-        $SSLServerContext{$parms->{name}}->{'!CONTEXT!created!'} = time;
-        $SSLServerContextList{$SSLServerContext{$parms->{name}}->{'!CONTEXT!'}} = $parms->{name};
-        mlog(0,"info: new SSL-Client-Context created for $parms->{name}") if $ConnectionLog || $SSLDEBUG;
+    if (! $SSLServerContext{$parms->{name}}->{'!CONTEXT!'}) {       # there is no SSL-Context object available - create and register one
+        if ( $SSLServerContext{$parms->{name}}->{'!CONTEXT!'} = eval{IO::Socket::SSL::SSL_Context->new(\%ssl)} ) {
+            $SSLServerContext{$parms->{name}}->{'!CONTEXT!created!'} = time;        # set the time value
+            $SSLServerContextList{$SSLServerContext{$parms->{name}}->{'!CONTEXT!'}} = $parms->{name};  # add the SSL-Context to the current SSL-Context list
+            mlog(0,"info: new SSL-Client-Context created for $parms->{name}") if $ConnectionLog || $SSLDEBUG;
+        } else {
+            mlog(0,"error: can't create SSL-Context for '$parms->{name}' - $@ - $IO::Socket::SSL::ERROR");
+            delete $SSLServerContext{$parms->{name}};
+            return %failssl;
+        }
     }
-    $ssl{SSL_reuse_ctx} = $SSLServerContext{$parms->{name}}->{'!CONTEXT!'};
-    $SSLServerContext{$parms->{name}}->{'!CONTEXT!lastused!'} = time;
-    delete $ssl{SSL_ctx_free};
+    $ssl{SSL_reuse_ctx} = $SSLServerContext{$parms->{name}}->{'!CONTEXT!'};  # set the SSL_reuse_ctx for IO::Socket::SSL to the new context object
+    $SSLServerContext{$parms->{name}}->{'!CONTEXT!lastused!'} = time;        # set the time value
+    delete $ssl{SSL_ctx_free};    # this context is permanent and should not be removed if the connection is closed
     return %ssl;
 }
 
@@ -59900,17 +59948,19 @@ sub cleanSSLContext {
     d('cleanSSLContext');
     my $maxage = time - $SSLContextMaxAge;  # default one day
     my $maxlastused = time - $SSLContextMaxUnused;  # default one hour
-    foreach my $k (keys(%SSLServerContext)) {
-        if ($SSLContextMaxUnused && $SSLServerContext{$k}->{'!CONTEXT!lastused!'} < $maxlastused ) {
+    while ( my ($k,$v) = each(%SSLServerContext)) {
+        # context was not used for more than a hour in this thread
+        if ($SSLContextMaxUnused && $SSLServerContext{$k}->{'!CONTEXT!lastused!'} && $SSLServerContext{$k}->{'!CONTEXT!lastused!'} < $maxlastused ) {
             delete $SSLServerContextList{$SSLServerContext{$k}};
             delete $SSLServerContext{$k};
-            mlog(0,"info: removed the unused SSL-Context for '$k'") if $MaintenanceLog;
+            mlog(0,"info: removed the unused SSL-Context for '$k'") if $ConnectionLog || $SSLDEBUG;
             next;
         }
-        if ($SSLContextMaxAge && $SSLServerContext{$k}->{'!CONTEXT!created!'} < $maxage) {
+        # the context is older than a day
+        if ($SSLContextMaxAge && $SSLServerContext{$k}->{'!CONTEXT!created!'} && $SSLServerContext{$k}->{'!CONTEXT!created!'} < $maxage) {
             delete $SSLServerContextList{$SSLServerContext{$k}};
             delete $SSLServerContext{$k};
-            mlog(0,"info: removed outdated SSL-Context for '$k'") if $MaintenanceLog;
+            mlog(0,"info: removed outdated SSL-Context for '$k'") if $ConnectionLog || $SSLDEBUG;
             next;
         }
     }
@@ -59923,11 +59973,11 @@ sub SSLCertVerify {
     d("SSLCertVerify - $cb: try to call verify callback: ".${$cb});
     $ret = $ret ? $ok : eval{${$cb}->(@_)};
     if ($@) {
-        mlog(0,"SSLCertVerify - $cb: callback error: $@");
+        mlog(0,"error: SSLCertVerify - $cb: callback error: $@");
         return $ok;
     } else {
         d("SSLCertVerify - $cb: callback returned: $ret");
-        mlog(0,"SSLCertVerify - $cb: callback returned: $ret") if $ConnectionLog > 2;
+        mlog(0,"info: SSLCertVerify - $cb: callback returned: $ret") if $ConnectionLog > 2 || $SSLDEBUG;
     }
     return $ret ? 1 : 0;
 }
@@ -59960,6 +60010,7 @@ sub ConfigChangeSSL {
                     return "<span class=\"negative\">no sub defined in $new - e.g $new::$name</span>";
                 }
                 my $mod = join('::',@mod);
+                unloadNameSpace($mod);
                 eval("use $mod();1;");
                 if ($@) {
                     mlog(0,"error: $name not changed - unable to load custom module $mod - $@");
@@ -60003,13 +60054,22 @@ sub ConfigChangeSSL {
                 $canStat = (-r $SSLCertFile && -r $SSLKeyFile) || $SSLSTATConfigure;
                 $CanUseIOSocketSSL = 1 if ($canSSL || $canWeb || $canStat);
             }
+            if ($listenPort =~ /SSL:/oi && $canSSL) {
+                &ConfigChangeMailPort('listenPort','n/a',$listenPort, 1);
+            }
+            if ($listenPort2 =~ /SSL:/oi && $canSSL) {
+                &ConfigChangeMailPort2('listenPort2','n/a',$listenPort2, 1);
+            }
+            if ($relayPort =~ /SSL:/oi && $canSSL) {
+                &ConfigChangeRelayPort('relayPort','n/a',$relayPort, 1);
+            }
             if ($listenPortSSL && $canSSL) {
                 &ConfigChangeMailPortSSL('listenPortSSL','n/a',$listenPortSSL, 1);
             }
-            if ($enableWebAdminSSL && $canWeb) {
+            if (($enableWebAdminSSL || $webAdminPort =~ /SSL:/oi) && $canWeb) {
                 &ConfigChangeAdminPort('webAdminPort','n/a',$webAdminPort, 1);
             }
-            if ($enableWebStatSSL && $canStat) {
+            if (($enableWebStatSSL || $webStatPort =~ /SSL:/oi) && $canStat) {
                 &ConfigChangeStatPort('webStatPort','n/a',$webStatPort, 1);
             }
             return '';
@@ -60082,7 +60142,7 @@ sub ConfigChangeAdminPort {my ($name, $old, $new, $init)=@_;
     my $dummy;
     my $WebSocket;
     foreach my $port (split(/\|/o,$new)) {
-        if ($port =~ /^.+:([^:]+)$/o) {
+        if ($port =~ /([^:]+)$/o) {
             if ($1 < 1024) {
                 $highport = 0;
                 last;
@@ -60155,7 +60215,7 @@ sub ConfigChangeStatPort {my ($name, $old, $new, $init)=@_;
     my $dummy;
     my $StatSocket;
     foreach my $port (split(/\|/o,$new)) {
-        if ($port =~ /^.+:([^:]+)$/o) {
+        if ($port =~ /([^:]+)$/o) {
             if ($1 < 1024) {
                 $highport = 0;
                 last;
@@ -64710,7 +64770,7 @@ sub ProxyTraffic {
 
 sub doneProxy {
   my $fh = shift;
-  $fh = $Con{$fh}->{self} if $Con{$fh}->{self};
+  $fh = $Con{$fh}->{self} if $Con{$fh} && $Con{$fh}->{self};
   my $cliIP;
   my $serIP;
   if (! exists $ConDelete{$fh}) {
@@ -64761,8 +64821,8 @@ sub doneProxy {
       threads->yield();
     }
   }
-  threadConDone($fh);
   sockclose($fh);
+  threadConDone($fh);
   delete $Con{$fh};
 }
 
@@ -67320,6 +67380,8 @@ sub ThreadStart {
           d("$how $@");
           writeExceptionLog("$how $WorkerName: $exception");
           $exception = ": $exception";
+          %SSLServerContext = ();
+          %SSLServerContextList = ();
       };
       $ComWorker{$WorkerNumber}->{CANSIG} = 0;
       mlog (0,"Info: auto restart died worker $WorkerName") if ($ComWorker{$Iam}->{run} && $autoRestartDiedThreads);
@@ -67404,6 +67466,8 @@ sub ThreadMaintStart {
           { lock(%cmdQParm) if is_shared(%cmdQParm); %cmdQParm = ();}
       }
       &clearDBCon();
+      %SSLServerContext = ();
+      %SSLServerContextList = ();
     } while ($ComWorker{$WorkerNumber}->{run} && $autoRestartDiedThreads);
     if (scalar keys(%BlockRepForwQueue)) {
         eval{Storable::nstore(\%BlockRepForwQueue, "$base/BlockRepForwQueue.store");};
@@ -67474,6 +67538,8 @@ sub ThreadRebuildSpamDBStart {
       mlog (0,"Info: auto restart died worker $WorkerName") if ($ComWorker{$Iam}->{run} && $autoRestartDiedThreads);
       $RunTaskNow{RunRebuildNow} = '';
       &clearDBCon();
+      %SSLServerContext = ();
+      %SSLServerContextList = ();
     } while ($ComWorker{$Iam}->{run} && $autoRestartDiedThreads);
     mlog(0,"$WorkerName finished");
     d("finished work $exception");

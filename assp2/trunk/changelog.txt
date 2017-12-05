@@ -1,3 +1,25 @@
+2017-12-05
+fixed in assp 2.5.6 *Fortress* build 17339:
+
+- some SSL-Context objects were unexpected early renewed in build 17338
+
+- a SNI configuration was not working like expected in some cases (build 17338)
+
+
+changed:
+
+- It is now possible to define a SSL-listener for all listeners (SMTP, WEB, STAT) - to do this write SSL: in front of the listener definition.
+  Examples:
+  225
+  SSL:325
+  225|SSL:325
+  127.0.0.1:225
+  192.168.1.1:225|192.168.2.1:225|SSL:192.168.1:325
+
+- improved error handling for the new SSL code in build 17338
+
+
+
 2017-12-04
 fixed in assp 2.5.6 *Fortress* build 17338:
 
