@@ -1,3 +1,9 @@
+2017-12-06
+fixed in assp 2.5.6 *Fortress* build 17340:
+
+- Blockreports were sent empty in build 17338 and 17339
+
+
 2017-12-05
 fixed in assp 2.5.6 *Fortress* build 17339:
 

@@ -196,7 +196,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.5.6';
-$build   = '17339';        # 05.12.2017 TE
+$build   = '17340';        # 06.12.2017 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -566,7 +566,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'A80357D3349DC1EFBF6CA3E0E5091E7E96B48922'; }
+sub __cs { $codeSignature = 'B1C2DC2C42C3FB2BAC79C56FA4E297B447138FAE'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -7527,6 +7527,7 @@ our @uribllist;
 our @whitelistGroup:shared;
 our @I; # the global IP match receiver - unique in every thread
 our @HmmBayWords;
+our @ProxySockets:shared;
 our @WhitelistResult;
 
 # list.dnsrw.org trust and category definitions
@@ -14853,12 +14854,15 @@ If the step belongs to a BerkeleyDB hash,
   }
 
   &mlogWrite();
+  @ProxySockets = ();
+  %ProxySocket = ();
   while ((my $k,my $v) = each(%Proxy)) {
        my ($to,$allow) = split(/<=/o, $v);
        $allow = " allowed for $allow" if ($allow);
        my ($ProxySocket,$dummy) = newListen($k,\&ConToThread,2);
        $ProxySocket{$k} = shift @$ProxySocket;
        if ($ProxySocket{$k}) {
+           push @ProxySockets, @$dummy;
            for (@$dummy) {s/:::/\[::\]:/o;}
            mlog(0,"proxy started: listening on @$dummy forwarded to $to$allow");
            &mlogWrite();
@@ -17840,7 +17844,7 @@ sub mlog {
     return 1 if($noLogLineRe && $m =~ /$noLogLineReRE/);
 
     if ($this) {
-        if ($noLog && $fh && exists $Con{$fh} &&  ($this->{noLog} || $this->{nomlog} || &matchIP($Con{$fh}->{ip},'noLog',0,1) || ($Con{$fh}->{friend} && &matchIP($Con{$Con{$fh}->{friend}}->{ip},'noLog',0,1)))) {
+        if ($noLog && $fh && exists $Con{$fh} &&  ($this->{noLog} || $this->{nomlog} || &matchIP($Con{$fh}->{ip},'noLog',0,1) || ($Con{$fh}->{friend} && exists $Con{$Con{$fh}->{friend}} && &matchIP($Con{$Con{$fh}->{friend}}->{ip},'noLog',0,1)))) {
             $this->{nomlog} = 1;
             return 1;
         }
@@ -18093,16 +18097,18 @@ sub switchSSLServer {
 sub matchFH {
     my ($fh, @fhlist) = @_;
     return 0 unless scalar @fhlist;
-    return 0 unless $fh;
+    return 0 unless ref($fh) =~ /socket/io;
     my $sinfo;
     if (exists $Con{$fh} && $Con{$fh}->{localip} && $Con{$fh}->{localport}) {
         $sinfo = $Con{$fh}->{localip} . ':' . $Con{$fh}->{localport};
     }
     $sinfo ||= $fh->sockhost() . ':' . $fh->sockport();
+    return unless $sinfo;
     $sinfo =~ s/:::/\[::\]:/o;
 
     while (@fhlist) {
         my $lfh = shift @fhlist;
+        next unless $lfh;
         $lfh =~ s/^SSL:\s*//io;
         if ($lfh =~ /^(?:0\.0\.0\.0|\[::\])(:\d+)$/o) {
             my $p = $1;
@@ -18138,6 +18144,9 @@ sub getSMTPListenerConfigName {
     return 'listenPortSSL' if $listenPortSSL && $isListen->(@lsnSSLI);
     return 'listenPort2' if $listenPort2 && $isListen->(@lsn2I);
     return 'relayPort' if $relayPort && $isListen->(@lsnRelayI);
+    return 'webAdminPort' if $webAdminPort && $isListen->(@WebSocketI);
+    return 'webStatPort' if $webStatPort && $isListen->(@StatSocketI);
+    return 'ProxyConf' if $ProxyConf && $isListen->(@ProxySockets);
     return;
 }
 
@@ -18863,7 +18872,7 @@ sub SMTPTraffic {
             $Con{$fh}->{timelast} = time;
             $Con{$fh}->{contimeoutdebug} .= "read from client = $SMTPbuf" if $ConTimeOutDebug;
         } else {
-            $Con{$Con{$fh}->{friend}}->{contimeoutdebug} .= "read from server = $SMTPbuf" if $ConTimeOutDebug;
+            $Con{$Con{$fh}->{friend}}->{contimeoutdebug} .= "read from server = $SMTPbuf" if $Con{$fh}->{friend} && exists $Con{$Con{$fh}->{friend}} && $ConTimeOutDebug;
         }
         if((my $sb=$Con{$fh}->{skipbytes})>0) {
 
@@ -18871,11 +18880,11 @@ sub SMTPTraffic {
             my $l=length($SMTPbuf);
             d("skipbytes=$sb l=$l -> ",1);
             if($l >= $sb) {
-                sendque($Con{$fh}->{friend},substr($SMTPbuf,0,$sb)); # send the binary chunk on to the server
+                sendque($Con{$fh}->{friend},substr($SMTPbuf,0,$sb)) if $Con{$fh}->{friend} && exists $Con{$Con{$fh}->{friend}}; # send the binary chunk on to the server
                 $SMTPbuf=substr($SMTPbuf,$sb);
                 delete $Con{$fh}->{skipbytes};
             } else {
-                sendque($Con{$fh}->{friend},$SMTPbuf); # send the binary chunk on to the server
+                sendque($Con{$fh}->{friend},$SMTPbuf) if $Con{$fh}->{friend} && exists $Con{$Con{$fh}->{friend}}; # send the binary chunk on to the server
                 $Con{$fh}->{skipbytes}=$sb-=length($SMTPbuf);
                 $SMTPbuf='';
             }
@@ -19126,7 +19135,7 @@ sub SMTPWrite {
         my $towrite = min($Con{$fh}->{SNDBUF}, $l);
         if (exists $Con{$fh}->{sslwritestate}) {
             $towrite = $Con{$fh}->{sslwritestate} ; # we need to repeat a SSL write
-        } elsif ((exists($Con{$Con{$fh}->{friend}}->{allDATAseen}) && $Con{$Con{$fh}->{friend}}->{allDATAseen}) || ! exists($Con{$Con{$fh}->{friend}}->{allDATAseen})) {
+        } elsif (($Con{$fh}->{friend} && exists($Con{$Con{$fh}->{friend}}) && $Con{$Con{$fh}->{friend}}->{allDATAseen}) || ($Con{$fh}->{friend} && exists($Con{$Con{$fh}->{friend}}) && ! exists($Con{$Con{$fh}->{friend}}->{allDATAseen}))) {
             # stripout the dataend sequence
             $towrite -= 3 if ($towrite > 3 && $towrite == $l && $Con{$fh}->{outgoing} =~ /\x0A\.\x0D\x0A$/os);
         }
@@ -19242,16 +19251,18 @@ sub SMTPWrite {
             if ($Con{$fh}->{type} eq 'C'){
               $Con{$fh}->{contimeoutdebug} .= "$m client wrote = ".substr($Con{$fh}->{outgoing},0,$w).$er;
             } else {
-              $Con{$Con{$fh}->{friend}}->{contimeoutdebug} .= "$m server wrote = ".substr($Con{$fh}->{outgoing},0,$w).$er;
+              $Con{$Con{$fh}->{friend}}->{contimeoutdebug} .= "$m server wrote = ".substr($Con{$fh}->{outgoing},0,$w).$er if $Con{$fh}->{friend} && exists $Con{$Con{$fh}->{friend}};
             }
         }
         $written ||= 0;
         my $done =   length($Con{$fh}->{outgoing}) == $written
-                  && (   (exists($Con{$Con{$fh}->{friend}}->{allDATAseen}) && $Con{$Con{$fh}->{friend}}->{allDATAseen} && $Con{$fh}->{outgoing} =~ /(?:^|\x0A)\.\x0D\x0A$/os)
-                      || (! exists($Con{$Con{$fh}->{friend}}->{allDATAseen}) && $Con{$fh}->{outgoing} =~ /(?:^|\x0A)\.\x0D\x0A$/os));
+                  && (   ($Con{$fh}->{friend} && exists($Con{$Con{$fh}->{friend}}) && $Con{$Con{$fh}->{friend}}->{allDATAseen} && $Con{$fh}->{outgoing} =~ /(?:^|\x0A)\.\x0D\x0A$/os)
+                      || ($Con{$fh}->{friend} && exists($Con{$Con{$fh}->{friend}}) && ! exists($Con{$Con{$fh}->{friend}}->{allDATAseen}) && $Con{$fh}->{outgoing} =~ /(?:^|\x0A)\.\x0D\x0A$/os));
         $Con{$fh}->{outgoing}=substr($Con{$fh}->{outgoing},$written) if $written;
         $l=length($Con{$fh}->{outgoing});
-        mlog($Con{$fh}->{friend},"info: all DATA written to server - sent [CR][LF].[CR][LF]") if $ConnectionLog > 1 && ! $l && $done;
+        my $m = 0;
+        $m = $Con{$fh}->{friend} if $Con{$fh}->{friend} && exists($Con{$Con{$fh}->{friend}});
+        mlog($m,"info: all DATA written to server - sent [CR][LF].[CR][LF]") if $ConnectionLog > 1 && ! $l && $done;
 
         if ($Con{$fh}->{type} ne 'C' &&
             $written > 0 &&
@@ -21169,7 +21180,7 @@ sub addfh {
   $Con{$fh} = {};
   keys %{$Con{$fh}} = 128;
   $Con{$fh}->{getline}  = $getline;
-  $Con{$fh}->{friend}   = $friend;
+  $Con{$fh}->{friend}   = $friend if $friend;
   $Con{$fh}->{self}     = $fh;
   $Con{$fh}->{timestart}= time;
   $Con{$fh}->{timelast} = $Con{$fh}->{timestart};
@@ -21196,7 +21207,7 @@ EOF
 # remove the old structure
 # tell the calling subs that we changed the file handle
 sub addsslfh {
-  my ($oldfh,$sslfh,$friend) =@_;
+  my ($oldfh,$sslfh,$friend) = @_;
   $SocketCalls{$sslfh} = delete $SocketCalls{$oldfh};
 
   $sslfh->blocking(0);
@@ -21209,8 +21220,10 @@ sub addsslfh {
 
   $Con{$sslfh}->{movedtossl} = 1;
   my $fno = $Con{$sslfh}->{fno};
-  $Con{$sslfh}->{friend} = $friend;
-  $Con{$friend}->{friend} = $sslfh;
+  if ($friend) {
+      $Con{$sslfh}->{friend} = $friend;
+      $Con{$friend}->{friend} = $sslfh;
+  }
   $Con{$sslfh}->{self} = $sslfh;
   delete $SMTPSession{$oldfh};
   $ConToTLS{$oldfh} = $sslfh;   # tell the calling subs that we changed the file handle
@@ -21270,7 +21283,7 @@ sub sendque {
 
 sub unpoll {
    my ($fhh,$action) = @_ ;
-   $fhh = $Con{$fhh}->{self} if exists $Con{$fhh} && ref $Con{$fhh}->{self};
+   $fhh = $Con{$fhh}->{self} if exists $Con{$fhh} && ref($Con{$fhh}->{self}) =~ /socket/io;
    $fhh = $WebConH{$fhh} if exists $WebConH{$fhh} && ref $WebConH{$fhh};
    $fhh = $StatConH{$fhh} if exists $StatConH{$fhh} && ref $StatConH{$fhh};
    return unless ("$fhh" =~ /Socket/oi);
@@ -21327,10 +21340,10 @@ sub unpoll_force {
 
 sub dopoll {
    my ($fh,$action,$mask) = @_ ;
-   $fh = $Con{$fh}->{self} if exists $Con{$fh} && ref $Con{$fh}->{self};
+   $fh = $Con{$fh}->{self} if exists $Con{$fh} && ref($Con{$fh}->{self}) =~ /socket/io;
    $fh = $WebConH{$fh} if exists $WebConH{$fh} && ref $WebConH{$fh};
    $fh = $StatConH{$fh} if exists $StatConH{$fh} && ref $StatConH{$fh};
-   return unless (ref($fh) =~ /Socket/oi);
+   return unless (ref($fh) =~ /socket|net|ssl|send|smtp/oi);
    if ($IOEngineRun == 0) {
 
        eval{$action->mask($fh => $mask);};
@@ -21454,9 +21467,9 @@ sub sayMessageOK {
 sub sendquedata {
   my ($fh,$frfh,$m,$done)=@_;
   my $this;
-  $this=$Con{$fh} if exists $Con{$fh};
+  $this = $Con{$fh} if exists $Con{$fh};
   my $friend;
-  $friend=$Con{$frfh} if exists $Con{$frfh};
+  $friend = $Con{$frfh} if exists $Con{$frfh};
   my $convert=0;
   my $doFixTNEF=0;
   my $keepTNEF=1;
@@ -22834,14 +22847,15 @@ sub serverIsSmtpDestination {
       foreach my $destinationA (split(/\s*\|\s*/o, $dest)) {
           next unless $destinationA;
           if ($destinationA  =~ /^(_*INBOUND_*:)?(\d+)$/o){
-              if (exists $crtable{$Con{$Con{$server}->{friend}}->{localip}}) {
+              if ($Con{$server}->{friend} && exists $Con{$Con{$server}->{friend}} && exists $crtable{$Con{$Con{$server}->{friend}}->{localip}}) {
                   $destination=$crtable{$Con{$Con{$server}->{friend}}->{localip}};
-              } else {
+              } elsif ($Con{$server}->{friend} && exists $Con{$Con{$server}->{friend}}) {
                   $destination = $Con{$Con{$server}->{friend}}->{localip} .':'.$2;
               }
           } else {
               $destination = $destinationA;
           }
+          next unless $destination;
           $destination =~ s/^SSL://io;
           my ($ip,$port);
           ($ip,$port) = ($1,$2) if $destination =~ /^($HostRe)?:?(\d+)$/o;
@@ -23254,7 +23268,7 @@ sub resend_mail {
           $message = $Con{$fh}->{header};
       }
       
-      delete $Con{$Con{$fh}->{friend}} if exists $Con{$fh}->{friend};
+      delete $Con{$Con{$fh}->{friend}};
       delete $Con{$fh};
       %Con = ();
 
@@ -23488,7 +23502,7 @@ sub stateReset {
     my $fh=shift;
     my $this=$Con{$fh};
     my $friend;
-    $friend = $Con{$this->{friend}} if (exists $Con{$this->{friend}});
+    $friend = $Con{$this->{friend}} if ($this->{friend} && exists $Con{$this->{friend}});
     
     $this->{resetState}++;
 
@@ -23809,13 +23823,14 @@ sub allocateMemory {
     return unless &requConvertScalar();
     d('allocateMemory');
     my $this = $Con{$fh};
-    my $friend = $Con{$this->{friend}};
+    my $friend;
+    $friend = $Con{$this->{friend}} if $this->{friend} && exists $Con{$this->{friend}};
     my $temp;
     my $sizein = $PreAllocMem ? $PreAllocMem : 100000;
     my $sizeout;
 
     $sizein = $this->{SIZE} + 4096 if ($this->{SIZE});
-    return if ($sizein <= $friend->{allocmem} * 1048576);
+    return if ($friend && $sizein <= $friend->{allocmem} * 1048576);
     $sizeout = $sizein;
     $this->{allocmemforward} = $sizeout = $npSizeOut + 4096 if ($npSizeOut && $npSizeOut < $sizeout);
 
@@ -23932,8 +23947,10 @@ sub getline {
     my($fh,$l)=@_;
     d('getline');
     my $this=$Con{$fh};
-    my $server=$this->{friend};
-    my $friend=$Con{$server};
+    my $server;
+    $server=$this->{friend} if $this->{friend};
+    my $friend;
+    my $friend=$Con{$server} if exists $Con{$server};
     my $reply;
     $this->{crashbuf} .= $l if $Con{$fh}->{crashfh};
     d("getline: <$l>");
@@ -24526,7 +24543,7 @@ sub getline {
         $this->{lastcmd} = 'MAIL FROM';
         push(@{$this->{cmdlist}},$this->{lastcmd}) if $ConnectionLog >= 2;
         if($EnforceAuth && &matchFH($fh,@lsn2I) && ! $this->{authenticated} && ! $this->{DisableAUTH} && ($l !~ /\sAUTH=[^\r\n\s<>]+/io || $l =~ /\sAUTH=<>/io)) {
-            NoLoopSyswrite($fh,"530 5.7.0 Authentication required\r\n",0);
+            NoLoopSyswrite($fh,"530 5.7.0 Authentication required before [Mail From]\r\n",0);
             mlog($fh,"$fr submited without previous or included AUTH - 'EnforceAuth' is set to 'ON' for 'listenPort2'",1);
             done($fh);
             return;
@@ -25201,7 +25218,7 @@ sub getline {
 
         # if MAIL FROM: .... AUTH=... was supplied , we check here if the AUTH was successful (got reply 235)
         if($EnforceAuth && &matchFH($fh,@lsn2I) && ! $this->{authenticated} && ! $this->{DisableAUTH}) {
-            NoLoopSyswrite($fh,"530 5.7.0 Authentication required\r\n",0);
+            NoLoopSyswrite($fh,"530 5.7.0 Authentication is still required\r\n",0);
             mlog($fh,"'RCPT TO:' submited without previous AUTH - 'EnforceAuth' is set to 'ON' for 'listenPort2'",1);
             done($fh);
             return;
@@ -26777,7 +26794,7 @@ sub getheader {
   		    $this->{getlinetxt} = 'NullData';
             $this->{header} = 'NULL';
             $this->{intemperror} = 1;
-            done2($this->{friend});
+            done2($this->{friend}) if $this->{friend};
             delete $this->{friend};
             $Stats{crashAnalyze}++;
             return;
@@ -27515,7 +27532,7 @@ sub headerAddrCheckOK_Run {
                         } else {
                             sendque( $fh, $reply );
                             $this->{closeafterwrite} = 1;
-                            done2($this->{friend}) if (! exists $ConDelete{$this->{friend}});
+                            done2($this->{friend}) if ($this->{friend} && ! exists $ConDelete{$this->{friend}});
 #                            delete $this->{friend};
                         }
                         $this->{prepend} = '';
@@ -27554,7 +27571,7 @@ sub headerAddrCheckOK_Run {
                         mlog( $fh, "[spam found] $this->{messagereason}" );
                         sendque( $fh, $reply );
                         $this->{closeafterwrite} = 1;
-                        done2($this->{friend}) if (! exists $ConDelete{$this->{friend}});
+                        done2($this->{friend}) if ($this->{friend} && ! exists $ConDelete{$this->{friend}});
 #                        delete $this->{friend};
                     }
                     $Stats{rcptRelayRejected}++;
@@ -32863,7 +32880,7 @@ sub MessageSizeOK {
         NoLoopSyswrite($fh,$err,0);
         $this->{closeafterwrite} = 1;
         unpoll($fh,$readable);
-        done2($this->{friend}) if (! exists $ConDelete{$this->{friend}});
+        done2($this->{friend}) if ($this->{friend} && ! exists $ConDelete{$this->{friend}});
         seterror( $fh, "521 transmission terminated\r\n", 1 );
         return 0;
     }
@@ -32892,7 +32909,7 @@ sub MessageSizeOK {
         NoLoopSyswrite($fh,$err,0);
         $this->{closeafterwrite} = 1;
         unpoll($fh,$readable);
-        done2($this->{friend}) if (! exists $ConDelete{$this->{friend}});
+        done2($this->{friend}) if ($this->{friend} && ! exists $ConDelete{$this->{friend}});
         seterror( $fh, "521 transmission terminated\r\n", 1 );
         return 0;
     }
@@ -34312,7 +34329,7 @@ sub PersBlackOK_Run {
         } else {
             sendque( $fh, $reply );
             $this->{closeafterwrite} = 1;
-            done2($this->{friend}) if (! exists $ConDelete{$this->{friend}});
+            done2($this->{friend}) if ($this->{friend} && ! exists $ConDelete{$this->{friend}});
         }
         return 0;
     } elsif ($allok) {
@@ -34672,8 +34689,9 @@ sub Delayok {
 }
 sub Delayok_Run {
     my($fh,$rcpt)=@_;
-    my $this=$Con{$fh};
-    my $client=$this->{friend};
+    my $this = $Con{$fh};
+    my $client;
+    my $client = $this->{friend} if $this->{friend};
     $this->{prepend}='';
     d('Delayok');
 
@@ -34682,7 +34700,7 @@ sub Delayok_Run {
         return 1;
     }
     skipCheck($this,'ro','ispip','co','aa') && return 1;
-    return 1 if $Con{$client}->{relayok};
+    return 1 if exists $Con{$client} && $Con{$client}->{relayok};
     return 1 if $this->{ip} =~ /$IPprivate/o;
 
     my $mf=lc $this->{mailfrom};
@@ -34900,7 +34918,8 @@ sub isnotspam {
   my ($fh,$done)=@_;
   d('isnotspam');
   my $this=$Con{$fh};
-  my $server=$this->{friend};
+  my $server;
+  $server=$this->{friend} if $this->{friend};
 
 # it's time to merge our header with client's one
   $this->{myheader}="X-Assp-Version: $version$modversion on $myName\r\n" . $this->{myheader}
@@ -34914,7 +34933,7 @@ sub isnotspam {
       return;
   }
   
-  sendquedata($server, $fh ,\$this->{header}, $done);
+  sendquedata($server, $fh ,\$this->{header}, $done) if $server;
   $this->{headerpassed} = 1;
   
   if($done) {
@@ -34932,7 +34951,8 @@ sub whitebody {
     my($fh,$l)=@_;
     my $this=$Con{$fh};
     d('whitebody');
-    my $server = $this->{friend};
+    my $server;
+    $server = $this->{friend} if $this->{friend};
     $this->{maillength} += length($l);
     $this->{header} .= $l;
     my $mbytes;
@@ -34976,7 +34996,7 @@ sub whitebody {
             $utf8off->(\$this->{header});
         }
     }
-    sendquedata($server, $fh , \$l , $done);
+    sendquedata($server, $fh , \$l , $done) if $server;
     d('whitebody - end',1);
 }
 
@@ -36430,13 +36450,13 @@ sub error {
             sendque($fh,"$reply\r\n");
             $this->{closeafterwrite} = 1;
             unpoll($fh,$readable);
-            done2($this->{friend}) if (! exists $ConDelete{$this->{friend}});
+            done2($this->{friend}) if ($this->{friend} && ! exists $ConDelete{$this->{friend}});
           } else {                                                  # we are not in DATA part - send 250 and close connection
             sendque($fh,$out);
             sendque($fh,"$reply\r\n");
             $this->{closeafterwrite} = 1;
             unpoll($fh,$readable);
-            done2($this->{friend}) if (! exists $ConDelete{$this->{friend}});
+            done2($this->{friend}) if ($this->{friend} && ! exists $ConDelete{$this->{friend}});
           }
         } else {                                               # no 250 - send the error and close the connection
             sendque($fh,$out);
@@ -36444,7 +36464,7 @@ sub error {
             sendque($fh,"$reply\r\n") if $out !~ /^(?:4|5)/o && $this->{lastcmd} !~ /^QUIT/io;
             $this->{closeafterwrite} = 1;
             unpoll($fh,$readable);
-            done2($this->{friend}) if (! exists $ConDelete{$this->{friend}});
+            done2($this->{friend}) if ($this->{friend} && ! exists $ConDelete{$this->{friend}});
         }
     }
     $this->{lastcmd} .= $this->{lastcmd} =~ /\(error\)/o ? '' : '(error)';
@@ -36466,7 +36486,7 @@ sub errorQuit {
     $this->{lastcmd} = $l unless $this->{lastcmd};
     push(@{$this->{cmdlist}},$this->{lastcmd}) if $ConnectionLog >= 2;
     # detatch the friend -- closing connection to server & disregarding message
-    done2($this->{friend}) if (! exists $ConDelete{$this->{friend}});
+    done2($this->{friend}) if ($this->{friend} && ! exists $ConDelete{$this->{friend}});
 }
 
 # filter off the 250 OK noop response and go to reply
@@ -36496,7 +36516,9 @@ sub skipevery {
 sub replyAUTH {
     my ($fh,$l)=@_;
     d('replyAUTH : ' . $l);
-    my $friend = $Con{$Con{$fh}->{friend}};
+    my $friend;
+    $friend = $Con{$fh}->{friend} if $Con{$fh}->{friend} && exists $Con{$Con{$fh}->{friend}};
+    return if ! $friend || ! exists $Con{$friend};
 
     $Con{$friend}->{inerror} = ($l=~/^5[05][0-9]/o);
     $Con{$friend}->{intemperror} = ($l=~/^4\d{2}/o);
@@ -36507,16 +36529,16 @@ sub replyAUTH {
 
     if ($l =~ /^334\s*(.*)$/o) {
         $l = $1;
-        if (exists $friend->{AUTHclient} && @{$friend->{AUTHClient}}) { # method PLAIN was used
-            my $str = join ('', @{$friend->{AUTHClient}});              # send the authentication
+        if (exists $Con{$friend}->{AUTHclient} && @{$Con{$friend}->{AUTHClient}}) { # method PLAIN was used
+            my $str = join ('', @{$Con{$friend}->{AUTHClient}});              # send the authentication
             $str =~ s/[\r\n]+$//o;
             $str .= "\r\n";
             NoLoopSyswrite($fh,$str,0);
-            @{$friend->{AUTHClient}} = ();
-        } elsif (exists $friend->{AUTHclient} && ref($friend->{AUTHclient})) {  # any other method was used
+            @{$Con{$friend}->{AUTHClient}} = ();
+        } elsif (exists $Con{$friend}->{AUTHclient} && ref($Con{$friend}->{AUTHclient})) {  # any other method was used
             $l =~ s/[\r\n]+$//o;                                                # step by step procedure
             my @str = MIME::Base64::encode_base64(
-                     $friend->{AUTHclient}->client_step(MIME::Base64::decode_base64($l), '')
+                     $Con{$friend}->{AUTHclient}->client_step(MIME::Base64::decode_base64($l), '')
                    );
             my $str = join ('', @str);
             $str =~ s/[\r\n]+$//o;
@@ -36524,29 +36546,29 @@ sub replyAUTH {
             NoLoopSyswrite($fh,$str,0) if $str;
         } else {
             $l =~ s/\r|\n//go;
-            mlog($Con{$fh}->{friend}, "error: authentication handshake error - try to continue unauthenticated");
-            undef @{$friend->{AUTHClient}};
-            delete $friend->{AUTHClient};
-            delete $friend->{AUTHclient};
-            &getline($Con{$fh}->{friend},$friend->{sendAfterAuth}) if $friend->{sendAfterAuth};
+            mlog($friend, "error: authentication handshake error - try to continue unauthenticated");
+            undef @{$Con{$friend}->{AUTHClient}};
+            delete $Con{$friend}->{AUTHClient};
+            delete $Con{$friend}->{AUTHclient};
+            &getline($friend,$Con{$friend}->{sendAfterAuth}) if $Con{$friend}->{sendAfterAuth};
             $Con{$fh}->{getline}=\&reply;
             $Con{$fh}->{getlinetxt}='reply';
         }
     } elsif ($l =~ /^235/o) {
-        mlog($Con{$fh}->{friend}, "info: authentication successful") if $SessionLog >= 2;
-        undef @{$friend->{AUTHClient}};
-        delete $friend->{AUTHClient};
-        delete $friend->{AUTHclient};
-        &getline($Con{$fh}->{friend},$friend->{sendAfterAuth}) if $friend->{sendAfterAuth};
+        mlog($friend, "info: authentication successful") if $SessionLog >= 2;
+        undef @{$Con{$friend}->{AUTHClient}};
+        delete $Con{$friend}->{AUTHClient};
+        delete $Con{$friend}->{AUTHclient};
+        &getline($friend,$Con{$friend}->{sendAfterAuth}) if $Con{$friend}->{sendAfterAuth};
         $Con{$fh}->{getline}=\&reply;
         $Con{$fh}->{getlinetxt}='reply';
     } else {
         $l =~ s/\r|\n//go;
-        mlog($Con{$fh}->{friend}, "error: authentication failed ($l) - try to continue unauthenticated");
-        undef @{$friend->{AUTHClient}};
-        delete $friend->{AUTHClient};
-        delete $friend->{AUTHclient};
-        &getline($Con{$fh}->{friend},$friend->{sendAfterAuth}) if $friend->{sendAfterAuth};
+        mlog($friend, "error: authentication failed ($l) - try to continue unauthenticated");
+        undef @{$Con{$friend}->{AUTHClient}};
+        delete $Con{$friend}->{AUTHClient};
+        delete $Con{$friend}->{AUTHclient};
+        &getline($friend,$Con{$friend}->{sendAfterAuth}) if $Con{$friend}->{sendAfterAuth};
         $Con{$fh}->{getline}=\&reply;
         $Con{$fh}->{getlinetxt}='reply';
     }
@@ -36559,6 +36581,7 @@ sub replyTLS {
     my $oldfh = "$fh";
     my $ssl;
     my $cli = $Con{$fh}->{friend};
+    return if ! $cli || ! exists $Con{$cli};
     my $serIP=ITR($fh->peerhost());
     my $ffr = $Con{$cli}->{TLSqueue};
 
@@ -36614,6 +36637,7 @@ sub replyTLS2 {
     d("lastReply2 = $l");
 #    if (lc($l) eq lc($Con{$fh}->{lastEHLOreply}))
     my $cli = $Con{$fh}->{friend};
+    return if ! $cli || ! exists $Con{$cli};
 
     $Con{$cli}->{inerror} = ($l=~/^5[05][0-9]/o);
     $Con{$cli}->{intemperror} = ($l=~/^4\d{2}/o);
@@ -36647,6 +36671,7 @@ sub replyEHLO {
     my ($fh,$l)=@_;
     my $this=$Con{$fh};
     my $cli=$this->{friend};
+    return if ! $cli || ! exists $Con{$cli};
 #    $this->{lastEHLOreply} = $l;
     d("lastReply3 = $l");
 
@@ -36710,7 +36735,7 @@ sub reply {
     my $this=$Con{$fh};
     return unless $this;
     my $cli=$this->{friend};
-    return unless $cli;
+    return if ! $cli || ! exists $Con{$cli};;
 
     my $cliIP = ITR($Con{$cli}->{ip} || $cli->peerhost());
     my $serIP = ITR($fh->peerhost());
@@ -37453,13 +37478,13 @@ sub SpamReport {
         stateReset($fh);
         $this->{getline}=\&getline;
         $this->{getlinetxt}='getline';
-        sendque($this->{friend},"RSET\r\n");
+        sendque($this->{friend},"RSET\r\n") if $this->{friend};
         return;
     } elsif( $l=~/^ *QUIT/io ) {
         stateReset($fh);
         $this->{getline}=\&getline;
         $this->{getlinetxt}='getline';
-        sendque($this->{friend},"QUIT\r\n");
+        sendque($this->{friend},"QUIT\r\n") if $this->{friend};
         return;
     } elsif( $l=~/^ *XEXCH50 +(\d+)/io ) {
         d("XEXCH50 b=$1");
@@ -37619,7 +37644,7 @@ sub SpamReportBody {
         stateReset($fh);
         $this->{getline}=\&getline;
         $this->{getlinetxt}='getline';
-        sendque($this->{friend},"RSET\r\n");
+        sendque($this->{friend},"RSET\r\n") if $this->{friend};
         $o_EMM_pm = 0;
     }
 }
@@ -37707,7 +37732,7 @@ sub ListReport {
         } else {
             delete $this->{bdata};
         }
-        sendque($this->{friend},"RSET\r\n"); # make sure to reset the pending email
+        sendque($this->{friend},"RSET\r\n") if $this->{friend}; # make sure to reset the pending email
         $this->{getline}=\&ListReportBody;
         $this->{getlinetxt}='ListReportBody';
         my $list;
@@ -37722,13 +37747,13 @@ sub ListReport {
         stateReset($fh);
         $this->{getline}=\&getline;
         $this->{getlinetxt}='getline';
-        sendque($this->{friend},"RSET\r\n");
+        sendque($this->{friend},"RSET\r\n") if $this->{friend};
         return;
     } elsif( $l=~/^ *QUIT/io ) {
         stateReset($fh);
         $this->{getline}=\&getline;
         $this->{getlinetxt}='getline';
-        sendque($this->{friend},"QUIT\r\n");
+        sendque($this->{friend},"QUIT\r\n") if $this->{friend};
         return;
     } elsif( $l=~/^ *XEXCH50 +(\d+)/io ) {
         d("XEXCH50 b=$1");
@@ -37763,7 +37788,7 @@ sub HelpReport {
         } else {
             delete $this->{bdata};
         }
-        sendque($this->{friend},"RSET\r\n"); # make sure to reset the pending email
+        sendque($this->{friend},"RSET\r\n") if $this->{friend}; # make sure to reset the pending email
         $this->{getline}=\&ListReportBody;
         $this->{getlinetxt}='ListReportBody';
 
@@ -37773,13 +37798,13 @@ sub HelpReport {
         stateReset($fh);
         $this->{getline}=\&getline;
         $this->{getlinetxt}='getline';
-        sendque($this->{friend},"RSET\r\n");
+        sendque($this->{friend},"RSET\r\n") if $this->{friend};
         return;
     } elsif( $l=~/^ *QUIT/io ) {
         stateReset($fh);
         $this->{getline}=\&getline;
         $this->{getlinetxt}='getline';
-        sendque($this->{friend},"QUIT\r\n");
+        sendque($this->{friend},"QUIT\r\n") if $this->{friend};
         return;
     } elsif( $l=~/^ *XEXCH50 +(\d+)/io ) {
         d("XEXCH50 b=$1");
@@ -37808,7 +37833,7 @@ sub AnalyzeReport {
         } else {
             delete $this->{bdata};
         }
-        sendque($this->{friend},"RSET\r\n"); # make sure to reset the pending email
+        sendque($this->{friend},"RSET\r\n") if $this->{friend}; # make sure to reset the pending email
         $this->{getline}=\&AnalyzeReportBody;
         $this->{getlinetxt}='AnalyzeReportBody';
 
@@ -37818,13 +37843,13 @@ sub AnalyzeReport {
         stateReset($fh);
         $this->{getline}=\&getline;
         $this->{getlinetxt}='getline';
-        sendque($this->{friend},"RSET\r\n");
+        sendque($this->{friend},"RSET\r\n") if $this->{friend};
         return;
     } elsif( $l=~/^ *QUIT/io ) {
         stateReset($fh);
         $this->{getline}=\&getline;
         $this->{getlinetxt}='getline';
-        sendque($this->{friend},"QUIT\r\n");
+        sendque($this->{friend},"QUIT\r\n") if $this->{friend};
         return;
     } elsif( $l=~/^ *XEXCH50 +(\d+)/io ) {
         d("XEXCH50 b=$1");
@@ -37911,7 +37936,7 @@ sub AnalyzeReportBody {
         stateReset($fh);
         $this->{getline} = \&getline;
         $this->{getlinetxt}='getline';
-        sendque( $this->{friend}, "RSET\r\n" );
+        sendque( $this->{friend}, "RSET\r\n" ) if $this->{friend};
         $o_EMM_pm = 0;
     }
 }
@@ -38074,7 +38099,7 @@ sub ListReportBody {
                 $this->{getline}=\&getline;
                 $this->{getlinetxt}='getline';
                 sendque($fh,"250 OK\r\n");
-                sendque($this->{friend},"RSET\r\n");
+                sendque($this->{friend},"RSET\r\n") if $this->{friend};
                 return;
             } else {
                 mlog(0,"warning: unable to forward the report request to any of '$EmailForwardReportedTo' - will process the request locally!");
@@ -38134,7 +38159,7 @@ sub ListReportBody {
         $this->{getline}=\&getline;
         $this->{getlinetxt}='getline';
         sendque($fh,"250 OK\r\n");
-        sendque($this->{friend},"RSET\r\n");
+        sendque($this->{friend},"RSET\r\n") if $this->{friend};
     }
 }
 
@@ -39291,7 +39316,7 @@ sub NullFromToData { my ($fh,$l)=@_;
         my $s = $Con{$fh}->{messagescore};
         &stateReset($fh);
         $Con{$fh}->{messagescore} = $s if ($Con{$fh}->{fakeAUTHsuccess} > 1);
-        sendque($Con{$fh}->{friend},"RSET\r\n");
+        sendque($Con{$fh}->{friend},"RSET\r\n") if $Con{$fh}->{friend};
         unless ($Con{$fh}->{fakeAUTHsuccess}) {
             $Con{$fh}->{getline}=\&getline;
             $Con{$fh}->{getlinetxt}='getline';
@@ -39311,7 +39336,7 @@ sub NullFromToData { my ($fh,$l)=@_;
     } elsif ($l=~/^QUIT/io){
         sendque($fh,"221 <$myName> closing transmission\r\n");
         $Con{$fh}->{closeafterwrite} = 1;
-        done2($Con{$fh}->{friend}); # close and delete
+        done2($Con{$fh}->{friend}) if $Con{$fh}->{friend}; # close and delete
     } elsif ($l=~/^RCPT TO:/io) {
         if (! $Con{$fh}->{mailfrom}) {
             sendque($fh,"503 must have sender first\r\n");
@@ -39458,6 +39483,10 @@ sub BlockReportSend {
             $port ||= 25;
         }
 
+        my $time=$UseLocalTime ? localtime() : gmtime();
+        my $tz=$UseLocalTime ? tzStr() : '+0000';
+        $time=~s/(...) (...) +(\d+) (........) (....)/$1, $3 $2 $5 $4/o;
+
         eval {
             $smtp = $SMTPMOD->new(
                 $host,
@@ -39481,6 +39510,7 @@ sub BlockReportSend {
                 $smtp->to($to);
                 $smtp->data();
                 my $blocking = $fh->blocking(0);
+                NoLoopSyswrite($fh,"date: $time $tz\r\n",0) or die "$!\n";
                 NoLoopSyswrite($fh,"To: $to\r\n",0) or die "$!\n";
                 NoLoopSyswrite($fh,"From: $mailfrom\r\n",0) or die "$!\n";
                 NoLoopSyswrite($fh,"Subject: $subject\r\n",0) or die "$!\n";
@@ -40606,7 +40636,7 @@ sub BlockReport {
         stateReset($fh);
         $this->{getline} = \&getline;
         $this->{getlinetxt} = 'getline';
-        sendque( $this->{friend}, "RSET\r\n" );
+        sendque( $this->{friend}, "RSET\r\n" ) if $this->{friend};
         $this->{lastcmd} = 'RSET';
         push( @{ $this->{cmdlist} }, $this->{lastcmd} ) if $ConnectionLog >= 2;
         return;
@@ -40614,7 +40644,7 @@ sub BlockReport {
         stateReset($fh);
         $this->{getline} = \&getline;
         $this->{getlinetxt} = 'getline';
-        sendque( $this->{friend}, "QUIT\r\n" );
+        sendque( $this->{friend}, "QUIT\r\n" ) if $this->{friend};
         $this->{lastcmd} = 'QUIT';
         push( @{ $this->{cmdlist} }, $this->{lastcmd} ) if $ConnectionLog >= 2;
         return;
@@ -40772,7 +40802,7 @@ sub BlockReportBody2Q {
             stateReset($fh);
             $this->{getline} = \&getline;
             $this->{getlinetxt} = 'getline';
-            sendque( $this->{friend}, "RSET\r\n" );
+            sendque( $this->{friend}, "RSET\r\n" ) if $this->{friend};
             return;
         }
 
@@ -40792,7 +40822,7 @@ sub BlockReportBody2Q {
                 stateReset($fh);
                 $this->{getline} = \&getline;
                 $this->{getlinetxt} = 'getline';
-                sendque( $this->{friend}, "RSET\r\n" );
+                sendque( $this->{friend}, "RSET\r\n" ) if $this->{friend};
                 return;
             }
         }
@@ -40807,7 +40837,7 @@ sub BlockReportBody2Q {
                 stateReset($fh);
                 $this->{getline} = \&getline;
                 $this->{getlinetxt} = 'getline';
-                sendque( $this->{friend}, "RSET\r\n" );
+                sendque( $this->{friend}, "RSET\r\n" ) if $this->{friend};
                 return;
             }
         }
@@ -40830,7 +40860,7 @@ sub BlockReportBody2Q {
         stateReset($fh);
         $this->{getline} = \&getline;
         $this->{getlinetxt} = 'getline';
-        sendque( $this->{friend}, "RSET\r\n" );
+        sendque( $this->{friend}, "RSET\r\n" ) if $this->{friend};
     }
 }
 
@@ -40940,7 +40970,7 @@ sub BlockReportBody {
                 stateReset($fh);
                 $this->{getline} = \&getline;
                 $this->{getlinetxt} = 'getline';
-                sendque( $this->{friend}, "RSET\r\n" );
+                sendque( $this->{friend}, "RSET\r\n" ) if $this->{friend};
                 return;
             }
             my $isadmin = (   matchSL( $this->{mailfrom}, 'EmailAdmins' )
@@ -41060,7 +41090,7 @@ sub BlockReportBody {
                     stateReset($fh);
                     $this->{getline} = \&getline;
                     $this->{getlinetxt} = 'getline';
-                    sendque( $this->{friend}, "RSET\r\n" );
+                    sendque( $this->{friend}, "RSET\r\n" ) if $this->{friend};
                     unloadNameSpace('BlockReport::modify');
                     return;
                 }
@@ -41123,7 +41153,7 @@ sub BlockReportBody {
                     stateReset($fh);
                     $this->{getline} = \&getline;
                     $this->{getlinetxt} = 'getline';
-                    sendque( $this->{friend}, "RSET\r\n" );
+                    sendque( $this->{friend}, "RSET\r\n" ) if $this->{friend};
                 }
                 unloadNameSpace('BlockReport::modify');
                 return;
@@ -41136,7 +41166,7 @@ sub BlockReportBody {
                     stateReset($fh);
                     $this->{getline} = \&getline;
                     $this->{getlinetxt} = 'getline';
-                    sendque( $this->{friend}, "RSET\r\n" );
+                    sendque( $this->{friend}, "RSET\r\n" ) if $this->{friend};
                 }
                 unloadNameSpace('BlockReport::modify');
                 return;
@@ -41231,7 +41261,7 @@ EOT
                 stateReset($fh);
                 $this->{getline} = \&getline;
                 $this->{getlinetxt} = 'getline';
-                sendque( $this->{friend}, "RSET\r\n" );
+                sendque( $this->{friend}, "RSET\r\n" ) if $this->{friend};
             }
         }
       };    # end eval
@@ -41241,7 +41271,7 @@ EOT
           stateReset($fh);
           $this->{getline} = \&getline;
           $this->{getlinetxt} = 'getline';
-          sendque( $this->{friend}, "RSET\r\n" );
+          sendque( $this->{friend}, "RSET\r\n" ) if $this->{friend};
           unloadNameSpace('BlockReport::modify');
           return;
       }
@@ -62121,37 +62151,46 @@ sub configUpdateSMTPNet {
             delete $SocketCalls{$ProxySocket{$k}};
         }
         %ProxySocket = ();
+        @ProxySockets = ();
     } else {
         mlog(0,"info : $name is switch off - SMTP$isproxy listeners will be switched on");
 
         my ($lsn,$lsnI) = newListen($listenPort,\&ConToThread,1);
         @lsn = @$lsn; @lsnI = @$lsnI;
+        for (@$lsnI) {s/:::/\[::\]:/o;}
         mlog(0,"listening for SMTP connections on @lsnI") if @lsn;
 
         if($listenPortSSL && $CanUseIOSocketSSL) {
           my ($lsnSSL,$lsnSSLI) = newListenSSL($listenPortSSL,\&ConToThread,1);
           @lsnSSL = @$lsnSSL; @lsnSSLI = @$lsnSSLI;
+          for (@$lsnSSLI) {s/:::/\[::\]:/o;}
           mlog(0,"listening for additional SMTP connections on @lsnSSLI") if @lsnSSL;
         }
 
         if($listenPort2) {
           my ($lsn2,$lsn2I) = newListen($listenPort2,\&ConToThread,1);
           @lsn2 = @$lsn2; @lsn2I = @$lsn2I;
+          for (@$lsn2I) {s/:::/\[::\]:/o;}
           mlog(0,"listening for additional SMTP connections on @lsn2I") if @lsn2;
         }
 
         if($relayHost && $relayPort) {
           my ($lsnRelay,$lsnRelayI)=newListen($relayPort,\&ConToThread,1);
           @lsnRelay = @$lsnRelay; @lsnRelayI = @$lsnRelayI;
+          for (@$lsnRelayI) {s/:::/\[::\]:/o;}
           mlog(0,"listening for SMTP relay connections on @lsnRelayI") if @lsnRelay;
         }
 
-         while ((my $k,my $v) = each(%Proxy)) {
+        %ProxySocket = ();
+        @ProxySockets = ();
+        while ((my $k,my $v) = each(%Proxy)) {
              my ($to,$allow) = split(/<=/o, $v);
              $allow = " allowed for $allow" if ($allow);
-             my (@ProxySocket,@dummy) = newListen($k,\&ConToThread,2);
-             $ProxySocket{$k} = shift @ProxySocket;
-             mlog(0,"proxy started: listening on $k forwarded to $to$allow") if $ProxySocket{$k};
+             my ($ProxySocket,$dummy) = newListen($k,\&ConToThread,2);
+             $ProxySocket{$k} = shift @$ProxySocket;
+             push @ProxySockets, @$dummy;
+             for (@$dummy) {s/:::/\[::\]:/o;}
+             mlog(0,"proxy started: listening on @$dummy forwarded to $to$allow") if $ProxySocket{$k};
         }
     }
     return '';
@@ -64604,7 +64643,9 @@ sub TransClient {
     d('TransClient');
     my $this=$Con{$fh};
     my $server=$this->{friend};
-    my $friend=$Con{$server};
+    return if ! $server;
+    my $friend=exists $Con{$server} ? $Con{$server} : undef;
+    return unless $friend;
 
     if (! $this->{headerpassed} && $l =~ /^(mail from:|rset)[^\r\n]*[\r\n]+$/io) {
         $this->{getline} = \&getline;
@@ -64626,8 +64667,10 @@ sub TransServer {
     d('TransServer');
     my $this=$Con{$fh};
     my $client=$this->{friend};
-    my $friend=$Con{$client};
-
+    return if ! $client;
+    my $friend=exists $Con{$client} ? $Con{$client} : undef;
+    return if ! $friend;
+    
     $friend->{headerpassed} = 1 if $l =~ /^354[^\r\n]*[\r\n]+$/io;
     sendque($client,$l);
     return;
@@ -64751,6 +64794,7 @@ sub ProxyTraffic {
   d('ProxyTraffic');
   $SMTPbuf = '';
   my $friend = $Con{$fh}->{friend};
+  return if ! $friend || ! exists $Con{$friend};
   $fh->blocking(0) if $fh->blocking;
   &sigoffTry(__LINE__);
   my $hasread = $fh->sysread($SMTPbuf,$Con{$fh}->{RCVBUF});
@@ -64783,7 +64827,7 @@ sub doneProxy {
   $mode = "TLS" if ($Con{$fh}->{runTLS});
   eval{
       $cliIP=ITR($fh->peerhost()).":".$fh->peerport();
-      $serIP=ITR($Con{$fh}->{friend}->peerhost()).":".$Con{$fh}->{friend}->peerport();
+      $serIP=ITR($Con{$fh}->{friend}->peerhost()).":".$Con{$fh}->{friend}->peerport() if $Con{$fh}->{friend};
   };
   mlog(0,"info: closed $mode connection for $serIP and $cliIP") if $ConnectionLog;
   if ($Con{$fh}->{friend}) {
@@ -64835,9 +64879,9 @@ sub configChangeProxy {
     unpoll($ProxySocket{$k},$writable);
     sockclose($ProxySocket{$k});
     mlog(0,"proxy listening on $k was closed");
-   }
-   %Proxy = ();
   }
+  %Proxy = ();
+ }
 
  mlog(0,"AdminUpdate: Proxy Table updated from '$old' to '$new'") unless $init || $new eq $old;
  $ProxyConf=$Config{ProxyConf}=$new unless $WorkerNumber;
@@ -64851,12 +64895,15 @@ sub configChangeProxy {
      $v=~/^(.*?)\=\>(.*)$/o;
      $Proxy{$1}=$2;
  }
+ @ProxySockets = ();
+ %ProxySocket = ();
  if (! $init && $WorkerNumber == 0) {
   while (my ($k,$v) = each(%Proxy)) {
         my ($to,$allow) = split(/<=/o, $v);
         $allow = " allowed for $allow" if ($allow);
         my ($ProxySocket,$dummy) = newListen($k,\&ConToThread,2);
         $ProxySocket{$k} = shift @$ProxySocket;
+        push @ProxySockets, @$dummy;
         for (@$dummy) {s/:::/\[::\]:/o;}
         mlog(0,"proxy started: listening on @$dummy forwarded to $to$allow");
   }
@@ -66293,7 +66340,6 @@ sub callPlugin {
     my ($fh,$where,$mail) = @_;
     d("callPlugin - $where");
     my $this = $Con{$fh};
-    my $friend = $Con{$this->{friend}};
     my $plinput;
     my $ploutput;
     my %runpl = ();
@@ -67711,7 +67757,7 @@ sub ThreadStatus {
         eval{$ConFno{$fno}->{messagescore} = $Con{$c}->{messagescore};};
         eval{$ConFno{$fno}->{worker} = $Iam;};
         eval{$ConFno{$fno}->{ssl} = $Con{$c}->{movedtossl} ? '*' : '_' ;};
-        eval{$ConFno{$fno}->{friendssl} = $Con{$Con{$c}->{friend}}->{movedtossl} ? '*' : '_' ;};
+        eval{$ConFno{$fno}->{friendssl} = $Con{$c}->{friend} && exists $Con{$Con{$c}->{friend}} && $Con{$Con{$c}->{friend}}->{movedtossl} ? '*' : '_' ;};
         eval{$ConFno{$fno}->{damping} = $Con{$c}->{damping};};
         eval{$ConFno{$fno}->{noprocessing} = $Con{$c}->{noprocessing};};
         eval{$ConFno{$fno}->{whitelisted} = $Con{$c}->{whitelisted};};
