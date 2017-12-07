@@ -196,7 +196,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.5.6';
-$build   = '17340';        # 06.12.2017 TE
+$build   = '17341';        # 07.12.2017 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -566,7 +566,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'B1C2DC2C42C3FB2BAC79C56FA4E297B447138FAE'; }
+sub __cs { $codeSignature = '8137BA9913C71540D6222CA7EF9F3DFCC2B6E073'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -4808,7 +4808,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
  'SSL/TLS negotiation will timeout after this many seconds. default is : 5 seconds.',undef,undef,'msg008280','msg008281'],
 ['maxSSLRenegotiations','Maximum Allowed SMTP SSL Client-Initiated-Renegotiations',4,\&textinput,10,'(\d+)',undef,
  'Maximum count of allowed SSL/TLS client initiated renegotiations to prevent DoS.<br />
-  If this count is exceeded in a connection within 10 seconds, the connection is terminated, the connected IP is registered in banFailedSSLIP and new connections from this IP address are rejected for 15-30 minutes. An IP-Score of PenaltyExtreme but at least 150 is used for the IP address. Zero disables this feature - default is : 2 attempts.<br />
+  If this count is exceeded in a connection within '.$maxSSLRenegDuration.' seconds, the connection is terminated, the connected IP is registered in banFailedSSLIP and new connections from this IP address are rejected for 15-30 minutes. An IP-Score of PenaltyExtreme but at least 150 is used for the IP address. Zero disables this feature - default is : 10 attempts.<br />
   This check is skipped for well known good IPs and senders as well as for privat IP ranges and outgoing mails.',undef,undef,'msg010620','msg010621'],
 ['SSLDEBUG','Debug Level for SSL/TLS','0:no Debug|1:level 1|2:level 2|3:level 3',\&listbox,0,'(\d*)',undef,'Set the debug-level for SSL/TLS. Than higher the level, than more information are written to maillog.txt!',undef,undef,'msg008290','msg008291'],
 
@@ -21286,7 +21286,7 @@ sub unpoll {
    $fhh = $Con{$fhh}->{self} if exists $Con{$fhh} && ref($Con{$fhh}->{self}) =~ /socket/io;
    $fhh = $WebConH{$fhh} if exists $WebConH{$fhh} && ref $WebConH{$fhh};
    $fhh = $StatConH{$fhh} if exists $StatConH{$fhh} && ref $StatConH{$fhh};
-   return unless ("$fhh" =~ /Socket/oi);
+   return unless ((ref($fhh) =~ /socket|net|ssl|send|smtp/oi));
    return unpoll_force($fhh,$action);
 }
 
@@ -23950,7 +23950,7 @@ sub getline {
     my $server;
     $server=$this->{friend} if $this->{friend};
     my $friend;
-    my $friend=$Con{$server} if exists $Con{$server};
+    $friend=$Con{$server} if $server && exists $Con{$server};
     my $reply;
     $this->{crashbuf} .= $l if $Con{$fh}->{crashfh};
     d("getline: <$l>");
@@ -34691,7 +34691,7 @@ sub Delayok_Run {
     my($fh,$rcpt)=@_;
     my $this = $Con{$fh};
     my $client;
-    my $client = $this->{friend} if $this->{friend};
+    $client = $this->{friend} if $this->{friend};
     $this->{prepend}='';
     d('Delayok');
 
@@ -67981,6 +67981,8 @@ sub ThreadGoSleep {
       mlog(0,"info: worker memory$mem") if $mem && $MaintenanceLog > 2;
       $WorkerLastAct{$Iam} = time;
       my $st = Time::HiRes::time();
+      undef $readable;
+      undef $writable;
       threads->yield();
       my $res = $tqueue->dequeue(1);         # wait until anyone wakes us up;
       threads->yield();
@@ -67995,6 +67997,13 @@ sub ThreadGoSleep {
       mlog(0,"info: worker memory$mem") if $mem && $MaintenanceLog > 2;
       $WorkerLastAct{$Iam} = time;
       threads->yield();
+      if ($IOEngineRun == 0) {
+          $readable = IO::Poll->new();
+          $writable = IO::Poll->new();
+      } else {
+          $readable = IO::Select->new();
+          $writable = IO::Select->new();
+      }
       &ThreadGetNewCon() if $ComWorker{$Iam}->{run};
       &NewSMTPConCall() if $ComWorker{$Iam}->{run};
 }

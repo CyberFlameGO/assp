@@ -1,3 +1,14 @@
+2017-12-07
+fixed in assp 2.5.6 *Fortress* build 17341:
+
+changed:
+
+- improved connection data cleanup in idle mode (sleeping threads)
+
+- typo corrections in the GUI
+
+
+
 2017-12-06
 fixed in assp 2.5.6 *Fortress* build 17340:
 
