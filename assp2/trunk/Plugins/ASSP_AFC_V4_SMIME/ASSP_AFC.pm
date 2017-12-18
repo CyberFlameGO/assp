@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 4.74 2017/12/01 10:30:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 4.75 2017/12/09 14:30:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -51,6 +51,8 @@ our $checkExeExternal;  # custom subroutine to check executables external (eg. l
 our $checkExeExternalForce; # same as $checkExeExternal - but called weather the internal check has found an executable or not - $ASSP_AFC::checkExeExternalForce->($self,\$sk,\$buff,$raf,\$pdf,\$type)
                               # ....
                               # type - contains the previous detected executable type description or undef
+
+our $VBAcheck = 0;     # enable(1)/disable(0) the executable VBA script check
 
 our %libarchiveFatal = (                   # if these FATAL values are returned by libachive, try to use the next decompression engine instead detecting a wrong attachment
 -30 => 'Unrecognized archive format',      # first the error number
@@ -199,7 +201,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.74 2017/12/01 10:30:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.75 2017/12/09 14:30:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(17292)';
 our $MINASSPVER = '2.5.5'.$MINBUILD;
 our $plScan = 0;
@@ -1015,8 +1017,8 @@ sub process {
                         $text =~ s/FILENAME/$orgname/go;
                         $text =~ s/REASON/$exetype/go;
                         eval{
-                            $text = Encode::encode('UTF-8',$text);
-                            $text = $main::UTF8BOM . $text;
+#                            $text = Encode::encode('UTF-8',$text);
+                            $text = $main::UTF8BOM . $text if $text =~ /$main::NONASCII/o;
                         };
                         $orgname =~ s/$ext$/\.txt/;
                         $attname =~ s/$ext$/\.txt/;
@@ -1079,8 +1081,8 @@ sub process {
                     $text =~ s/FILENAME/$orgname/g;
                     $text =~ s/VIRUS/$this->{messagereason}/g;
                     eval{
-                        $text = Encode::encode('UTF-8',$text);
-                        $text = $main::UTF8BOM . $text;
+#                        $text = Encode::encode('UTF-8',$text);
+                        $text = $main::UTF8BOM . $text if $text =~ /$main::NONASCII/o;
                     };
                     my $oldname = $attname;
                     $orgname =~ s/$ext$/\.txt/;
@@ -1440,7 +1442,7 @@ sub haveToScan {
 
     return 0 if ($skipASSPscan && ! $this->{overwritedo} && ! $plScan);    # was not called from a Plugin
 
-    return 0 if ($this->{noscan} || $main::noScan && main::matchSL($this->{mailfrom},'noScan') );
+    return 0 if ($this->{noscan} || ($this->{noscan} = $main::noScan && main::matchSL($this->{mailfrom},'noScan')) );
     return 0 if $this->{clamscandone}==1;
     return 0 if !$UseAvClamd;
     return 0 if !$main::CanUseAvClamd;
@@ -1448,7 +1450,7 @@ sub haveToScan {
     return 0 if ($this->{noprocessing} & 1) && $main::ScanNP!=1;
     return 0 if $this->{relayok} && $main::ScanLocal!=1;
 
-    return 0 if $main::noScanIP && &main::matchIP($this->{ip},'noScanIP',$fh);
+    return 0 if ($this->{noscan} = $main::noScanIP && &main::matchIP($this->{ip},'noScanIP',$fh));
     return 0 if $main::NoScanRe  && $this->{ip}=~('('.$main::NoScanReRE.')');
     return 0 if $main::NoScanRe  && $this->{helo}=~('('.$main::NoScanReRE.')');
     return 0 if $main::NoScanRe  && $this->{mailfrom}=~('('.$main::NoScanReRE.')');
@@ -1469,14 +1471,14 @@ sub haveToFileScan {
 
     return 0 if ($skipASSPscan && ! $this->{overwritedo} && ! $plScan);    # was not called from a Plugin
 
-    return 0 if ($this->{noscan} || $main::noScan && main::matchSL($this->{mailfrom},'noScan') );
+    return 0 if ($this->{noscan} || ($this->{noscan} = $main::noScan && main::matchSL($this->{mailfrom},'noScan')) );
     return 0 if $this->{filescandone}==1;
     return 0 if $this->{whitelisted} && $main::ScanWL!=1;
     return 0 if ($this->{noprocessing} & 1) && $main::ScanNP!=1;
     return 0 if $this->{relayok} && $main::ScanLocal!=1;
     return 0 if ! $DoFileScan;
 
-    return 0 if $main::noScanIP && &main::matchIP($this->{ip},'noScanIP',$fh);
+    return 0 if ($this->{noscan} = $main::noScanIP && &main::matchIP($this->{ip},'noScanIP',$fh));
     return 0 if $main::NoScanRe  && $this->{ip}=~('('.$main::NoScanReRE.')');
     return 0 if $main::NoScanRe  && $this->{helo}=~('('.$main::NoScanReRE.')');
     return 0 if $main::NoScanRe  && $this->{mailfrom}=~('('.$main::NoScanReRE.')');
@@ -1613,6 +1615,16 @@ sub isAnEXE {
 #
 # various scripts (perl, sh, java, etc...)
 #
+    } elsif ($VBAcheck && $sk !~ /:CSC/oi && $buff =~ /  Auto(?:Close|Exec|Exit|Open) |
+                                            Document_?(?:(?:Before)?(?:Close|Open)) |
+                                            Workbook_(?:Activate|Close|Open) |
+                                            (?:Create|Get)Object |
+                                            Declare |
+                                            CallByName |
+                                            \.Run |
+                                            Shell
+                                         /iox) {
+        $type = "VBA script";
     } elsif ($sk !~ /:CSC/oi && $buff =~ /^#!\s*\/\S*bin\/(\w+)/io) {
         $type = "$1 script";
     } elsif ($sk !~ /:CSC/oi && $buff =~ /^#!\s*[A-Z]\:[\\\/]\S+[\\\/](\w+)/io) {
