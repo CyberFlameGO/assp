@@ -1,3 +1,32 @@
+2017-12-18
+fixed in assp 2.5.6 *Fortress* build 17352:
+
+- a memory leak in report connection handling is fixed
+
+- ASSP_AFC: non ASCII characters in 
+  'ASSP_AFCReplBadAttachText','Replace Bad Attachments Text'
+  and
+  'ASSP_AFCReplViriPartsText','Replace Virus Parts Text'
+  were wrong MIME-encoded in the delivered mail
+
+changed:
+
+- 'MaxAUTHErrors','Max Number of AUTHentication Errors'
+....
+If your MTA offers AUTH without supporting it (has no user accounts) define a negative value here (e.g. -1).
+In this case assp and the MTA will function as an AUTH-honeypot, the peer will get an penalty at the first AUTH request.
+....
+
+- in case a blocked attachment mail is resent in block reports by admins, the '[no] scan' option is added to the request
+  mail body
+
+- ASSP_AFC version 4.75 fixes a minor logging output issue
+
+- ASSP_AFC version 4.75 has a new function for VBA detection. To enable it set
+  $ASSP_AFC::VBAcheck = 0;     # enable(1)/disable(0) the executable VBA script check
+  to '1'
+
+
 2017-12-07
 fixed in assp 2.5.6 *Fortress* build 17341:
 

@@ -104,8 +104,7 @@ perl -V
 Upgrade your Perl installation to a multithreading version.
 To run this version of ASSP, a Perl version 5.016003 (5.16.3) or higher
 is recommended.
-Perl 5.02400x (5.24.x) is highly recommended.
-Perl 5.02600x (5.26.x) has an experimental state, but should work.
+Perl 5.02600x (5.26.x) is highly recommended.
 An perl version 5.010000 is at least required.
 Perl version 6.x is not supported.
 ******************************************************************************
@@ -196,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.5.6';
-$build   = '17341';        # 07.12.2017 TE
+$build   = '17352';        # 18.12.2017 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -566,7 +565,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '8137BA9913C71540D6222CA7EF9F3DFCC2B6E073'; }
+sub __cs { $codeSignature = '0136CB55FBA7A862C314A183DC59A4BEF337312D'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -591,7 +590,8 @@ our $SSL_read_ahead_wait = 2;          # poll/select socket wait time in millise
 our $SSL_read_ahead_max_time = 50;     # time in milliseconds used for read ahead
 
 # the SSL/TLS renegotiation counter will be reset after this number of seconds without a renegotiation request and any regular data are sent or received
-our $maxSSLRenegDuration = 10;
+our $maxSSLRenegDuration;
+BEGIN {$maxSSLRenegDuration = 10;} # maxSSLRenegDuration is referenced in the GUI - so we have to set the value at begin
 our $SSLContextMaxAge = 24 * 3600;
 our $SSLContextMaxUnused = 3600;
 
@@ -1858,10 +1858,11 @@ jhanna=&gt;0<br />
 If multiple matches (values) are found in a mail for any IP address in the transport mail chain, any envelope recipient and the envelope sender, the highest value or 0 (no limit) will be used! If no match (value) is found in a mail, the definition in maxSizeExternal will take place. NoProcessing (except npsize) will skip this check.',undef,undef,'msg009520','msg009521'],
 ['maxSizeError','max message size Error',80,\&textinput,'552 message exceeds MAXSIZE byte (size)','(552 .*)',undef,'SMTP error message to reject maxSize / maxSizeExternal exceeding mails. For example:552 message exceeds MAXSIZE byte (size)! MAXSIZE will be replaced by the value of maxSize / maxSizeExternal.',undef,undef,'msg008640','msg008641'],
 
-['MaxAUTHErrors','Max Number of AUTHentication Errors',10,\&textinput,'','(\d*)','ConfigChangeMaxAUTH',
+['MaxAUTHErrors','Max Number of AUTHentication Errors',10,\&textinput,'','(-\d+|\d*)','ConfigChangeMaxAUTH',
  'If an IP (/24 network is used for incoming mails) exceeds this number of authentication errors (535 or 530) the transmission of the current message will be canceled and any new connection from that IP will be blocked for 5-10 minutes.<br />
   Every 5 Minutes the \'AUTHError\' -counter of the IP will be decreased by one. autValencePB is used for the penalty box.<br />
-  No limit is imposed by ASSP, if the field is left blank or set to zero (zero cleans the related cache \'AUTHError\'). This option allows admins to prevent external bruteforce or dictionary attacks via AUTH command. Whitelisted, noBlockingIPs , noMaxAUTHErrorIPs and NoProcessing IP\'s are ignored like any relayed connection.',undef,undef,'msg009310','msg009311'],
+  No limit is imposed by ASSP, if the field is left blank or set to zero (zero cleans the related cache \'AUTHError\'). If your MTA offers AUTH without supporting it (has no user accounts) define a negative value here (e.g. -1). In this case assp and the MTA will function as an AUTH-honeypot, the peer will get an penalty at the first AUTH request.<br />
+  This option allows admins to prevent external bruteforce or dictionary attacks via AUTH command. Whitelisted, noBlockingIPs , noMaxAUTHErrorIPs and NoProcessing IP\'s are ignored like any relayed connection.',undef,undef,'msg009310','msg009311'],
 ['ResetMaxAUTHErrorIPs','Reset the MaxAUTHErrors Counter for these IP\'s*',40,\&textinput,'','(\S*)','ConfigMakeIPRe',
  'List of IP\'s for which MaxAUTHErrors counter should be cleared immediatly after a successful login.  For example: 145.145.145.145|145.146.<br />
  It is not recommended to use this option for security reasons, but it may required for client networks behind a NAT.',undef,undef,'msg010540','msg010541'],
@@ -7824,7 +7825,7 @@ if ($@) {
 sub write_rebuild_module {
 my $curr_version = shift;
 
-my $rb_version = '7.41';
+my $rb_version = '7.42';
 my $keepVersion;
 
 if (open my $ADV, '<',"$base/lib/rebuildspamdb.pm") {
@@ -9960,7 +9961,7 @@ sub rb_uploadgriplist {
         next unless (open( my $FLogFile, '<', "$File" ));
         while (<$FLogFile>) {
             my ($auth,$fake,$DoS);
-            if ( ( $ip, $auth, $fake, $DoS ) = /(?:$gooddays) .*?\s($IPRe)[ \]](?:.*? to: \S+|(warning: SMTP authentication failed|(info: faked authentication success for honeypot)|(info: SSL DoS using consecutive renegotiations detected)))/i) {
+            if ( ( $ip, $auth, $fake, $DoS ) = /(?:$gooddays) .*?\s($IPRe)[ \]](?:.*? to: \S+|(- too many AUTH errors \(\d+\)|warning: SMTP authentication failed|(info: faked authentication success for honeypot)|(info: SSL DoS using consecutive renegotiations detected)))/i) {
                 next if $ip =~ /$IPprivate/o;                         # ignore private IP ranges
                 next if &main::matchIP($ip,'acceptAllMail',0,1);
                 $ip = &main::ipNetwork($ip, 1);
@@ -9969,7 +9970,7 @@ sub rb_uploadgriplist {
                     #Good IP
                     $GpCnt{ $ip } += 1;
                     $GpOK{ $ip }  += 1;
-                } elsif (! $main::noGripListUpload && ($auth || /$main::SpamTagRE|\[PenaltyDelay\]/o))
+                } elsif (! $main::noGripListUpload && ($auth || /$main::SpamTagRE|\[PenaltyDelay\]/oi))
                 {
                     next if /\[PersonalBlack\]/io;
                     #Bad IP
@@ -14068,7 +14069,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.74;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.75;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.05;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -16603,7 +16604,6 @@ sub MainLoop {
       mlog(0,"info: stop Threads collecting status information") if ($MaintenanceLog);
       &ThreadYield();
       %ConFno = ();
-      undef %ConFno;
   }
   if ($maxwait && $process_external_cmdqueue && time % 5 == 0 && (open my $cmdq, '<',"$base/cmdqueue")) {
       &ThreadMonitorMainLoop('processing external command queue');
@@ -18504,6 +18504,7 @@ sub NewSMTPConnection {
 
     if ($MaxAUTHErrors &&
         $doIPcheck &&
+        $AUTHErrors{$bip} > 0 &&
         $AUTHErrors{$bip} > $MaxAUTHErrors &&
         ! matchIP($ip,'noMaxAUTHErrorIPs',0,0)
        )
@@ -18606,10 +18607,13 @@ sub NewSMTPConnection {
         mlog(0,"Connected: remote support session: started from $ip:$port - the connection is moved to transparent proxy mode");
     } else {
         addfh($client,\&getline,$server);
+        $Con{$client}->{getlinetxt}='getline';
         if($sendNoopInfo) {
             addfh($server,\&skipok,$client);
+            $Con{$server}->{getlinetxt}='skipok';
         } else {
             addfh($server,\&reply,$client);
+            $Con{$server}->{getlinetxt}='reply';
         }
     }
     if ($ConTimeOutDebug) {
@@ -19103,7 +19107,7 @@ sub SMTPTraffic {
         eval {$ip = ITR($fh->peerhost()) . ':' . $fh->peerport();} unless $ip;
         my $lastcmd = "- last command was \'$Con{$fh}->{lastcmd}\'";
         $lastcmd = '' unless $Con{$fh}->{lastcmd};
-        mlog($fh,"info: can't read any data from socket $ip$pending - $error $lastcmd") if ($error);
+        mlog($fh,"info: can't read any data from socket $ip$pending - $error $lastcmd") if ($error && $ConnectionLog >= 2);
         done2($fh);
     }
     &NewSMTPConCall();
@@ -21099,6 +21103,16 @@ sub done2 {
     
     d('delete the Connection data');
     # delete the Connection data
+    # delete socket and large scalars explicite
+    delete $Con{$fh}->{self};
+    delete $Con{$fh}->{client};
+    delete $Con{$fh}->{server};
+    delete $Con{$fh}->{forwardSpam};
+    delete $Con{$fh}->{contimeoutdebug};
+    delete $Con{$fh}->{header};
+    delete $Con{$fh}->{maillogbuf};
+    delete $Con{$fh}->{outgoing};
+
     delete $Con{$fh};
     delete $ConDelete{$fh};
     delete $Con{$ofh};
@@ -21256,11 +21270,11 @@ sub addsslfh {
 # sendque enques a string for a socket
 sub sendque {
     my ($fh,$message)=@_;
+    return unless $fh && exists $Con{$fh};
     my $outmessage = ref($message) ? $message : \$message;
     $utf8off->(\$$outmessage);
-    my $l=length($$outmessage);
+    my $l=length($$outmessage) || return;
     d("sendque: $fh $Con{$fh}->{ip} l=$l");
-    return unless $fh && exists $Con{$fh};
 
     if (   $Con{$fh}->{type} eq 'C'       # is a client SMTP connection?
         && ($replyLogging == 2 or ($replyLogging == 1 && $$outmessage =~ /^[45]/o))
@@ -23982,7 +23996,7 @@ sub getline {
         }
     }
 
-    if ($friend->{getline} eq \&replyEHLO) {
+    if ($friend && $friend->{getline} eq \&replyEHLO) {
         $friend->{getline} = \&reply;
         $friend->{getlinetxt} = 'reply';
     }
@@ -23992,7 +24006,7 @@ sub getline {
         push(@{$this->{cmdlist}},$this->{lastcmd}) if $ConnectionLog >= 2;
         mlog($fh,"info: got STARTTLS request from $this->{ip}") if $ConnectionLog;
 
-        if (   $CanUseIOSocketSSL
+        if (   $CanUseIOSocketSSL && $server && $friend
             && $DoTLS == 2
             && ! $SSLfailed{$this->{ip}}
             && "$fh" !~ /SSL/io
@@ -24124,11 +24138,11 @@ sub getline {
             sendque( $fh, "554 5.7.1 the connection is rejected - bad host identity detected\r\n" );
             $this->{closeafterwrite} = 1;
             unpoll($fh,$readable);
-            done2($server) if (! exists $ConDelete{$server});
+            done2($server) if ($server && ! exists $ConDelete{$server});
             return;
         }
 
-        if ($l=~/^ *ehlo/io) {
+        if ($friend && $l=~/^ *ehlo/io) {
            if ($friend->{noop} ne 'delete') {
                $friend->{getline} = \&reply;
                $friend->{getlinetxt} = 'reply';
@@ -24145,10 +24159,10 @@ sub getline {
             $this->{lastcmd} = 'ehlo';
             push(@{$this->{cmdlist}},$this->{lastcmd}) if $ConnectionLog >= 2;
             $fhelo =~ s/^ *helo/ehlo/io;
-            mlog($fh,"info: sending EHLO instead of HELO to " . ITR($server->peerhost())) if $ConnectionLog;
+            mlog($fh,"info: sending EHLO instead of HELO to " . ITR($server->peerhost())) if $server && $ConnectionLog;
             $this->{sentEHLO} = 1;
-            $friend->{getline} = \&replyEHLO;
-            $friend->{getlinetxt} = 'replyEHLO';
+            $friend->{getline} = \&replyEHLO if $friend;
+            $friend->{getlinetxt} = 'replyEHLO' if $friend;
         }
         my $helo2 = $this->{helo} = $helo;
         $helo=~s/(\W)/\\\$1/go;
@@ -24254,7 +24268,7 @@ sub getline {
         }
 
         my $ip = &ipNetwork( $this->{ip}, 1);
-        if ($MaxAUTHErrors && ! matchIP($this->{ip},'noMaxAUTHErrorIPs',0,0) && ($this->{relayok} ? $AUTHErrors{$this->{ip}} >= $MaxAUTHErrors : $AUTHErrors{$ip} >= $MaxAUTHErrors)) {
+        if ($MaxAUTHErrors && ! matchIP($this->{ip},'noMaxAUTHErrorIPs',0,0) && ($this->{relayok} ? $AUTHErrors{$this->{ip}} > abs($MaxAUTHErrors) : $AUTHErrors{$ip} > 0 && $AUTHErrors{$ip} > $MaxAUTHErrors)) {
             $this->{lastcmd} = 'AUTH';
             push(@{$this->{cmdlist}},$this->{lastcmd}) if $ConnectionLog >= 2;
             my $ip = $this->{relayok} ? $this->{ip} : &ipNetwork( $this->{ip}, 1);
@@ -24272,12 +24286,12 @@ sub getline {
 
         if ($CanUseIOSocketSSL &&
             $DoTLS == 2 &&
+            $friend &&
             ! $SSLfailed{$this->{ip}} &&
             $friend->{donotfakeTLS} &&
             ! $this->{gotSTARTTLS} &&
             ! $this->{TLSqueue} &&
             "$server" !~ /SSL/io &&
-#            ! &matchIP($this->{ip},'noTLSIP',$fh,1) &&
             ! &matchIP(ITR($server->peerhost()),'noTLSIP',$fh,1) &&
             ! &matchFH($fh,@lsnNoTLSI)
         ) {
@@ -24340,7 +24354,7 @@ sub getline {
             return;
         }
         $this->{doneAuthToRelay} = 1;
-        sendque($server,$l);
+        sendque($server,$l) if $server;
         return;
 
     } elsif ($this->{userauth}{stepcount}) {
@@ -24401,7 +24415,7 @@ sub getline {
             return;
         }
 
-        sendque($server,$l);
+        sendque($server,$l) if $server;
         return;
 
     } elsif (&syncCanSync() && $enableCFGShare && $isShareSlave && $l=~/^ *ASSPSYNCCONFIG\s*([^\r\n]+)\r\n/o ) {
@@ -24441,7 +24455,7 @@ sub getline {
             done($fh);
             return;
         }
-        done2($server);
+        done2($server) if $server;
         my $ip = $this->{ip};
         $this->{syncServer} = $se{$ip};
         $this->{getline} = \&syncRCVData;
@@ -24518,12 +24532,12 @@ sub getline {
         
         if ($CanUseIOSocketSSL &&
             $DoTLS == 2 &&
+            $friend &&
             ! $SSLfailed{$this->{ip}} &&
             $friend->{donotfakeTLS} &&
             ! $this->{gotSTARTTLS} &&
             ! $this->{TLSqueue} &&
             "$server" !~ /SSL/io &&
-#            ! &matchIP($this->{ip},'noTLSIP',$fh,1) &&
             ! &matchIP(ITR($server->peerhost()),'noTLSIP',$fh,1) &&
             ! &matchFH($fh,@lsnNoTLSI)
         ) {
@@ -24551,6 +24565,7 @@ sub getline {
 
 # authentication on relayserver
         if ($CanUseAuthenSASL &&
+            $friend &&
             ! $this->{doneAuthToRelay} &&
             $this->{relayok} &&
             serverIsWhichHost($server,$relayHost) &&
@@ -24688,7 +24703,7 @@ sub getline {
                 $this->{ispip}=1;
             }
 
-            if ($Con{$server}->{relayok} && $WhitelistAuth){
+            if ($friend && $friend->{relayok} && $WhitelistAuth){
                 $this->{whitelisted}=1;
                 $this->{passingreason} = ": authenticated";
             }
@@ -25503,13 +25518,13 @@ sub getline {
         }
 
         # check if we have to move in to transparent mode
-        if ($transparentRecipients && matchSL( "$u$h", 'transparentRecipients' )) {
+        if ($friend && $transparentRecipients && matchSL( "$u$h", 'transparentRecipients' )) {
             mlog($fh,"info: the connection will now be moved in to the Full-Transparent-Proxy mode") if $ConnectionLog;
             $this->{getline}=\&TransClient;
             $this->{getlinetxt}='TransClient';
             $friend->{getline}=\&TransServer;
             $friend->{getlinetxt}='TransServer';
-            sendque($server,$l);
+            sendque($server,$l) if $server;
             return;
         }
 
@@ -26082,7 +26097,7 @@ sub getline {
 	        return;
         } elsif (! $foreignSRS && ($LocalAddresses_Flat || $DoLDAP || ($DoVRFY && (scalar(keys %DomainVRFYMTA) || scalar(keys %FlatVRFYMTA) )))) {
             if (($this->{islocalmailaddress}) || ($this->{relayok}) && ! $rcptislocal) {
-                if ( &serverIsSmtpDestination($server)) {
+                if ( $server && &serverIsSmtpDestination($server)) {
                     my $tuh = quotemeta($uh);
                     if ($this->{delayqueue} =~ /^$tuh | $tuh /i) {
                         $this->{rcpt}.="$uh ";
@@ -26193,7 +26208,7 @@ sub getline {
                 sendque( $fh, $reply );
                 return;
             }
-        } elsif ( &serverIsSmtpDestination($server)) {
+        } elsif ( $server && &serverIsSmtpDestination($server)) {
             my $tuh = quotemeta($uh);
             if ($this->{delayqueue} =~ /^$tuh | $tuh /i) {
                 $this->{rcpt}.="$uh ";
@@ -26516,7 +26531,7 @@ sub getline {
     } else {
         $this->{NOOPcount} = 0;
     }
-    sendque($server, $l);
+    sendque($server, $l) if $server;
 }
 
 sub normSubject {
@@ -32422,7 +32437,7 @@ sub LocalSenderOK_Run {
 
 sub AUTHErrorsForce {
     my $fh = shift;
-    return AUTHErrorsOK_Run($fh,0);
+    return AUTHErrorsOK_Run($fh,-1);
 }
 sub AUTHErrorsOK {
     my $fh = shift;
@@ -32439,7 +32454,7 @@ sub AUTHErrorsOK_Run {
     my $ip = &ipNetwork( $this->{ip}, 1);
     
     return 1 if ++$AUTHErrors{$ip} <= $MaxAUTHErrors;
-    $this->{messagereason}="too many AUTH errors from $ip";
+    $this->{messagereason}="too many ($AUTHErrors{$ip}) AUTH errors from $ip";
     pbAdd( $fh, $this->{ip}, 'autValencePB', 'AUTHErrors' ) if ! matchIP($ip,'noPB',0,1);
     $AUTHErrors{$ip}++;
     return 0;
@@ -37125,7 +37140,8 @@ sub reply {
         $r =~ s/\r|\n//go;
         if ($l =~ /^53[458]/o && !$Con{$cli}->{relayok} && ! &AUTHErrorsOK($cli)) {
             $Con{$cli}->{prepend}="[MaxAUTHErrors]";
-            mlog($cli,"max sender authentication errors ($MaxAUTHErrors) exceeded -- dropping connection - after reply: $r from $serIP");
+            my $d = $MaxAUTHErrors == -1 ? 'AUTH-honeypot ' : '';
+            mlog($cli,"max sender authentication errors ($d$MaxAUTHErrors) exceeded -- dropping connection - after reply: $r from $serIP");
             &NoLoopSyswrite($cli,$l,0);
             done($fh);
             return;
@@ -37152,7 +37168,8 @@ sub reply {
         $r =~ s/\r|\n//go;
         if (! $Con{$cli}->{relayok} && ! &AUTHErrorsOK($cli)) {
             $Con{$cli}->{prepend}="[MaxAUTHErrors]";
-            mlog($cli,"max sender authentication errors ($MaxAUTHErrors) exceeded -- dropping connection - after reply: $r from $serIP");
+            my $d = $MaxAUTHErrors == -1 ? 'AUTH-honeypot ' : '';
+            mlog($cli,"max sender authentication errors ($d$MaxAUTHErrors) exceeded -- dropping connection - after reply: $r from $serIP");
             &NoLoopSyswrite($cli,$l,0);
             done($fh);
             return;
@@ -38927,6 +38944,7 @@ sub forwardHamSpamReport {
         return 0;
     }
     addfh($s,\&RMhelo);
+    $Con{$s}->{getlinetxt}='RMhelo';
     &sigonTry(__LINE__);
     my $this=$Con{$s};
     $this->{to}=$rcpt;
@@ -39011,6 +39029,7 @@ sub ReturnMail {
         return;
     }
     addfh($s,\&RMhelo);
+    $Con{$s}->{getlinetxt}='RMhelo';
     &sigonTry(__LINE__);
     my $this=$Con{$s};
     $this->{to}=$from;
@@ -39193,6 +39212,7 @@ sub AdminReportMail {
         return;
     }
     addfh($s,\&RMhelo);
+    $Con{$s}->{getlinetxt}='RMhelo';
     my $this=$Con{$s};
     $this->{to}=$to;
     $this->{from}=$EmailFrom;
@@ -39510,12 +39530,12 @@ sub BlockReportSend {
                 $smtp->to($to);
                 $smtp->data();
                 my $blocking = $fh->blocking(0);
-                NoLoopSyswrite($fh,"date: $time $tz\r\n",0) or die "$!\n";
-                NoLoopSyswrite($fh,"To: $to\r\n",0) or die "$!\n";
-                NoLoopSyswrite($fh,"From: $mailfrom\r\n",0) or die "$!\n";
-                NoLoopSyswrite($fh,"Subject: $subject\r\n",0) or die "$!\n";
-                NoLoopSyswrite($fh,"Message-ID: <$brmsgid>\r\n",0) or die "$!\n";
-                NoLoopSyswrite($fh,$bod . "\r\n",$timeout) or die "$!\n";
+                NoLoopSyswrite($fh,"date: $time $tz\r\n"
+                                  ."To: $to\r\n"
+                                  ."From: $mailfrom\r\n"
+                                  ."Subject: $subject\r\n"
+                                  ."Message-ID: <$brmsgid>\r\n"
+                                  .$bod . "\r\n",$timeout) or die "$!\n";
                 $fh->blocking($blocking);
                 $smtp->dataend();
                 $smtp->quit;
@@ -40373,7 +40393,7 @@ WHITCHWORKER
             }
             my $addWhiteHint = (   ($autoAddResendToWhite > 1 && $isadmin)
                                 or ($autoAddResendToWhite && $autoAddResendToWhite != 2 && ! $isadmin)
-                               ) ? '%5Bdo%20not%5D%20autoadd%20sender%20to%20whitelist' : '';
+                               ) ? '%5Bdo%20not%5D%20autoadd%20sender%20to%20whitelist%20' : '';
 
             my $filename;
             $filename = $1 if $fl =~ s/\-\>\s*([^\r\n]+\Q$maillogExt\E)//i;
@@ -40386,6 +40406,13 @@ WHITCHWORKER
                                    || ($discarded && $filename =~ /\/\Q$discarded\E\// )  )
                               ) ? '%5Bdo%20not%5D%20move%20file%20to%20'.$correctednotspam : '';
             $addFileHint = '%2C' . $addFileHint if $addFileHint && $addWhiteHint;
+
+            my $addScanHint = (   $FileLogScan
+                               && $isadmin
+                               && $viruslog
+                               && $filename =~ /\/\Q$viruslog\E\//
+                              ) ? '%5Bno%5D%20scan%20'.$correctednotspam : '';
+            $addScanHint = '%2C' . $addScanHint if $addScanHint && ($addFileHint || $addWhiteHint);
 
             my $abase = $base;
             $abase    =~ s/\\/\//go;
@@ -40454,7 +40481,7 @@ s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockRep
                       if (! $faddress && $is_admin);
                     $line =~ s/\[spam found\](\s*\(.*?\))( \Q$subjectStart\E)/<span name="tohid"><br \/><span class="spam">spam reason: <\/span>$1<\/span>$2/;
                     $line =~ s/($SpamTagRE|\[(?:TLS-(?:in|out)|SSL-(?:in|out)|PersonalBlack)\])/<span name="tohid">$1<\/span>/gio;
-                    my $leftbut = '<a href="mailto:'.$EmailBlockReport.$EmailBlockReportDomain.'?subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$myName.'&body=%23%23%23'.$filename.'%23%23%23'.$addWhiteHint.$addFileHint.'%0D%0A" class="reqlink" target="_blank" title="request ASSP on '.$myName.' to resend this blocked email"><img src=cid:1000 alt="request ASSP on '.$myName.' to resend this blocked email"> Resend </a>';
+                    my $leftbut = '<a href="mailto:'.$EmailBlockReport.$EmailBlockReportDomain.'?subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$myName.'&body=%23%23%23'.$filename.'%23%23%23'.$addWhiteHint.$addFileHint.$addScanHint.'%0D%0A" class="reqlink" target="_blank" title="request ASSP on '.$myName.' to resend this blocked email"><img src=cid:1000 alt="request ASSP on '.$myName.' to resend this blocked email"> Resend </a>';
                     my $rightbut = '<a href="mailto:'.$ofilename.$EmailBlockReportDomain.'?&subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$myName.'" class="reqlink" target="_blank" title="request ASSP on '.$myName.' to resend this blocked email"><img src=cid:1000 alt="request ASSP on '.$myName.' to resend this blocked email"> Resend </a>';
                     $rightbut = '' if (&matchSL(\@to,'BlockResendLinkLeft') or
                                              ($BlockResendLink == 1 && ! matchSL(\@to,'BlockResendLinkRight')));
@@ -41688,6 +41715,7 @@ sub ccMail {
         return;
     }
     addfh($s,\&CChelo);
+    $Con{$s}->{getlinetxt}='CChelo';
     $this=$Con{$s};
     $this->{to}=$cchamlt;
     $this->{from}=$from;
@@ -45868,13 +45896,6 @@ sub MaillogClose {
     return if $Con{$fh}->{type} ne 'C';
     return unless $Con{$fh}->{maillogfilename};
 
-    my $handles = 0;
-    if ($WorkerNumber < 10000) {
-        eval { $handles += $readable->handles() if defined $readable;
-               $handles += $writable->handles() if defined $writable;
-        };
-    }
-    
     my $scanForVirus =    ! $Con{$fh}->{averror}
                        && (   ( $ClamAVLogScan > 1 && $UseAvClamd && $CanUseAvClamd )
                            || ( $FileLogScan   > 1 && $DoFileScan && $FileScanCMD ) )
@@ -45916,6 +45937,14 @@ sub MaillogClose {
 
 # scan for virus here
     if ($scanForVirus && $viruslog && $Con{$fh}->{maillogfilename}) {
+        my $handles = 0;
+        if ($WorkerNumber < 10000) {
+            my %h;
+            map { $h{$_} = 1; } $readable->handles() if defined $readable;
+            map { $h{$_} = 1; } $writable->handles() if defined $writable;
+            $handles = scalar keys %h;
+        }
+
         if ($handles <= $WorkerScanConLimit) {
              delete $Con{$fh}->{maillogfilename} unless eval{ scanFile4VirusOK([$fh,$Con{$fh}->{maillogfilename}]) };
         } else {
@@ -45939,7 +45968,7 @@ sub forwardSpam {
     my $destination;
     if ($sendAllDestination ne '') {
         $destination = $sendAllDestination;
-    }else{
+    } else {
         $destination = $smtpDestination;
     }
 
@@ -45991,6 +46020,7 @@ sub forwardSpam {
         return;
     }
     addfh($s,\&FShelo);
+    $Con{$s}->{getlinetxt}='FShelo';
     my $this=$Con{$s};
     $this->{to_as} = $to;
     mlog($oldfh,"info: forwarding spam message to $this->{to_as}") if $ConnectionLog > 1;
@@ -55057,7 +55087,12 @@ function processPrint(){
                    th {text-align: right;}
                 </style>';
         $s1 .= '<table CELLSPACING=0 CELLPADDING=4 WIDTH="98%" style="margin:0; text-align:left;"><tr>';
-        $SMTPSessionCount = scalar(keys %ConFno);
+	    my $tmpTimeNow = time;
+        my %tConFno = ();
+        threads->yield();
+        %tConFno = %ConFno;
+        threads->yield();
+        $SMTPSessionCount = scalar(keys %tConFno);
         my $memusage = int(&memoryUsage() / 1048576);
         threads->yield();
         $s1 .= '<th>SMTP sessions' . " in threads:</th><td>$SMTPSessionCount</td><th>global:</th><td>$smtpConcurrentSessions</td><th>total:</th><td>$SMTPSessionIP{Total}</td></tr>";
@@ -55076,19 +55111,15 @@ function processPrint(){
         $s2 =
             "<tr><td class=\"conTabletitle\"># TLS</td><td class=\"conTabletitle\">WKR(Con)</td><td class=\"conTabletitle\">Remote IP</td><td class=\"conTabletitle\">HELO</td><td class=\"conTabletitle\">From</td><td class=\"conTabletitle\">Rcpt</td><td class=\"conTabletitle\">CMD</td><td class=\"conTabletitle\">State</td><td class=\"conTabletitle\">Spam/Score</td><td class=\"conTabletitle\">Data In-&gt;Out</td><td class=\"conTabletitle\">Time</td><td class=\"conTabletitle\">Idle".($DoDamping ? '/Damp' : '')."</td></tr>";
 
-	    my $tmpTimeNow = time;
-        my %tConFno = ();
-        threads->yield();
-        %tConFno = %ConFno;
-        threads->yield();
-        my @tmpConKeys = keys(%tConFno);
         my @tmpConSortedKeys =
           sort { $tConFno{$main::a}->{isreport}  cmp $tConFno{$main::b}->{isreport} or   # reports last
                  $tConFno{$main::a}->{timelast}  <=> $tConFno{$main::b}->{timelast} or   # last action
                  $tConFno{$main::a}->{timestart} <=> $tConFno{$main::b}->{timestart}     # start time
-               } @tmpConKeys;
+               } keys(%tConFno);
         my $tmpCount = 0;
-        foreach my $key (@tmpConSortedKeys) {
+        while (@tmpConSortedKeys) {
+                my $key = shift @tmpConSortedKeys;
+                next unless $key;
                 next unless ($tConFno{$key}->{worker});
                 next if (! $showreports && $tConFno{$key}->{isreport});
                 $conperwo{$tConFno{$key}->{worker}}++;
@@ -67756,8 +67787,8 @@ sub ThreadStatus {
         eval{$ConFno{$fno}->{writtenDataToFriend} = $Con{$c}->{writtenDataToFriend};};
         eval{$ConFno{$fno}->{messagescore} = $Con{$c}->{messagescore};};
         eval{$ConFno{$fno}->{worker} = $Iam;};
-        eval{$ConFno{$fno}->{ssl} = $Con{$c}->{movedtossl} ? '*' : '_' ;};
-        eval{$ConFno{$fno}->{friendssl} = $Con{$c}->{friend} && exists $Con{$Con{$c}->{friend}} && $Con{$Con{$c}->{friend}}->{movedtossl} ? '*' : '_' ;};
+        eval{$ConFno{$fno}->{ssl} = ($Con{$c}->{movedtossl} || "$c" =~ /SSL/io) ? '*' : '_' ;};
+        eval{$ConFno{$fno}->{friendssl} = ($Con{$c}->{friend} && exists $Con{$Con{$c}->{friend}} && ($Con{$Con{$c}->{friend}}->{movedtossl} || "$Con{$c}->{friend}" =~ /SSL/io)) ? '*' : '_' ;};
         eval{$ConFno{$fno}->{damping} = $Con{$c}->{damping};};
         eval{$ConFno{$fno}->{noprocessing} = $Con{$c}->{noprocessing};};
         eval{$ConFno{$fno}->{whitelisted} = $Con{$c}->{whitelisted};};
@@ -72333,7 +72364,7 @@ sub assp_starttls {
     ${*$me}{'net_smtp_ssl'} = 1;
     ${*$me}{'net_smtp_clns'} = *IO::Socket::SSL::DESTROY{CODE};
     *IO::Socket::SSL::DESTROY = \&Net::SMTP::DESTROY_SSLNS;
-    $me->hello(${*$me}{'net_smtp_helo'} || "");
+    $me->hello(${*$me}{'net_smtp_hello_domain'} || ${*$me}{'net_smtp_helo'} || "");
 }
 
 sub DESTROY_SSLNS {
@@ -74543,10 +74574,12 @@ our $VERSION = '1.00';
 sub new {
     my $class = shift;
     my $priority = shift;
-    return unless exists $main::workerSpeedUp{$main::WorkerNumber};
-    $priority = $main::workerSpeedUp{$main::WorkerNumber} || 0 if (! defined $priority);
+    if (! defined $priority) {
+        return if ! exists $main::workerSpeedUp{$main::WorkerNumber};
+        $priority = $main::workerSpeedUp{$main::WorkerNumber} || 0;
+    }
     &DESTROY();
-    my $self = { };
+    my $self = {};
     bless $self, $class;
     $self->{Priority} = main::threads->self()->priority($priority);
     &main::mlog(0,"Info: changed thread priority from ($self->{Priority}) to ($priority)") if ($self->{Priority} != $priority && $main::SessionLog);
