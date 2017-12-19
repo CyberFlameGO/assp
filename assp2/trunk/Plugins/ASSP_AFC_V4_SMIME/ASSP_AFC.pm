@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 4.75 2017/12/09 14:30:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 4.76 2017/12/19 09:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -201,7 +201,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.75 2017/12/09 14:30:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.76 2017/12/19 09:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(17292)';
 our $MINASSPVER = '2.5.5'.$MINBUILD;
 our $plScan = 0;
@@ -815,6 +815,16 @@ sub process {
     my @parts;
     my $child = {};
     my $parent = {};
+    my $setParts = sub {
+        my $parts = shift;
+        my %parentdone;
+        for my $part (reverse @$parts) {   # process subparts first  up to email
+            next unless exists $parent->{$part};   # is not a subpart, it has no parent - only to be safe
+            next if $parentdone{$parent->{$part}};
+            $parent->{$part}->parts_set($child->{$parent->{$part}});  # set all parts of the parent
+            $parentdone{$parent->{$part}} = 1; # don't do a parent twice
+        }
+    };
     my $ret;
     my $attlog;
     my $virilog = $main::SpamVirusLog;
@@ -1201,13 +1211,7 @@ sub process {
             mlog( $fh, "local ($this->{attachcomment})", 0, 2 ) if $this->{relayok};
     }
     if ($modified) {
-        my %parentdone;
-        for my $part (reverse @parts) {   # process subparts first  up to email
-            next unless exists $parent->{$part};   # is not a subpart, it has no parent - only to be safe
-            next if $parentdone{$parent->{$part}};
-            $parent->{$part}->parts_set($child->{$parent->{$part}});  # set all parts of the parent
-            $parentdone{$parent->{$part}} = 1; # don't do a parent twice
-        }
+        $setParts->(\@parts);
 
         $this->{logalldone} = &main::MaillogRemove($this) if ($this->{maillogfilename});
         my $fn = &main::Maillog($fh,'', ($modified == 2) ? $virilog : $attlog); # tell maillog what this is.
@@ -1253,9 +1257,10 @@ sub process {
             }
         }
         if ($changed) {
-            $email->parts_set( \@parts );
+            $setParts->(\@parts);
             $this->{header} = $email->as_string;
             correctHeader($this);
+            mlog($fh,"info: sending modified message with attachment link") if ($main::AttachmentLog == 2);
         }
     }
     my $smime;
