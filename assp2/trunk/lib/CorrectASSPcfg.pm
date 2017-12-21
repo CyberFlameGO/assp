@@ -1,7 +1,7 @@
 package CorrectASSPcfg;
 use strict qw(vars subs);
 
-# requires assp V2.5.5 build 17261 (at least !)
+# requires assp V2.5.6 build 17352 (at least !)
 #
 # If this Package is available, it will be loaded by assp and the sub set will be called, 
 # after the configuration is parsed.
@@ -67,6 +67,7 @@ use strict qw(vars subs);
 # $main::enableBRtoggleButton = 1;           # (0/1) show the "toggle view" button in HTML BlockReports
 
 # some more
+# $main::enablePermanentSSLContext = 1;      # (0/1) enable usage of permanent SSL Context - maxunused = 1 hour, max lifetime = 1 day (default = 1)
 # $main::SPF_max_dns_interactive_terms = 15; # (number > 0) max_dns_interactive_terms max number of SPF-mechanism per domain (defaults to 10)
 # $main::SPF_max_allowed_IP = 0;             # maximum allowed IP (v4 and v6) adrresses in a SPF-record - default is 0 (disabled) - 2**17 seems to be OK
 # $main::disableEarlyTalker;                 # (0/1) disable the EarlyTalker check
@@ -80,11 +81,12 @@ use strict qw(vars subs);
 # $main::DKIMpassAction = 7;                 # (0..7) if DKIM pass: bit-0 = set rwlok to 1 (medium trust status), bit-1 = skip penaltybox-check, bit-2 = set IP-score to zero - default is 7 (all bits set)
 # $main::removePersBlackOnAutoWhite = 1;     # (0/1) remove the PersBlack entry for autowhite addresses in outgoing mails
 # $main::resetIntCacheAtStartup = 1;         # (0/1) reset internal Caches at startup - default is 1 (YES)
+# $main::BackDNSTTL = 72;                    # (number > 0) time in hours after downloaded BackDNS entries will expire - default is 72 (3 days)
 
 # $main::checkCRLF = 1;                      # (0/1) check line terminator mistakes (single [CR] or [LF]) in SMTP-commands of incoming mails (correction is done every time) - default = 1
 # $main::CCignore8BitMIME = 0;               # (0/1) CCham, ForwardSpam and resend will ignore a missing 8BITMIME extension
 
-# $main::$CCchangeMSGDate = 0;               ## (0..31) change the 'Date:' MIME-header on CCmail (sendHamInbound), ForwardSpam (sendAllSpam) and resend mail
+# $main::CCchangeMSGDate = 0;                ## (0..31) change the 'Date:' MIME-header on CCmail (sendHamInbound), ForwardSpam (sendAllSpam) and resend mail
                                              ## MS-Exchange may require this, because duplicate mails will be removed silently, if they contain an equal 'Date:...' MIME-header
                                              # bit 0 = 1 ( +1) -> set all bits (1 - 4) to 1 for backward compatibility ( same as 30 -> 2+4+8+16 )
                                              # bit 1 = 1 ( +2) -> force change at CCmail
@@ -118,9 +120,34 @@ use strict qw(vars subs);
 
 # $main::noSupportSummay = 0;                # (0/1) skips the output of a support summary in the configuration export function
 
-# Plugin related
+# ASSP_AFC - Plugin related
 # $ASSP_AFC::skipLockyCheck = 0;             # (0/1) skip the locky ransomeware virus detection in ASSP_AFC Plugin - default is zero - NOT RECOMMENDED to be set to 1
-# $maxArcNameLength = 255;                   # (number) max length of a file name part in a compressed file - 0 = disable check 
+# $ASSP_AFC::maxArcNameLength = 255;         # (number) max length of a file name part in a compressed file - 0 = disable check 
+
+# $ASSP_AFC::SkipExeTags = [];               # customized skip tags (like :MSOM) for external executable checks defined in lib/CorrectASSPcfg.pm
+# $ASSP_AFC::checkExeExternal;               # custom subroutine to check executables external (eg. lib/CorrectASSPcfg.pm) - $ASSP_AFC::checkExeExternal->($self,\$sk,\$buff,$raf,\$pdf) if the internal check has not found an executable
+                                              # self - the ASSP_AFC object for this mail
+                                              # the following paramters are refences to scalars
+                                                # sk - active skip tags at runtime
+                                                # buff - up to first 64 binary bytes of the attachment
+                                                # raf - complete binary content of the attachment
+                                                # pdf - decoded binary PDF content, if the attachment is a PDF , otherwise undef
+
+# $ASSP_AFC::checkExeExternalForce;          # same as $checkExeExternal - but called weather the internal check has found an executable or not - $ASSP_AFC::checkExeExternalForce->($self,\$sk,\$buff,$raf,\$pdf,\$type)
+                                             # ....
+                                             # type - contains the previous detected executable type description or undef
+
+# $ASSP_AFC::VBAcheck = 0;                   # enable(1)/disable(0) the executable VBA script check
+
+# %ASSP_AFC::libarchiveFatal = (             # if these FATAL values are returned by libachive, try to use the next decompression engine instead detecting a wrong attachment
+#-30 => 'Unrecognized archive format',         # first the error number
+#-25 => 'Unsupported.+?method'                 # second a regex for the error text
+#);
+
+# %ASSP_AFC::libarchiveWarn = (              # if these WARN values are returned by libachive, try to use the next decompression engine instead detecting a wrong attachment
+#-20 => 'cannot be converted from|to current locale'       # first the error number
+#);                                                        # second a regex for the error text 
+
 # *********************************************************************************************************************************************
 
 sub set {
