@@ -194,8 +194,8 @@ our %WebConH;
 
 #
 sub setVersion {
-$version = '2.5.6';
-$build   = '17352';        # 18.12.2017 TE
+$version = '2.6.2';
+$build   = '17355';        # 21.12.2017 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -565,7 +565,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '0136CB55FBA7A862C314A183DC59A4BEF337312D'; }
+sub __cs { $codeSignature = 'BFB765D488D1CEEF40F84CC4D5F0A54A42F34414'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -14069,7 +14069,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.75;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.76;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.05;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -42420,7 +42420,7 @@ sub BayesOK {
     my($fh,$msg,$ip)=@_;
     d('BayesOK');
     if ($lockBayes) {
-        mlog($fh,"Bayesian is not available - hmmdb is still locked by a rebuild task") if $BayesianLog;
+        mlog($fh,"Bayesian is not available - spamdb is still locked by a rebuild task") if $BayesianLog;
         delete $Con{$fh}->{skipBayes};
         return 1;
     }
@@ -73594,9 +73594,9 @@ sub seed {
     }
 
     for my $length ($shortest..$longest) {
-        for (my $i = 0; ($i + $length) < @symbols; $i++) {
-            my $link = join($;, @symbols[$i..$i + $length - 1]);
-            $self->increment_seen($link, $symbols[$i + $length],$count);
+        for (my $i = 0; (my $j = $i + $length) < @symbols; $i++) {
+            my $link = join($;, @symbols[$i..$j - 1]);
+            $self->increment_seen($link, $symbols[$j],$count);
         }
     }
     delete $self->{longest_sequence};
