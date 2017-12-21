@@ -10,7 +10,7 @@ IMPORTS
     TruthValue FROM SNMPv2-TC;
 
 thockar MODULE-IDENTITY
-    LAST-UPDATED "201708110000Z"
+    LAST-UPDATED "201712210000Z"
     ORGANIZATION "www.thockar.com"
     CONTACT-INFO
 	 "postal:       Thomas Eckardt
@@ -18,13 +18,13 @@ thockar MODULE-IDENTITY
       email:    thockar@lists.sourceforge.net"
     DESCRIPTION
 	"Top-level infrastructure of thockar projects enterprise MIB tree"
-    REVISION     "201708110000Z"
+    REVISION     "201712210000Z"
     DESCRIPTION
 	"First draft"
     ::= { enterprises 37058}
 
 asspSNMP MODULE-IDENTITY
-    LAST-UPDATED "201708110000Z"
+    LAST-UPDATED "201712210000Z"
     ORGANIZATION "www.thockar.com"
     CONTACT-INFO
 	 "postal:       Thomas Eckardt
@@ -32,7 +32,7 @@ asspSNMP MODULE-IDENTITY
       email:    thockar@lists.sourceforge.net"
     DESCRIPTION
 	"Top-level infrastructure of the thockar ASSP project enterprise MIB tree"
-    REVISION     "201708100000Z"
+    REVISION     "201712200000Z"
     DESCRIPTION
 	"First draft"
     ::= { thockar 2}
@@ -2180,7 +2180,9 @@ listenPort  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-The port number on which ASSP will listen for incoming SMTP connections (normally 25). You can specify both an IP address and port number to limit connections to a specific interface. Separate multiple entries by '|'.Examples: 25, 127.0.0.1:25, 127.0.0.1:25|127.0.0.2:25|[FE80:1::1]:25 
+The port number on which ASSP will listen for incoming SMTP connections (normally 25). You can specify both an IP address and port number to limit connections to a specific interface. Separate multiple entries by '|'.
+  To define a SSL listener, write 'SSL:' in front of the host:port - e.g. SSL:host:port.
+  Examples: 25, 127.0.0.1:25, 127.0.0.1:25|127.0.0.2:25|SSL:[FE80:1::1]:25 
 "
     REFERENCE "SMTP Listen Port"
     DEFVAL { "25" }
@@ -2225,8 +2227,7 @@ smtpDestination  OBJECT-TYPE
 "
 The IP number! and port number of your primary SMTP  (MTA). If multiple servers are listed and the first listed MTA does not respond, each additional MTA will be tried. If only a port number is entered, or the dynamic keyword INBOUND is used with a port number, then the connection will be established to the local IP address on which the connection was received. This is useful when you have several IP addresses with different domains or profiles in your MTA. If INBOUND:PORT is used, ReportingReplies (Analyze,Help,etc and CopyMail will go to 127.0.0.1:PORT or [::1]:PORT. If your needs are different, use smtpReportServer (SMTP Reporting Destination) and sendAllDestination (Copy Spam SMTP Destination). Separate multiple entries by '|'.
   If you need to connect to the SMTP destination host using native SSL, write 'SSL:' in front of the IP/host definition. In this case the Perl module  must be installed and enabled ( useIOSocketSSL ).
-  
-  Examples: 125,  127.0.0.1:125, 127.0.0.1:125|127.0.0.5:125|SSL:127.0.0.1:465, INBOUND:125
+  Examples: 125, 127.0.0.1:125, 127.0.0.1:125|127.0.0.5:125|SSL:127.0.0.1:465, INBOUND:125
 "
     REFERENCE "SMTP Destination"
     DEFVAL { "125" }
@@ -2312,7 +2313,7 @@ listenPortSSL  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-The port number on which ASSP will listen for incoming secure (SSL only) SMTP connections (normally 465). You can specify both an IP address and port number to limit connections to a specific interface. Separate multiple entries by '|'.Examples: 465, 127.0.0.1:465, 127.0.0.1:465|127.0.0.2:465 . More configuration options are smtpSSLRequireClientCert, SSLSMTPCertVerifyCB and SSLSMTPConfigure .
+The port number on which ASSP will listen for incoming secure (SSL only) SMTP connections (normally 465). You can specify both an IP address and port number to limit connections to a specific interface. Separate multiple entries by '|' and do NOT write SSL: in front of definition.Examples: 465, 127.0.0.1:465, 127.0.0.1:465|127.0.0.2:465 . More configuration options are smtpSSLRequireClientCert, SSLSMTPCertVerifyCB and SSLSMTPConfigure .
 "
     REFERENCE "SMTP Secure Listen Port"
     DEFVAL { "" }
@@ -2400,7 +2401,9 @@ listenPort2  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-A secondary port number on which ASSP can accept SMTP connections. This is useful as a dedicated port for VPN clients or for those who cannot directly send mail to a mail server outside of their ISP's network because the ISP is blocking port 25. You may also specify an IP address to limit connections to a specific interface. Separate multiple entries by '|'.Examples: 2525, 127.0.0.1:2525, 192.168.0.100:25000
+A secondary port number on which ASSP can accept SMTP connections. This is useful as a dedicated port for VPN clients or for those who cannot directly send mail to a mail server outside of their ISP's network because the ISP is blocking port 25. You may also specify an IP address to limit connections to a specific interface. Separate multiple entries by '|'.
+  To define a SSL listener, write 'SSL:' in front of the host:port - e.g. SSL:host:port.
+  Examples: 2525, 127.0.0.1:2525, SSL:192.168.0.100:25000
 "
     REFERENCE "Second SMTP Listen Port"
     DEFVAL { "" }
@@ -3527,7 +3530,9 @@ relayPort  OBJECT-TYPE
 "
 Tell your mail server to connect to this IP/port as its smarthost / relayhost. For example: 225
  Note that you'll want to keep the relayPort protected from external access by your firewall. To restrict access to the relayPort per IP address or network, use allowRelayCon .
- You can supply an interface:port to limit connections. Separate multiple entries by '|'.Examples: 225, 127.0.0.1:225, 192.168.1.1:225|192.168.2.1:225 !
+ You can supply an interface:port to limit connections.
+ To define a SSL listener, write 'SSL:' in front of the host:port - e.g. SSL:host:port.
+ Separate multiple entries by '|'.Examples: 225, 225|SSL:325, 127.0.0.1:225, 192.168.1.1:225|192.168.2.1:225|SSL:192.168.1:325 !
 "
     REFERENCE "Relay Port"
     DEFVAL { "" }
@@ -4856,7 +4861,8 @@ MaxAUTHErrors  OBJECT-TYPE
 "
 If an IP (/24 network is used for incoming mails) exceeds this number of authentication errors (535 or 530) the transmission of the current message will be canceled and any new connection from that IP will be blocked for 5-10 minutes.
   Every 5 Minutes the 'AUTHError' -counter of the IP will be decreased by one. autValencePB is used for the penalty box.
-  No limit is imposed by ASSP, if the field is left blank or set to zero (zero cleans the related cache 'AUTHError'). This option allows admins to prevent external bruteforce or dictionary attacks via AUTH command. Whitelisted, noBlockingIPs , noMaxAUTHErrorIPs and NoProcessing IP's are ignored like any relayed connection.
+  No limit is imposed by ASSP, if the field is left blank or set to zero (zero cleans the related cache 'AUTHError'). If your MTA offers AUTH without supporting it (has no user accounts) define a negative value here (e.g. -1). In this case assp and the MTA will function as an AUTH-honeypot, the peer will get an penalty at the first AUTH request.
+  This option allows admins to prevent external bruteforce or dictionary attacks via AUTH command. Whitelisted, noBlockingIPs , noMaxAUTHErrorIPs and NoProcessing IP's are ignored like any relayed connection.
 "
     REFERENCE "Max Number of AUTHentication Errors"
     DEFVAL { "" }
@@ -5189,7 +5195,7 @@ DoSameSubject  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-If activated, assp will check the mail subjects for equality using the config parameters below. Scoring is done with 'isValencePB'.
+If activated, assp will check the mail subjects for equality or similarity using the config parameters below. Scoring is done with 'isValencePB'.
 "
     REFERENCE "Check Same Subjects"
     DEFVAL { "0" }
@@ -5233,7 +5239,7 @@ subjectFrequencyInt  OBJECT-TYPE
     DESCRIPTION
 "
 The time interval in seconds in which the number of equal subjects has not to exceed a specific number ( subjectFrequencyNumSubj ).
-  Use this in combination with subjectFrequencyNumSubj to limit the number of equal subjects in a given interval. A value of 0 (default) will disable this feature and clean the cache within five minutes.
+  Use this in combination with subjectFrequencyNumSubj to limit the number of equal or similar subjects in a given interval. A value of 0 (default) will disable this feature and clean the cache within five minutes.
   
 "
     REFERENCE "Subject Frequency Interval"
@@ -5278,7 +5284,7 @@ subjectFrequencyNumSubj  OBJECT-TYPE
     DESCRIPTION
 "
 The number of equal subjects that has not to exceed in a specific time interval ( subjectFrequencyInt ).
-  Use this in combination with subjectFrequencyInt to limit the number of equal subjects in a given interval. A value of 0 (default) will disable this feature and clean the cache within five minutes.
+  Use this in combination with subjectFrequencyInt to limit the number of equal or similar subjects in a given interval. A value of 0 (default) will disable this feature and clean the cache within five minutes.
   
 "
     REFERENCE "Subject Frequency Number of Subjects"
@@ -5412,7 +5418,7 @@ NoSubjectFrequencyIP  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Mail from any of these IP numbers will pass through without checking the equality of subjects. For example: 145.145.145.145
+Mail from any of these IP numbers will pass through without checking the equality or similarity of subjects. For example: 145.145.145.145
 "
     REFERENCE "Check Equal Subject Frequency NOT for this IP's*"
     DEFVAL { "" }
@@ -8822,7 +8828,7 @@ Domains and addresses from which you want to receive all mail. Your ISP, domain 
   [sendergroup]=>[recipientgroup]
   [sendergroup1]|[sendergroup2]|*@domain=>[recipientgroup1]|[recipientgroup2]|user@local_domain
   NOTICE - that the local email addresses and domains are not checked to be local once.
-  To define special characters like '* and ?' - use there hexadecimal regex representation like '\x2A and \x3F'.
+  To define special characters like '* and ?' - use their hexadecimal regex representation like '\x2A and \x3F'.
 "
     REFERENCE "Whitelisted Domains and Addresses*"
     DEFVAL { "file:files/whitedomains.txt" }
@@ -12132,7 +12138,7 @@ Addresses  &amp; Domains from which you always want to reject mail, they only se
   [sendergroup]=>[recipientgroup]
   [sendergroup1]|[sendergroup2]|*@domain=>[recipientgroup1]|[recipientgroup2]|user@local_domain
   NOTICE - that the local email addresses and domains are not checked to be local once.
-  To define special characters like '* and ?' - use there hexadecimal regex representation like '\x2A and \x3F'.
+  To define special characters like '* and ?' - use their hexadecimal regex representation like '\x2A and \x3F'.
 "
     REFERENCE "Blacklisted Addresses and Domains*"
     DEFVAL { "file:files/blackdomains.txt" }
@@ -13624,7 +13630,7 @@ Domains and addresses which have to SMIME or PGP sign or encrypt all mail. If a 
   [sendergroup]=>[recipientgroup]
   [sendergroup1]|[sendergroup2]|*@domain=>[recipientgroup1]|[recipientgroup2]|user@local_domain
   NOTICE - that the local email addresses and domains are not checked to be local once.
-  To define special characters like '* and ?' - use there hexadecimal regex representation like '\x2A and \x3F'.
+  To define special characters like '* and ?' - use their hexadecimal regex representation like '\x2A and \x3F'.
 "
     REFERENCE "Senders need to SMIME or PGP Sign All Mail*"
     DEFVAL { "file:files/signedSenders.txt" }
@@ -19192,8 +19198,8 @@ tlsValencePB  OBJECT-TYPE
 "
 Message Scoring/IP scoring Bonus for SSL/TLS connections
 "
-    REFERENCE "OK, Is a SSL/TLS connection, default=-10 +"
-    DEFVAL { "-10" }
+    REFERENCE "OK, Is a SSL/TLS connection, default=0 +"
+    DEFVAL { "0" }
     ::= {PenaltyBoxMessageandIPScoring 323}
 
 syncStattlsValencePB  OBJECT-TYPE
@@ -21805,8 +21811,8 @@ EnableSRS  OBJECT-TYPE
     DESCRIPTION
 "
 Enable Sender Rewriting Scheme as described at .
-  This requires an installed  module in PERL.
-  You should use SRS if your message handling system forwards email for domains with published spf records and there SPF record not includes your MX.
+  This requires an installed  module in PERL. This module is disabled in the configuration per default - first enable it using useMailSRS .
+  You should use SRS if your message handling system forwards email for domains with published spf records and their SPF record not includes your MX.
   NOTICE: In case your local users are forwarding mails (e.g. from external domains) to external domains (external mail accounts) and these foreign domains bounces back (e.g. out_of_office / vacation), your MTA (smtpDestination) will possibly get mails from external domains to be delivered to external domains!
   Note that you have to setup the outgoing path (Relay Host and Port) to let ASSP see and rewrite your outgoing traffic.
   Testmode is set with srsTestMode.
@@ -22337,7 +22343,7 @@ DoDMARC  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-If enabled and ValidateSPF and DoDKIM are enabled and the sending domain has published a DMARC-record/policy, assp will act on the mail according to the senders DMARC-policy using the results of the SPF and DKIM check. It is save to leave this feature ON, it will not produce false positives!
+If enabled and ValidateSPF and DoDKIM are enabled and the sending domain has published a DMARC-record/policy, assp will act on the mail according to the senders DMARC-policy using the results of the SPF and DKIM check. It is save to leave this feature ON, it will not produce false positives! The blocking mode (block, score, testmode) is adapted from less aggressive setting of ValidateSPF and DoDKIM - and the published DMARC record ([p][sp]=[reject][quarantine]). Scoring is done using spfValencePB.
   If you have published a DMARC-record and you want to collect statisical data, look at 
 "
     REFERENCE "Enable DMARC Check"
@@ -24234,7 +24240,7 @@ This regular expression is used to identify Level 1 attachments that should be b
   Separate entries with a pipe |. The dot . is assumed to precede these, so don't include it.
   For example:
   ad[ep]|asx|ba[st]|chm|cmd|com|cpl|crt|dbx|exe|exe\-bin|hlp|ht[ab]|in[fs]|isp|js|jse|lnk|md[abez]|mht|ms[cipt]|nch|pcd|pif|prf|ps1?|reg|sc[frt]|sh[bs]|vb|vb[es]|wms|ws[cfh]
-  If you've installed the ASSP_AFC Plugin (at least version 2.10) and 'exe-bin' is defined (on any level), the Plugin will detect executable files based on there binary content. Detected will be all executables, libraries and scripts for DOS and Windows (except .com files), MS office macros(VBA), MAC-OS and linux ELF (for all processor architectures).
+  If you've installed the ASSP_AFC Plugin (at least version 2.10) and 'exe-bin' is defined (on any level), the Plugin will detect executable files based on their binary content. Detected will be all executables, libraries and scripts for DOS and Windows (except .com files), MS office macros(VBA), MAC-OS and linux ELF (for all processor architectures).
   If you want to skip the detection for a specific executable type, define any combination of the tags below like: 'exe-bin|:WSH|:MSOM|:WIN' - notice the leading collon for the exceptions!
  :WIN - windows executables
  :MOS - Mach-O executables
@@ -24248,7 +24254,8 @@ This regular expression is used to identify Level 1 attachments that should be b
  :CERTPDF - certificate signed adobe PDF file
  :JSPDF - adobe PDF file with JavaScript inside - notice: well known malicious JavaScript combinations will be blocked, even this option is defined
  :URIPDF - adobe PDF file with URIs to download exeutables from the web or to open local files
- :MSOM - microsoft office macros
+ :MSOLE - Microsoft Office Compound File Binary (OLE)
+ :MSOM - Microsoft Office Macros
 "
     REFERENCE "Level 1 rejected File Extensions"
     DEFVAL { "exe\-bin|exe|scr|pif|vb[es]?|jse?|ws[cfh]?|sh[sb]?|li?nk|bat|cmd|com|ht[ab]|ps1?" }
@@ -24558,7 +24565,9 @@ UserAttach  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-This set of regular expression is used to identify attachments that should be allowed or blocked for specified users and/or domains. Separate entries with a any of '=&gt; , ; space'. Separate multiple regex entries with pipe '|'. The dot . is assumed to precede the regex, so don't include it anywhere (except the user name).
+This set of regular expression is used to identify attachments that should be allowed (good) or blocked (block) for specified users and/or domains. Separate entries with any of '=&gt; , ; space'. Separate multiple regex entries with pipe '|'. The dot . is assumed to precede the regex, so don't include it anywhere (except the user name).
+  block=&gt; rules cause specific file types to be blocked (but does not block the others).
+  good=&gt; rules block all file types except for those specified in the rule.
   To define entries you have to use the 'file:...' option. Define one entry per line - comments are not allowed in a definition line.
   The syntax of an entry is as follows:
   username => good => goodAttachRegex , good-out => goodoutRegex , good-in => goodinRegex , block => blockAttachRegex , block-out => blockoutRegex , block-in => blockinRegex
@@ -24573,9 +24582,40 @@ This set of regular expression is used to identify attachments that should be al
   user@domain.tld => good => ai|asc|bhx|dat|doc|eps|gif|htm|html|ics|jpg|jpeg|hqx|od[tsp]|pdf|ppt|rar|rpt|rtf|snp|txt|xls|zip
   *@domain.tld => good => ai|asc|bhx , good-out => eps|gif , good-in => htm|html , block => pdf|ppt , block-out => rar|rpt , block-in => xls|exe\-bin
   At least one of the above option must be defined in a line - a maximum of all (six) could be defined, if this makes sense.
-  This feature replaces all of the above level definitions, if at least one valid (not zip:... from the ASSP_AFC Plugin) attachment blocking or allow rule is found for the sender or recipient of a mail!
-  The defined blocking rules for the sender and the first envelope recipient are combined together using an OR logic.
-  good, good-out and good-in - and also - block, block-out and block-in - will be logical OR combined according to the mail flow.
+
+  It is possible to define templates (see the preceding single tilde ~ ) for extension regular expression and to use them in any entry at any place (except other extension regular expression templates) - like:
+  ~executables => cmd|com|cpl|exe|exe\-bin|lnk|pif
+  ~scripts => js|pl|ps1?|sh|vb[es]?|wms|ws[cfh]
+  user1@domain.tld => block => ~executables|~scripts|mht|ms[cipt] , block-in =>:MSOM , block-out => :CERTPDF
+  [allDomains] => block => ~executables|:CSC
+  Extension regular expression template names have to start with a single tilde. Allowed name characters are A-Z, a-z, 0-9 and underscrore. Names are case sensitive.
+
+  It is also possible to define rule templates and to use them in combination with any other rule definitions or rule templates.
+  Rule templates starts with two tilde (~~template). Allowed name characters are A-Z, a-z, 0-9 and underscrore. Names are case sensitive. For example:
+  ~~commonRule=>block=>~executables|~scripts|xls,block-in=>:MSOM,block-out=>:CSC
+  ~~devRule=>~~commonRule=>block-out=>:WIN|:ELF
+  ~~allowALL=>good=>.*
+  *@domain.com=>~~commonRule
+  [IT]=>~~devRule
+  user@domain.com=>~~commonRule,~~anySecondRule,~~anyOtherRule=>block=>~anyExt,block-in=>~otherExt|xls|--doc
+  Notice the leading -- in front of the --doc regular expression in the last example. The leading -- removes all occurences of this regular expression from the resulting entry, here from 'block-in' (NOT from block!) at configuration time. You would need to define --doc in the 'block=>' entry as well, to remove such occurences there.
+  Because the -- exceptions are processed at configuration time, such a definition will not overwrite an opposit rule definition: sender &gt; recipient and recipient &gt; sender - which are combined at runtime (attachment check).
+  If you want assp to process such a 'remove extension directive' at runtime (to make the recipient &lt;&gt; sender rule overwrite working for this address), use for example -+doc instead of --doc. Be carefull creating weak blocking rules using the -+ directive. Make sure the sender and recipient address can NOT be faked (eg. SPF-strict, DKIM)
+  It is possible to combine multipe -- as well as multiple -+ exceptions in regular expression style, for example:
+  ~allowExe => --(?:cmd|com|cpl|exe|exe\-bin|lnk|pif) - which is the same like: --cmd|--com|--cpl|--exe|--exe\-bin|--lnk|--pif 
+  ~forceAllowExe => -+(?:cmd|com|cpl|exe|exe\-bin|lnk|pif)
+  [IT]=>~~devRule , block-out=>~allowExe , block-in => ~forceAllowExe
+  Do NOT use nested brackets like in --(?:c(?:md|om|pl)|exe(?:\-bin)?|lnk|pif) to define any exception!
+  ASSP will resolve all extension regular expression templates and all rule tempates and will combine them all in to one resulting domain or user attachment rule.
+  ASSP will throw a warning, if a rule template is define multipe times - like: *@domain.com=~~commonRule,~~devRule - here ~~devRule already contains ~~commonRule
+  It may happen, that the resulting attachment rule contains one or more extension regular expressions multiple times - this is harmless and will be internaly corrected, but try to prevent it.
+  
+  This feature replaces all of the above level definitions (BadAttachL1 ....L2 ....), if at least one valid (not zip:... from the ASSP_AFC Plugin) attachment blocking or allow rule is found for the envelope sender or the first envelope recipient of a mail!
+  good, good-out and good-in - and also - block, block-out and block-in - will be logical OR (pipe '|') combined from the matched rule for the first envelope recipient and the envelope sender - according to the mail flow.
+  The defined blocking rules for the envelope sender and the first envelope recipient are than combined together using the same OR logic (pipe '|') at runtime.
+  The attachment block rules for a specific email are looking as follows: (replace block with good to get the attachment good rules)
+  incoming mail: recipient-block|recipient-block-in|sender-block|sender-block-in
+  outgoing mail: sender-block|sender-block-out|recipient-block|recipient-block-out
   Notice: if a bad attachment is found on a user based attachment check, the penalty box IP address scoring is skipped.
 "
     REFERENCE "User based Good and Bad Attachments*"
@@ -24971,10 +25011,10 @@ AvError  OBJECT-TYPE
     DESCRIPTION
 "
 Reply code to refuse infected messages. The string $infection is replaced with the name of the detected virus.
- For example: 554 5.7.1 Mail appears infected with \[$infection\] -- disinfect and resend.
+ For example: 554 5.7.1 Mail appears infected with [$infection] -- disinfect and resend.
 "
     REFERENCE "Reply Code to Refuse Infected Messages"
-    DEFVAL { "554 5.7.1 Mail appears infected with \[$infection\]." }
+    DEFVAL { "554 5.7.1 Mail appears infected with [$infection]." }
     ::= {VirusProtectionusingClamAVandOSFileScanner 427}
 
 syncStatAvError  OBJECT-TYPE
@@ -25603,7 +25643,7 @@ If virus check is enabled ( DoFileScan ), every file/mail (except reports - eg. 
  If 'scan resend folder and collected files' is selected, it could be possible, that the virus scanner ( FileScanCMD ) forces a very high system workload.
  If you are not sure what to set here, leave the setting at the default 'scan resend folder only'!
  If the ASSP_AFC Plugin is installed and configured to be used, the files in the resend folder will be scanned by FileScan and ClamAV if any of FileLogScan or ClamAVLogScan is configured.
- Under normal conditions the scan will be done by the SMTP-worker, if assp is under a havy workload, the scan request will be transfered to the High-Workers (10000/10001).
+ Under normal conditions the scan will be done by the SMTP-worker, if assp is under a heavy workload, the scan request will be transfered to the High-Workers (10000/10001).
 "
     REFERENCE "Scan Resent and Stored Files for Virus with FileScan"
     DEFVAL { "2" }
@@ -25652,7 +25692,7 @@ If virus check is enabled ( UseAvClamd ), every file/mail (except reports - eg. 
  If 'scan resend folder and collected files' is selected, it could be possible, that the virus scanner (clamd) forces a very high system workload.
  If you are not sure what to set here, leave the setting at the default 'scan resend folder only'!
  If the ASSP_AFC Plugin is installed and configured to be used, the files in the resend folder will be scanned by FileScan and ClamAV if any of FileLogScan or ClamAVLogScan is configured.
- Under normal conditions the scan will be done by the SMTP-worker, if assp is under a havy workload, the scan request will be transfered to the High-Workers (10000/10001).
+ Under normal conditions the scan will be done by the SMTP-worker, if assp is under a heavy workload, the scan request will be transfered to the High-Workers (10000/10001).
 "
     REFERENCE "Scan Resent and Stored Files for Virus with ClamAV"
     DEFVAL { "2" }
@@ -35667,7 +35707,7 @@ MaxAllowedDups  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-The maximum number of logged files with the same filename (subject) that are stored in the spam folder (spamlog), if UseSubjectsAsMaillogNames is selected. Default is 0. A low value reduces the number of possibly duplicate mails, assuming that mails with the same subject will have the same content. A value of 0 disables this feature. If this number of files with the same filename is reached, the oldest file with the same subject will be moved to the discarded folder, which has to be defined ( in addition to spamlog ) for this feature to work.
+The maximum number of logged files with the same or similar filename (subject) that are stored in the spam folder (spamlog), if UseSubjectsAsMaillogNames is selected. Default is 0. An low value reduces the number of possibly duplicate mails, assuming that mails with the same or similar subject will have the same content. A value of 0 disables this feature. If this number of files with the same or similar filename is reached, the oldest file with the same subject will be moved to the discarded folder, which has to be defined ( in addition to spamlog ) for this feature to work.
 "
     REFERENCE "Max Number of Duplicate File Names"
     DEFVAL { "50" }
@@ -41208,7 +41248,9 @@ webAdminPort  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-The port on which ASSP will listen for http connections to the web administration interface. If you change this, after you click Apply you must change the URL on your browser to reconnect. You may also supply an IP address or hostname to limit connections to a specific interface. Separate multiple entries by pipe '|'!Examples: 55555, 192.168.0.5:12345, myhost:12345, 192.168.0.5:22345|myhost:12345
+The port on which ASSP will listen for http connections to the web administration interface. If you change this, after you click Apply Changes you must change the URL on your browser to reconnect. You may also supply an IP address or hostname to limit connections to a specific interface. Separate multiple entries by pipe '|'!
+  To define a SSL listener, write 'SSL:' in front of the host:port - e.g. SSL:host:port.
+  Examples: 55555, 192.168.0.5:12345, SSL:myhost:12345, 192.168.0.5:22345|myhost:12345
 "
     REFERENCE "Web Admin Port"
     DEFVAL { "55555" }
@@ -41391,9 +41433,10 @@ The port on which ASSP will listen for http or telnet connections to the statist
    The stats are available via browser or telnet (or telnet similar socket). Using telnet, press ENTER two times to get the healthy state (' $webStatHealthyResp [CRLF]' or ' $webStatNotHealthyResp [CRLF]' in a single line), this is the recommended methods to get the 'UP'-state of assp from nagios or any other external script.
    Type 'stat[ENTER][ENTER]' to get the STATS in raw text where each line is terminated with '[CR]LF' (CR is send in any case, if the request contains CR).
    The HTML/browser output are LF terminated STAT lines.
-   If you have configured ' exportExtremeBlack ', your firewall (pfsense/pfBlockerNG or snort) may download the extreme black IP list using this interface - append '/extremeblack' to the URL.
+   If you have configured ' exportExtremeBlack ', your firewall (for example pfsense/pfBlockerNG or snort) may download the extreme black IP list using this interface - append '/extremeblack' to the URL.
    The download URL, used by your firewall, should look like: http://assp.domain.local:55553/extremeblack
-   Examples: 55553, 192.168.0.5:12345
+   To define a SSL listener, write 'SSL:' in front of the host:port - e.g. SSL:host:port.
+   Examples: 55553, 192.168.0.5:12345|SSL:192.168.0.6:12345
 "
     REFERENCE "Raw Statistics Port"
     DEFVAL { "55553" }
@@ -42241,11 +42284,11 @@ noModuleAutoUpdate  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-If set, ASSP will skip the automatic Perl module update for the selected.
+If set, ASSP will skip the automatic Perl module update for the selected. Default is: skip installed but not used by assp
   On NIX systems this value is ignored, if runAsUser is used! The automatic perl module upgrade is only done, if assp is running as OS user 'root'.
 "
     REFERENCE "No Automatic Perl Module update"
-    DEFVAL { "0" }
+    DEFVAL { "2" }
     ::= {GeneralServerSetup 790}
 
 syncStatnoModuleAutoUpdate  OBJECT-TYPE
@@ -43407,7 +43450,7 @@ normalizeUnicode  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-If set (which is the default and recommended), all regular expressions and both, the Bayesian and the HMM engine, are normalizing all characters in there setup and the checked content, according to unicode .
+If set (which is the default and recommended), all regular expressions and both, the Bayesian and the HMM engine, are normalizing all characters in their setup and the checked content, according to unicode .
  In addition some extended (assp unique) unicode normalization is done for the unicode blocks 'Enclosed Alphanumerics', 'Enclosed Alphanumeric Supplement' , 'Enclosed CJK Letters And Months' and 'Enclosed Ideographic Supplement' - like: &#9312; &#9313; &#9331; &#9332; &#9352; &#9451; &#9461; &#9424; &#9398; &#127280; &#12809; &#12853; &#13003; &#127559;. Those characters are decomposed by compatibility, then recomposed by canonical equivalence (eg. to LATIN or CJK).
  If this value is changed, and your system processes alot of NON-Latin mails, it is recommended to run a rebuildspamdb.
  This feature requires a Perl version 5.012000 (5.12.0) or higher.
@@ -43547,6 +43590,56 @@ synchronization status line from file assp_sync.cfg for enable8BITMIME
  4 - in sync - running master mode (wait to reach state 2)
 "
     ::= {enable8BITMIME 6}
+
+HTMLParser  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+Commonly HTML/XML is used in emails. The HTML/XML tags are too variable to use them for Bayesian- and Hidden Markov Model analysis.
+  For this reason, these tags are removed from the HTML/XML content to get the clean text of the email.
+  The assp buildin regular expression HTML-parser is now used for decades. It got large improvements over the time, how ever - the correctness is only 95%.
+  But assp is able to use HTML::Strip or HTML::TreeBuilder, which are powerfull perl modules to parse HTML code nearly 100% correct.
+  HTML::Strip and HTML::TreeBuilder are getting their best result, if the full HTML code is provided. In case you select any of the both modules, it is recommended to set MaxBytes to 50000 (be carefull on heavy load systems - spam bomb regular expressions will take longer using 50000!).
+  HTML::Strip is the fastest module and the default setting, because it is written in C. If you can not install it, use the buildin or HTML::TreeBuilder.
+  HTML::TreeBuilder is the slowest way to parse HTML code, the assp buildin processing is three times faster, HTML::Strip is five times faster than HTML::TreeBuilder.
+  If you select any of the perl modules and this module is not installed, fails to load or it returns no content, assp falls back to the buildin code.
+"
+    REFERENCE "Use this HTML Parser"
+    DEFVAL { "1" }
+    ::= {GeneralServerSetup 1061}
+
+syncStatHTMLParser  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for HTMLParser
+-1 - HTMLParser could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {HTMLParser 5}
+
+syncStatStrHTMLParser  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for HTMLParser
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {HTMLParser 6}
 
 RebuildHiddenMarkovModelandBayesianDatabase  OBJECT IDENTIFIER ::= {asspConfig 33}
 RebuildSchedule  OBJECT-TYPE
@@ -44808,7 +44901,7 @@ SSLDEBUG  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Set the debug-level for SSL/TLS. Than higher the level, than more information are written to STDOUT!
+Set the debug-level for SSL/TLS. Than higher the level, than more information are written to maillog.txt!
 "
     REFERENCE "Debug Level for SSL/TLS"
     DEFVAL { "0" }
@@ -45276,13 +45369,13 @@ If used, assp will call the defined subroutine in an eval closure submitting a r
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'bar.example.org' =&gt; '/full_path_to_file/bar-cert.pem',
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# used when nothing matches or client does not support SNI
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'' =&gt; '/full_path_to_file/server-cert.pem',
-  &nbsp;&nbsp;&nbsp;&nbsp;}
+  &nbsp;&nbsp;&nbsp;&nbsp;};
   &nbsp;&nbsp;&nbsp;&nbsp;&#x24;parms->{SSL_key_file} = {
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'foo.example.org' =&gt; '/full_path_to_file/foo-key.pem',
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'bar.example.org' =&gt; '/full_path_to_file/bar-key.pem',
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# used when nothing matches or client does not support SNI
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'' =&gt; '/full_path_to_file/server-key.pem',
-  &nbsp;&nbsp;&nbsp;&nbsp;}
+  &nbsp;&nbsp;&nbsp;&nbsp;};
   }
   Now, if you set this parameter to 'CorrectASSPcfg::configWebSSL' - assp will call
   CorrectASSPcfg::configWebSSL->(\%sslparms);
@@ -45291,24 +45384,28 @@ If used, assp will call the defined subroutine in an eval closure submitting a r
   &nbsp;&nbsp;&nbsp;&nbsp;my &#x24;parms = shift;
   &nbsp;&nbsp;&nbsp;&nbsp;my &#x24;listenerName = &amp;main::getSMTPListenerConfigName(&#x24;parms->{LocalAddr},&#x24;parms->{LocalPort}); # returns listenPort , listenPort2 , listenPortSSL , relayPort or undef - may be used to implement different parameter settings for some or each SMTP listener
   &nbsp;&nbsp;&nbsp;&nbsp;if (&#x24;listenerName eq 'listenPortSSL') { # enable SNI at the listenPortSSL 
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#x24;parms->{SSL_cert_file} = {
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#x24;parms-&gt;{SSL_cert_file} = {
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'foo.example.org' =&gt; '/full_path_ to_file/foo-cert.pem',
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'bar.example.org' =&gt; '/full_path_to_file/bar-cert.pem',
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# used when nothing matches or the SMTP peer does not support SNI
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'' =&gt; '/full_path_to_file/server-cert.pem',
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#x24;parms->{SSL_key_file} = {
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;};
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#x24;parms-&gt;{SSL_key_file} = {
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'foo.example.org' =&gt; '/full_path_to_file/foo-key.pem',
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'bar.example.org' =&gt; '/full_path_to_file/bar-key.pem',
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# used when nothing matches or the SMTP peer does not support SNI
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'' =&gt; '/full_path_to_file/server-key.pem',
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;};
   &nbsp;&nbsp;&nbsp;&nbsp;} # the next 'elsif' and 'else' code parts may be used or not, this depends on the requirements for the other listeners.
   &nbsp;&nbsp;&nbsp;&nbsp;elsif (&#x24;listenerName eq 'listenPort2') {... set parms here for listenPort2 ...}
   &nbsp;&nbsp;&nbsp;&nbsp;elsif (&#x24;listenerName eq 'relayPort') {... set parms here for relayPort ...}
   &nbsp;&nbsp;&nbsp;&nbsp;else {... set parms here for listenPort (not recommended!) ...}
   }
+  To set a single parameter (e.g. init SSL_cert_file and SSL_key_file like &#x24;parms-&gt;{SSL_cert_file} = {}; or delete &#x24;parms-&gt;{SSL_key_file}; before switching them from scalar to an anonymous hash), follow the HASH notation: &#x24;parms-&gt;{SSL_cert_file}-&gt;{your-domain} = '/full_path_ to_file/your-domain-cert.pem'; 
+  ASSP uses a permanent SSL-context in SSL server mode. ASSP will watch all your configurations made here and will renew the SSL-Server-Context, if this is required.
+  If you want to manage ALL SSL settings including the SSL-context by your own code, store your IO::Socket::SSL::SSL_Context object in &#x24;parms-&gt;{SSL_reuse_ctx}. In this case, your settigs will be no longer watched by assp.
   If you need to set different SNI parameters for different IP-addresses insite a listener, the 'if' checks may depend on &#x24;parms->{LocalAddr} and &#x24;parms->{LocalPort} as well.
+  If you don't want assp to check your SNI configuration, even you don't created a SSL-Context object, set &#x24;parms-&gt;{skip_config_check} = 1; . For more information have a look in to sub  getSSLParms  in the assp.pl code.
   NOTICE: This option will possibly not work if you use any self signed certificate!
 "
     REFERENCE "Call to Configure SSL-Listener-Parameters for GUI Connections"
@@ -45658,6 +45755,51 @@ synchronization status line from file assp_sync.cfg for noBanFailedSSLIP
 "
     ::= {noBanFailedSSLIP 6}
 
+maxSSLRenegotiations  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+Maximum count of allowed SSL/TLS client initiated renegotiations to prevent DoS.
+  If this count is exceeded in a connection within 10 seconds, the connection is terminated, the connected IP is registered in banFailedSSLIP and new connections from this IP address are rejected for 15-30 minutes. An IP-Score of PenaltyExtreme but at least 150 is used for the IP address. Zero disables this feature - default is : 10 attempts.
+  This check is skipped for well known good IPs and senders as well as for privat IP ranges and outgoing mails.
+"
+    REFERENCE "Maximum Allowed SMTP SSL Client-Initiated-Renegotiations"
+    DEFVAL { "10" }
+    ::= {SSLProxyandTLSsupport 1062}
+
+syncStatmaxSSLRenegotiations  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for maxSSLRenegotiations
+-1 - maxSSLRenegotiations could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {maxSSLRenegotiations 5}
+
+syncStatStrmaxSSLRenegotiations  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for maxSSLRenegotiations
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {maxSSLRenegotiations 6}
+
 GlobalPenaltyBoxNetwork  OBJECT IDENTIFIER ::= {asspConfig 36}
 globalClientName  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -45668,7 +45810,7 @@ globalClientName  OBJECT-TYPE
 The Name of this global-client for registration on the global-server. This entry has to be the full qualified DNS-Name of the IP-address over which ASSP is doing HTTP-requests! If you are using a HTTP-Proxy, this should be the public IP-address of the last Proxy in chain! This DNS-Name has to be resolvable worldwide and the resolved IP-address has to match the ASSP-HTTP-connection-IP-address. It is not possible to use an IP-address in this field! Dynamic DNS-Names like 'yourdomain.dyndns.org' are supported!
  To become a member of the exclusive global-penalty-box-users, you will need a subscription and you will have to pay a yearly maintenance fee. To get registered and/or to get more information, please send an email with your personal/company details and the globalClientName to 'assp.globalpb@thockar.com'.
  The name of this client has to be known by the global server before it can be registered from here. Please wait until you have confirmation that your client name is known by the global server.
- If assp is unable to connect to the GPB-server for registration, check the IP - and - clientname relation! You may also try to set this parameter to the value 'clean' one time - this will reset all GPB-internals and GPB-configuration parameters to there default value.
+ If assp is unable to connect to the GPB-server for registration, check the IP - and - clientname relation! You may also try to set this parameter to the value 'clean' one time - this will reset all GPB-internals and GPB-configuration parameters to their default value.
  Make sure, the used assp version and the perl modules are uptodate!
  In addition to  this requires an installed  module in PERL.
 "
@@ -45778,7 +45920,7 @@ GPBautoLibUpdate  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Select, if assp should download updates for Plugins or Library-Files (../lib) from the global penaltybox server. Downloads will be done to the 'download' folder. If install is selected, the downloaded Plugins and/or modules will be installed in to there original location, if an older version of the file still exists. If an older version is not found, only the download will be done. To activate updated Plugins or modules a restart of assp is required. This feature will not force an automatic restart of assp!.
+Select, if assp should download updates for Plugins or Library-Files (../lib) from the global penaltybox server. Downloads will be done to the 'download' folder. If install is selected, the downloaded Plugins and/or modules will be installed in to their original location, if an older version of the file still exists. If an older version is not found, only the download will be done. To activate updated Plugins or modules a restart of assp is required. This feature will not force an automatic restart of assp!.
 
 "
     REFERENCE "Download Plugin and Library Updates from GPB-Server"
@@ -49796,7 +49938,9 @@ If set, encrypted or password protected compressed attachments will be blocked o
  For example:
  zip:user@domain.tld => good => ai|asc|bhx|dat|doc|eps|zip
  zip:*@domain.tld => good => ai|asc|bhx , good-out => eps|gif , good-in => htm|html , block => pdf|ppt , block-out => rar|rpt , block-in => xls|exe\-bin|:MSOM|crypt\-zip|encrypt
+ zip:user@domain.tld => ~~commonZipRule => block => ~zipblock|:CSC
  Those definitions (notice the leading zip:) are only used inside compressed files.
+ For the usage of extension templates (~template) and rule templates (~~template) please read the GUI for UserAttach (requires at least assp 2.5.5 build 17243).
  The extension 'crypt-zip' could be used to allow or deni encrypted compressed attachments for users at any compression level.
  The extension 'encrypt' could be used to allow or deni encrypted (eg. aes) for users.
  If 'exe-bin' is defined, the Plugin will detect executable files based on there binary content. Detected will be all executables, libraries and scripts for DOS and Windows (except .com files), MS office macros(VBA), MAC-OS and linux ELF (for all processor architectures).
@@ -49813,7 +49957,8 @@ If set, encrypted or password protected compressed attachments will be blocked o
  :CERTPDF - certificate signed adobe PDF file
  :JSPDF - adobe PDF file with JavaScript inside - notice: well known malicious JavaScript combinations will be blocked, even this option is defined
  :URIPDF - adobe PDF file with URIs to download exeutables from the web or to open local files
- :MSOM - microsoft office macros
+ :MSOLE - Microsoft Office Compound File Binary (OLE)
+ :MSOM - Microsoft Office Macros
  The following compression formats are supported by the common perl module Archive::Extract: tar.gz,tgz,gz,tar,zip,jar,ear,war,par,tbz,tbz2,tar.bz,tar.bz2,bz2,Z,lzma,txz,tar.xz,xz.
  The detection of compressed files is done content based not filename extension based. The perl modules File::Type and MIME::Types are required in every case!
  Depending on your Perl distribution, it could be possible that you must install additionally 'IO::Compress::...' (for example: IO::Compress:Lzma) modules to support the compression methodes with Archive::Extract.
@@ -49822,8 +49967,8 @@ If set, encrypted or password protected compressed attachments will be blocked o
  If the perl module Archive::Libarchive::XS is available , the following formats are supported: 7z, XZ, BZIP2, BZ2, GZIP, GZ, TAR.GZ, TAR, ZIP, WIM, AR, ARJ, CPIO, EXT, IHEX, ISO, LHA, LZH, LZMA, NSIS, QCOW2, RAR, RPM, SquashFS, UDF, XAR, Z.
  For performance reasons it is strongly recommended to install the module Archive::Libarchive::XS!
  Currently supported compression formats are: 7z, 7zip, AR, ARJ, BZ2, BZIP2, CPIO, EAR, EXT, GZIP, GZ, IHEX, ISO, JAR, LBR, LHA, LRZ, LZ, LZ4, LZH, LZMA, LZR, NSIS, PAR, PAX, QCOW2, RAR, RPM, SquashFS, TAR, TBZ, TBZ2, UDF, WAR, XAR, Z, ZIP
- Detected decompression executables are: C:\perl\perl\site\bin\rar.EXE , C:\perl\perl\site\bin\7z.EXE , libarchive 3.2.1
- If multiple options are available to decompress a file, ASSP_AFC will use the following order: first Archive::Libarchive::XS, than Archive::Extract, than Archive::Rar + rar/unrar and last Archive::Rar + 7z. 
+ Detected decompression executables are: C:\perl\perl\site\bin\rar.EXE , C:\perl\perl\site\bin\7z.EXE , libarchive 3.3.1
+ If multiple options are available to decompress a file, ASSP_AFC will use the following order: first Archive::Libarchive::XS, than Archive::Rar + rar/unrar, than Archive::Rar + 7z and last Archive::Extract. 
  Notice: you need to restart assp after installing any perl module and/or exexutable, to get them activated!
 "
     REFERENCE "Block Encrypted Compressed Attachments"
@@ -51874,6 +52019,256 @@ download URL for the module
 "
     ::= {ASSPWordStem 4}
 
+ArchiveExtract  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+ASSP Perl module information for Archive::Extract;
+"
+    ::= {asspPerlModuleInfo 3}
+
+iVArchiveExtract  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+installed module version
+"
+    ::= {ArchiveExtract 1}
+
+rVArchiveExtract  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+required/recommended module version
+"
+    ::= {ArchiveExtract 2}
+
+iSArchiveExtract  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+module installation status
+"
+    ::= {ArchiveExtract 3}
+
+dUArchiveExtract  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+download URL for the module
+"
+    ::= {ArchiveExtract 4}
+
+ArchiveLibarchiveXS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+ASSP Perl module information for Archive::Libarchive::XS;
+"
+    ::= {asspPerlModuleInfo 4}
+
+iVArchiveLibarchiveXS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+installed module version
+"
+    ::= {ArchiveLibarchiveXS 1}
+
+rVArchiveLibarchiveXS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+required/recommended module version
+"
+    ::= {ArchiveLibarchiveXS 2}
+
+iSArchiveLibarchiveXS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+module installation status
+"
+    ::= {ArchiveLibarchiveXS 3}
+
+dUArchiveLibarchiveXS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+download URL for the module
+"
+    ::= {ArchiveLibarchiveXS 4}
+
+ArchiveLibarchiveXSlibarchiveversion  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+ASSP Perl module information for Archive::Libarchive::XS(libarchive-version);
+"
+    ::= {asspPerlModuleInfo 5}
+
+iVArchiveLibarchiveXSlibarchiveversion  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+installed module version
+"
+    ::= {ArchiveLibarchiveXSlibarchiveversion 1}
+
+rVArchiveLibarchiveXSlibarchiveversion  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+required/recommended module version
+"
+    ::= {ArchiveLibarchiveXSlibarchiveversion 2}
+
+iSArchiveLibarchiveXSlibarchiveversion  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+module installation status
+"
+    ::= {ArchiveLibarchiveXSlibarchiveversion 3}
+
+dUArchiveLibarchiveXSlibarchiveversion  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+download URL for the module
+"
+    ::= {ArchiveLibarchiveXSlibarchiveversion 4}
+
+ArchiveRarPassthrough  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+ASSP Perl module information for Archive::Rar::Passthrough;
+"
+    ::= {asspPerlModuleInfo 6}
+
+iVArchiveRarPassthrough  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+installed module version
+"
+    ::= {ArchiveRarPassthrough 1}
+
+rVArchiveRarPassthrough  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+required/recommended module version
+"
+    ::= {ArchiveRarPassthrough 2}
+
+iSArchiveRarPassthrough  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+module installation status
+"
+    ::= {ArchiveRarPassthrough 3}
+
+dUArchiveRarPassthrough  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+download URL for the module
+"
+    ::= {ArchiveRarPassthrough 4}
+
+ArchiveZip  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+ASSP Perl module information for Archive::Zip;
+"
+    ::= {asspPerlModuleInfo 7}
+
+iVArchiveZip  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+installed module version
+"
+    ::= {ArchiveZip 1}
+
+rVArchiveZip  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+required/recommended module version
+"
+    ::= {ArchiveZip 2}
+
+iSArchiveZip  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+module installation status
+"
+    ::= {ArchiveZip 3}
+
+dUArchiveZip  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+download URL for the module
+"
+    ::= {ArchiveZip 4}
+
 AsspSelfLoader  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
@@ -51882,7 +52277,7 @@ AsspSelfLoader  OBJECT-TYPE
 "
 ASSP Perl module information for AsspSelfLoader;
 "
-    ::= {asspPerlModuleInfo 3}
+    ::= {asspPerlModuleInfo 8}
 
 iVAsspSelfLoader  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -51932,7 +52327,7 @@ AuthenSASL  OBJECT-TYPE
 "
 ASSP Perl module information for Authen::SASL;
 "
-    ::= {asspPerlModuleInfo 4}
+    ::= {asspPerlModuleInfo 9}
 
 iVAuthenSASL  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -51982,7 +52377,7 @@ BerkeleyDB  OBJECT-TYPE
 "
 ASSP Perl module information for BerkeleyDB;
 "
-    ::= {asspPerlModuleInfo 5}
+    ::= {asspPerlModuleInfo 10}
 
 iVBerkeleyDB  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -52032,7 +52427,7 @@ BerkeleyDBDBEngine  OBJECT-TYPE
 "
 ASSP Perl module information for BerkeleyDB_DBEngine;
 "
-    ::= {asspPerlModuleInfo 6}
+    ::= {asspPerlModuleInfo 11}
 
 iVBerkeleyDBDBEngine  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -52082,7 +52477,7 @@ CompressZlib  OBJECT-TYPE
 "
 ASSP Perl module information for Compress::Zlib;
 "
-    ::= {asspPerlModuleInfo 7}
+    ::= {asspPerlModuleInfo 12}
 
 iVCompressZlib  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -52132,7 +52527,7 @@ ConvertTNEF  OBJECT-TYPE
 "
 ASSP Perl module information for Convert::TNEF;
 "
-    ::= {asspPerlModuleInfo 8}
+    ::= {asspPerlModuleInfo 13}
 
 iVConvertTNEF  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -52182,7 +52577,7 @@ CryptSMIME  OBJECT-TYPE
 "
 ASSP Perl module information for Crypt::SMIME;
 "
-    ::= {asspPerlModuleInfo 9}
+    ::= {asspPerlModuleInfo 14}
 
 iVCryptSMIME  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -52232,7 +52627,7 @@ DBFile  OBJECT-TYPE
 "
 ASSP Perl module information for DB_File;
 "
-    ::= {asspPerlModuleInfo 10}
+    ::= {asspPerlModuleInfo 15}
 
 iVDBFile  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -52282,7 +52677,7 @@ DigestMD5  OBJECT-TYPE
 "
 ASSP Perl module information for Digest::MD5;
 "
-    ::= {asspPerlModuleInfo 11}
+    ::= {asspPerlModuleInfo 16}
 
 iVDigestMD5  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -52332,7 +52727,7 @@ DigestSHA1  OBJECT-TYPE
 "
 ASSP Perl module information for Digest::SHA1;
 "
-    ::= {asspPerlModuleInfo 12}
+    ::= {asspPerlModuleInfo 17}
 
 iVDigestSHA1  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -52382,7 +52777,7 @@ EmailMIME  OBJECT-TYPE
 "
 ASSP Perl module information for Email::MIME;
 "
-    ::= {asspPerlModuleInfo 13}
+    ::= {asspPerlModuleInfo 18}
 
 iVEmailMIME  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -52432,7 +52827,7 @@ EmailSend  OBJECT-TYPE
 "
 ASSP Perl module information for Email::Send;
 "
-    ::= {asspPerlModuleInfo 14}
+    ::= {asspPerlModuleInfo 19}
 
 iVEmailSend  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -52482,7 +52877,7 @@ FileReadBackwards  OBJECT-TYPE
 "
 ASSP Perl module information for File::ReadBackwards;
 "
-    ::= {asspPerlModuleInfo 15}
+    ::= {asspPerlModuleInfo 20}
 
 iVFileReadBackwards  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -52532,7 +52927,7 @@ FileScanClamAV  OBJECT-TYPE
 "
 ASSP Perl module information for File::Scan::ClamAV;
 "
-    ::= {asspPerlModuleInfo 16}
+    ::= {asspPerlModuleInfo 21}
 
 iVFileScanClamAV  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -52574,6 +52969,56 @@ download URL for the module
 "
     ::= {FileScanClamAV 4}
 
+FileType  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+ASSP Perl module information for File::Type;
+"
+    ::= {asspPerlModuleInfo 22}
+
+iVFileType  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+installed module version
+"
+    ::= {FileType 1}
+
+rVFileType  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+required/recommended module version
+"
+    ::= {FileType 2}
+
+iSFileType  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+module installation status
+"
+    ::= {FileType 3}
+
+dUFileType  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+download URL for the module
+"
+    ::= {FileType 4}
+
 FileWhich  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
@@ -52582,7 +53027,7 @@ FileWhich  OBJECT-TYPE
 "
 ASSP Perl module information for File::Which;
 "
-    ::= {asspPerlModuleInfo 17}
+    ::= {asspPerlModuleInfo 23}
 
 iVFileWhich  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -52624,6 +53069,56 @@ download URL for the module
 "
     ::= {FileWhich 4}
 
+HTMLStrip  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+ASSP Perl module information for HTML::Strip;
+"
+    ::= {asspPerlModuleInfo 24}
+
+iVHTMLStrip  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+installed module version
+"
+    ::= {HTMLStrip 1}
+
+rVHTMLStrip  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+required/recommended module version
+"
+    ::= {HTMLStrip 2}
+
+iSHTMLStrip  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+module installation status
+"
+    ::= {HTMLStrip 3}
+
+dUHTMLStrip  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+download URL for the module
+"
+    ::= {HTMLStrip 4}
+
 IOPoll  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
@@ -52632,7 +53127,7 @@ IOPoll  OBJECT-TYPE
 "
 ASSP Perl module information for IO::Poll;
 "
-    ::= {asspPerlModuleInfo 18}
+    ::= {asspPerlModuleInfo 25}
 
 iVIOPoll  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -52682,7 +53177,7 @@ IOSelect  OBJECT-TYPE
 "
 ASSP Perl module information for IO::Select;
 "
-    ::= {asspPerlModuleInfo 19}
+    ::= {asspPerlModuleInfo 26}
 
 iVIOSelect  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -52732,7 +53227,7 @@ IOSocketINET6  OBJECT-TYPE
 "
 ASSP Perl module information for IO::Socket::INET6;
 "
-    ::= {asspPerlModuleInfo 20}
+    ::= {asspPerlModuleInfo 27}
 
 iVIOSocketINET6  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -52782,7 +53277,7 @@ IOSocketSSL  OBJECT-TYPE
 "
 ASSP Perl module information for IO::Socket::SSL;
 "
-    ::= {asspPerlModuleInfo 21}
+    ::= {asspPerlModuleInfo 28}
 
 iVIOSocketSSL  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -52832,7 +53327,7 @@ ImageOCRTesseract  OBJECT-TYPE
 "
 ASSP Perl module information for Image::OCR::Tesseract;
 "
-    ::= {asspPerlModuleInfo 22}
+    ::= {asspPerlModuleInfo 29}
 
 iVImageOCRTesseract  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -52882,7 +53377,7 @@ LWPSimple  OBJECT-TYPE
 "
 ASSP Perl module information for LWP::Simple;
 "
-    ::= {asspPerlModuleInfo 23}
+    ::= {asspPerlModuleInfo 30}
 
 iVLWPSimple  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -52932,7 +53427,7 @@ MIMETypes  OBJECT-TYPE
 "
 ASSP Perl module information for MIME::Types;
 "
-    ::= {asspPerlModuleInfo 24}
+    ::= {asspPerlModuleInfo 31}
 
 iVMIMETypes  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -52982,7 +53477,7 @@ MailDKIMVerifier  OBJECT-TYPE
 "
 ASSP Perl module information for Mail::DKIM::Verifier;
 "
-    ::= {asspPerlModuleInfo 25}
+    ::= {asspPerlModuleInfo 32}
 
 iVMailDKIMVerifier  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53032,7 +53527,7 @@ MailSPF  OBJECT-TYPE
 "
 ASSP Perl module information for Mail::SPF;
 "
-    ::= {asspPerlModuleInfo 26}
+    ::= {asspPerlModuleInfo 33}
 
 iVMailSPF  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53082,7 +53577,7 @@ MailSPFQuery  OBJECT-TYPE
 "
 ASSP Perl module information for Mail::SPF::Query;
 "
-    ::= {asspPerlModuleInfo 27}
+    ::= {asspPerlModuleInfo 34}
 
 iVMailSPFQuery  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53132,7 +53627,7 @@ MailSRS  OBJECT-TYPE
 "
 ASSP Perl module information for Mail::SRS;
 "
-    ::= {asspPerlModuleInfo 28}
+    ::= {asspPerlModuleInfo 35}
 
 iVMailSRS  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53182,7 +53677,7 @@ NetCIDRLite  OBJECT-TYPE
 "
 ASSP Perl module information for Net::CIDR::Lite;
 "
-    ::= {asspPerlModuleInfo 29}
+    ::= {asspPerlModuleInfo 36}
 
 iVNetCIDRLite  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53232,7 +53727,7 @@ NetDNS  OBJECT-TYPE
 "
 ASSP Perl module information for Net::DNS;
 "
-    ::= {asspPerlModuleInfo 30}
+    ::= {asspPerlModuleInfo 37}
 
 iVNetDNS  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53282,7 +53777,7 @@ NetIP  OBJECT-TYPE
 "
 ASSP Perl module information for Net::IP;
 "
-    ::= {asspPerlModuleInfo 31}
+    ::= {asspPerlModuleInfo 38}
 
 iVNetIP  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53332,7 +53827,7 @@ NetLDAP  OBJECT-TYPE
 "
 ASSP Perl module information for Net::LDAP;
 "
-    ::= {asspPerlModuleInfo 32}
+    ::= {asspPerlModuleInfo 39}
 
 iVNetLDAP  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53382,7 +53877,7 @@ NetSMTP  OBJECT-TYPE
 "
 ASSP Perl module information for Net::SMTP;
 "
-    ::= {asspPerlModuleInfo 33}
+    ::= {asspPerlModuleInfo 40}
 
 iVNetSMTP  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53432,7 +53927,7 @@ NetSMTPSSL  OBJECT-TYPE
 "
 ASSP Perl module information for Net::SMTP::SSL;
 "
-    ::= {asspPerlModuleInfo 34}
+    ::= {asspPerlModuleInfo 41}
 
 iVNetSMTPSSL  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53482,7 +53977,7 @@ NetSSLeay  OBJECT-TYPE
 "
 ASSP Perl module information for Net::SSLeay;
 "
-    ::= {asspPerlModuleInfo 35}
+    ::= {asspPerlModuleInfo 42}
 
 iVNetSSLeay  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53532,7 +54027,7 @@ NetAddrIPLite  OBJECT-TYPE
 "
 ASSP Perl module information for NetAddr::IP::Lite;
 "
-    ::= {asspPerlModuleInfo 36}
+    ::= {asspPerlModuleInfo 43}
 
 iVNetAddrIPLite  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53582,7 +54077,7 @@ NetSNMPagent  OBJECT-TYPE
 "
 ASSP Perl module information for NetSNMP::agent;
 "
-    ::= {asspPerlModuleInfo 37}
+    ::= {asspPerlModuleInfo 44}
 
 iVNetSNMPagent  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53632,7 +54127,7 @@ OpenSSL110f  OBJECT-TYPE
 "
 ASSP Perl module information for OpenSSL 1.1.0f;
 "
-    ::= {asspPerlModuleInfo 38}
+    ::= {asspPerlModuleInfo 45}
 
 iVOpenSSL110f  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53682,7 +54177,7 @@ OpenSSLlib110f25May2017  OBJECT-TYPE
 "
 ASSP Perl module information for OpenSSL-lib 1.1.0f  25 May 2017;
 "
-    ::= {asspPerlModuleInfo 39}
+    ::= {asspPerlModuleInfo 46}
 
 iVOpenSSLlib110f25May2017  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53732,7 +54227,7 @@ PDFOCR2  OBJECT-TYPE
 "
 ASSP Perl module information for PDF::OCR2;
 "
-    ::= {asspPerlModuleInfo 40}
+    ::= {asspPerlModuleInfo 47}
 
 iVPDFOCR2  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53782,7 +54277,7 @@ PerlIOscalar  OBJECT-TYPE
 "
 ASSP Perl module information for PerlIO::scalar;
 "
-    ::= {asspPerlModuleInfo 41}
+    ::= {asspPerlModuleInfo 48}
 
 iVPerlIOscalar  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53832,7 +54327,7 @@ PluginsASSPAFC  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_AFC;
 "
-    ::= {asspPerlModuleInfo 42}
+    ::= {asspPerlModuleInfo 49}
 
 iVPluginsASSPAFC  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53882,7 +54377,7 @@ PluginsASSPDCC  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_DCC;
 "
-    ::= {asspPerlModuleInfo 43}
+    ::= {asspPerlModuleInfo 50}
 
 iVPluginsASSPDCC  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53932,7 +54427,7 @@ PluginsASSPFakeMX  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_FakeMX;
 "
-    ::= {asspPerlModuleInfo 44}
+    ::= {asspPerlModuleInfo 51}
 
 iVPluginsASSPFakeMX  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53982,7 +54477,7 @@ PluginsASSPOCR  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_OCR;
 "
-    ::= {asspPerlModuleInfo 45}
+    ::= {asspPerlModuleInfo 52}
 
 iVPluginsASSPOCR  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54032,7 +54527,7 @@ PluginsASSPRazor  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_Razor;
 "
-    ::= {asspPerlModuleInfo 46}
+    ::= {asspPerlModuleInfo 53}
 
 iVPluginsASSPRazor  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54082,7 +54577,7 @@ RegexpOptimizer  OBJECT-TYPE
 "
 ASSP Perl module information for Regexp::Optimizer;
 "
-    ::= {asspPerlModuleInfo 47}
+    ::= {asspPerlModuleInfo 54}
 
 iVRegexpOptimizer  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54132,7 +54627,7 @@ ScheduleCron  OBJECT-TYPE
 "
 ASSP Perl module information for Schedule::Cron;
 "
-    ::= {asspPerlModuleInfo 48}
+    ::= {asspPerlModuleInfo 55}
 
 iVScheduleCron  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54182,7 +54677,7 @@ SysCpuAffinity  OBJECT-TYPE
 "
 ASSP Perl module information for Sys::CpuAffinity;
 "
-    ::= {asspPerlModuleInfo 49}
+    ::= {asspPerlModuleInfo 56}
 
 iVSysCpuAffinity  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54232,7 +54727,7 @@ SysMemInfo  OBJECT-TYPE
 "
 ASSP Perl module information for Sys::MemInfo;
 "
-    ::= {asspPerlModuleInfo 50}
+    ::= {asspPerlModuleInfo 57}
 
 iVSysMemInfo  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54282,7 +54777,7 @@ SysSyslog  OBJECT-TYPE
 "
 ASSP Perl module information for Sys::Syslog;
 "
-    ::= {asspPerlModuleInfo 51}
+    ::= {asspPerlModuleInfo 58}
 
 iVSysSyslog  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54332,7 +54827,7 @@ TextUnidecode  OBJECT-TYPE
 "
 ASSP Perl module information for Text::Unidecode;
 "
-    ::= {asspPerlModuleInfo 52}
+    ::= {asspPerlModuleInfo 59}
 
 iVTextUnidecode  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54382,7 +54877,7 @@ ThreadQueue  OBJECT-TYPE
 "
 ASSP Perl module information for Thread::Queue;
 "
-    ::= {asspPerlModuleInfo 53}
+    ::= {asspPerlModuleInfo 60}
 
 iVThreadQueue  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54432,7 +54927,7 @@ ThreadSemaphore  OBJECT-TYPE
 "
 ASSP Perl module information for Thread::Semaphore;
 "
-    ::= {asspPerlModuleInfo 54}
+    ::= {asspPerlModuleInfo 61}
 
 iVThreadSemaphore  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54482,7 +54977,7 @@ ThreadState  OBJECT-TYPE
 "
 ASSP Perl module information for Thread::State;
 "
-    ::= {asspPerlModuleInfo 55}
+    ::= {asspPerlModuleInfo 62}
 
 iVThreadState  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54532,7 +55027,7 @@ TieRDBM  OBJECT-TYPE
 "
 ASSP Perl module information for Tie::RDBM;
 "
-    ::= {asspPerlModuleInfo 56}
+    ::= {asspPerlModuleInfo 63}
 
 iVTieRDBM  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54582,7 +55077,7 @@ TimeHiRes  OBJECT-TYPE
 "
 ASSP Perl module information for Time::HiRes;
 "
-    ::= {asspPerlModuleInfo 57}
+    ::= {asspPerlModuleInfo 64}
 
 iVTimeHiRes  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54632,7 +55127,7 @@ UnicodeGCString  OBJECT-TYPE
 "
 ASSP Perl module information for Unicode::GCString;
 "
-    ::= {asspPerlModuleInfo 58}
+    ::= {asspPerlModuleInfo 65}
 
 iVUnicodeGCString  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54682,7 +55177,7 @@ Win32APIOutputDebugString  OBJECT-TYPE
 "
 ASSP Perl module information for Win32::API::OutputDebugString;
 "
-    ::= {asspPerlModuleInfo 59}
+    ::= {asspPerlModuleInfo 66}
 
 iVWin32APIOutputDebugString  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54732,7 +55227,7 @@ Win32Daemon  OBJECT-TYPE
 "
 ASSP Perl module information for Win32::Daemon;
 "
-    ::= {asspPerlModuleInfo 60}
+    ::= {asspPerlModuleInfo 67}
 
 iVWin32Daemon  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54782,7 +55277,7 @@ Win32Unicode  OBJECT-TYPE
 "
 ASSP Perl module information for Win32::Unicode;
 "
-    ::= {asspPerlModuleInfo 61}
+    ::= {asspPerlModuleInfo 68}
 
 iVWin32Unicode  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54832,7 +55327,7 @@ threads  OBJECT-TYPE
 "
 ASSP Perl module information for threads;
 "
-    ::= {asspPerlModuleInfo 62}
+    ::= {asspPerlModuleInfo 69}
 
 iVthreads  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54882,7 +55377,7 @@ threadsshared  OBJECT-TYPE
 "
 ASSP Perl module information for threads::shared;
 "
-    ::= {asspPerlModuleInfo 63}
+    ::= {asspPerlModuleInfo 70}
 
 iVthreadsshared  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -57524,6 +58019,16 @@ currently scored SPFpass
 "
     ::= {currentScoreStat 6}
 
+currentScoredSSL-DoS  OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+currently scored SSL-DoS
+"
+    ::= {currentScoreStat 7}
+
 currentScoredTimeOut  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
@@ -57532,7 +58037,7 @@ currentScoredTimeOut  OBJECT-TYPE
 "
 currently scored TimeOut
 "
-    ::= {currentScoreStat 7}
+    ::= {currentScoreStat 8}
 
 currentScoredASSP_AFC  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57542,7 +58047,7 @@ currentScoredASSP_AFC  OBJECT-TYPE
 "
 currently scored ASSP_AFC
 "
-    ::= {currentScoreStat 8}
+    ::= {currentScoreStat 9}
 
 currentScoredASSP_DCC  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57552,7 +58057,7 @@ currentScoredASSP_DCC  OBJECT-TYPE
 "
 currently scored ASSP_DCC
 "
-    ::= {currentScoreStat 9}
+    ::= {currentScoreStat 10}
 
 currentScoredASSP_OCR  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57562,7 +58067,7 @@ currentScoredASSP_OCR  OBJECT-TYPE
 "
 currently scored ASSP_OCR
 "
-    ::= {currentScoreStat 10}
+    ::= {currentScoreStat 11}
 
 currentScoredBayesian  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57572,7 +58077,7 @@ currentScoredBayesian  OBJECT-TYPE
 "
 currently scored Bayesian
 "
-    ::= {currentScoreStat 11}
+    ::= {currentScoreStat 12}
 
 currentScoredBlackOrg  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57582,7 +58087,7 @@ currentScoredBlackOrg  OBJECT-TYPE
 "
 currently scored BlackOrg
 "
-    ::= {currentScoreStat 12}
+    ::= {currentScoreStat 13}
 
 currentScoredBombData  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57592,7 +58097,7 @@ currentScoredBombData  OBJECT-TYPE
 "
 currently scored BombData
 "
-    ::= {currentScoreStat 13}
+    ::= {currentScoreStat 14}
 
 currentScoredDKIMpass  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57602,7 +58107,7 @@ currentScoredDKIMpass  OBJECT-TYPE
 "
 currently scored DKIMpass
 "
-    ::= {currentScoreStat 14}
+    ::= {currentScoreStat 15}
 
 currentScoredIPinHELO  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57612,7 +58117,7 @@ currentScoredIPinHELO  OBJECT-TYPE
 "
 currently scored IPinHELO
 "
-    ::= {currentScoreStat 15}
+    ::= {currentScoreStat 16}
 
 currentScoredSPFerror  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57622,7 +58127,7 @@ currentScoredSPFerror  OBJECT-TYPE
 "
 currently scored SPFerror
 "
-    ::= {currentScoreStat 16}
+    ::= {currentScoreStat 17}
 
 currentScoredgriplist  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57632,7 +58137,7 @@ currentScoredgriplist  OBJECT-TYPE
 "
 currently scored griplist
 "
-    ::= {currentScoreStat 17}
+    ::= {currentScoreStat 18}
 
 currentScoredBombBlack  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57642,7 +58147,7 @@ currentScoredBombBlack  OBJECT-TYPE
 "
 currently scored BombBlack
 "
-    ::= {currentScoreStat 18}
+    ::= {currentScoreStat 19}
 
 currentScoredMaxErrors  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57652,7 +58157,7 @@ currentScoredMaxErrors  OBJECT-TYPE
 "
 currently scored MaxErrors
 "
-    ::= {currentScoreStat 19}
+    ::= {currentScoreStat 20}
 
 currentScoredMessageOK  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57662,7 +58167,7 @@ currentScoredMessageOK  OBJECT-TYPE
 "
 currently scored MessageOK
 "
-    ::= {currentScoreStat 20}
+    ::= {currentScoreStat 21}
 
 currentScoredMissingMX  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57672,7 +58177,7 @@ currentScoredMissingMX  OBJECT-TYPE
 "
 currently scored MissingMX
 "
-    ::= {currentScoreStat 21}
+    ::= {currentScoreStat 22}
 
 currentScoredValidHELO  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57682,7 +58187,7 @@ currentScoredValidHELO  OBJECT-TYPE
 "
 currently scored ValidHELO
 "
-    ::= {currentScoreStat 22}
+    ::= {currentScoreStat 23}
 
 currentScoredASSP_Razor  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57692,7 +58197,7 @@ currentScoredASSP_Razor  OBJECT-TYPE
 "
 currently scored ASSP_Razor
 "
-    ::= {currentScoreStat 23}
+    ::= {currentScoreStat 24}
 
 currentScoredAUTHErrors  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57702,7 +58207,7 @@ currentScoredAUTHErrors  OBJECT-TYPE
 "
 currently scored AUTHErrors
 "
-    ::= {currentScoreStat 24}
+    ::= {currentScoreStat 25}
 
 currentScoredBadHistory  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57712,7 +58217,7 @@ currentScoredBadHistory  OBJECT-TYPE
 "
 currently scored BadHistory
 "
-    ::= {currentScoreStat 25}
+    ::= {currentScoreStat 26}
 
 currentScoredBombScript  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57722,7 +58227,7 @@ currentScoredBombScript  OBJECT-TYPE
 "
 currently scored BombScript
 "
-    ::= {currentScoreStat 26}
+    ::= {currentScoreStat 27}
 
 currentScoredDKIMfailed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57732,7 +58237,7 @@ currentScoredDKIMfailed  OBJECT-TYPE
 "
 currently scored DKIMfailed
 "
-    ::= {currentScoreStat 27}
+    ::= {currentScoreStat 28}
 
 currentScoredForgedHELO  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57742,7 +58247,7 @@ currentScoredForgedHELO  OBJECT-TYPE
 "
 currently scored ForgedHELO
 "
-    ::= {currentScoreStat 28}
+    ::= {currentScoreStat 29}
 
 currentScoredInWhiteBox  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57752,7 +58257,7 @@ currentScoredInWhiteBox  OBJECT-TYPE
 "
 currently scored InWhiteBox
 "
-    ::= {currentScoreStat 29}
+    ::= {currentScoreStat 30}
 
 currentScoredLimitingIP  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57762,7 +58267,7 @@ currentScoredLimitingIP  OBJECT-TYPE
 "
 currently scored LimitingIP
 "
-    ::= {currentScoreStat 30}
+    ::= {currentScoreStat 31}
 
 currentScoredMissingMXA  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57772,7 +58277,7 @@ currentScoredMissingMXA  OBJECT-TYPE
 "
 currently scored MissingMXA
 "
-    ::= {currentScoreStat 31}
+    ::= {currentScoreStat 32}
 
 currentScoredNoSpoofing  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57782,7 +58287,7 @@ currentScoredNoSpoofing  OBJECT-TYPE
 "
 currently scored NoSpoofing
 "
-    ::= {currentScoreStat 32}
+    ::= {currentScoreStat 33}
 
 currentScoredPTRinvalid  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57792,7 +58297,7 @@ currentScoredPTRinvalid  OBJECT-TYPE
 "
 currently scored PTRinvalid
 "
-    ::= {currentScoreStat 33}
+    ::= {currentScoreStat 34}
 
 currentScoredPTRmissing  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57802,7 +58307,7 @@ currentScoredPTRmissing  OBJECT-TYPE
 "
 currently scored PTRmissing
 "
-    ::= {currentScoreStat 34}
+    ::= {currentScoreStat 35}
 
 currentScoredSPFneutral  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57812,7 +58317,7 @@ currentScoredSPFneutral  OBJECT-TYPE
 "
 currently scored SPFneutral
 "
-    ::= {currentScoreStat 35}
+    ::= {currentScoreStat 36}
 
 currentScoredASSP_FakeMX  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57822,7 +58327,7 @@ currentScoredASSP_FakeMX  OBJECT-TYPE
 "
 currently scored ASSP_FakeMX
 "
-    ::= {currentScoreStat 36}
+    ::= {currentScoreStat 37}
 
 currentScoredCountryCode  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57832,7 +58337,7 @@ currentScoredCountryCode  OBJECT-TYPE
 "
 currently scored CountryCode
 "
-    ::= {currentScoreStat 37}
+    ::= {currentScoreStat 38}
 
 currentScoredDNSBLfailed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57842,7 +58347,7 @@ currentScoredDNSBLfailed  OBJECT-TYPE
 "
 currently scored DNSBLfailed
 "
-    ::= {currentScoreStat 38}
+    ::= {currentScoreStat 39}
 
 currentScoredEarlyTalker  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57852,7 +58357,7 @@ currentScoredEarlyTalker  OBJECT-TYPE
 "
 currently scored EarlyTalker
 "
-    ::= {currentScoreStat 39}
+    ::= {currentScoreStat 40}
 
 currentScoredHomeCountry  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57862,7 +58367,7 @@ currentScoredHomeCountry  OBJECT-TYPE
 "
 currently scored HomeCountry
 "
-    ::= {currentScoreStat 40}
+    ::= {currentScoreStat 41}
 
 currentScoredIPfrequency  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57872,7 +58377,7 @@ currentScoredIPfrequency  OBJECT-TYPE
 "
 currently scored IPfrequency
 "
-    ::= {currentScoreStat 41}
+    ::= {currentScoreStat 42}
 
 currentScoredInvalidHELO  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57882,7 +58387,7 @@ currentScoredInvalidHELO  OBJECT-TYPE
 "
 currently scored InvalidHELO
 "
-    ::= {currentScoreStat 42}
+    ::= {currentScoreStat 43}
 
 currentScoredSPFsoftfail  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57892,7 +58397,7 @@ currentScoredSPFsoftfail  OBJECT-TYPE
 "
 currently scored SPFsoftfail
 "
-    ::= {currentScoreStat 43}
+    ::= {currentScoreStat 44}
 
 currentScoredURIBLfailed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57902,7 +58407,7 @@ currentScoredURIBLfailed  OBJECT-TYPE
 "
 currently scored URIBLfailed
 "
-    ::= {currentScoreStat 44}
+    ::= {currentScoreStat 45}
 
 currentScoredpenaltytrap  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57912,7 +58417,7 @@ currentScoredpenaltytrap  OBJECT-TYPE
 "
 currently scored penaltytrap
 "
-    ::= {currentScoreStat 45}
+    ::= {currentScoreStat 46}
 
 currentScoredBayesian-HAM  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57922,7 +58427,7 @@ currentScoredBayesian-HAM  OBJECT-TYPE
 "
 currently scored Bayesian-HAM
 "
-    ::= {currentScoreStat 46}
+    ::= {currentScoreStat 47}
 
 currentScoredBombCharSets  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57932,7 +58437,7 @@ currentScoredBombCharSets  OBJECT-TYPE
 "
 currently scored BombCharSets
 "
-    ::= {currentScoreStat 47}
+    ::= {currentScoreStat 48}
 
 currentScoredBombHeaderRe  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57942,7 +58447,7 @@ currentScoredBombHeaderRe  OBJECT-TYPE
 "
 currently scored BombHeaderRe
 "
-    ::= {currentScoreStat 48}
+    ::= {currentScoreStat 49}
 
 currentScoredBombSenderIP  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57952,7 +58457,7 @@ currentScoredBombSenderIP  OBJECT-TYPE
 "
 currently scored BombSenderIP
 "
-    ::= {currentScoreStat 49}
+    ::= {currentScoreStat 50}
 
 currentScoredDMARC-failed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57962,7 +58467,7 @@ currentScoredDMARC-failed  OBJECT-TYPE
 "
 currently scored DMARC-failed
 "
-    ::= {currentScoreStat 50}
+    ::= {currentScoreStat 51}
 
 currentScoredDNSBLneutral  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57972,7 +58477,7 @@ currentScoredDNSBLneutral  OBJECT-TYPE
 "
 currently scored DNSBLneutral
 "
-    ::= {currentScoreStat 51}
+    ::= {currentScoreStat 52}
 
 currentScoredFrom-missing  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57982,7 +58487,7 @@ currentScoredFrom-missing  OBJECT-TYPE
 "
 currently scored From-missing
 "
-    ::= {currentScoreStat 52}
+    ::= {currentScoreStat 53}
 
 currentScoredRelayAttempt  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57992,7 +58497,7 @@ currentScoredRelayAttempt  OBJECT-TYPE
 "
 currently scored RelayAttempt
 "
-    ::= {currentScoreStat 53}
+    ::= {currentScoreStat 54}
 
 currentScoredURIBLneutral  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58002,7 +58507,7 @@ currentScoredURIBLneutral  OBJECT-TYPE
 "
 currently scored URIBLneutral
 "
-    ::= {currentScoreStat 54}
+    ::= {currentScoreStat 55}
 
 currentScoredvirus-ClamAV  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58012,7 +58517,7 @@ currentScoredvirus-ClamAV  OBJECT-TYPE
 "
 currently scored virus-ClamAV
 "
-    ::= {currentScoreStat 55}
+    ::= {currentScoreStat 56}
 
 currentScoredBadAttachment  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58022,7 +58527,7 @@ currentScoredBadAttachment  OBJECT-TYPE
 "
 currently scored BadAttachment
 "
-    ::= {currentScoreStat 56}
+    ::= {currentScoreStat 57}
 
 currentScoredBombSubjectRe  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58032,7 +58537,7 @@ currentScoredBombSubjectRe  OBJECT-TYPE
 "
 currently scored BombSubjectRe
 "
-    ::= {currentScoreStat 57}
+    ::= {currentScoreStat 58}
 
 currentScoredKnownGoodHelo  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58042,7 +58547,7 @@ currentScoredKnownGoodHelo  OBJECT-TYPE
 "
 currently scored KnownGoodHelo
 "
-    ::= {currentScoreStat 58}
+    ::= {currentScoreStat 59}
 
 currentScoredMsg-IDinvalid  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58052,7 +58557,7 @@ currentScoredMsg-IDinvalid  OBJECT-TYPE
 "
 currently scored Msg-IDinvalid
 "
-    ::= {currentScoreStat 59}
+    ::= {currentScoreStat 60}
 
 currentScoredMsg-IDmissing  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58062,7 +58567,7 @@ currentScoredMsg-IDmissing  OBJECT-TYPE
 "
 currently scored Msg-IDmissing
 "
-    ::= {currentScoreStat 60}
+    ::= {currentScoreStat 61}
 
 currentScoredNeedRecipient  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58072,7 +58577,7 @@ currentScoredNeedRecipient  OBJECT-TYPE
 "
 currently scored NeedRecipient
 "
-    ::= {currentScoreStat 61}
+    ::= {currentScoreStat 62}
 
 currentScoredBlockedCountry  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58082,7 +58587,7 @@ currentScoredBlockedCountry  OBJECT-TYPE
 "
 currently scored BlockedCountry
 "
-    ::= {currentScoreStat 62}
+    ::= {currentScoreStat 63}
 
 currentScoredBombSenderHelo  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58092,7 +58597,7 @@ currentScoredBombSenderHelo  OBJECT-TYPE
 "
 currently scored BombSenderHelo
 "
-    ::= {currentScoreStat 63}
+    ::= {currentScoreStat 64}
 
 currentScoredExtremeHistory  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58102,7 +58607,17 @@ currentScoredExtremeHistory  OBJECT-TYPE
 "
 currently scored ExtremeHistory
 "
-    ::= {currentScoreStat 64}
+    ::= {currentScoreStat 65}
+
+currentScoredGLOBALPB-Black  OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+currently scored GLOBALPB-Black
+"
+    ::= {currentScoreStat 66}
 
 currentScoredInvalidAddress  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58112,7 +58627,7 @@ currentScoredInvalidAddress  OBJECT-TYPE
 "
 currently scored InvalidAddress
 "
-    ::= {currentScoreStat 65}
+    ::= {currentScoreStat 67}
 
 currentScoredMsg-IDnotvalid  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58122,7 +58637,7 @@ currentScoredMsg-IDnotvalid  OBJECT-TYPE
 "
 currently scored Msg-IDnotvalid
 "
-    ::= {currentScoreStat 66}
+    ::= {currentScoreStat 68}
 
 currentScoredNoCountryNoOrg  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58132,7 +58647,7 @@ currentScoredNoCountryNoOrg  OBJECT-TYPE
 "
 currently scored NoCountryNoOrg
 "
-    ::= {currentScoreStat 67}
+    ::= {currentScoreStat 69}
 
 currentScoredSPFfail-strict  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58142,7 +58657,7 @@ currentScoredSPFfail-strict  OBJECT-TYPE
 "
 currently scored SPFfail-strict
 "
-    ::= {currentScoreStat 68}
+    ::= {currentScoreStat 70}
 
 currentScoredSPFnone-strict  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58152,7 +58667,7 @@ currentScoredSPFnone-strict  OBJECT-TYPE
 "
 currently scored SPFnone-strict
 "
-    ::= {currentScoreStat 69}
+    ::= {currentScoreStat 71}
 
 currentScoredSRS_Not_Signed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58162,7 +58677,7 @@ currentScoredSRS_Not_Signed  OBJECT-TYPE
 "
 currently scored SRS_Not_Signed
 "
-    ::= {currentScoreStat 70}
+    ::= {currentScoreStat 72}
 
 currentScoredvirus-FileScan  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58172,7 +58687,7 @@ currentScoredvirus-FileScan  OBJECT-TYPE
 "
 currently scored virus-FileScan
 "
-    ::= {currentScoreStat 71}
+    ::= {currentScoreStat 73}
 
 currentScoredBlacklistedHelo  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58182,7 +58697,7 @@ currentScoredBlacklistedHelo  OBJECT-TYPE
 "
 currently scored BlacklistedHelo
 "
-    ::= {currentScoreStat 72}
+    ::= {currentScoreStat 74}
 
 currentScoredWhiteSenderBase  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58192,7 +58707,7 @@ currentScoredWhiteSenderBase  OBJECT-TYPE
 "
 currently scored WhiteSenderBase
 "
-    ::= {currentScoreStat 73}
+    ::= {currentScoreStat 75}
 
 currentScoredinternaladdress  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58202,7 +58717,7 @@ currentScoredinternaladdress  OBJECT-TYPE
 "
 currently scored internaladdress
 "
-    ::= {currentScoreStat 74}
+    ::= {currentScoreStat 76}
 
 currentScoredIPinHELOmismatch  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58212,7 +58727,7 @@ currentScoredIPinHELOmismatch  OBJECT-TYPE
 "
 currently scored IPinHELOmismatch
 "
-    ::= {currentScoreStat 75}
+    ::= {currentScoreStat 77}
 
 currentScoredLimitingIPDomain  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58222,7 +58737,7 @@ currentScoredLimitingIPDomain  OBJECT-TYPE
 "
 currently scored LimitingIPDomain
 "
-    ::= {currentScoreStat 76}
+    ::= {currentScoreStat 78}
 
 currentScoredMaxDuplicateRcpt  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58232,7 +58747,7 @@ currentScoredMaxDuplicateRcpt  OBJECT-TYPE
 "
 currently scored MaxDuplicateRcpt
 "
-    ::= {currentScoreStat 77}
+    ::= {currentScoreStat 79}
 
 currentScoredMsg-IDsuspicious  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58242,7 +58757,7 @@ currentScoredMsg-IDsuspicious  OBJECT-TYPE
 "
 currently scored Msg-IDsuspicious
 "
-    ::= {currentScoreStat 78}
+    ::= {currentScoreStat 80}
 
 currentScoredbombSuspiciousRe  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58252,7 +58767,7 @@ currentScoredbombSuspiciousRe  OBJECT-TYPE
 "
 currently scored bombSuspiciousRe
 "
-    ::= {currentScoreStat 79}
+    ::= {currentScoreStat 81}
 
 currentScoredBATV-check-failed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58262,7 +58777,7 @@ currentScoredBATV-check-failed  OBJECT-TYPE
 "
 currently scored BATV-check-failed
 "
-    ::= {currentScoreStat 80}
+    ::= {currentScoreStat 82}
 
 currentScoredBlacklistedDomain  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58272,7 +58787,7 @@ currentScoredBlacklistedDomain  OBJECT-TYPE
 "
 currently scored BlacklistedDomain
 "
-    ::= {currentScoreStat 81}
+    ::= {currentScoreStat 83}
 
 currentScoredSPFneutral-strict  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58282,7 +58797,7 @@ currentScoredSPFneutral-strict  OBJECT-TYPE
 "
 currently scored SPFneutral-strict
 "
-    ::= {currentScoreStat 82}
+    ::= {currentScoreStat 84}
 
 currentScoredBackscatter-failed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58292,7 +58807,7 @@ currentScoredBackscatter-failed  OBJECT-TYPE
 "
 currently scored Backscatter-failed
 "
-    ::= {currentScoreStat 83}
+    ::= {currentScoreStat 85}
 
 currentScoredBombSenderMailFrom  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58302,7 +58817,7 @@ currentScoredBombSenderMailFrom  OBJECT-TYPE
 "
 currently scored BombSenderMailFrom
 "
-    ::= {currentScoreStat 84}
+    ::= {currentScoreStat 86}
 
 currentScoredInvalidLocalSender  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58312,7 +58827,7 @@ currentScoredInvalidLocalSender  OBJECT-TYPE
 "
 currently scored InvalidLocalSender
 "
-    ::= {currentScoreStat 85}
+    ::= {currentScoreStat 87}
 
 currentScoredSPFsoftfail-strict  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58322,7 +58837,7 @@ currentScoredSPFsoftfail-strict  OBJECT-TYPE
 "
 currently scored SPFsoftfail-strict
 "
-    ::= {currentScoreStat 86}
+    ::= {currentScoreStat 88}
 
 currentScoredSpamCollectAddress  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58332,7 +58847,7 @@ currentScoredSpamCollectAddress  OBJECT-TYPE
 "
 currently scored SpamCollectAddress
 "
-    ::= {currentScoreStat 87}
+    ::= {currentScoreStat 89}
 
 currentScoredLimitingSameSubject  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58342,7 +58857,7 @@ currentScoredLimitingSameSubject  OBJECT-TYPE
 "
 currently scored LimitingSameSubject
 "
-    ::= {currentScoreStat 88}
+    ::= {currentScoreStat 90}
 
 currentScoredSSL-TLS-connection-OK  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58352,7 +58867,7 @@ currentScoredSSL-TLS-connection-OK  OBJECT-TYPE
 "
 currently scored SSL-TLS-connection-OK
 "
-    ::= {currentScoreStat 89}
+    ::= {currentScoreStat 91}
 
 currentScoredMSGID-signature-failed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58362,7 +58877,7 @@ currentScoredMSGID-signature-failed  OBJECT-TYPE
 "
 currently scored MSGID-signature-failed
 "
-    ::= {currentScoreStat 90}
+    ::= {currentScoreStat 92}
 
 currentScoredSuspiciousVirus-ClamAV  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58372,7 +58887,7 @@ currentScoredSuspiciousVirus-ClamAV  OBJECT-TYPE
 "
 currently scored SuspiciousVirus-ClamAV
 "
-    ::= {currentScoreStat 91}
+    ::= {currentScoreStat 93}
 
 currentScoredSuspiciousVirus-FileScan  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58382,7 +58897,7 @@ currentScoredSuspiciousVirus-FileScan  OBJECT-TYPE
 "
 currently scored SuspiciousVirus-FileScan
 "
-    ::= {currentScoreStat 92}
+    ::= {currentScoreStat 94}
 
 cumulScoredHMM  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58454,6 +58969,16 @@ cumulative scored SPFpass
 "
     ::= {cumulativeScoreStat 6}
 
+cumulScoredSSL-DoS  OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+cumulative scored SSL-DoS
+"
+    ::= {cumulativeScoreStat 7}
+
 cumulScoredTimeOut  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
@@ -58462,7 +58987,7 @@ cumulScoredTimeOut  OBJECT-TYPE
 "
 cumulative scored TimeOut
 "
-    ::= {cumulativeScoreStat 7}
+    ::= {cumulativeScoreStat 8}
 
 cumulScoredASSP_AFC  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58472,7 +58997,7 @@ cumulScoredASSP_AFC  OBJECT-TYPE
 "
 cumulative scored ASSP_AFC
 "
-    ::= {cumulativeScoreStat 8}
+    ::= {cumulativeScoreStat 9}
 
 cumulScoredASSP_DCC  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58482,7 +59007,7 @@ cumulScoredASSP_DCC  OBJECT-TYPE
 "
 cumulative scored ASSP_DCC
 "
-    ::= {cumulativeScoreStat 9}
+    ::= {cumulativeScoreStat 10}
 
 cumulScoredASSP_OCR  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58492,7 +59017,7 @@ cumulScoredASSP_OCR  OBJECT-TYPE
 "
 cumulative scored ASSP_OCR
 "
-    ::= {cumulativeScoreStat 10}
+    ::= {cumulativeScoreStat 11}
 
 cumulScoredBayesian  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58502,7 +59027,7 @@ cumulScoredBayesian  OBJECT-TYPE
 "
 cumulative scored Bayesian
 "
-    ::= {cumulativeScoreStat 11}
+    ::= {cumulativeScoreStat 12}
 
 cumulScoredBlackOrg  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58512,7 +59037,7 @@ cumulScoredBlackOrg  OBJECT-TYPE
 "
 cumulative scored BlackOrg
 "
-    ::= {cumulativeScoreStat 12}
+    ::= {cumulativeScoreStat 13}
 
 cumulScoredBombData  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58522,7 +59047,7 @@ cumulScoredBombData  OBJECT-TYPE
 "
 cumulative scored BombData
 "
-    ::= {cumulativeScoreStat 13}
+    ::= {cumulativeScoreStat 14}
 
 cumulScoredDKIMpass  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58532,7 +59057,7 @@ cumulScoredDKIMpass  OBJECT-TYPE
 "
 cumulative scored DKIMpass
 "
-    ::= {cumulativeScoreStat 14}
+    ::= {cumulativeScoreStat 15}
 
 cumulScoredIPinHELO  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58542,7 +59067,7 @@ cumulScoredIPinHELO  OBJECT-TYPE
 "
 cumulative scored IPinHELO
 "
-    ::= {cumulativeScoreStat 15}
+    ::= {cumulativeScoreStat 16}
 
 cumulScoredSPFerror  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58552,7 +59077,7 @@ cumulScoredSPFerror  OBJECT-TYPE
 "
 cumulative scored SPFerror
 "
-    ::= {cumulativeScoreStat 16}
+    ::= {cumulativeScoreStat 17}
 
 cumulScoredgriplist  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58562,7 +59087,7 @@ cumulScoredgriplist  OBJECT-TYPE
 "
 cumulative scored griplist
 "
-    ::= {cumulativeScoreStat 17}
+    ::= {cumulativeScoreStat 18}
 
 cumulScoredBombBlack  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58572,7 +59097,7 @@ cumulScoredBombBlack  OBJECT-TYPE
 "
 cumulative scored BombBlack
 "
-    ::= {cumulativeScoreStat 18}
+    ::= {cumulativeScoreStat 19}
 
 cumulScoredMaxErrors  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58582,7 +59107,7 @@ cumulScoredMaxErrors  OBJECT-TYPE
 "
 cumulative scored MaxErrors
 "
-    ::= {cumulativeScoreStat 19}
+    ::= {cumulativeScoreStat 20}
 
 cumulScoredMessageOK  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58592,7 +59117,7 @@ cumulScoredMessageOK  OBJECT-TYPE
 "
 cumulative scored MessageOK
 "
-    ::= {cumulativeScoreStat 20}
+    ::= {cumulativeScoreStat 21}
 
 cumulScoredMissingMX  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58602,7 +59127,7 @@ cumulScoredMissingMX  OBJECT-TYPE
 "
 cumulative scored MissingMX
 "
-    ::= {cumulativeScoreStat 21}
+    ::= {cumulativeScoreStat 22}
 
 cumulScoredValidHELO  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58612,7 +59137,7 @@ cumulScoredValidHELO  OBJECT-TYPE
 "
 cumulative scored ValidHELO
 "
-    ::= {cumulativeScoreStat 22}
+    ::= {cumulativeScoreStat 23}
 
 cumulScoredASSP_Razor  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58622,7 +59147,7 @@ cumulScoredASSP_Razor  OBJECT-TYPE
 "
 cumulative scored ASSP_Razor
 "
-    ::= {cumulativeScoreStat 23}
+    ::= {cumulativeScoreStat 24}
 
 cumulScoredAUTHErrors  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58632,7 +59157,7 @@ cumulScoredAUTHErrors  OBJECT-TYPE
 "
 cumulative scored AUTHErrors
 "
-    ::= {cumulativeScoreStat 24}
+    ::= {cumulativeScoreStat 25}
 
 cumulScoredBadHistory  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58642,7 +59167,7 @@ cumulScoredBadHistory  OBJECT-TYPE
 "
 cumulative scored BadHistory
 "
-    ::= {cumulativeScoreStat 25}
+    ::= {cumulativeScoreStat 26}
 
 cumulScoredBombScript  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58652,7 +59177,7 @@ cumulScoredBombScript  OBJECT-TYPE
 "
 cumulative scored BombScript
 "
-    ::= {cumulativeScoreStat 26}
+    ::= {cumulativeScoreStat 27}
 
 cumulScoredDKIMfailed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58662,7 +59187,7 @@ cumulScoredDKIMfailed  OBJECT-TYPE
 "
 cumulative scored DKIMfailed
 "
-    ::= {cumulativeScoreStat 27}
+    ::= {cumulativeScoreStat 28}
 
 cumulScoredForgedHELO  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58672,7 +59197,7 @@ cumulScoredForgedHELO  OBJECT-TYPE
 "
 cumulative scored ForgedHELO
 "
-    ::= {cumulativeScoreStat 28}
+    ::= {cumulativeScoreStat 29}
 
 cumulScoredInWhiteBox  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58682,7 +59207,7 @@ cumulScoredInWhiteBox  OBJECT-TYPE
 "
 cumulative scored InWhiteBox
 "
-    ::= {cumulativeScoreStat 29}
+    ::= {cumulativeScoreStat 30}
 
 cumulScoredLimitingIP  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58692,7 +59217,7 @@ cumulScoredLimitingIP  OBJECT-TYPE
 "
 cumulative scored LimitingIP
 "
-    ::= {cumulativeScoreStat 30}
+    ::= {cumulativeScoreStat 31}
 
 cumulScoredMissingMXA  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58702,7 +59227,7 @@ cumulScoredMissingMXA  OBJECT-TYPE
 "
 cumulative scored MissingMXA
 "
-    ::= {cumulativeScoreStat 31}
+    ::= {cumulativeScoreStat 32}
 
 cumulScoredNoSpoofing  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58712,7 +59237,7 @@ cumulScoredNoSpoofing  OBJECT-TYPE
 "
 cumulative scored NoSpoofing
 "
-    ::= {cumulativeScoreStat 32}
+    ::= {cumulativeScoreStat 33}
 
 cumulScoredPTRinvalid  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58722,7 +59247,7 @@ cumulScoredPTRinvalid  OBJECT-TYPE
 "
 cumulative scored PTRinvalid
 "
-    ::= {cumulativeScoreStat 33}
+    ::= {cumulativeScoreStat 34}
 
 cumulScoredPTRmissing  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58732,7 +59257,7 @@ cumulScoredPTRmissing  OBJECT-TYPE
 "
 cumulative scored PTRmissing
 "
-    ::= {cumulativeScoreStat 34}
+    ::= {cumulativeScoreStat 35}
 
 cumulScoredSPFneutral  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58742,7 +59267,7 @@ cumulScoredSPFneutral  OBJECT-TYPE
 "
 cumulative scored SPFneutral
 "
-    ::= {cumulativeScoreStat 35}
+    ::= {cumulativeScoreStat 36}
 
 cumulScoredASSP_FakeMX  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58752,7 +59277,7 @@ cumulScoredASSP_FakeMX  OBJECT-TYPE
 "
 cumulative scored ASSP_FakeMX
 "
-    ::= {cumulativeScoreStat 36}
+    ::= {cumulativeScoreStat 37}
 
 cumulScoredCountryCode  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58762,7 +59287,7 @@ cumulScoredCountryCode  OBJECT-TYPE
 "
 cumulative scored CountryCode
 "
-    ::= {cumulativeScoreStat 37}
+    ::= {cumulativeScoreStat 38}
 
 cumulScoredDNSBLfailed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58772,7 +59297,7 @@ cumulScoredDNSBLfailed  OBJECT-TYPE
 "
 cumulative scored DNSBLfailed
 "
-    ::= {cumulativeScoreStat 38}
+    ::= {cumulativeScoreStat 39}
 
 cumulScoredEarlyTalker  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58782,7 +59307,7 @@ cumulScoredEarlyTalker  OBJECT-TYPE
 "
 cumulative scored EarlyTalker
 "
-    ::= {cumulativeScoreStat 39}
+    ::= {cumulativeScoreStat 40}
 
 cumulScoredHomeCountry  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58792,7 +59317,7 @@ cumulScoredHomeCountry  OBJECT-TYPE
 "
 cumulative scored HomeCountry
 "
-    ::= {cumulativeScoreStat 40}
+    ::= {cumulativeScoreStat 41}
 
 cumulScoredIPfrequency  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58802,7 +59327,7 @@ cumulScoredIPfrequency  OBJECT-TYPE
 "
 cumulative scored IPfrequency
 "
-    ::= {cumulativeScoreStat 41}
+    ::= {cumulativeScoreStat 42}
 
 cumulScoredInvalidHELO  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58812,7 +59337,7 @@ cumulScoredInvalidHELO  OBJECT-TYPE
 "
 cumulative scored InvalidHELO
 "
-    ::= {cumulativeScoreStat 42}
+    ::= {cumulativeScoreStat 43}
 
 cumulScoredSPFsoftfail  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58822,7 +59347,7 @@ cumulScoredSPFsoftfail  OBJECT-TYPE
 "
 cumulative scored SPFsoftfail
 "
-    ::= {cumulativeScoreStat 43}
+    ::= {cumulativeScoreStat 44}
 
 cumulScoredURIBLfailed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58832,7 +59357,7 @@ cumulScoredURIBLfailed  OBJECT-TYPE
 "
 cumulative scored URIBLfailed
 "
-    ::= {cumulativeScoreStat 44}
+    ::= {cumulativeScoreStat 45}
 
 cumulScoredpenaltytrap  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58842,7 +59367,7 @@ cumulScoredpenaltytrap  OBJECT-TYPE
 "
 cumulative scored penaltytrap
 "
-    ::= {cumulativeScoreStat 45}
+    ::= {cumulativeScoreStat 46}
 
 cumulScoredBayesian-HAM  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58852,7 +59377,7 @@ cumulScoredBayesian-HAM  OBJECT-TYPE
 "
 cumulative scored Bayesian-HAM
 "
-    ::= {cumulativeScoreStat 46}
+    ::= {cumulativeScoreStat 47}
 
 cumulScoredBombCharSets  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58862,7 +59387,7 @@ cumulScoredBombCharSets  OBJECT-TYPE
 "
 cumulative scored BombCharSets
 "
-    ::= {cumulativeScoreStat 47}
+    ::= {cumulativeScoreStat 48}
 
 cumulScoredBombHeaderRe  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58872,7 +59397,7 @@ cumulScoredBombHeaderRe  OBJECT-TYPE
 "
 cumulative scored BombHeaderRe
 "
-    ::= {cumulativeScoreStat 48}
+    ::= {cumulativeScoreStat 49}
 
 cumulScoredBombSenderIP  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58882,7 +59407,7 @@ cumulScoredBombSenderIP  OBJECT-TYPE
 "
 cumulative scored BombSenderIP
 "
-    ::= {cumulativeScoreStat 49}
+    ::= {cumulativeScoreStat 50}
 
 cumulScoredDMARC-failed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58892,7 +59417,7 @@ cumulScoredDMARC-failed  OBJECT-TYPE
 "
 cumulative scored DMARC-failed
 "
-    ::= {cumulativeScoreStat 50}
+    ::= {cumulativeScoreStat 51}
 
 cumulScoredDNSBLneutral  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58902,7 +59427,7 @@ cumulScoredDNSBLneutral  OBJECT-TYPE
 "
 cumulative scored DNSBLneutral
 "
-    ::= {cumulativeScoreStat 51}
+    ::= {cumulativeScoreStat 52}
 
 cumulScoredFrom-missing  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58912,7 +59437,7 @@ cumulScoredFrom-missing  OBJECT-TYPE
 "
 cumulative scored From-missing
 "
-    ::= {cumulativeScoreStat 52}
+    ::= {cumulativeScoreStat 53}
 
 cumulScoredRelayAttempt  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58922,7 +59447,7 @@ cumulScoredRelayAttempt  OBJECT-TYPE
 "
 cumulative scored RelayAttempt
 "
-    ::= {cumulativeScoreStat 53}
+    ::= {cumulativeScoreStat 54}
 
 cumulScoredURIBLneutral  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58932,7 +59457,7 @@ cumulScoredURIBLneutral  OBJECT-TYPE
 "
 cumulative scored URIBLneutral
 "
-    ::= {cumulativeScoreStat 54}
+    ::= {cumulativeScoreStat 55}
 
 cumulScoredvirus-ClamAV  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58942,7 +59467,7 @@ cumulScoredvirus-ClamAV  OBJECT-TYPE
 "
 cumulative scored virus-ClamAV
 "
-    ::= {cumulativeScoreStat 55}
+    ::= {cumulativeScoreStat 56}
 
 cumulScoredBadAttachment  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58952,7 +59477,7 @@ cumulScoredBadAttachment  OBJECT-TYPE
 "
 cumulative scored BadAttachment
 "
-    ::= {cumulativeScoreStat 56}
+    ::= {cumulativeScoreStat 57}
 
 cumulScoredBombSubjectRe  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58962,7 +59487,7 @@ cumulScoredBombSubjectRe  OBJECT-TYPE
 "
 cumulative scored BombSubjectRe
 "
-    ::= {cumulativeScoreStat 57}
+    ::= {cumulativeScoreStat 58}
 
 cumulScoredKnownGoodHelo  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58972,7 +59497,7 @@ cumulScoredKnownGoodHelo  OBJECT-TYPE
 "
 cumulative scored KnownGoodHelo
 "
-    ::= {cumulativeScoreStat 58}
+    ::= {cumulativeScoreStat 59}
 
 cumulScoredMsg-IDinvalid  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58982,7 +59507,7 @@ cumulScoredMsg-IDinvalid  OBJECT-TYPE
 "
 cumulative scored Msg-IDinvalid
 "
-    ::= {cumulativeScoreStat 59}
+    ::= {cumulativeScoreStat 60}
 
 cumulScoredMsg-IDmissing  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58992,7 +59517,7 @@ cumulScoredMsg-IDmissing  OBJECT-TYPE
 "
 cumulative scored Msg-IDmissing
 "
-    ::= {cumulativeScoreStat 60}
+    ::= {cumulativeScoreStat 61}
 
 cumulScoredNeedRecipient  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59002,7 +59527,7 @@ cumulScoredNeedRecipient  OBJECT-TYPE
 "
 cumulative scored NeedRecipient
 "
-    ::= {cumulativeScoreStat 61}
+    ::= {cumulativeScoreStat 62}
 
 cumulScoredBlockedCountry  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59012,7 +59537,7 @@ cumulScoredBlockedCountry  OBJECT-TYPE
 "
 cumulative scored BlockedCountry
 "
-    ::= {cumulativeScoreStat 62}
+    ::= {cumulativeScoreStat 63}
 
 cumulScoredBombSenderHelo  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59022,7 +59547,7 @@ cumulScoredBombSenderHelo  OBJECT-TYPE
 "
 cumulative scored BombSenderHelo
 "
-    ::= {cumulativeScoreStat 63}
+    ::= {cumulativeScoreStat 64}
 
 cumulScoredExtremeHistory  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59032,7 +59557,17 @@ cumulScoredExtremeHistory  OBJECT-TYPE
 "
 cumulative scored ExtremeHistory
 "
-    ::= {cumulativeScoreStat 64}
+    ::= {cumulativeScoreStat 65}
+
+cumulScoredGLOBALPB-Black  OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+cumulative scored GLOBALPB-Black
+"
+    ::= {cumulativeScoreStat 66}
 
 cumulScoredInvalidAddress  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59042,7 +59577,7 @@ cumulScoredInvalidAddress  OBJECT-TYPE
 "
 cumulative scored InvalidAddress
 "
-    ::= {cumulativeScoreStat 65}
+    ::= {cumulativeScoreStat 67}
 
 cumulScoredMsg-IDnotvalid  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59052,7 +59587,7 @@ cumulScoredMsg-IDnotvalid  OBJECT-TYPE
 "
 cumulative scored Msg-IDnotvalid
 "
-    ::= {cumulativeScoreStat 66}
+    ::= {cumulativeScoreStat 68}
 
 cumulScoredNoCountryNoOrg  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59062,7 +59597,7 @@ cumulScoredNoCountryNoOrg  OBJECT-TYPE
 "
 cumulative scored NoCountryNoOrg
 "
-    ::= {cumulativeScoreStat 67}
+    ::= {cumulativeScoreStat 69}
 
 cumulScoredSPFfail-strict  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59072,7 +59607,7 @@ cumulScoredSPFfail-strict  OBJECT-TYPE
 "
 cumulative scored SPFfail-strict
 "
-    ::= {cumulativeScoreStat 68}
+    ::= {cumulativeScoreStat 70}
 
 cumulScoredSPFnone-strict  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59082,7 +59617,7 @@ cumulScoredSPFnone-strict  OBJECT-TYPE
 "
 cumulative scored SPFnone-strict
 "
-    ::= {cumulativeScoreStat 69}
+    ::= {cumulativeScoreStat 71}
 
 cumulScoredSRS_Not_Signed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59092,7 +59627,7 @@ cumulScoredSRS_Not_Signed  OBJECT-TYPE
 "
 cumulative scored SRS_Not_Signed
 "
-    ::= {cumulativeScoreStat 70}
+    ::= {cumulativeScoreStat 72}
 
 cumulScoredvirus-FileScan  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59102,7 +59637,7 @@ cumulScoredvirus-FileScan  OBJECT-TYPE
 "
 cumulative scored virus-FileScan
 "
-    ::= {cumulativeScoreStat 71}
+    ::= {cumulativeScoreStat 73}
 
 cumulScoredBlacklistedHelo  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59112,7 +59647,7 @@ cumulScoredBlacklistedHelo  OBJECT-TYPE
 "
 cumulative scored BlacklistedHelo
 "
-    ::= {cumulativeScoreStat 72}
+    ::= {cumulativeScoreStat 74}
 
 cumulScoredWhiteSenderBase  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59122,7 +59657,7 @@ cumulScoredWhiteSenderBase  OBJECT-TYPE
 "
 cumulative scored WhiteSenderBase
 "
-    ::= {cumulativeScoreStat 73}
+    ::= {cumulativeScoreStat 75}
 
 cumulScoredinternaladdress  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59132,7 +59667,7 @@ cumulScoredinternaladdress  OBJECT-TYPE
 "
 cumulative scored internaladdress
 "
-    ::= {cumulativeScoreStat 74}
+    ::= {cumulativeScoreStat 76}
 
 cumulScoredIPinHELOmismatch  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59142,7 +59677,7 @@ cumulScoredIPinHELOmismatch  OBJECT-TYPE
 "
 cumulative scored IPinHELOmismatch
 "
-    ::= {cumulativeScoreStat 75}
+    ::= {cumulativeScoreStat 77}
 
 cumulScoredLimitingIPDomain  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59152,7 +59687,7 @@ cumulScoredLimitingIPDomain  OBJECT-TYPE
 "
 cumulative scored LimitingIPDomain
 "
-    ::= {cumulativeScoreStat 76}
+    ::= {cumulativeScoreStat 78}
 
 cumulScoredMaxDuplicateRcpt  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59162,7 +59697,7 @@ cumulScoredMaxDuplicateRcpt  OBJECT-TYPE
 "
 cumulative scored MaxDuplicateRcpt
 "
-    ::= {cumulativeScoreStat 77}
+    ::= {cumulativeScoreStat 79}
 
 cumulScoredMsg-IDsuspicious  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59172,7 +59707,7 @@ cumulScoredMsg-IDsuspicious  OBJECT-TYPE
 "
 cumulative scored Msg-IDsuspicious
 "
-    ::= {cumulativeScoreStat 78}
+    ::= {cumulativeScoreStat 80}
 
 cumulScoredbombSuspiciousRe  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59182,7 +59717,7 @@ cumulScoredbombSuspiciousRe  OBJECT-TYPE
 "
 cumulative scored bombSuspiciousRe
 "
-    ::= {cumulativeScoreStat 79}
+    ::= {cumulativeScoreStat 81}
 
 cumulScoredBATV-check-failed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59192,7 +59727,7 @@ cumulScoredBATV-check-failed  OBJECT-TYPE
 "
 cumulative scored BATV-check-failed
 "
-    ::= {cumulativeScoreStat 80}
+    ::= {cumulativeScoreStat 82}
 
 cumulScoredBlacklistedDomain  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59202,7 +59737,7 @@ cumulScoredBlacklistedDomain  OBJECT-TYPE
 "
 cumulative scored BlacklistedDomain
 "
-    ::= {cumulativeScoreStat 81}
+    ::= {cumulativeScoreStat 83}
 
 cumulScoredSPFneutral-strict  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59212,7 +59747,7 @@ cumulScoredSPFneutral-strict  OBJECT-TYPE
 "
 cumulative scored SPFneutral-strict
 "
-    ::= {cumulativeScoreStat 82}
+    ::= {cumulativeScoreStat 84}
 
 cumulScoredBackscatter-failed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59222,7 +59757,7 @@ cumulScoredBackscatter-failed  OBJECT-TYPE
 "
 cumulative scored Backscatter-failed
 "
-    ::= {cumulativeScoreStat 83}
+    ::= {cumulativeScoreStat 85}
 
 cumulScoredBombSenderMailFrom  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59232,7 +59767,7 @@ cumulScoredBombSenderMailFrom  OBJECT-TYPE
 "
 cumulative scored BombSenderMailFrom
 "
-    ::= {cumulativeScoreStat 84}
+    ::= {cumulativeScoreStat 86}
 
 cumulScoredInvalidLocalSender  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59242,7 +59777,7 @@ cumulScoredInvalidLocalSender  OBJECT-TYPE
 "
 cumulative scored InvalidLocalSender
 "
-    ::= {cumulativeScoreStat 85}
+    ::= {cumulativeScoreStat 87}
 
 cumulScoredSPFsoftfail-strict  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59252,7 +59787,7 @@ cumulScoredSPFsoftfail-strict  OBJECT-TYPE
 "
 cumulative scored SPFsoftfail-strict
 "
-    ::= {cumulativeScoreStat 86}
+    ::= {cumulativeScoreStat 88}
 
 cumulScoredSpamCollectAddress  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59262,7 +59797,7 @@ cumulScoredSpamCollectAddress  OBJECT-TYPE
 "
 cumulative scored SpamCollectAddress
 "
-    ::= {cumulativeScoreStat 87}
+    ::= {cumulativeScoreStat 89}
 
 cumulScoredLimitingSameSubject  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59272,7 +59807,7 @@ cumulScoredLimitingSameSubject  OBJECT-TYPE
 "
 cumulative scored LimitingSameSubject
 "
-    ::= {cumulativeScoreStat 88}
+    ::= {cumulativeScoreStat 90}
 
 cumulScoredSSL-TLS-connection-OK  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59282,7 +59817,7 @@ cumulScoredSSL-TLS-connection-OK  OBJECT-TYPE
 "
 cumulative scored SSL-TLS-connection-OK
 "
-    ::= {cumulativeScoreStat 89}
+    ::= {cumulativeScoreStat 91}
 
 cumulScoredMSGID-signature-failed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59292,7 +59827,7 @@ cumulScoredMSGID-signature-failed  OBJECT-TYPE
 "
 cumulative scored MSGID-signature-failed
 "
-    ::= {cumulativeScoreStat 90}
+    ::= {cumulativeScoreStat 92}
 
 cumulScoredSuspiciousVirus-ClamAV  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59302,7 +59837,7 @@ cumulScoredSuspiciousVirus-ClamAV  OBJECT-TYPE
 "
 cumulative scored SuspiciousVirus-ClamAV
 "
-    ::= {cumulativeScoreStat 91}
+    ::= {cumulativeScoreStat 93}
 
 cumulScoredSuspiciousVirus-FileScan  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59312,7 +59847,7 @@ cumulScoredSuspiciousVirus-FileScan  OBJECT-TYPE
 "
 cumulative scored SuspiciousVirus-FileScan
 "
-    ::= {cumulativeScoreStat 92}
+    ::= {cumulativeScoreStat 94}
 
 asspAPIcmd  OBJECT-TYPE
     SYNTAX      OCTET STRING
