@@ -1,10 +1,24 @@
-2017-12-21
-fixed in assp 2.6.1 *Fortress* build 17355:
+2017-12-28
+fixed in assp 2.6.2 *Fortress* build 17362:
 
-- public released  2.5.5 build 17355
+- SMIME signing was completely skipped for a defined sender address, if a recipient exception (eg. rcpt=-recipient@domain.com) was defined for this sender address
+  this issue is fixed in ASSP_AFC 4.77
+  
+
+- Changing the certificates, KEY-password and RSA-privat-keys caused unexpected errors written to the maillog.txt for each defined SSL-listener
+  until all required parameters were changed by assp in a sequence.
+  The renew of the SSL-listeners and SSL-context is now delayed until all required SSL-parameters are changed.
+  
+
+
+
+2017-12-21
+fixed in assp 2.6.2 *Fortress* build 17355:
+
+- public released  2.5.6 build 17355
 
 2017-12-18
-fixed in assp 2.5.5 *Fortress* build 17352:
+fixed in assp 2.5.6 *Fortress* build 17352:
 
 - a memory leak in report connection handling is fixed
 
@@ -33,7 +47,7 @@ In this case assp and the MTA will function as an AUTH-honeypot, the peer will g
 
 
 2017-12-07
-fixed in assp 2.5.5 *Fortress* build 17341:
+fixed in assp 2.5.6 *Fortress* build 17341:
 
 changed:
 
@@ -44,7 +58,7 @@ changed:
 
 
 2017-12-05
-fixed in assp 2.5.5 *Fortress* build 17339:
+fixed in assp 2.5.6 *Fortress* build 17339:
 
 
 changed:
@@ -62,7 +76,7 @@ changed:
 
 
 2017-12-04
-fixed in assp 2.5.5 *Fortress* build 17338:
+fixed in assp 2.5.6 *Fortress* build 17338:
 
 - orphaned connection data and handles may caused errors like:
   - too many open files
@@ -100,7 +114,7 @@ added:
 
 
 2017-11-19
-fixed in assp 2.5.5 *Fortress* build 17323:
+fixed in assp 2.5.6 *Fortress* build 17323:
 
 - on 'apply changes', google chrome (v57 and higher) may has thrown an error about 'x-xss-protection', if the GUI in http mode was used by user 'root'
 
@@ -115,7 +129,7 @@ fixed in assp 2.5.5 *Fortress* build 17323:
   
 
 2017-11-13
-fixed in assp 2.5.5 *Fortress* build 17317:
+fixed in assp 2.5.6 *Fortress* build 17317:
 
 changed:
 
@@ -127,13 +141,13 @@ changed:
   
 
 2017-11-06
-fixed in assp 2.5.5 *Fortress* build 17310:
+fixed in assp 2.5.6 *Fortress* build 17310:
 
 - If 'StoreCompleteMail' was set to 'disabled'(0), the stored corpus files (.eml) were smaller than the value defined for 'MaxBytes'.
 
 
 2017-11-03
-fixed in assp 2.5.5 *Fortress* build 17307:
+fixed in assp 2.5.6 *Fortress* build 17307:
 
 - switching the effective and real UID on BSD based OS may have been failed
 
@@ -168,7 +182,7 @@ our $maxSSLRenegDuration = 10;
 
 
 2017-10-24
-fixed in assp 2.5.5 *Fortress* build 17297:
+fixed in assp 2.5.6 *Fortress* build 17297:
 
 - upper case UserAttach templates caused an exception in attachment processing
   ASSP_AFC 4.70 is required too, to fix this issue
@@ -177,7 +191,7 @@ fixed in assp 2.5.5 *Fortress* build 17297:
 
 
 2017-10-08
-fixed in assp 2.5.5 *Fortress* build 17281:
+fixed in assp 2.5.6 *Fortress* build 17281:
 
 - active connection counting and limiting was not working if clients/servers used the STARTTLS command
 
@@ -199,7 +213,7 @@ changed:
 
 
 2017-10-03
-fixed in assp 2.5.5 *Fortress* build 17276:
+fixed in assp 2.5.6 *Fortress* build 17276:
 
 changed:
 
@@ -207,7 +221,7 @@ changed:
 
 
 2017-10-02
-fixed in assp 2.5.5 *Fortress* build 17275:
+fixed in assp 2.5.6 *Fortress* build 17275:
 
 - On a secured Windows Server 2016, it was possible that the options to 'stop' and 'pause' the running ASSP service were not available (greyed out).
   In this case, it was also not possible to manage the service using 'sc' and 'net'.
@@ -216,7 +230,7 @@ fixed in assp 2.5.5 *Fortress* build 17275:
 
 
 2017-09-25
-fixed in assp 2.5.5 *Fortress* build 17268:
+fixed in assp 2.5.6 *Fortress* build 17268:
 
 
 - There were two options missing in the Archive::Libarchive::XS call in ASSP_AFC, which are not supported without a special definition per default.
@@ -243,7 +257,7 @@ changed:
 
 
 2017-09-18
-fixed in assp 2.5.5 *Fortress* build 17261:
+fixed in assp 2.5.6 *Fortress* build 17261:
 
 
 - if 'STARTTLS' was used to resend a mail, the second 'EHLO' possibly used 'localhost.localdomain' as hostname (instead of 'myName'), which may caused problems on some MTA's,
@@ -269,7 +283,7 @@ our $CCchangeMSGDate = 0;                ## (0..31) change the 'Date:' MIME-head
 
 
 2017-09-17
-fixed in assp 2.5.5 *Fortress* build 17260:
+fixed in assp 2.5.6 *Fortress* build 17260:
 
 - Depending on the used perl version the following chinese charsets were not supported by the perl module 'Encode', even the module 'Encode::HanExtra' was 
   installed:  big5plus , euc-tw , gb18030.
@@ -303,7 +317,7 @@ our $checkExeExternalForce; # same as $checkExeExternal - but called weather the
 
 
 2017-09-11
-fixed in assp 2.5.5 *Fortress* build 17254:
+fixed in assp 2.5.6 *Fortress* build 17254:
 
 changed:
 
@@ -314,7 +328,7 @@ changed:
 
 
 2017-09-04
-fixed in assp 2.5.5 *Fortress* build 17247:
+fixed in assp 2.5.6 *Fortress* build 17247:
 
 - ASSP_AFC 4.61 is released
 
@@ -358,7 +372,7 @@ added:
 
 
 2017-09-01
-fixed in assp 2.5.5 *Fortress* build 17244:
+fixed in assp 2.5.6 *Fortress* build 17244:
 
 - a domain name in an URL that starts with number and dash like "2017-", was wrong detected as strong obfuscated IP address
 
@@ -394,7 +408,7 @@ changed:
   
 
 2017-08-31
-fixed in assp 2.5.5 build 17243:
+fixed in assp 2.5.6 build 17243:
 
 - if two email addresses were defined in the from: header tag - like: from: dummy@localdomain.com <sender@senderdomain.org>
   the first address was used by assp instead of the right second. This made spam detection difficult and caused the DKIM check to fail.
@@ -440,8 +454,8 @@ added:
 
 
 2017-08-11
-fixed in assp 2.5.5 build 17223:
+fixed in assp 2.5.6 build 17223:
 
-- public released  2.5.5 build 17223
+- public released  2.5.6 build 17223
 
 

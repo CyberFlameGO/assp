@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '17355';        # 21.12.2017 TE
+$build   = '17362';        # 28.12.2017 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -565,7 +565,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'BFB765D488D1CEEF40F84CC4D5F0A54A42F34414'; }
+sub __cs { $codeSignature = '6944BB97B78DD41E24C8F936326E2D0D76E3456C'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -4779,16 +4779,16 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
   'This disables TLS/SSL on the defined listenPorts, if DoTLS is set to "do TLS". All other SMTP listeners will support TLS/SSL, if DoTLS is set to "do TLS". This option works for listenPort , listenPort2 and relayPort . The listener definition here has to be the same like in the port definitions. Separate multiple entries by "|".<p><small><i>Examples:</i> 25, 127.0.0.1:25, 127.0.0.1:25|127.0.0.2:25 </small></p>',undef,undef,'msg008220','msg008221'],
 ['TLStoProxyListenPorts','Force TLS to Proxy on this Ports',80,\&textinput,'','(.*)','ConfigChangeTLSPorts',
   'If a STARTTLS command is received on a port that is defined here, the connection will be moved in to the transparent proxy mode every time - independent from the setting of DoTLS . This option works for listenPort , listenPort2 and relayPort . The listener definition here has to be the same like in the port definitions. Separate multiple entries by "|".<p><small><i>Examples:</i> 25, 127.0.0.1:25, 127.0.0.1:25|127.0.0.2:25 </small></p>',undef,undef,'msg009020','msg009021'],
-['SSLCertFile','SSL Certificate File (PEM format)',48,\&textinput,$dftCertFile,'(.*)','ConfigChangeSSL',
-  "Full path to the file containing the server's SSL certificate or certificate-chain, for example : /usr/local/etc/ssl/certs/assp-cert.pem or c:/assp/certs/server-cert.pem. A general cert.pem file is already provided in \'assp/certs/server-cert.pem\'<br />
-  For SNI support please read SSLWEBConfigure.",undef,undef,'msg008230','msg008231'],
+['SSLPKPassword','SSL Private Key Password',48,\&passinput,'','(.*)','ConfigChangeSSL',
+  "Optional parameter. If your private key ' SSLKeyFile ' is password protected, assp will need this password to decrypt the server\'s SSL private key file.",undef,undef,'msg009540','msg009541'],
 ['SSLKeyFile','SSL Key File (PEM format)',48,\&textinput,$dftPrivKeyFile,'(.*)','ConfigChangeSSL',
   "Full path to the file containing the server\'s SSL private key, for example: /usr/local/etc/ssl/certs/assp-key.pem or c:/assp/certs/server-key.pem. An general key.pem file is already provided in \'assp/certs/server-key.pem\'<br />
   For SNI support please read SSLWEBConfigure.",undef,undef,'msg008240','msg008241'],
-['SSLPKPassword','SSL Private Key Password',48,\&passinput,'','(.*)',undef,
-  "Optional parameter. If your private key ' SSLKeyFile ' is password protected, assp will need this password to decrypt the server\'s SSL private key file.",undef,undef,'msg009540','msg009541'],
 ['SSLCaFile','SSL Certificate Authority File',48,\&textinput,'','(.*)','ConfigChangeSSL',
   "Optional parameter to enable chained certificate validation at the client side. Full path to the file containing the server's SSL certificate authority. If you provide the ca-certificate or certificate-chain together with the certificate file in the SSLCertFile parameter, leave this field blank. For example : /usr/local/etc/ssl/certs/assp-ca.crt or c:/assp/certs/server-ca.crt. A general ca.crt file is already provided in '$dftCaFile'. The default value is empty and leave it empty as long as you don't know, how this parameter works.",undef,undef,'msg009530','msg009531'],
+['SSLCertFile','SSL Certificate File (PEM format)',48,\&textinput,$dftCertFile,'(.*)','ConfigChangeSSL',
+  "Full path to the file containing the server's SSL certificate or certificate-chain, for example : /usr/local/etc/ssl/certs/assp-cert.pem or c:/assp/certs/server-cert.pem. A general cert.pem file is already provided in \'assp/certs/server-cert.pem\'<br />
+  For SNI support please read SSLWEBConfigure.",undef,undef,'msg008230','msg008231'],
 ['noTLSIP','Exclude these IP\'s from TLS*',80,\&textinput,'','(\S*)','ConfigMakeIPRe','Enter IP\'s that you want to exclude from starting SSL/TLS, separated by pipes (|). For example, put all IP\'s here, that making trouble to switch to TLS every time, what will prevent ASSP from getting mails from or sending mails to this hosts.',undef,undef,'msg008250','msg008251'],
 ['banFailedSSLIP','Ban Failed SSL IP','0:disable|1:private only|2:public only|3:both',\&listbox,3,'(\d*)',undef,
  'If set (recommended is \'both\'), an IP that fails to connect via SSL/TLS will be banned for 12 hour from using SSL/TLS.<br />
@@ -14069,7 +14069,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.76;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.77;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.05;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -60051,13 +60051,15 @@ sub ConfigChangeSSL {
     my ( $name, $old, $new ,$init) = @_;
 
     if ($new ne $old) {
-        $new =~ s/\\/\//go;
-        $old =~ s/\\/\//go;
-        $new =~ s/^\s+(.*?)\s+$/$1/o;
-        $old =~ s/^\s+(.*?)\s+$/$1/o;
+        if ($name ne 'SSLPKPassword') {
+            $new =~ s/\\/\//go;
+            $old =~ s/\\/\//go;
+            $new =~ s/^\s+(.*?)\s+$/$1/o;
+            $old =~ s/^\s+(.*?)\s+$/$1/o;
+        }
         $Config{$name} = ${$name} = $new;
-        if (   (-f $new && -r $new)
-            || $name eq 'SSLCaFile'
+        if (   ($name =~ /File$/o && -f $new && -r $new)
+            || $name eq 'SSLPKPassword'
             || $name eq 'SSL_version'
             || $name eq 'SSL_cipher_list'
             || $name =~ /^(?:.+?(?:SSLRequireClientCert|CertVerifyCB)|SSL(?:WEB|STAT|SMTP)Configure)$/o
@@ -60115,29 +60117,15 @@ sub ConfigChangeSSL {
                 $canStat = (-r $SSLCertFile && -r $SSLKeyFile) || $SSLSTATConfigure;
                 $CanUseIOSocketSSL = 1 if ($canSSL || $canWeb || $canStat);
             }
-            if ($listenPort =~ /SSL:/oi && $canSSL) {
-                &ConfigChangeMailPort('listenPort','n/a',$listenPort, 1);
-            }
-            if ($listenPort2 =~ /SSL:/oi && $canSSL) {
-                &ConfigChangeMailPort2('listenPort2','n/a',$listenPort2, 1);
-            }
-            if ($relayPort =~ /SSL:/oi && $canSSL) {
-                &ConfigChangeRelayPort('relayPort','n/a',$relayPort, 1);
-            }
-            if ($listenPortSSL && $canSSL) {
-                &ConfigChangeMailPortSSL('listenPortSSL','n/a',$listenPortSSL, 1);
-            }
-            if (($enableWebAdminSSL || $webAdminPort =~ /SSL:/oi) && $canWeb) {
-                &ConfigChangeAdminPort('webAdminPort','n/a',$webAdminPort, 1);
-            }
-            if (($enableWebStatSSL || $webStatPort =~ /SSL:/oi) && $canStat) {
-                &ConfigChangeStatPort('webStatPort','n/a',$webStatPort, 1);
-            }
+            # the SSL-listeners are changed in tellThreadsReReadConfig in case ClearSSLContext is set
             return '';
-        } else {
+        } elsif ($new && $name =~ /File$/o) {
             $Config{$name} = ${$name} = $old;
             mlog( 0, "AdminUpdate: $name not changed from '$old' to '$new' - file $new not found or unreadable" ) unless $init;
             return "<span class=\"negative\">file $new not found or unreadable</span>";
+        } else {
+            mlog( 0, "AdminUpdate: $name changed from '$old' to '$new'" ) unless $init;
+            return '';
         }
     }
 }
@@ -67841,7 +67829,34 @@ sub tellThreadsReReadConfig {
         $ThreadQueue{$_}->enqueue('run') if ($ComWorker{$_}->{issleep});
         ThreadYield();
     }
-    undef $ClearSSLContext;
+    if ($ClearSSLContext) {
+        undef $ClearSSLContext;
+        my ($canSSL,$canWeb,$canStat);
+        if ($AvailIOSocketSSL) {
+            $canSSL  = (-r $SSLCertFile && -r $SSLKeyFile) || $SSLSMTPConfigure;
+            $canWeb  = (-r $SSLCertFile && -r $SSLKeyFile) || $SSLWEBConfigure;
+            $canStat = (-r $SSLCertFile && -r $SSLKeyFile) || $SSLSTATConfigure;
+            $CanUseIOSocketSSL = 1 if ($canSSL || $canWeb || $canStat);
+        }
+        if (($listenPort =~ /SSL:/oi && $canSSL) || "@lsn" =~ /SSL/io) {
+            &ConfigChangeMailPort('listenPort','n/a',$listenPort, 1);
+        }
+        if (($listenPort2 =~ /SSL:/oi && $canSSL) || "@lsn2" =~ /SSL/io) {
+            &ConfigChangeMailPort2('listenPort2','n/a',$listenPort2, 1);
+        }
+        if (($relayPort =~ /SSL:/oi && $canSSL) || "@lsnRelay" =~ /SSL/io) {
+            &ConfigChangeRelayPort('relayPort','n/a',$relayPort, 1);
+        }
+        if (($listenPortSSL && $canSSL) || "@lsnSSL" =~ /SSL/io) {
+            &ConfigChangeMailPortSSL('listenPortSSL','n/a',$listenPortSSL, 1);
+        }
+        if ((($enableWebAdminSSL || $webAdminPort =~ /SSL:/oi) && $canWeb) || "@WebSocket" =~ /SSL/io) {
+            &ConfigChangeAdminPort('webAdminPort','n/a',$webAdminPort, 1);
+        }
+        if ((($enableWebStatSSL || $webStatPort =~ /SSL:/oi) && $canStat) || "@StatSocket" =~ /SSL/io) {
+            &ConfigChangeStatPort('webStatPort','n/a',$webStatPort, 1);
+        }
+    }
     reloadGriplist();
     while (my ($k,$v) = each %ModuleWatch) {
         if (-e $v->{file} && $v->{filetime} != ftime($v->{file})) {
