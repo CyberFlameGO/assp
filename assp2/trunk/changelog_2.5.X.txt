@@ -1,5 +1,5 @@
 2017-12-18
-fixed in assp 2.5.5 *Fortress* build 17352:
+fixed in assp 2.5.6 *Fortress* build 17352:
 
 - a memory leak in report connection handling is fixed
 
@@ -28,7 +28,7 @@ In this case assp and the MTA will function as an AUTH-honeypot, the peer will g
 
 
 2017-12-07
-fixed in assp 2.5.5 *Fortress* build 17341:
+fixed in assp 2.5.6 *Fortress* build 17341:
 
 changed:
 
@@ -39,7 +39,7 @@ changed:
 
 
 2017-12-05
-fixed in assp 2.5.5 *Fortress* build 17339:
+fixed in assp 2.5.6 *Fortress* build 17339:
 
 
 changed:
@@ -57,7 +57,7 @@ changed:
 
 
 2017-12-04
-fixed in assp 2.5.5 *Fortress* build 17338:
+fixed in assp 2.5.6 *Fortress* build 17338:
 
 - orphaned connection data and handles may caused errors like:
   - too many open files
@@ -95,7 +95,7 @@ added:
 
 
 2017-11-19
-fixed in assp 2.5.5 *Fortress* build 17323:
+fixed in assp 2.5.6 *Fortress* build 17323:
 
 - on 'apply changes', google chrome (v57 and higher) may has thrown an error about 'x-xss-protection', if the GUI in http mode was used by user 'root'
 
@@ -110,7 +110,7 @@ fixed in assp 2.5.5 *Fortress* build 17323:
   
 
 2017-11-13
-fixed in assp 2.5.5 *Fortress* build 17317:
+fixed in assp 2.5.6 *Fortress* build 17317:
 
 changed:
 
@@ -122,13 +122,13 @@ changed:
   
 
 2017-11-06
-fixed in assp 2.5.5 *Fortress* build 17310:
+fixed in assp 2.5.6 *Fortress* build 17310:
 
 - If 'StoreCompleteMail' was set to 'disabled'(0), the stored corpus files (.eml) were smaller than the value defined for 'MaxBytes'.
 
 
 2017-11-03
-fixed in assp 2.5.5 *Fortress* build 17307:
+fixed in assp 2.5.6 *Fortress* build 17307:
 
 - switching the effective and real UID on BSD based OS may have been failed
 
@@ -163,7 +163,7 @@ our $maxSSLRenegDuration = 10;
 
 
 2017-10-24
-fixed in assp 2.5.5 *Fortress* build 17297:
+fixed in assp 2.5.6 *Fortress* build 17297:
 
 - upper case UserAttach templates caused an exception in attachment processing
   ASSP_AFC 4.70 is required too, to fix this issue
@@ -172,7 +172,7 @@ fixed in assp 2.5.5 *Fortress* build 17297:
 
 
 2017-10-08
-fixed in assp 2.5.5 *Fortress* build 17281:
+fixed in assp 2.5.6 *Fortress* build 17281:
 
 - active connection counting and limiting was not working if clients/servers used the STARTTLS command
 
@@ -194,7 +194,7 @@ changed:
 
 
 2017-10-03
-fixed in assp 2.5.5 *Fortress* build 17276:
+fixed in assp 2.5.6 *Fortress* build 17276:
 
 changed:
 
@@ -202,7 +202,7 @@ changed:
 
 
 2017-10-02
-fixed in assp 2.5.5 *Fortress* build 17275:
+fixed in assp 2.5.6 *Fortress* build 17275:
 
 - On a secured Windows Server 2016, it was possible that the options to 'stop' and 'pause' the running ASSP service were not available (greyed out).
   In this case, it was also not possible to manage the service using 'sc' and 'net'.
@@ -211,7 +211,7 @@ fixed in assp 2.5.5 *Fortress* build 17275:
 
 
 2017-09-25
-fixed in assp 2.5.5 *Fortress* build 17268:
+fixed in assp 2.5.6 *Fortress* build 17268:
 
 
 - There were two options missing in the Archive::Libarchive::XS call in ASSP_AFC, which are not supported without a special definition per default.
@@ -238,7 +238,7 @@ changed:
 
 
 2017-09-18
-fixed in assp 2.5.5 *Fortress* build 17261:
+fixed in assp 2.5.6 *Fortress* build 17261:
 
 
 - if 'STARTTLS' was used to resend a mail, the second 'EHLO' possibly used 'localhost.localdomain' as hostname (instead of 'myName'), which may caused problems on some MTA's,
@@ -264,7 +264,7 @@ our $CCchangeMSGDate = 0;                ## (0..31) change the 'Date:' MIME-head
 
 
 2017-09-17
-fixed in assp 2.5.5 *Fortress* build 17260:
+fixed in assp 2.5.6 *Fortress* build 17260:
 
 - Depending on the used perl version the following chinese charsets were not supported by the perl module 'Encode', even the module 'Encode::HanExtra' was 
   installed:  big5plus , euc-tw , gb18030.
@@ -298,7 +298,7 @@ our $checkExeExternalForce; # same as $checkExeExternal - but called weather the
 
 
 2017-09-11
-fixed in assp 2.5.5 *Fortress* build 17254:
+fixed in assp 2.5.6 *Fortress* build 17254:
 
 changed:
 
@@ -309,7 +309,7 @@ changed:
 
 
 2017-09-04
-fixed in assp 2.5.5 *Fortress* build 17247:
+fixed in assp 2.5.6 *Fortress* build 17247:
 
 - ASSP_AFC 4.61 is released
 
@@ -353,7 +353,7 @@ added:
 
 
 2017-09-01
-fixed in assp 2.5.5 *Fortress* build 17244:
+fixed in assp 2.5.6 *Fortress* build 17244:
 
 - a domain name in an URL that starts with number and dash like "2017-", was wrong detected as strong obfuscated IP address
 
@@ -389,7 +389,7 @@ changed:
   
 
 2017-08-31
-fixed in assp 2.5.5 build 17243:
+fixed in assp 2.5.6 build 17243:
 
 - if two email addresses were defined in the from: header tag - like: from: dummy@localdomain.com <sender@senderdomain.org>
   the first address was used by assp instead of the right second. This made spam detection difficult and caused the DKIM check to fail.
@@ -436,12 +436,12 @@ added:
 
 2017-08-11
 
-assp 2.5.5 build 17223 is released
+assp 2.5.6 build 17223 is released
 
 
 
 2017-08-04
-fixed in assp 2.5.5 build 17216:
+fixed in assp 2.5.6 build 17216:
 
 - ASSP_AFC 4.58 : too long filenames (>255 byte in a part) are now a fault and handled as a detected virus
 
@@ -451,7 +451,7 @@ fixed in assp 2.5.5 build 17216:
 
 
 2017-07-31
-fixed in assp 2.5.5 build 17212:
+fixed in assp 2.5.6 build 17212:
 
 - angles were missing in the MSGID in blockreports
 
@@ -477,14 +477,14 @@ changed:
 
 
 2017-07-16
-fixed in assp 2.5.5 build 17197:
+fixed in assp 2.5.6 build 17197:
 
 - in case a mail was received from a whitelisted sender, the penalty white update was incorrect and caused ghost handles and memory leaks
 
 
 
 2017-07-03
-fixed in assp 2.5.5 build 17184:
+fixed in assp 2.5.6 build 17184:
 
 - changing the webAdminPassword (root) caused some times an exception in Crypt::GOST, because of empty secured files
 
@@ -500,7 +500,7 @@ changed:
 
 
 2017-06-25
-fixed in assp 2.5.5 build 17176:
+fixed in assp 2.5.6 build 17176:
 
 - it was possible that assp has blocked 100% well known good NDR (because MSGID tagging is used) by any check
   if a valid ASSP-MSGID-Tag is found in a NDR (No Delivery Report), the mail will be delivered (possibly tagged).
@@ -508,7 +508,7 @@ fixed in assp 2.5.5 build 17176:
 
 
 2017-06-21
-fixed in assp 2.5.5 build 17172:
+fixed in assp 2.5.6 build 17172:
 
 - a typo in a parameter name has prevented a valid SNI configuration from working
   'webSSLRequireCientCert' is change to 'webSSLRequireClientCert' - the old value will be converted
@@ -527,7 +527,7 @@ changed:
 
 
 2017-06-18
-fixed in assp 2.5.5 build 17169:
+fixed in assp 2.5.6 build 17169:
 
 - under certain conditions the final 'QUIT' command was recorded to the end of the  .eml files
 
@@ -553,7 +553,7 @@ changed:
 
 
 2017-06-07
-fixed in assp 2.5.5 build 17158:
+fixed in assp 2.5.6 build 17158:
 
 - ASSP_AFC.pm 4.55 is released. It provides failover mechanism, if libarchive fails to extract because of character conversion errors.
 
@@ -584,7 +584,7 @@ changed:
 
 
 2017-05-31
-fixed in assp 2.5.5 build 17151:
+fixed in assp 2.5.6 build 17151:
 
 
 changed:
@@ -613,7 +613,7 @@ changed:
 
 
 2017-05-17
-fixed in assp 2.5.5 build 17137:
+fixed in assp 2.5.6 build 17137:
 
 - Several Perl distributions misses the module Digest::SHA1, which prevent assp from starting.
   To compile the code and to check the code integrety assp is now able to use other SHA modules alternatively.
@@ -625,14 +625,14 @@ fixed in assp 2.5.5 build 17137:
 
 
 2017-05-09
-fixed in assp 2.5.5 build 17129:
+fixed in assp 2.5.6 build 17129:
 
 - since build 17114 the logging of short mails (shorter than 'maxBytes') was unexpected skipped
 
 
 
 2017-05-08
-fixed in assp 2.5.5 build 17128:
+fixed in assp 2.5.6 build 17128:
 
 - setting 'checkFilePermOnStart' to ON if assp was running as root caused file permission warnings like:
   Owner id of file ...... is 501 - should be 0 
@@ -644,7 +644,7 @@ fixed in assp 2.5.5 build 17128:
 
 
 2017-05-07
-fixed in assp 2.5.5 build 17127:
+fixed in assp 2.5.6 build 17127:
 
 - If a domain entry was removed from 'localdomains', the temporary domain enries in 'ldaplistdb' were not corrected.
   This caused in some cases, that the removed domains were detected as local local domains until a LDAP crosscheck
@@ -655,7 +655,7 @@ fixed in assp 2.5.5 build 17127:
 
 
 2017-04-24
-fixed in assp 2.5.5 build 17114:
+fixed in assp 2.5.6 build 17114:
 
 - forwarding spam mails depends no longer on collecting the mail
 
@@ -669,14 +669,14 @@ changed:
 
 
 2017-04-18
-fixed in assp 2.5.5 build 17108:
+fixed in assp 2.5.6 build 17108:
 
 - the assp headers in a forwarded spam mail were not updated, if the mail was blocked by a Plugin or DKIM full check
 
 
 
 2017-04-13
-fixed in assp 2.5.5 build 17103:
+fixed in assp 2.5.6 build 17103:
 
 - RFC2231 UTF-8 encoded attachment file names caused a warning about "Wide character" usage 
   "Warning: unable to encode string to base64 - Wide character in subroutine entry at sub main::assp_encode_B line 4."
@@ -684,7 +684,7 @@ fixed in assp 2.5.5 build 17103:
 
 
 2017-04-12
-fixed in assp 2.5.5 build 17102:
+fixed in assp 2.5.6 build 17102:
 
 - ASSP_AFC.pm version 4.47 fixes an internal UTF8 encoding problem for the reply and the maillog.txt in a very special case
   "Warning: unable to encode string to base64 - Wide character in subroutine entry at sub main::assp_encode_B line 4."
@@ -700,7 +700,7 @@ fixed in assp 2.5.5 build 17102:
 
 
 2017-03-14
-fixed in assp 2.5.5 build 17073:
+fixed in assp 2.5.6 build 17073:
 
 - perl 5.24 is no longer experimental, it can be used for production
 
@@ -708,7 +708,7 @@ fixed in assp 2.5.5 build 17073:
 
 
 2017-03-01
-fixed in assp 2.5.5 build 17060:
+fixed in assp 2.5.6 build 17060:
 
 - ASSP_AFC v4.46 fixes a problem where mail above 'npSize' were not processed by the plugin
 
@@ -730,7 +730,7 @@ Which means, that the PTR check will be skipped, if the mail has passed the SPF 
 
 
 2017-02-19
-fixed in assp 2.5.5 build 17050:
+fixed in assp 2.5.6 build 17050:
 
 - sender addresses with leading '*' (like: *user@domain.com) caused a LDAP query error
 
@@ -745,7 +745,7 @@ changed:
   
 
 2017-02-12
-fixed in assp 2.5.5 build 17043:
+fixed in assp 2.5.6 build 17043:
   
 changed:
 
@@ -754,7 +754,7 @@ changed:
   
 
 2017-02-05
-fixed in assp 2.5.5 build 17036:
+fixed in assp 2.5.6 build 17036:
 
 - the TopTen statistics were somehow inconsistent - 24 hours after an upgrade to this version
   all mistakes will be corrected
@@ -771,7 +771,7 @@ fixed in assp 2.5.5 build 17036:
 
 
 2017-01-26
-fixed in assp 2.5.5 build 17026:
+fixed in assp 2.5.6 build 17026:
 
 - If 'runAsUser' and/or 'runAsGroup' were used on a nix OS, it was possible that assp has created folders and
   files at startup as 'root', which became unaccessible to the switched user/group. This caused unexpected behavior 
@@ -792,7 +792,7 @@ changed:
 
 
 2017-01-22
-fixed in assp 2.5.5 build 17022:
+fixed in assp 2.5.6 build 17022:
 
 - IPv4-compatible IPv6 address (::0:IPv4) and IPv4-mapped IPv6 address (::FFFF:IPv4) were not
   processed as IPv4 addresses in some check engines - so some IP checks were not working in this case
@@ -810,7 +810,7 @@ changed:
 
 
 2017-01-13
-fixed in assp 2.5.5 build 17013:
+fixed in assp 2.5.6 build 17013:
 
 - the mobile GUI view was no longer working
 
@@ -837,7 +837,7 @@ changed:
 
 
 2017-01-05
-fixed in assp 2.5.5 build 17005:
+fixed in assp 2.5.6 build 17005:
 
 - the assp.pl autoupdate feature was STILL somehow brocken after 2.5.3 build 16363
 
@@ -862,19 +862,19 @@ added:
 
 
 2017-01-04
-fixed in assp 2.5.5 build 17004:
+fixed in assp 2.5.6 build 17004:
 
 - the assp.pl autoupdate feature was somehow brocken after 2.5.3 build 16363
 
 
 2017-01-02
-fixed in assp 2.5.5 build 17002:
+fixed in assp 2.5.6 build 17002:
 
 There are no functional changes in this release!
 
 - code changes to prevent several perl warning at startup and compile time
   for the same reason ASSP_AFC, ASSP_OCR and ASSP_FakeMX got an update to the next minor version number 2016-12-31
-fixed in assp 2.5.5 build 16366:
+fixed in assp 2.5.6 build 16366:
 
 - improved handling of the internal caches
 
