@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 4.76 2017/12/19 09:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 4.77 2017/12/28 17:30:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -201,7 +201,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.76 2017/12/19 09:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.77 2017/12/28 17:30:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(17292)';
 our $MINASSPVER = '2.5.5'.$MINBUILD;
 our $plScan = 0;
@@ -1265,7 +1265,7 @@ sub process {
     }
     my $smime;
     my $References;
-    my $rcpt = (split(/ /o,$this->{rcpt}))->[0];
+    my $rcpt = [split(/ /o,$this->{rcpt})]->[0];
     if (   ! $this->{signed}
         && $CanSMIME
         && $this->{relayok}
@@ -1320,7 +1320,7 @@ sub process {
 sub checkrcpt {
     my ($smime, $this) = @_;
     return 1 if ! exists $smime->{'rcpt'};
-    my $rcpt = (split(/ /o,$this->{rcpt}))->[0];
+    my $rcpt = [split(/ /o,$this->{rcpt})]->[0];
     if (exists $smime->{'rcpt'}->{'+'} && ! &main::matchHashKey($smime->{'rcpt'}->{'+'},$rcpt,'0 1 1')) {
         return 0;
     }
