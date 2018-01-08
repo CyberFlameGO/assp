@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '17362';        # 28.12.2017 TE
+$build   = '18008';        # 08.01.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -565,7 +565,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '6944BB97B78DD41E24C8F936326E2D0D76E3456C'; }
+sub __cs { $codeSignature = '9658CA8276DF9925910B007DFC4D276DDE474D94'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -4681,7 +4681,7 @@ Examples:<br />
 In addition, ranges or lists of names are allowed.<br />
 If you want to define multiple entries separate them by "|"',undef,undef,'msg008070','msg008071'],
 ['useDB4Rebuild','Use BerkeleyDB/DB_File or orderedtie for the RebuildSpamDB Internal Caches',0,\&checkbox,'1','(.*)','configChangeDB',
- 'The RebuildSpamDB thread creates some internal temprary caches, which can grow to a very large number of entries. Switch this on (default), if you want this thread to use less memory and be possibly a little slower.<br />
+ 'The RebuildSpamDB thread creates some internal temprary caches, which can grow to a very large number of entries. Switch this on (default), if you want this thread to use less memory and to be possibly a little (~30%) slower.<br />
  Adjust RebuildThreadCycleTime to a lower value (between 0 and 30) to speed up the RebuildSpamDB thread.<br />
  The perl module <a href="http://search.cpan.org/dist/BerkeleyDB/" rel="external">BerkeleyDB</a> version 0.34 or higher and BerkeleyDB version 4.5 or higher is required to use this feature. DB_File (Berkeley V1) will be used if BerkeleyDB is not available - this is not recommended! If both BerkeleyDB and DB_File are not available, the rebuild thread will hold all temporary data in RAM - the same way, this option were set to "OFF".',undef,undef,'msg008080','msg008081'],
 ['ReplaceOldSpamdb','Replace the old Records in Spamdb and Spamdb.helo',0,\&checkbox,'1','(.*)',undef,
@@ -7825,7 +7825,7 @@ if ($@) {
 sub write_rebuild_module {
 my $curr_version = shift;
 
-my $rb_version = '7.42';
+my $rb_version = '7.43';
 my $keepVersion;
 
 if (open my $ADV, '<',"$base/lib/rebuildspamdb.pm") {
@@ -7894,11 +7894,11 @@ our $processTime;
 our $processedBytes;
 our $scanTime;
 our $scanFiles;
-our %spam; keys %spam = $main::MaxFiles * 20;
-our %newspam; keys %newspam = $main::MaxFiles * 20;
-our %Helo; keys %Helo = $main::MaxFiles;
-our %HamHash; keys %HamHash = $main::MaxFiles;
-our %SpamHash; keys %SpamHash = $main::MaxFiles;
+our %spam;
+our %newspam;
+our %Helo;
+our %HamHash;
+our %SpamHash;
 our %HMMres;
 our %GpCnt;
 our %GpOK;
@@ -7927,6 +7927,7 @@ our $spamHMM;
 our $hamHMM;
 our $DoHMM;
 our $haveRedlist;
+our $initcount;
 our $attachments;
 our $rtText;
 our $mintime;
@@ -7938,6 +7939,8 @@ our $PortRe = $main::PortRe;
 sub rb_run {         ## no critic
 no warnings;
 $onlyNewCorrected = shift;
+
+rb_undefVars();
 
 $SpamWordCount = 0;
 $HamWordCount = 0;
@@ -7963,6 +7966,7 @@ $movetime =~ s/\s//go;
 $mintime ||= 0;
 $movetime ||= 0;
 $haveRedlist = &main::getDBCount('main::Redlist','main::redlistdb');
+$initcount = int(&main::getDBCount('main::HMMdb','main::spamdb') / 2);   # preallocate hash/HMM-chain buckets
 
 $RebuildDebug = -e "$main::base/rebuilddebug.txt";
 $RebuildDebug = 0 if $onlyNewCorrected;
@@ -8081,6 +8085,7 @@ EOT
                 push @dbhint , "-BerkeleyDB-ERROR: in $main::lastd{$Iam} - $@ - BDB:$BerkeleyDB::Error";
                 $have_error = 1;
             }
+            %HMMres = ();
     } elsif ($main::CanUseDB_File && $main::useDB4Rebuild) {
         eval('use DB_File;');
         rb_mlog("RebuildSpamDB uses DB_File for temporary hashes");
@@ -8112,6 +8117,7 @@ eval (<<'EOT');
         $GpCntObj = tie %GpCnt, 'orderedtie', "$DBDir/rb_GpCnt.bdb";
         $GpOKObj = tie %GpOK, 'orderedtie', "$DBDir/rb_GpOK.bdb";
         $TrashlistObj = tie %Trashlist,'orderedtie', "$DBDir/trashlist.bdb";
+        scalar(keys %Trashlist) == 0 && rb_Load_Trashlist();
 EOT
         if ($@) {
             push @dbhint , "-orderedtie-ERROR: $@";
@@ -8176,7 +8182,7 @@ EOT
             $hamHMM = undef;
             $spamHMM = undef;
         }
-    } else {
+    } else {         # all in memory (no DB)
         if ($DoHMM) {
             if (! $onlyNewCorrected) {
                 unlink "$DBDir/rbtmp.hamHMM.chains";
@@ -8191,6 +8197,7 @@ EOT
                                                   shortest => $main::HMMSequenceLength,
                                                   top => 1,
                                                   nostarts => 1,
+                                                  initcount => $initcount,
                                                   File => "$DBDir/rbtmp.hamHMM" ,
                                                   );
                 $main::lastd{$Iam} = "loading model from $DBDir/rbtmp.spamHMM in to memory";
@@ -8198,10 +8205,11 @@ EOT
                                                   shortest => $main::HMMSequenceLength,
                                                   top => 1,
                                                   nostarts => 1,
+                                                  initcount => $initcount,
                                                   File => "$DBDir/rbtmp.spamHMM" ,
                                                   ) if ref $hamHMM;
 EOT
-            unless (ref $hamHMM && ref $spamHMM) {
+            if (! (ref $hamHMM && ref $spamHMM)) {
                 my $error;
                 $error =  " - e: $@" if $@;
                 $error .= " - h: $hamHMM" if $hamHMM && ! ref $hamHMM;
@@ -8210,7 +8218,23 @@ EOT
                 $DoHMM = 0 ;
                 $hamHMM = undef;
                 $spamHMM = undef;
+            } else {
+                # preallocate memory for HMM result hash
+                keys %HMMres = $initcount * 2 unless $onlyNewCorrected;
             }
+        }
+        if (! $main::useDB4Rebuild && ! $onlyNewCorrected ) {
+            # preallocate memory for other hashes
+            my $c;
+            $c = rb_powerofftwo(&main::getDBCount('main::Spamdb','main::spamdb'));
+            keys %spam = $c;
+            keys %newspam = $c;
+
+            keys %HamHash = $main::MaxFiles;
+            keys %SpamHash = $main::MaxFiles;
+
+            $c = rb_powerofftwo(&main::getDBCount('main::HeloBlack','main::spamdb'));
+            keys %Helo = $c;
         }
     }
 
@@ -8249,14 +8273,15 @@ EOT
         }
     } elsif (! $have_error) {                         # the normal rebuild
 
-    %spam = ();
-    %newspam = ();
-    %Helo = ();
-    %HamHash = ();
-    %SpamHash = ();
-    %GpCnt = ();
-    %GpOK = ();
-    %HMMres = ();
+    if ($main::useDB4Rebuild) {  # clean hashes if tied to any DB - otherwise they are still clean
+        %spam = ();
+        %newspam = ();
+        %Helo = ();
+        %HamHash = ();
+        %SpamHash = ();
+        %GpCnt = ();
+        %GpOK = ();
+    }
 
     # open log file
     if ( -e "$rebuildrun.bak" ) {
@@ -8331,6 +8356,8 @@ EOT
         &rb_printlog("Use Subject as Maillog Names: False\n");
     }
     &rb_printlog("Maxbytes: ".&rb_commify($main::MaxBytes)." \n");
+    &rb_mlog("Maxbytes: ".&rb_commify($main::MaxBytes));
+    &rb_printlog("Maxfiles: ".&rb_commify($main::MaxFiles)." \n");
     &rb_mlog("Maxfiles: ".&rb_commify($main::MaxFiles));
 
     &rb_printlog("RebuildFileTimeLimit: $main::RebuildFileTimeLimit \n");
@@ -8611,6 +8638,24 @@ EOT
 
     }  # end if ($onlyNewCorrected)
 
+    rb_undefVars();
+    
+eval (<<'EOT');
+    no ASSP_WordStem;
+EOT
+    return ! $have_error;
+}
+##########################################
+#       run/main script ends here
+##########################################
+
+sub rb_powerofftwo {
+    my $c = shift;
+    $c = 2 if $c < 2;
+    return (2 << log($c - 1) / log(2));     # next power of two
+}
+
+sub rb_undefVars {
     undef $spamObj;
     undef $newspamObj;
     undef $HeloObj;
@@ -8620,15 +8665,33 @@ EOT
     undef $GpOKObj;
     undef $TrashlistObj;
     undef $HMMresObj;
+
     untie %spam;
+    undef %spam;
+
     untie %newspam;
+    undef %newspam;
+
     untie %Helo;
+    undef %Helo;
+
     untie %HamHash;
+    undef %HamHash;
+
     untie %SpamHash;
+    undef %SpamHash;
+
     untie %GpCnt;
+    undef %GpCnt;
+
     untie %GpOK;
+    undef %GpOK;
+
     untie %Trashlist;
+    undef %Trashlist;
+
     untie %HMMres;
+    undef %HMMres;
 
     undef $hamHMM;
     undef $spamHMM;
@@ -8641,15 +8704,7 @@ EOT
     unlink "$DBDir/rb_GpCnt.bdb";
     unlink "$DBDir/rb_GpOK.bdb";
     unlink "$DBDir/rb_newspam.bdb";
-
-eval (<<'EOT');
-    no ASSP_WordStem;
-EOT
-    return ! $have_error;
 }
-##########################################
-#       run/main script ends here
-##########################################
 
 sub rb_populate_HMM {                 # rb_populate_HMM
     delete $HMMres{''};
@@ -8974,7 +9029,7 @@ sub rb_generateHMM {
 }
 
 sub rb_createheloblacklist {
-    (open( my $FheloBlack, '>', "$main::base/spamdb.helo.rb.tmp" )) || &rb_printlog("unable to open '$main::base/spamdb.helo.rb.tmp' $!\n");
+    (open( my $FheloBlack, '>', "$main::base/tmpDB/rebuildDB/spamdb.helo.rb.tmp" )) || &rb_printlog("unable to open '$main::base/tmpDB/rebuildDB/spamdb.helo.rb.tmp' $!\n");
     binmode $FheloBlack;
     print { $FheloBlack } "\n";
     my $count = &rb_commify(rb_BDB_getRecordCount('Helo') || scalar keys %Helo);
@@ -9055,16 +9110,20 @@ sub rb_processNewCorrected {
     &main::checkDBCon() if ($main::CanUseTieRDBM && $main::DBisUsed);
     $movetime = 0;
     my %addspam;
+    my $icount = 2;
+    $icount = $main::HMMDBWords * scalar(keys(%main::newReported)) if $DoHMM;
     my $newhamHMM  = ASSP::MarkovChain->new(longest => $main::HMMSequenceLength,
                                           shortest => $main::HMMSequenceLength,
                                           top => 1,
                                           nostarts => 1,
+                                          initcount => $icount,
                                           simple => 1
                                           );
     my $newspamHMM = ASSP::MarkovChain->new(longest => $main::HMMSequenceLength,
                                           shortest => $main::HMMSequenceLength,
                                           top => 1,
                                           nostarts => 1,
+                                          initcount => $icount,
                                           simple => 1
                                           );
 # collect the SpamDB and HMM data from the files
@@ -10360,8 +10419,11 @@ EOT
     $AvailNetIP          = $useNetIP ? validateModule('Net::IP()') : 0;    # Net::IP module installed
     $CanUseNetIP         = $AvailNetIP;
 
-    $AvailLWP            = $useLWPSimple ? validateModule('LWP::Simple') && validateModule('HTTP::Request::Common') && validateModule('LWP::UserAgent') : 0;    # LWP::Simple module installed
+    $AvailLWP            = $useLWPSimple ? validateModule('LWP::Simple') && validateModule('HTTP::Request::Common') && validateModule('LWP::UserAgent'): 0;    # LWP::Simple module installed
     $CanUseLWP           = $AvailLWP;
+    if ($CanUseLWP && ! validateModule('LWP::Protocol::https()')) {
+        print "\nError: can not load the module LWP::Protocol::https - the module or any dependency is missing\n\n$ModuleError{'LWP::Protocol::https'}\n";
+    }
 
     $AvailEMM            = $useEmailMIME ? validateModule('Email::MIME') : 0;  # Email::MIME module installed
     $CanUseEMM           = $AvailEMM;
@@ -13746,6 +13808,7 @@ EOT
   if ($CanUseLWP) {
     $ver=eval('LWP::Simple->VERSION'); $VerLWPSimple=$ver; $ver=" version $ver" if $ver;
     mlog(0,"LWP::Simple module$ver installed - procedural LWP interface available");
+    mlog(0,"error: the module LWP::Protocol::https is missing - possibly https:... downloads will not work") if exists $ModuleError{'LWP::Protocol::https'};
     $installed = 'enabled';
   } elsif (!$AvailLWP) {
     $installed = $useLWPSimple ? 'is not installed' : 'is disabled in config';
@@ -17597,8 +17660,8 @@ sub mlogWrite {
            $lastmlogWrite = time;
        }
     }
-    $LOG->flush if fileno($LOG);
-    $LOGBR->flush if fileno($LOGBR);
+    $LOG->flush if $LOG && fileno($LOG);
+    $LOGBR->flush if $LOGBR && fileno($LOGBR);
     tosyslog('info', \@tosyslog) if (@tosyslog && $sysLog && ($CanUseSyslog || ($sysLogPort && $sysLogIp)));
     $MainThreadLoopWait = 1;
 }
@@ -17618,9 +17681,9 @@ sub debugWrite {
     return unless scalar @m;
     if (! $DEBUG || ! $DEBUG->opened) {
         my $file = "$base/debug/".time.".dbg";
-        open($DEBUG, '>',"$file");
+        $open->($DEBUG, '>',"$file");
         binmode($DEBUG);
-        $DEBUG->autoflush(1);
+        $DEBUG->autoflush(0);
         print $DEBUG $UTF8BOM;
         print $DEBUG "running ASSP version: $main::MAINVERSION\n\n";
         mlog(0,"info: starting partial debug mode to file $file");
@@ -17629,6 +17692,7 @@ sub debugWrite {
     while (@m && $DEBUG) {
        print $DEBUG shift @m;
     }
+    $DEBUG->flush if fileno($DEBUG);
     $lastDebugPrint = time unless ($debug);
 }
 
@@ -26391,7 +26455,7 @@ sub getline {
 
             $this->{noprocessing} = $this->{noprocessing} | $np;
             $this->{myheader} .= 'X-Assp-NoProcessing: YES';
-            $this->{myheader} .= " - ($this->{passingreason})" if $this->{passingreason};
+            $this->{myheader} .= " - ($this->{passingreason})" if $this->{passingreason} && ! $this->{relayok};
             $this->{myheader} .= "\r\n";
 
             MaillogStart($fh);    # notify the stream logging to start logging
@@ -26933,7 +26997,7 @@ sub getheader {
             $this->{noprocessing} = 1;
             $this->{whitelisted} = 1;
             $this->{msgidsigok} = 1;
-            $this->{passingreason} = 'noprocessing and whitelisted - found valid Message-ID signature';
+            $this->{passingreason} ||= 'noprocessing and whitelisted - found valid Message-ID signature';
             pbBlackDelete($fh,$this->{ip});
             pbWhiteAdd($fh,$this->{ip},'valid_Message-ID_signature');
         }
@@ -35293,7 +35357,8 @@ sub getbody {
         }
         my $fn;
         my $logto = ($this->{relayok} || $this->{whitelisted}) ? $NonSpamLog : $baysNonSpamLog;
-        $logto = $noProcessingLog if $this->{noprocessing};
+        # ignore noprocessing if msgidsigok is the only reason for passing
+        $logto = $noProcessingLog if $this->{noprocessing} && !(!$NonSpamLog && $this->{msgidsigok} && $this->{passingreason} eq 'noprocessing and whitelisted - found valid Message-ID signature');
         if (! $this->{maillogfh}) {
             $fn = Maillog($fh,'',$logto) if $logto>=2 ;
         } else {
@@ -44808,14 +44873,23 @@ sub Perl_CPAN_upgrade_do {
             mlog(0,"error: unable to remove file '$base/tmp/_cpan_r.store' - $cmd");
             return wantarray ? %avail : $upgrade_count;
         }
+        my ($cpanAction, $what, $actionName);
+        if ($upg_package) {  # install a requested module
+            $cpanAction = 'm';
+            $what = "qw($upg_package)";
+            $actionName = 'install';
+        } else {             # find modules to upgrade
+            $cpanAction = 'r';
+            $actionName = 'upgrade';
+        }
         if ($isWIN) {
-            $cmd = qq(\"$perl\" -e \"use CPAN; use Storable; my \@m = map {my \%h = (qw(id) => \$_->id, qw(cpan_version) => \$_->cpan_version, qw(inst_version) => \$_->inst_version, qw(cpan_file) => \$_->cpan_file); \\\%h;} CPAN::Shell->expand(qw(Module),CPAN::Shell->r);Storable::nstore(\\\@m,qq($base/tmp/_cpan_r.store));\");
+            $cmd = qq(\"$perl\" -e \"use CPAN; use Storable; my \@m = map {my \%h = (qw(id) => \$_->id, qw(cpan_version) => \$_->cpan_version, qw(inst_version) => \$_->inst_version, qw(cpan_file) => \$_->cpan_file); \\\%h;} CPAN::Shell->expand(qw(Module),CPAN::Shell->$cpanAction($what));Storable::nstore(\\\@m,qq($base/tmp/_cpan_r.store));\");
         } else {
-            $cmd = qq('$perl' -e 'use CPAN; use Storable; my \@m = map {my \%h = (qw(id) => \$_->id, qw(cpan_version) => \$_->cpan_version, qw(inst_version) => \$_->inst_version, qw(cpan_file) => \$_->cpan_file); \\\%h;} CPAN::Shell->expand(qw(Module),CPAN::Shell->r);Storable::nstore(\\\@m,qq($base/tmp/_cpan_r.store));');
+            $cmd = qq('$perl' -e 'use CPAN; use Storable; my \@m = map {my \%h = (qw(id) => \$_->id, qw(cpan_version) => \$_->cpan_version, qw(inst_version) => \$_->inst_version, qw(cpan_file) => \$_->cpan_file); \\\%h;} CPAN::Shell->expand(qw(Module),CPAN::Shell->$cpanAction($what));Storable::nstore(\\\@m,qq($base/tmp/_cpan_r.store));');
         }
         my $out = qx($cmd);
         if (! $eF->("$base/tmp/_cpan_r.store")) {
-            mlog(0,"error: call to CPAN::Shell->r failed: $out");
+            mlog(0,"error: call to CPAN::Shell->$cpanAction($what) failed: $out");
             return wantarray ? %avail : $upgrade_count;
         }
         undef $out;
@@ -44830,7 +44904,7 @@ sub Perl_CPAN_upgrade_do {
         }
         my %failed;
         if ($install) {
-            Perl_upgrade_log_text('Perl module upgrade using CPAN started');
+            Perl_upgrade_log_text('Perl module $actionName using CPAN started');
             for my $idx ( 0 .. $#modules ) {
                 my $mod = $modules[$idx];
                 my ($modid, $modcpan_version, $modinst_version, $modcpan_file) = ($mod->{id}, $mod->{cpan_version}, $mod->{inst_version}, $mod->{cpan_file});
@@ -44851,14 +44925,14 @@ sub Perl_CPAN_upgrade_do {
                     || $modcpan_version le $modinst_version
                     || ($upg_package && $modid ne $upg_package))
                 {
-                    mlog(0,"perl-update: CPAN - skip upgrade for module ".$modid) if $MaintenanceLog;
+                    mlog(0,"perl-$actionName: CPAN - skip $actionName for module ".$modid) if $MaintenanceLog;
                     if (exists $failed{$modcpan_file} || $localMod || $skipModNoUsed || ! $skipModule{$modid} || $skipModule{$modid} eq 'X' || $modcpan_version le $modinst_version) {
                         delete $avail{$modid};
                         $upgrade_count--;
                     }
                     next;
                 }
-                d("perl-update: CPAN - module: ".$modid);
+                d("perl-$actionName: CPAN - module: ".$modid);
                 my $how = lc $noTestModule{$modid};
                 $how = 1 if ! $how && exists $noTestModule{'*'};
                 $how =~ s/\s//go;
@@ -44873,12 +44947,12 @@ sub Perl_CPAN_upgrade_do {
                     push @shell, $how, 'install';
                     $text = " - ignore all tests ($how)"
                 } else {
-                    mlog(0,"perl-update: CPAN - error - don't know methode '$how' for module $modid");
+                    mlog(0,"perl-$actionName: CPAN - error - don't know methode '$how' for module $modid");
                     next;
                 }
                 push @shell, $modid;
                 my $methode = shift @shell;
-                mlog(0,"perl-update: CPAN ($methode) - update module $modid from version $modinst_version to version $modcpan_version$text") if $MaintenanceLog;
+                mlog(0,"perl-$actionName: CPAN ($methode) - $actionName module $modid from version $modinst_version to version $modcpan_version$text") if $MaintenanceLog;
 
                 my $parm = join(' ',@shell);
                 if ($isWIN) {
@@ -44889,24 +44963,24 @@ sub Perl_CPAN_upgrade_do {
                 my $out = qx($cmd);
 
                 if ($? == -1) {
-                    mlog(0,"perl-update: CPAN - error - failed to updated module $modid - used command >$cmd< - $out");
+                    mlog(0,"perl-update: CPAN - error - failed to $actionName module $modid - used command >$cmd< - $out");
                     $failed{$modcpan_file} = 1;
                 } elsif ($? & 127) {
-                    mlog(0,"perl-update: CPAN - error - failed to updated module $modid - used command >$cmd< - return code was ".($? & 127)." - $out");
+                    mlog(0,"perl-update: CPAN - error - failed to $actionName module $modid - used command >$cmd< - return code was ".($? & 127)." - $out");
                     $failed{$modcpan_file} = 1;
                 } else {
                     Perl_upgrade_log($modid,$modinst_version,$modcpan_version);
-                    mlog(0,"perl-update: CPAN - success - updated module $modid - installed version is now $modcpan_version") if $MaintenanceLog;
+                    mlog(0,"perl-update: CPAN - success - $actionName module $modid - installed version is now $modcpan_version") if $MaintenanceLog;
                     delete $avail{$modid};
                     $upg_running ||= exists ${'::'}{$modid.'::'} || $modUnloaded{$modid};
                     $upgrade_count--;
                     if (($out !~ /-\s+OK\s*$/oi && $out !~ /is up to date[\(\)\d\.v\s]*$/io) || $out =~ /NOT\s+OK\s*$/oi) {
-                        mlog(0,"perl-update: CPAN - warning - updated module $modid to version $modcpan_version - but found 'NOT OK' or not found '- OK' at the end of the command output") if $MaintenanceLog;
+                        mlog(0,"perl-update: CPAN - warning - $actionName module $modid to version $modcpan_version - but found 'NOT OK' or not found '- OK' at the end of the command output") if $MaintenanceLog;
                         $failed{$modcpan_file} = 2;
                     }
                 }
             }
-            Perl_upgrade_log_text('Perl module upgrade using CPAN finished');
+            Perl_upgrade_log_text('Perl module $actionName using CPAN finished');
         }
     };
     eval('
@@ -45063,6 +45137,12 @@ sub Perl_PPM_upgrade_do {
     	}
     }
     Perl_upgrade_log_text('Perl module upgrade using PPM finished');
+    if ($install && ! $pkg_count && $upg_package) {
+        Perl_upgrade_log_text('install additionally Perl module $upg_package using PPM');
+        my $best = $ppm->package_best($upg_package, 0);
+        $pkg_count = Perl_PPM_upgrade_install(undef, 0, $ppm , $best);
+        Perl_upgrade_log_text('Perl module installation for $upg_package using PPM finished');
+    }
     eval('
     no ActivePerl::PPM::Util;
     no ActivePerl::PPM::Logger;
@@ -45575,7 +45655,7 @@ sub Maillog {
 
     return if ( $parm == $p->{ham} || $parm == $p->{ok} ) && $Con{$fh}->{redre} && $DoNotCollectRedRe;
     return if ( $parm == $p->{ham} || $parm == $p->{ok} ) && $Con{$fh}->{red} && $DoNotCollectRedList;
-    return if $Con{$fh}->{noprocessing} && ( $parm == $p->{ham} || $parm == $p->{ok} ) && ! $noProcessingLog;
+    return if $Con{$fh}->{noprocessing} && ( $parm == $p->{ham} || $parm == $p->{ok} ) && ! $noProcessingLog && ! $Con{$fh}->{msgidsigok};
 
     if ($parm == $p->{spamcc}) {
         $parm = $p->{discc} if $Con{$fh}->{noprocessing};
@@ -60793,6 +60873,7 @@ sub configChangeCpuAffinity {
                 }
             } else {
                 $Config{asspCpuAffinity} = $asspCpuAffinity = $old;
+                mlog(0,"ERROR: can't set CPU affinity for $WorkerName to '@newcpus' - $@");
                 return "<span class=\"negative\">failed to set CPU Affinity to '@newcpus' in worker $WorkerName! - $@</span>";
             }
         } else {
@@ -62090,7 +62171,7 @@ sub configChangeAutoReloadCfg {
 sub configUpdateGlobalClient {
     my ($name, $old, $new, $init)=@_;
     mlog(0,"AdminUpdate: global-PB-clientname updated from '$old' to '$new'") unless $init || $new eq $old;
-    $new =~ s/\'\"//go;
+    $new =~ s/[\'\"\s]//go;
     if ($new eq '') {
         $globalClientPass = '';
         $Config{globalClientPass}='';
@@ -66711,33 +66792,36 @@ sub openLogs {
   local $! = '';
   if($logfile) {
       my $append = -e "$base/$logfile";
-      if (open($LOG,'>>',"$base/$logfile")) {
+      if ($open->($LOG,'>>',"$base/$logfile")) {
           &setPermission("$base/$logfile",oct('0660'),0,1);
           binmode $LOG;
-          $LOG->autoflush(1);
+          $LOG->autoflush(0);
           if (! $append) {
               print $LOG $UTF8BOM;
               mlog(0,"running ASSP version $main::MAINVERSION");
           }
+          $LOG->flush;
       }
   }
   if($logfile && $ExtraBlockReportLog) {
       my $append = -e "$base/$blogfile";
-      if (open($LOGBR,'>>',"$base/$blogfile")) {
+      if ($open->($LOGBR,'>>',"$base/$blogfile")) {
           &setPermission("$base/$blogfile",oct('0660'),0,1);
           binmode $LOGBR;
-          $LOGBR->autoflush(1);
+          $LOGBR->autoflush(0);
           print $LOGBR $UTF8BOM unless $append;
+          $LOGBR->flush;
       }
   }
   if($debug) {
       my $file = "$base/debug/".time.".dbg";
-      open($DEBUG, '>', "$file");
+      $open->($DEBUG, '>', "$file");
       &setPermission("$file",oct('0660'),0,1);
       binmode($DEBUG);
-      $DEBUG->autoflush(1);
+      $DEBUG->autoflush(0);
       print $DEBUG $UTF8BOM;
       print $DEBUG "running ASSP version: $main::MAINVERSION\n\n";
+      $DEBUG->flush;
       mlog(0,"info: starting general debug mode to file $file");
   }
 }
@@ -68133,6 +68217,9 @@ sub ThreadMaintMain {
         }
         checkCSS("$base/images/assp.css");
         &cleanCachePersBlack();
+        if (exists $ModuleError{'LWP::Protocol::https'} && $AutoUpdateASSP) {
+            eval{ Perl_upgrade_do('LWP::Protocol::https'); };
+        }
     }
 
     if ($doShutdownForce || $doShutdown > 0 || $allIdle) {
@@ -69150,8 +69237,7 @@ sub UploadGriplist {
     }
 
     &checkDBCon();
-    my $can = defined $rebuildspamdb::VERSION;
-    $can = eval('use rebuildspamdb;1;') unless $can;
+    my $can = eval('use rebuildspamdb;1;');
     if ($can) {
         eval('$rebuildspamdb::onlyNewCorrected = 1; rebuildspamdb::rb_uploadgriplist(); undef $rebuildspamdb::onlyNewCorrected;');
     }
@@ -73433,23 +73519,40 @@ sub new {
         my $file = $args{File};
         $self->{chains_file} = $file . '.chains';
         $self->{totals_file} = $file . '.totals';
+        $self->{simple} = exists $args{simple} ? $args{simple} : 3;
+        delete $args{simple};
         if (-e $self->{chains_file} && -e $self->{totals_file}) {
             eval{$self->{chains} = Storable::retrieve($self->{chains_file})} || return "error: HMM (Storable) - $self->{chains_file} - $@";
             eval{$self->{totals} = Storable::retrieve($self->{totals_file})} || return "error: HMM (Storable) - $self->{chains_file} - $@";
         } else {
             unlink $self->{chains_file};
             unlink $self->{totals_file};
+            if ($self->{simple} && (my $initcount = delete $args{initcount})) {
+                $initcount ||= 2;
+                $initcount = (2 << log($initcount - 1) / log(2));     # next power of two - to preallocate hash buckets
+                $self->{chains} = {};
+                $self->{totals} = {};
+                keys %{$self->{chains}} = $initcount;
+                keys %{$self->{totals}} = $initcount;
+            }
         }
-        $self->{simple} = exists $args{simple} ? $args{simple} : 3;
-        delete $args{simple};
     } elsif ($args{HMMFile}) {
         if (-e $args{HMMFile}) {
             %{$self} = eval{%{Storable::retrieve($args{HMMFile})}};
             return "error: HMM (Storable) - $args{HMMFile} - $@" if $@;
         }
         $self->{HMMFile} = $args{HMMFile};
+        if (my $initcount = delete $args{initcount}) {
+            $initcount ||= 2;
+            $initcount = (2 << log($initcount - 1) / log(2));     # next power of two - to preallocate hash buckets
+            $self->{chains} = {};
+            $self->{totals} = {};
+            keys %{$self->{chains}} = $initcount;
+            keys %{$self->{totals}} = $initcount;
+        }
     }
 
+    delete $args{initcount};
     $self->{seperator} ||= $args{seperator} || $; ;
     delete $args{seperator};
     $self->{_symbols} ||= {};
@@ -73702,7 +73805,9 @@ sub store {
         untie %{$self->{totals}};
     } elsif ($self->{simple} == 3) {
         Storable::nstore($self->{chains}, $self->{chains_file});
+        $self->{chains} = {};
         Storable::nstore($self->{totals}, $self->{totals_file});
+        $self->{totals} = {};
     } elsif ($self->{HMMFile}) {
         Storable::nstore(\%{$self}, $self->{HMMFile});
     }

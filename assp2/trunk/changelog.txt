@@ -1,3 +1,33 @@
+2018-01-08
+fixed in assp 2.6.2 *Fortress* build 18008:
+
+- on some systems the maillog.txt OS buffer was not flushed and so the file tail was not readable just in time
+
+- the perl garbage collection for the rebuild spamdb task was not working, if 'useDB4Rebuild' was not enabled
+
+- if the very important perl module 'LWP::Protocol::https' is not installed, assp will try the installation at startup
+  ******************************************************************************************************
+  ************  IF THIS IS NOT POSSIBLE - install the module LWP::Protocol::https manually! ************
+  ******************************************************************************************************
+  nix:
+  >cpan LWP::Protocol::https
+
+  windows:
+   active perl:
+  >ppm install LWP-Protocol-https
+  
+   strawberry perl: (should normaly already include this module)
+  >cpan LWP::Protocol::https 
+  
+
+- possibly unwanted X-ASSP passing reason hearders were added to outgoing mails - this is no longer the case
+
+- the 'valid_Message-ID_signature' check has overwritten other whitelisting and noprocessing reasons, this caused reply mails stored outside the corpus
+
+
+
+
+
 2017-12-28
 fixed in assp 2.6.2 *Fortress* build 17362:
 
