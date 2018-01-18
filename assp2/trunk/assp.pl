@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18008';        # 08.01.2018 TE
+$build   = '18018';        # 18.01.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -238,7 +238,7 @@ sub disableUnicode {
     $utf8 = sub {};
     $open = sub { open(shift,shift,shift); };    ## no critic
     $unicodeFH = sub {};
-    $unicodeDH = sub { opendir(my $d,shift);my @l = readdir($d);$d->close if $d;return @l; };
+    $unicodeDH = sub { opendir(my $d,shift);my @l = readdir($d);closedir($d) if $d;return @l; };
     $unlink = sub { unlink(shift) };
     $move = sub { File::Copy::move(shift,shift) };
     $copy = sub { File::Copy::copy(shift,shift) };
@@ -565,7 +565,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '9658CA8276DF9925910B007DFC4D276DDE474D94'; }
+sub __cs { $codeSignature = '8E84FC70904C0E99853E967AB61B24C40212A213'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1553,7 +1553,7 @@ sub assp_socket_blocking {
 }
 
 sub defConfigArray {
- # last used msg number 010621
+ # last used msg number 010631
 
  # still unused msg numbers
  #
@@ -3509,9 +3509,8 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 
 [0,0,0,'heading','Outgoing Message Tagging, NDR Validation and Backscatter Detection'],
 ['DoMSGIDsig','Do Message-ID Tagging and Validation (FBMTV)','0:disabled|1:block|2:monitor|3:score|4:testmode',\&listbox,0,'(\d*)',undef,
-  'If activated, the message-ID of each outgoing message will be signed with a unique Tag and every incoming mail will be checked against this Tag. This tagging mode is called FBMTV "Forwarder(s) Bounce Message-ID Tag Validation" and it is worldwide unique to ASSP. This Tag is build nearly the same way, as BATVTag is build for the sender address. This Tag will be removed from any incoming email, to recover the original references in the mail header! If anything is changed on this option inside the mail, no DKIM-check will be done! Before activating DoMSGIDsig, please configure MSGIDpreTag and MSGIDsec!<br />
-   If activated and a bounced mail from null sender or postmaster contains no valid signature the configured action is taken.<br />
-   If activated and any other mail contains a valid signature (eg. because it is an answer/reply to a tagged mail), this mail will be flagged as noprocessing and whitelisted !<br />
+ 'If activated, the message-ID of each outgoing message will be signed with a unique Tag and every incoming mail will be checked against this Tag. This tagging mode is called FBMTV "Forwarder(s) Bounce Message-ID Tag Validation" and it is worldwide unique to ASSP. This Tag is build nearly the same way, as BATVTag is build for the sender address. This Tag will be removed from any incoming email, to recover the original references in the mail header! If anything is changed on this option inside the mail, no DKIM-check will be done! Before activating DoMSGIDsig, please configure MSGIDpreTag and MSGIDsec!<br />
+  If activated and a bounced mail from null sender or postmaster contains no valid signature the configured action is taken.<br />
   This check requires an installed <a href="http://search.cpan.org/search?query=Digest::SHA1" rel="external">Digest::SHA1</a> module in Perl.',undef,undef,'msg004800','msg004801'],
 ['MSGIDpreTag','Message-ID pre-Tag for MSGID-TAG-generation',10,\&textinput,'sig','([a-zA-Z0-9]{2,5})',undef,'To use Message-ID signing and to create the MSGID-Tags, a pre-Tag is needed. This Tag must be 2-5 characters [a-z,A-Z,0-9] long. Default is \'sig\'.',undef,undef,'msg004810','msg004811'],
 ['MSGIDSec','Message-ID Secrets for MSGID-TAG-generation*',80,\&textinput,'0=key0|1=key1|2=key2|3=key3|4=key4|5=key5|6=key6|7=key7|8=key8|9=key9','(\S*)','configChangeMSGIDSec','To use Message-ID signing and to generate the MSGID-Tags, at leased one secret key is needed, up to ten keys are possible.<br />
@@ -3521,6 +3520,9 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   'Mail to any of these addresses will be tagged and checked by FBMTV. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com). If empty, FBMTV is done for all addresses.',undef,undef,'msg004830','msg004831'],
 ['noMSGIDsigRe','Skip Message-ID signing, mail content dependent*',80,\&textinput,'','(.*)','ConfigCompileRe','Use this to skip the Message-ID tagging depending on the content of the email. If the content of the email matches this regular expression (checking MaxBytes only), FBMTV will not be done. For example: \'I am out of office\' .',undef,undef,'msg008900','msg008901'],
 ['noRedMSGIDsig','Skip Message-ID signing for Redlisted mails',0,\&checkbox,'0','(.*)',undef,'If selected, FBMTV will not be done for redlisted emails!',undef,undef,'msg008910','msg008911'],
+['MSGIDsigProc','Process valid Message-ID Signed Mails','0:normal|1:whitelisted|2:noprocessing|3:whitelisted and noprocessing',\&listbox,1,'(\d*)',undef,
+ 'How are received mails are processed, if they contain a valid local MessageID-Signature/Tag (eg. because it is an answer/reply to a tagged mail).<br />
+ The default value is \'whitelisted\'. Notice that noprocessing and/or whitelisted may prevent those mails from being collected in the corpus folders - check noProcessingLog and NonSpamLog.',undef,undef,'msg010630','msg010631'],
 ['DoBATV','Do BATV Tagging and Validation','0:disabled|1:block|2:monitor|3:score|4:testmode',\&listbox,0,'(\d*)',undef,'If enabled any sender address of outgoing mails is mangled with a <a href="http://en.wikipedia.org/wiki/Bounce_Address_Tag_Validation" rel="external">BATV-Tag</a>. Any incoming bounced mail is checked for a valid BATV-Tag. All valid (local) BATV-Tags will be removed from incoming mails - so whitelisting, delaying and all other recipient and sender based checks will use the normal addresses. If the BATV-check is successful, no MSGID-signing-check and DNS-Backscatter-check will be done! If any BATVTag was removed, no DKIM-check will be done! BATV-address-replacement is done, before the recipient replacement rules are processed!<br />
   This check requires an installed <a href="http://search.cpan.org/search?query=Digest::SHA1" rel="external">Digest::SHA1</a> module in Perl.',undef,undef,'msg004840','msg004841'],
 ['BATVSec','BATV Secrets for BATV-TAG-generation*',80,\&textinput,'0=key0|1=key1|2=key2|3=key3|4=key4|5=key5|6=key6|7=key7|8=key8|9=key9','(\S*)','configChangeBATVSec','To use <a href="http://en.wikipedia.org/wiki/Bounce_Address_Tag_Validation" rel="external">BATV</a> and to create the BATV-Tags, at leased one secret key is needed, up to ten keys are possible.<br />
@@ -3960,7 +3962,7 @@ For example: mysql/dbimport<br />
 ['NonSpamLog','Non Spam','0:no collection|2:notspam folder',\&listbox,2,'(\d*)',undef,'Where to store whitelisted/local non spam messages. Default: notspam folder ( notspamlog ).',undef,undef,'msg006210','msg006211'],
 ['baysNonSpamLog','OK Mail','0:no collection|2:notspam folder|4:okmail folder',\&listbox,0 ,'(\d*)',undef,'Where to store non spam (message ok) messages. These are messages which are considered as HAM, but should not stored in the standard HAM folder because of our policy to use only confirmed HAM messages (whitelisted or local) for SpamDB. Set incomingOkMail accordingly if you choose \'okmail folder\'. Default: no collection',undef,undef,'msg006220','msg006221'],
 ['SpamLog','Store Spam','0:disabled|1:enabled',\&listbox,1,'(\d*)',undef,'Set this to \'disabled\' if you do not want to store any Spam regardless of settings in. Default: enabled (store in folder spamlog ).',undef,undef,'msg006230','msg006231'],
-['noProcessingLog','NoProcessing OK Mails','0:no collection|4:okmail folder',\&listbox,0,'(\d*)',undef,'Where to store noprocessing OK mails.',undef,undef,'msg006240','msg006241'],
+['noProcessingLog','NoProcessing OK Mails','0:no collection|4:okmail folder',\&listbox,4,'(\d*)',undef,'Where to store noprocessing OK mails.',undef,undef,'msg006240','msg006241'],
 ['npAttachLog','NoProcessing rejected Attachments','0:no collection|5:attachment folder|6:discard folder|7:discard folder &amp; sendAllSpam',\&listbox,7,'(\d*)',undef,'Where to store noprocessing rejected mail+attachments. Recommended: discard folder ( discarded ) &amp; sendAllSpam',undef,undef,'msg006250','msg006251'],
 ['wlAttachLog','Whitelisted rejected Attachments','0:no collection|5:attachment folder|6:discard folder|7:discard folder &amp; sendAllSpam',\&listbox,7,'(\d*)',undef,'Where to store whitelisted rejected mail+attachments. Recommended: discard folder ( discarded ) &amp; sendAllSpam',undef,undef,'msg006260','msg006261'],
 ['extAttachLog','External rejected Attachments','0:no collection|5:attachment folder|6:discard folder|7:discard folder &amp; sendAllSpam',\&listbox,7,'(\d*)',undef,'Where to store external rejected mail+attachments. Recommended: discard folder ( discarded ) &amp; sendAllSpam',undef,undef,'msg006270','msg006271'],
@@ -4681,7 +4683,7 @@ Examples:<br />
 In addition, ranges or lists of names are allowed.<br />
 If you want to define multiple entries separate them by "|"',undef,undef,'msg008070','msg008071'],
 ['useDB4Rebuild','Use BerkeleyDB/DB_File or orderedtie for the RebuildSpamDB Internal Caches',0,\&checkbox,'1','(.*)','configChangeDB',
- 'The RebuildSpamDB thread creates some internal temprary caches, which can grow to a very large number of entries. Switch this on (default), if you want this thread to use less memory and to be possibly a little (~30%) slower.<br />
+ 'The RebuildSpamDB thread creates some internal temporary caches, which can grow to a very large number of entries. Switch this on (default), if you want this thread to use less memory and to be possibly a little (~30%) slower.<br />
  Adjust RebuildThreadCycleTime to a lower value (between 0 and 30) to speed up the RebuildSpamDB thread.<br />
  The perl module <a href="http://search.cpan.org/dist/BerkeleyDB/" rel="external">BerkeleyDB</a> version 0.34 or higher and BerkeleyDB version 4.5 or higher is required to use this feature. DB_File (Berkeley V1) will be used if BerkeleyDB is not available - this is not recommended! If both BerkeleyDB and DB_File are not available, the rebuild thread will hold all temporary data in RAM - the same way, this option were set to "OFF".',undef,undef,'msg008080','msg008081'],
 ['ReplaceOldSpamdb','Replace the old Records in Spamdb and Spamdb.helo',0,\&checkbox,'1','(.*)',undef,
@@ -5233,7 +5235,7 @@ The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries.
   <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/pop3collect.txt\',3);" />',undef,undef,'msg009090','msg009091']
 );
 
- # last used msg number 010621
+ # last used msg number 010631
 
  &loadModuleVars;
  -d "$base/language" or mkdirOP("$base/language",'0755');
@@ -7307,7 +7309,7 @@ our $nextThreadMain2;
 our $nextNoop;
 our $nextRebuildSpamDB:shared;
 our $nextResendMail:shared;
-our $nextSpamDIR;
+our $nextSpamDIR:shared;
 our $nextThreadsWakeUp;
 our $noDBCache;
 our $noIcon;
@@ -7523,7 +7525,7 @@ our @redlistGroup:shared;
 our @rwllist;
 our @spamdbGroup:shared;
 our @sortedOIDs;
-our @spamFolderContent;
+our @spamFolderContent:shared;
 our @uribllist;
 our @whitelistGroup:shared;
 our @I; # the global IP match receiver - unique in every thread
@@ -26980,7 +26982,9 @@ sub getheader {
         }
 
         $this->{noMSGIDsigLog} = 1;
-        $this->{prepend} = '[Noprocessing]';
+        $this->{prepend} = '';
+        $this->{prepend} = '[Whitelisted]' if $MSGIDsigProc & 1;
+        $this->{prepend} = '[Noprocessing]' if $MSGIDsigProc & 2;
         if (! $this->{relayok} &&
             $DoMSGIDsig &&
             $CanUseSHA1 &&
@@ -26994,14 +26998,18 @@ sub getheader {
            )
         {
             $this->{msgidsigdone} = 1;
-            $this->{noprocessing} = 1;
-            $this->{whitelisted} = 1;
             $this->{msgidsigok} = 1;
-            $this->{passingreason} ||= 'noprocessing and whitelisted - found valid Message-ID signature';
+            my ($hownp,$and,$howwl,$tail);
+            $hownp = 'noprocessing' if $MSGIDsigProc & 2;
+            $and = ' and ' if $MSGIDsigProc == 3;
+            $hownp = 'whitelisted' if $MSGIDsigProc & 1;
+            $tail = ' -' if $hownp || $howwl;
+            $this->{passingreason} = "$hownp$and$howwl$tail found valid Message-ID signature";
             pbBlackDelete($fh,$this->{ip});
             pbWhiteAdd($fh,$this->{ip},'valid_Message-ID_signature');
         }
-
+        $this->{prepend} = '';
+        
         # check if we got penalties in SMTP handshake that should now be removed
         # because whitelisted and/or noprocessing was set in header
         if (   exists $this->{rememberMessageScore}
@@ -28650,7 +28658,9 @@ sub MSGIDsigCheck {
             my $today = (time / 86400) % 1000;
             my $dt = ($day - $today + 1000) % 1000;
             if ($dt <= 7) {
-                $this->{nopb} = $this->{acceptall} = $this->{whitelisted} = $this->{noprocessing} = 1;
+                $this->{nopb} = $this->{acceptall} = 1;
+                $this->{whitelisted} = 1 if $MSGIDsigProc & 1;
+                $this->{noprocessing} = 1 if $MSGIDsigProc & 2;
                 $this->{messagescore} = 0 if $this->{messagescore} > 0;
                 mlog($fh, "info: found valid MSGID signature in [$line] - accept mail") if $MSGIDsigLog or $this->{noMSGIDsigLog};
                 $this->{msgidsigok} = 1;
@@ -35358,7 +35368,7 @@ sub getbody {
         my $fn;
         my $logto = ($this->{relayok} || $this->{whitelisted}) ? $NonSpamLog : $baysNonSpamLog;
         # ignore noprocessing if msgidsigok is the only reason for passing
-        $logto = $noProcessingLog if $this->{noprocessing} && !(!$NonSpamLog && $this->{msgidsigok} && $this->{passingreason} eq 'noprocessing and whitelisted - found valid Message-ID signature');
+        $logto = $noProcessingLog if $this->{noprocessing};
         if (! $this->{maillogfh}) {
             $fn = Maillog($fh,'',$logto) if $logto>=2 ;
         } else {
@@ -45526,6 +45536,7 @@ sub maillogFilename {
          && $sub2 !~ /$AllowedDupSubjectReRE/)
     {
           my $normsub = normSubject($sub);
+#          mlog(0,"info: normsub: '$normsub' - SpamfileNames: '$SpamfileNames{$normsub}' - ".(time-$nextSpamDIR).'s');
           lock($lockSpamfileNames) if is_shared($lockSpamfileNames);
           threads->yield();
           if ( (my @nums = split(/\s+/o, $SpamfileNames{$normsub} )) >= $MaxAllowedDups ) {              # get all currently known file numbers for this subject
@@ -45536,7 +45547,7 @@ sub maillogFilename {
               }
 
               my %rSpamfileNames;
-              my $numRe = '^(?:[^\\\/]+)?--(?:'.join('|',@nums).')'.quotemeta($maillogExt).'$';          # make a regex for the currently known file numbers
+              my $numRe = '^(?:(?:[^\\\/]+)?--(?:'.join('|',@nums).')|^'.quotemeta($normsub).'--\d+)'.quotemeta($maillogExt).'$';          # make a regex for the currently known file numbers
               $numRe = qr/$numRe/;
 
               @nums = map  { $_->[0] }                                                                   # 6 return the number in to the sorted list of file numbers
@@ -45544,12 +45555,13 @@ sub maillogFilename {
                       map  { my ($fname,$num) = $_ =~ /^((?:[^\\\/]+)?--(\d+)\Q$maillogExt\E)$/;         # 2 get the number and filename
                              $rSpamfileNames{$num} = $fname;                                             # 3 store the filename in numbet hash
                              [ $num, ftime("$base/$spamlog/$fname") ] }                                  # 4 return array with number and filename
-                      grep { /$numRe/ } @spamFolderContent;                                              # 1 get only the file names for the file numbers in list regex
+                      grep { /$numRe/ && $eF->("$base/$spamlog/$_")} @spamFolderContent;                 # 1 get only the file names for the file numbers in list regex
 
               my @num;
               push(@num , shift(@nums)) while(scalar(@nums) >= $MaxAllowedDups);                         # get the list of the oldest file numbers and remove them from the current list
               push @nums , $Counter;                                                                     # append the current number to the current list
               $SpamfileNames{$normsub} = join(' ',@nums);                                                # store the current list
+              push @spamFolderContent, "$sub--$Counter$maillogExt";
 
               while (@num) {                                                                             # process the oldest fíle numbers
                   my $num = shift(@num);
@@ -45566,6 +45578,7 @@ sub maillogFilename {
           } else {
               $SpamfileNames{$normsub} .= ' ' if $SpamfileNames{$normsub};
               $SpamfileNames{$normsub} .= $Counter;
+              push @spamFolderContent, "$sub--$Counter$maillogExt";
           }
           threads->yield();
     }
@@ -46026,7 +46039,17 @@ sub MaillogClose {
         }
 
         if ($handles <= $WorkerScanConLimit) {
-             delete $Con{$fh}->{maillogfilename} unless eval{ scanFile4VirusOK([$fh,$Con{$fh}->{maillogfilename}]) };
+             if (! eval{ scanFile4VirusOK([$fh,$Con{$fh}->{maillogfilename}]) } ) {
+                 if ($Con{$fh}->{deletemaillog}) {
+                     $unlink->($Con{$fh}->{maillogfilename});
+                     mlog($fh,"info: file ".de8($Con{$fh}->{maillogfilename})." was deleted - $Con{$fh}->{deletemaillog} - virus",1);
+                 }
+                 delete $Con{$fh}->{maillogfilename};
+             } elsif ($Con{$fh}->{deletemaillog}) {
+                 $unlink->($Con{$fh}->{maillogfilename});
+                 mlog($fh,"info: file ".de8($Con{$fh}->{maillogfilename})." was deleted - $Con{$fh}->{deletemaillog}",1);
+                 delete $Con{$fh}->{maillogfilename};
+             }
         } else {
             # move the scan to the high threads, if there are other connections to handle
             mlog(0,"info: worker is too busy to do the virus scan for $Con{$fh}->{maillogfilename} - the scan task is moved to the MaintThread",1) if ($WorkerLog | $MaintenanceLog) > 1;

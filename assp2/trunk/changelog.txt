@@ -1,3 +1,23 @@
+2018-01-18
+fixed in assp 2.6.2 *Fortress* build 18018:
+
+- 'MaxAllowedDups' was not working correctly under permanent havy workload conditions
+
+- 'noCollectRe' was ignored, if a suspicious virus was found in the stored .eml file
+
+
+
+added:
+
+'MSGIDsigProc','Process valid Message-ID Signed Mails','0:normal|1:whitelisted|2:noprocessing|3:whitelisted and noprocessing',
+ 'How are received mails are processed, if they contain a valid local MessageID-Signature/Tag (eg. because it is an answer/reply to a tagged mail).
+ The default value is \'whitelisted\'. Notice that noprocessing and/or whitelisted may prevent those mails from being collected in the corpus folders - check 
+ noProcessingLog and NonSpamLog.'
+
+
+
+
+
 2018-01-08
 fixed in assp 2.6.2 *Fortress* build 18008:
 
