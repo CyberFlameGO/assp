@@ -565,7 +565,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '8E84FC70904C0E99853E967AB61B24C40212A213'; }
+sub __cs { $codeSignature = 'FA4DBB948A05124F02D85686F8F950D3ECD5CA47'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -3521,7 +3521,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['noMSGIDsigRe','Skip Message-ID signing, mail content dependent*',80,\&textinput,'','(.*)','ConfigCompileRe','Use this to skip the Message-ID tagging depending on the content of the email. If the content of the email matches this regular expression (checking MaxBytes only), FBMTV will not be done. For example: \'I am out of office\' .',undef,undef,'msg008900','msg008901'],
 ['noRedMSGIDsig','Skip Message-ID signing for Redlisted mails',0,\&checkbox,'0','(.*)',undef,'If selected, FBMTV will not be done for redlisted emails!',undef,undef,'msg008910','msg008911'],
 ['MSGIDsigProc','Process valid Message-ID Signed Mails','0:normal|1:whitelisted|2:noprocessing|3:whitelisted and noprocessing',\&listbox,1,'(\d*)',undef,
- 'How are received mails are processed, if they contain a valid local MessageID-Signature/Tag (eg. because it is an answer/reply to a tagged mail).<br />
+ 'How are received mails processed, if they contain a valid local MessageID-Signature/Tag (eg. because it is an answer/reply to a tagged mail).<br />
  The default value is \'whitelisted\'. Notice that noprocessing and/or whitelisted may prevent those mails from being collected in the corpus folders - check noProcessingLog and NonSpamLog.',undef,undef,'msg010630','msg010631'],
 ['DoBATV','Do BATV Tagging and Validation','0:disabled|1:block|2:monitor|3:score|4:testmode',\&listbox,0,'(\d*)',undef,'If enabled any sender address of outgoing mails is mangled with a <a href="http://en.wikipedia.org/wiki/Bounce_Address_Tag_Validation" rel="external">BATV-Tag</a>. Any incoming bounced mail is checked for a valid BATV-Tag. All valid (local) BATV-Tags will be removed from incoming mails - so whitelisting, delaying and all other recipient and sender based checks will use the normal addresses. If the BATV-check is successful, no MSGID-signing-check and DNS-Backscatter-check will be done! If any BATVTag was removed, no DKIM-check will be done! BATV-address-replacement is done, before the recipient replacement rules are processed!<br />
   This check requires an installed <a href="http://search.cpan.org/search?query=Digest::SHA1" rel="external">Digest::SHA1</a> module in Perl.',undef,undef,'msg004840','msg004841'],
