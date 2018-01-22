@@ -1,6 +1,21 @@
 2018-01-18
 fixed in assp 2.6.2 *Fortress* build 18018:
 
+- workaround for a Regexp::Optimizer bug, where some times \r plus quantifier in a regular expression is optimized as \r\? - in case assp skips the optimization
+
+- warnings and errors caused by the DKIM configuration are now shown in the GUI
+
+- MaxAllowedDups may caused stucking workers in case of a havy workload
+
+- a not installed perl module Thread::State caused exceptions and restarted high workers - the rebuildspamdb task was not running
+
+
+- this version is released as fixup version 2.6.1 build 18022 on the sourceforge file download page
+
+
+2018-01-18
+fixed in assp 2.6.2 *Fortress* build 18018:
+
 - 'MaxAllowedDups' was not working correctly under permanent havy workload conditions
 
 - 'noCollectRe' was ignored, if a suspicious virus was found in the stored .eml file

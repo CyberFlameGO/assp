@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18018';        # 18.01.2018 TE
+$build   = '18022';        # 22.01.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -557,7 +557,7 @@ our $PBscoreNoDelay = 1;     # score noDelay messages
 
 our $dbBackupVersions = 10;  # (3- ...) min=3, default=10 - number of database backup and export version that are keeped
 
-our $reReadSpamFolderInterval = 120;  # reread interval of the spamfolder content for MaxAllowedDups to prevent possible DoS attacks
+our $reReadSpamFolderInterval = 300;  # reread interval of the spamfolder content for MaxAllowedDups to prevent possible DoS attacks
 
 our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per tag per worker
     'info'    => 60,             # to prevent log flooding with equal loglines - default to 60 seconds for each tag
@@ -565,7 +565,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'FA4DBB948A05124F02D85686F8F950D3ECD5CA47'; }
+sub __cs { $codeSignature = 'A4A13D7F70F8D3A940E4B8D63CEEA979F4FD3227'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -3509,7 +3509,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 
 [0,0,0,'heading','Outgoing Message Tagging, NDR Validation and Backscatter Detection'],
 ['DoMSGIDsig','Do Message-ID Tagging and Validation (FBMTV)','0:disabled|1:block|2:monitor|3:score|4:testmode',\&listbox,0,'(\d*)',undef,
- 'If activated, the message-ID of each outgoing message will be signed with a unique Tag and every incoming mail will be checked against this Tag. This tagging mode is called FBMTV "Forwarder(s) Bounce Message-ID Tag Validation" and it is worldwide unique to ASSP. This Tag is build nearly the same way, as BATVTag is build for the sender address. This Tag will be removed from any incoming email, to recover the original references in the mail header! If anything is changed on this option inside the mail, no DKIM-check will be done! Before activating DoMSGIDsig, please configure MSGIDpreTag and MSGIDsec!<br />
+ 'If activated, the message-ID of each outgoing message will be signed with a unique Tag and every incoming mail will be checked against this Tag. This tagging mode is called FBMTV "Forwarder(s) Bounce Message-ID Tag Validation" and it is worldwide unique to ASSP. This Tag is build nearly the same way, as BATVTag is build for the sender address. This Tag will be removed from any incoming email, to recover the original references in the mail header! If anything is changed on this option inside the mail, no DKIM-check will be done! Before activating DoMSGIDsig, please configure MSGIDpreTag and MSGIDsec !<br />
   If activated and a bounced mail from null sender or postmaster contains no valid signature the configured action is taken.<br />
   This check requires an installed <a href="http://search.cpan.org/search?query=Digest::SHA1" rel="external">Digest::SHA1</a> module in Perl.',undef,undef,'msg004800','msg004801'],
 ['MSGIDpreTag','Message-ID pre-Tag for MSGID-TAG-generation',10,\&textinput,'sig','([a-zA-Z0-9]{2,5})',undef,'To use Message-ID signing and to create the MSGID-Tags, a pre-Tag is needed. This Tag must be 2-5 characters [a-z,A-Z,0-9] long. Default is \'sig\'.',undef,undef,'msg004810','msg004811'],
@@ -7309,7 +7309,7 @@ our $nextThreadMain2;
 our $nextNoop;
 our $nextRebuildSpamDB:shared;
 our $nextResendMail:shared;
-our $nextSpamDIR:shared;
+our $nextSpamDIR;
 our $nextThreadsWakeUp;
 our $noDBCache;
 our $noIcon;
@@ -10485,7 +10485,9 @@ EOT
 
     $AvailRegexpOptimizer   = $useRegexpOptimizer ? validateModule('Regexp::Optimizer()') : 0;  # Regexp::Optimizer module installed
     if ($CanUseRegexpOptimizer = $AvailRegexpOptimizer) {
-        $optReModule = 'Regexp::Optimizer' if eval('Regexp::Optimizer->VERSION') ge '0.23';
+        if (eval('Regexp::Optimizer->VERSION') ge '0.23') {
+            $optReModule = 'Regexp::Optimizer';
+        }
     }
 
     $AvailASSP_WordStem    = $useASSP_WordStem ? validateModule('ASSP_WordStem()') : 0;  # ASSP_WordStem  module installed
@@ -13071,6 +13073,7 @@ sub init {
  $MinPollTimeT =  $MinPollTime ? $MinPollTime : 1 ;
  $pollwait = $MinPollTimeT/1000;
  $minSelectTime = 0.001;
+ $reReadSpamFolderInterval = 120 if $reReadSpamFolderInterval && $reReadSpamFolderInterval < 120;
 
  {
      my $s;
@@ -19507,6 +19510,7 @@ sub SetRE {
          $noOptimize = 1;
      }
  }
+ $noOptimize = 1 if $r =~ m![^\\]?\\r(?:\*|\?|\{[\d, ]+\})!o; # Regexp::Optimizer bug for \r plus quantifier: a|\r? results in a|\r\? - so skip optimization
 # my $how = 'default ';
  $desc =~ s/[ *]*$//o;
  $desc =~ s/\<[a-zA-Z0-9]+ .*?\<\/[a-zA-Z0-9]+\>//gio;
@@ -32007,39 +32011,43 @@ sub configUpdateDKIMConf {
         }
     }
     $f->close;
-    my ($h,$d) = &DKIMcfgvalid(%dkim);
+    my ($h,$d,$ret) = &DKIMcfgvalid(%dkim);
     @domains = ();
     @domains = @{$d};
     %DKIMInfo = ();
     %DKIMInfo = %{$h};
     push @domains, " - no entries found !!!" unless @domains;
-    my $tlit = $init ? '' : 'AdminUpdate: ';
-    mlog(0,$tlit."DKIM configuration (re)loaded from file $file for domain(s):@domains") if $WorkerNumber == 0 && $WorkerName ne 'startup';
+    if ($WorkerNumber == 0 && $WorkerName ne 'startup') {
+        my $tlit = $init ? '' : 'AdminUpdate: ';
+        $ret .= ConfigShowError(0,$tlit."DKIM configuration (re)loaded from file $file for domain(s):@domains");
+    }
+    return $ret;
 }
 
 sub DKIMcfgvalid {
     my %dkim = @_;
     my @domains;
+    my $ret;
 
     foreach my $domain (keys %dkim) {
         if ($domain !~ /($EmailDomainRe)/o) {
-            mlog(0,"warning: DKIM-cfg - $domain is not a valid domain name - entry ignored") if $WorkerNumber == 0;
+            $ret .= ConfigShowError(1,"warning: DKIM-cfg - $domain is not a valid domain name - entry ignored") if $WorkerNumber == 0;
             delete $dkim{$domain};
             next;
         }
         foreach my $selector (keys %{$dkim{$domain}} ) {
             if ($selector !~ /^[a-zA-Z0-9_\-\.]+$/o) {
-                mlog(0,"warning: DKIM-cfg - $selector for $domain is not a valid selector name - entry ignored") if $WorkerNumber == 0;
+                $ret .= ConfigShowError(1,"warning: DKIM-cfg - $selector for $domain is not a valid selector name - entry ignored") if $WorkerNumber == 0;
                 delete $dkim{$domain}->{$selector};
                 next;
             }
             if (! -e $dkim{$domain}->{$selector}{KeyFile}) {
                 if ($dkim{$domain}->{$selector}{KeyFile}) {
-                    mlog(0,"warning: DKIM-cfg - private key (KeyFile) $dkim{$domain}->{$selector}{KeyFile} in $selector for $domain not found - entry ignored") if $WorkerNumber == 0;
+                    $ret .= ConfigShowError(1,"warning: DKIM-cfg - private key (KeyFile) $dkim{$domain}->{$selector}{KeyFile} in $selector for $domain not found - entry ignored") if $WorkerNumber == 0;
                     delete $dkim{$domain}->{$selector};
                     next;
                 } else {
-                    mlog(0,"warning: DKIM-cfg - private key (KeyFile) in $selector for $domain is not defined - entry ignored") if $WorkerNumber == 0;
+                    $ret .= ConfigShowError(1,"warning: DKIM-cfg - private key (KeyFile) in $selector for $domain is not defined - entry ignored") if $WorkerNumber == 0;
                     delete $dkim{$domain}->{$selector};
                     next;
                 }
@@ -32047,7 +32055,7 @@ sub DKIMcfgvalid {
                 my $key;
                 eval{$key = Mail::DKIM::PrivateKey->load(File => $dkim{$domain}->{$selector}{KeyFile});};
                 if ($@) {
-                    mlog(0,"warning: DKIM-cfg - unable to load private key (KeyFile) $dkim{$domain}->{$selector}{KeyFile} in $selector for $domain - entry ignored - $@") if $WorkerNumber == 0;
+                    $ret .= ConfigShowError(1,"warning: DKIM-cfg - unable to load private key (KeyFile) $dkim{$domain}->{$selector}{KeyFile} in $selector for $domain - entry ignored - $@") if $WorkerNumber == 0;
                     delete $dkim{$domain}->{$selector};
                     next;
                 }
@@ -32056,12 +32064,13 @@ sub DKIMcfgvalid {
         if (scalar(keys %{$dkim{$domain}})) {
             push @domains," $domain";
         } else {
-            mlog(0,"warning: DKIM-cfg - no selectors for domain $domain left - entry ignored") if $WorkerNumber == 0;
+            $ret .= ConfigShowError(1,"warning: DKIM-cfg - no selectors for domain $domain left - entry ignored") if $WorkerNumber == 0;
             delete $dkim{$domain};
             next;
         }
     }
-    return \%dkim,\@domains;
+    $ret .= ConfigShowError(1,"error: DKIM-cfg - no configuration left for any domain") if $WorkerNumber == 0 && ! scalar(keys(%dkim));
+    return \%dkim,\@domains,\$ret;
 }
 
 #convert IPv4-compatible IPv6 address (::0:IPv4) and IPv4-mapped IPv6 address (::FFFF:IPv4) to IPv4
@@ -45518,7 +45527,6 @@ sub maillogFilename {
     my $Counter = $this->{hasmallogname};
     if (! $this->{hasmallogname}) {
         lock(%Stats) if (is_shared(%Stats));
-        lock($lockSpamfileNames) if is_shared($lockSpamfileNames) && ! is_shared(%Stats);
         if (($Counter = ++$Stats{Counter}) > 999999999) {
             threads->yield();
             $Counter = $Stats{Counter} = 1;
@@ -45531,21 +45539,14 @@ sub maillogFilename {
          && $discarded
          && $isspam == 1
          && $MaxAllowedDups
+         && $reReadSpamFolderInterval
          && ! $this->{hasmallogname}
          && ! $RunTaskNow{'fillSpamfiles'}
+         && ! $lockSpamfileNames
          && $sub2 !~ /$AllowedDupSubjectReRE/)
     {
           my $normsub = normSubject($sub);
-#          mlog(0,"info: normsub: '$normsub' - SpamfileNames: '$SpamfileNames{$normsub}' - ".(time-$nextSpamDIR).'s');
-          lock($lockSpamfileNames) if is_shared($lockSpamfileNames);
-          threads->yield();
           if ( (my @nums = split(/\s+/o, $SpamfileNames{$normsub} )) >= $MaxAllowedDups ) {              # get all currently known file numbers for this subject
-              if ($nextSpamDIR < time) {                                                                 # reread the spam folder content if required
-                  @spamFolderContent = $unicodeDH->("$base/$spamlog");
-                  $nextSpamDIR = time + $reReadSpamFolderInterval;
-                  mlog(0,"info: reread spam folder content") if $SessionLog > 2;
-              }
-
               my %rSpamfileNames;
               my $numRe = '^(?:(?:[^\\\/]+)?--(?:'.join('|',@nums).')|^'.quotemeta($normsub).'--\d+)'.quotemeta($maillogExt).'$';          # make a regex for the currently known file numbers
               $numRe = qr/$numRe/;
@@ -59135,7 +59136,7 @@ sub ConfigCompileRe {
     } else {
         $new = $RegExStore{$name};
     }
-    
+
     if (exists $WeightedRe{$name}) {
         my $defaultHow;
         $defaultHow = $1 if $new =~ s/\s*!!!\s*([nNwWlLiI\+\-\s]+)?\s*!!!\s*\|?//o;
@@ -59245,7 +59246,7 @@ sub ConfigCompileRe {
                 $TLDSRE = qr/(?i:$new)/;
             } else {
                 my $lenAfter = length $TLDSRE;
-                mlog(0,"info: optimized regex for '<$name>' - length in byte before: $lenBefore - after: $lenAfter") if $MaintenanceLog >= 2 && $WorkerNumber == 0;;
+                mlog(0,"info: optimized regex for '<$name>' - length in byte before: $lenBefore - after: $lenAfter") if $MaintenanceLog >= 2 && $WorkerNumber == 0;
             }
             exportOptRE(\$TLDSRE,'TLDS') if $WorkerNumber == 0;
           }
@@ -59261,7 +59262,7 @@ sub ConfigCompileRe {
         $new||=$neverMatch; # regexp that never matches
 
         # replace something like ${$EmailDomainRe} with the value of $EmailDomainRe
-        $new =~ s/(([^\\]?)\$\{\$([a-z][a-z0-9]+)\})/(exists $main::{$3}) ? $2.${$3} : $1/oige if $AllowInternalsInRegex;
+        $new =~ s/(([^\\]?)\$\{\$([a-z][a-z0-9_]+)\})/(exists $main::{$3}) ? $2.${$3} : $1/oige if $AllowInternalsInRegex;
 
         if ($RegexGroupingOnly) {
             if (! SetRE($name.'RE',$new,'is',$name, $name ,$hasChanged) ) {
@@ -59276,6 +59277,7 @@ sub ConfigCompileRe {
             } else {
                 delete $RegexError{$name};
             }
+
         } else {
             if (! SetRE($name.'RE',$new,'is',$name,$name)) {
                 $RegexError{$name} = 'error in regular expression';
@@ -59394,13 +59396,9 @@ sub ConfigChangeMaxAllowedDups {
     return if $WorkerNumber != 0 && $init ne 'reread';
     my $count = -1;
     if ($new && $Config{UseSubjectsAsMaillogNames} && $Config{discarded} && $Config{spamlog}) {
-        if ($WorkerNumber == 0) {
-            cmdToThread('fillSpamfiles','');
-        } else {
-            $count = &fillSpamfiles();
-        }
+        cmdToThread('fillSpamfiles','');
     } else {
-       %SpamfileNames = ();
+        %SpamfileNames = ();
     }
     mlog(0,"AdminUpdate: $name from '$old' to '$new'") unless $init || $new eq $old;
     mlog(0,"info: $name - ".nN($count)." files registered in $Config{spamlog} folder") if $init && $new && $count > -1;
@@ -59418,6 +59416,7 @@ sub fillSpamfiles {
     $skip = 1 unless $discarded;
     $skip = 1 unless $UseSubjectsAsMaillogNames;
     $skip = 1 unless $MaxAllowedDups;
+    $skip = 1 unless $reReadSpamFolderInterval;
     if ($skip) {
         %SpamfileNames = ();
         $RunTaskNow{'fillSpamfiles'} = '';
@@ -59469,6 +59468,8 @@ sub fillSpamfiles {
         }
     }
     %SpamfileNames = %tSpamfileNames;
+    @spamFolderContent = $unicodeDH->("$base/$spamlog");
+    $nextSpamDIR = time + $reReadSpamFolderInterval;
     $RunTaskNow{'fillSpamfiles'} = '';
     mlog(0,"info: MaxAllowedDups - ".nN($count)." files registered in $Config{spamlog} folder - ".nN($moved)." files moved to folder $base/$discarded") if $count;
     return $count;
@@ -68371,6 +68372,16 @@ sub ThreadMaintMain {
     }
     return if(! $ComWorker{$Iam}->{run} || $wasrun);
 
+    if ($nextSpamDIR && $nextSpamDIR < time && $UseSubjectsAsMaillogNames && $MaxAllowedDups && $discarded && $spamlog && $reReadSpamFolderInterval) {
+        $lockSpamfileNames = 1;
+        threads->yield();
+        @spamFolderContent = $unicodeDH->("$base/$spamlog");
+        $lockSpamfileNames = 0;
+        threads->yield();
+        $nextSpamDIR = time + $reReadSpamFolderInterval;
+        mlog(0,"info: spam folder content was reread for MaxAllowedDups") if $MaintenanceLog > 1;
+    }
+
     if($UpdateWhitelist && time >= $saveWhite) {
         ScheduleMapSet('UpdateWhitelist');
         d('ThreadMaintMain - saveWhite');
@@ -74712,11 +74723,12 @@ package ASSP::Priority;
 use strict qw(vars subs);
 no warnings;
 
-our $VERSION = '1.00';
+our $VERSION = '1.01';
 
 sub new {
     my $class = shift;
     my $priority = shift;
+    return unless $main::CanUseThreadState;
     if (! defined $priority) {
         return if ! exists $main::workerSpeedUp{$main::WorkerNumber};
         $priority = $main::workerSpeedUp{$main::WorkerNumber} || 0;
@@ -74724,7 +74736,13 @@ sub new {
     &DESTROY();
     my $self = {};
     bless $self, $class;
-    $self->{Priority} = main::threads->self()->priority($priority);
+    local $@;
+    $self->{Priority} = eval { main::threads->self()->priority($priority); };
+    if ($@) {
+        &main::mlog(0,"error: can't modify thread priority - $@");
+        undef $self;
+        return;
+    }
     &main::mlog(0,"Info: changed thread priority from ($self->{Priority}) to ($priority)") if ($self->{Priority} != $priority && $main::SessionLog);
     return $self;
 }
@@ -74733,8 +74751,14 @@ sub DESTROY {
     my $self = shift;
     return unless $self;
     return unless defined $self->{Priority};
-    my $priority = main::threads->self()->priority($self->{Priority});
-    &main::mlog(0,"Info: changed back thread priority from ($priority) to ($self->{Priority})") if ($self->{Priority} != $priority && $main::SessionLog);
+    return unless $main::CanUseThreadState;
+    local $@;
+    my $priority = eval { main::threads->self()->priority($self->{Priority}); };
+    if ($@) {
+        &main::mlog(0,"error: can't set back the thread priority to $self->{Priority} - $@");
+    } else {
+        &main::mlog(0,"Info: changed back thread priority from ($priority) to ($self->{Priority})") if ($self->{Priority} != $priority && $main::SessionLog);
+    }
     undef $self;
     return;
 }
