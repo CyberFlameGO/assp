@@ -1,3 +1,20 @@
+2018-01-28
+fixed in assp 2.6.2 *Fortress* build 18028:
+
+- downloading files using HTTPS may caused a SEGV exception, if the download server has supported OCSP
+
+- certificate validation may has been failed if 'proxyserver' was configured
+
+- assp was possibly crashing, if there was no module available that implements the 'sha_hex' function
+
+
+
+added:
+
+- the hidden variable 'importDBShowProgress' is implemented
+  setting this variabe to zero or 'undef', prevents the progess lines from the database-import function, to be written to maillog.txt - default is 1 
+
+
 2018-01-18
 fixed in assp 2.6.2 *Fortress* build 18018:
 

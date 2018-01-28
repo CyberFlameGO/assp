@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18022';        # 22.01.2018 TE
+$build   = '18028';        # 28.01.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -406,6 +406,7 @@ our $DoSQL_LIKE = 1;                     # (0/1) do a 'DELETE FROM table WHERE p
 our $lockBDB = 0;                        # (0/1) use the CDB locking for BerkeleyDB (default = 0)
 our $lockDatabases = 0;                  # (0/1) locks all databases on access in every worker to prevent access violation
 our $DBCacheSize = 12;                   # (number > 0) database cache record count , if less it will be set to NumComWorkers * 2 + 8
+our $importDBShowProgress = 1;           # (0/1) show the progress in the maillog.txt while a DB-import is running - default is 1
 
 # BlockReport security related
 our $BlockReportRequireSMIME = 0;        # (0/1/2/3) 1 = users, 2 = admins, 3 = users & admins
@@ -565,7 +566,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'A4A13D7F70F8D3A940E4B8D63CEEA979F4FD3227'; }
+sub __cs { $codeSignature = 'A32BE90FB33A8492143C3E77DBCCD730EB354642'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -608,6 +609,8 @@ our $BackDNSFileURL = 'http://wget-mirrors.uceprotect.net/rbldnsd-all/ips.backsc
 # set the blocking mode for HTTPS (0/1 default is 0) and HTTP (0/1 default is 0) on the GUI
 our $HTTPSblocking = 0;
 our $HTTPblocking = 0;
+our $HTTP_OCSP_NO_STAPLE = 1;  # disable OCSP staple
+our $HTTP_NO_VERIFY = 1;       # disable certificate verification and CRL
 
 # set the blocking mode for STATS connection (0/1) - default is 0
 our $STATSblocking = 0;
@@ -4458,9 +4461,9 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg007
  0 6 * * * &amp;subname(var1,var2,..,...)<br />
  0 7 * * * &amp;subname()<br />
  Notice: the subroutine will be called in the MainThread and syntax check will be done at run time - possible errors are shown in the log!',undef,undef,'msg009680','msg009681'],
-['proxyserver','Proxy Server',20,\&textinput,'','(\S*)',undef,'The Proxy Server to use when uploading global statistics and downloading the greylist.<p><small><i>Examples:</i> 192.168.0.1:8080, 192.168.0.1</small></p>',undef,undef,'msg007600','msg007601'],
-['proxyuser','Proxy User',20,\&passinput,'','(\S*)',undef,'The Proxy-UserName that is used to authenticate to the proxy.',undef,undef,'msg007610','msg007611'],
-['proxypass','Proxy Password',20,\&passinput,'','(\S*)',undef,'The password for Proxy-UserName that is used to authenticate to the proxy.',undef,undef,'msg007620','msg007621'],
+['proxyserver','Proxy Server',20,\&textinput,'','(\S*)','ConfigChangeProxyConf','The Proxy Server to use when uploading global statistics and downloading the greylist.<p><small><i>Examples:</i> 192.168.0.1:8080, 192.168.0.1</small></p>',undef,undef,'msg007600','msg007601'],
+['proxyuser','Proxy User',20,\&passinput,'','(\S*)','ConfigChangeProxyConf','The Proxy-UserName that is used to authenticate to the proxy.',undef,undef,'msg007610','msg007611'],
+['proxypass','Proxy Password',20,\&passinput,'','(\S*)','ConfigChangeProxyConf','The password for Proxy-UserName that is used to authenticate to the proxy.',undef,undef,'msg007620','msg007621'],
 ['webAdminPort','Web Admin Port',20,\&textinput,55555,$GUIHostPort,'ConfigChangeAdminPort',
   'The port on which ASSP will listen for http connections to the web administration interface. If you change this, after you click Apply Changes you must change the URL on your browser to reconnect. You may also supply an IP address or hostname to limit connections to a specific interface. Separate multiple entries by pipe "|"!<br />
   To define a SSL listener, write \'SSL:\' in front of the host:port - e.g. SSL:host:port.<br />
@@ -9803,7 +9806,7 @@ sub rb_add {
             if ($ip !~ /$IPprivate/o) {
                 $cip = &main::ipv6expand(&main::ipv6TOipv4($ip));
                 $rhelo =~ s/\r?\n/ /gos;
-                $curHelo = $1 if $rhelo =~ / helo=([^\s\)]+)/io;
+                $curHelo = $1 if $rhelo =~ /\shelo=([^\s\)]+)/io;
                 if ($cip && &main::matchIP($cip,'ispip','',1)) {
                     $curHelo = '';
                     $cip = '';
@@ -13011,7 +13014,7 @@ sub init {
  } else {
      mlog(0,"ASSP$p version $version$modversion (Perl $]) (on $^O) running on server: localhost ($localhostip)") ;
  }
- $dftExpSec = sha1_hex(join('',reverse(split(//o,$UUID))).$localhostname);
+ $dftExpSec = eval{ sha1_hex(join('',reverse(split(//o,$UUID))).$localhostname); };
  if ($dftIOEngine == 1 && $IOEngine == 0) {
      mlog(0,"warning: IOEngine is set to 'IO::Poll'. This is Strawberry-Perl and the IOEngine 'IO::Select' is recommended to be used!");
      $Recommends{'IOEngine'} = "IOEngine is set to 'IO::Poll'. This is Strawberry-Perl and the IOEngine 'IO::Select' is recommended to be used!"
@@ -13032,6 +13035,13 @@ sub init {
  checkReplyRecom();
  
  print 'check process env ';
+
+ $ENV{HTTP_proxy} = 'http://'.$proxyserver if ( $proxyserver && ! $ENV{HTTP_proxy});
+ $ENV{HTTP_PROXY} = 'http://'.$proxyserver if ( $proxyserver && ! $ENV{HTTP_PROXY});
+ $ENV{HTTPS_PROXY} = 'http://'.$proxyserver if ( $proxyserver && ! $ENV{HTTPS_PROXY});
+ $ENV{ALL_PROXY} = 'http://'.$proxyserver if ( $proxyserver && ! $ENV{ALL_PROXY});
+ $ENV{HTTP_proxy_user} = $proxyuser if ($proxyuser && ! $ENV{HTTP_proxy_user});
+ $ENV{HTTP_proxy_pass} = $proxypass if ($proxypass && ! $ENV{HTTP_proxy_pass});
 
  if ($MaintenanceLog > 1) {
      mlog(0,"info: Perl will search for modules in the following folders:\n". join("\n",map {my $t = $_ ; $t = "'$t'";$t;} @INC));
@@ -13489,9 +13499,9 @@ sub init {
     $installed = 'enabled';
   } else {
     $installed = $useDigestSHA1 ? 'is not installed' : 'is disabled in config';
-    if ($shamod) {   # Digest::SHA1 is missing but Digest::SHA was loaded
+    if ($shamod) {   # Digest::SHA1 is missing but Digest::SHA or Crypt::Digest::SHA1 was loaded
         $ver=eval($shamod->VERSION);
-        mlog(0,"Digest::SHA1 module $installed");
+        mlog(0,"$shamod module $installed");
         mlog(0,"Failover to module $shamod version $ver for base SHA functions (instead using Digest::SHA1) - BATV and FBMTV check available, but other functions may not work!");
         $CanUseSHA1 = $AvailSHA1 = 1;
     } else {
@@ -15434,7 +15444,7 @@ sub importDB {
                              ($sec_left = int(( time - $imp_start_time )*($records - $count)/$count)) != $old_sec_left)
                          {
                              $old_sec_left = $sec_left;
-                             mlog_i(0,"added $count of $records records (force-RBR) for table $mysqlTable - finished in $sec_left sec");
+                             mlog_i(0,"added $count of $records records (force-RBR) for table $mysqlTable - finished in $sec_left sec") if $importDBShowProgress;
                              &checkDBCon() if $WorkerNumber > 0;
                              &ThreadMonitorMainLoop("import $mysqlTable") if $WorkerNumber == 0;
                              my $stime = time - $last_step_time || 1;
@@ -15648,7 +15658,7 @@ sub importDB {
               last if ($DBI::err);
               if ($count % 1000 == 0 && ($sec_left = int(( time - $imp_start_time )*($records - $count)/$count)) != $old_sec_left) {
                   $old_sec_left = $sec_left;
-                  mlog_i(0,"added $count of $records records (BULK) for table $mysqlTable - finished in $sec_left sec");
+                  mlog_i(0,"added $count of $records records (BULK) for table $mysqlTable - finished in $sec_left sec") if $importDBShowProgress;
                   &checkDBCon() if $WorkerNumber > 0;
                   &ThreadMonitorMainLoop("import $mysqlTable") if $WorkerNumber == 0;
                   last if ($WorkerNumber != 0 && ! $ComWorker{$WorkerNumber}->{run});
@@ -15696,7 +15706,7 @@ sub importDB {
                  $count++;
                  if ($count % $toadd == 0 && ($sec_left = int(( time - $imp_start_time )*($records - $count)/$count)) != $old_sec_left) {
                     $old_sec_left = $sec_left;
-                    mlog_i(0,"added $count of $records records (RBR) for table $mysqlTable - finished in $sec_left sec");
+                    mlog_i(0,"added $count of $records records (RBR) for table $mysqlTable - finished in $sec_left sec") if $importDBShowProgress;
                     &checkDBCon() if $WorkerNumber > 0;
                     &ThreadMonitorMainLoop("import $mysqlTable") if $WorkerNumber == 0;
                     my $stime = time - $last_step_time || 1;
@@ -28374,6 +28384,7 @@ sub NotSpamTagGen {
     return unless $NotSpamTag;
     return unless $fh;
     return unless exists $Con{$fh};
+    return unless $CanUseSHA1;
     my $this = $Con{$fh};
     return if $this->{relayok} && ! $noRelayNotSpamTag;
     return if $this->{addressedToSpamBucket}; # don't tell spammers what to do
@@ -28418,6 +28429,7 @@ sub NotSpamTagOK {       # tag must be exact 10 bytes long, contains a-zA-Z02-7
     return unless $fh;
     return unless $tag;
     return unless $NotSpamTag;
+    return unless $CanUseSHA1;
     $tag =~ s/0/o/og;
     $tag = unpack("H*",base32decode(lc $tag));
     return unless $tag;
@@ -28487,6 +28499,7 @@ sub MSGIDaddSig_Run {
 
     return $msgid if($this->{addMSGIDsigDone});
     $this->{addMSGIDsigDone} = 1;
+    return $msgid unless $CanUseSHA1;
     return $msgid unless $this->{relayok};
     return $msgid if ($noRedMSGIDsig && $this->{red});
     return $msgid if ($MSGIDsigAddresses && ! matchSL($this->{mailfrom},'MSGIDsigAddresses'));
@@ -28524,6 +28537,7 @@ sub MSGIDsigRemove {
     my $old;
     
     return if $this->{MSGIDsigRemoved};
+    return unless $CanUseSHA1;
     my $headlen = $this->{headerlength} || getheaderLength($fh);  # do only the header
     $this->{headerlength} = $headlen;
     my $maxlen = $MaxBytes && $MaxBytes < $this->{maillength} ? $MaxBytes : $this->{maillength};
@@ -28584,6 +28598,7 @@ sub MSGIDsigOK_Run {
     return 1 if $this->{msgidsigdone};
     $this->{msgidsigdone} = 1;
 
+    return 1 unless $CanUseSHA1;
     return if ! $this->{isbounce};
     skipCheck($this,'co','sb','ro') && return 1;
     return 1 if ($this->{whitelisted} && !$BackWL) ;
@@ -28643,6 +28658,7 @@ sub MSGIDsigCheck {
     my $fh = shift;
     my $this = $Con{$fh};
     d('MSGIDsigCheck');
+    return 0 unless $CanUseSHA1;
     my $headlen = $MaxBytes && $MaxBytes < $this->{maillength} ? $MaxBytes + $this->{headerlength} : $this->{maillength};
     my $tocheck = substr($this->{header},0,$headlen);
     while (my ($cline,$line, $gen, $day, $hash, $orig_msgid) = ($tocheck =~ /(($HeaderNameRe\:)[\r\n\s]*?\<$MSGIDpreTag\.(\d)(\d\d\d)(\w{6})\.([^\r\n>]+)\>)/)) {
@@ -28952,7 +28968,7 @@ sub downloadHTTP {
     }
 
     # Create LWP object
-    my $ua = LWP::UserAgent->new();
+    my $ua = LWP::UserAgent->new(getLWPparms());
 
     # Set useragent to ASSP version
     $ua->agent("ASSP/$version$modversion ($^O; Perl/$]; LWP::Simple/$LWP::VERSION)");
@@ -43466,7 +43482,7 @@ sub clean {
             my($head,$val) = ($1,$2);
             next if $head =~ /^(?:x-assp|(?:(?:X-Google-)?DKIM|DomainKey)-Signature)|X-Original-Authentication-Results/oi;
             if (!$helo && $head =~ /^received$/io) {
-                $helo = $1 if $val =~ / helo=([^)]+)\)/io;
+                $helo = $1 if $val =~ /[\s\]]helo=([^\)]+)\)/io;
             }
             if ($head =~ /^(to|cc|bcc)$/io) {
                 push @receipt, $1 while ($val =~ /($EmailAdrRe\@$EmailDomainRe)/gio);
@@ -44749,6 +44765,9 @@ sub Perl_upgrade_do {
         open(STDERR, '>', \$e);
     }
     $ENV{HTTP_proxy} = 'http://'.$proxyserver if ( $proxyserver && ! $ENV{HTTP_proxy});
+    $ENV{HTTP_PROXY} = 'http://'.$proxyserver if ( $proxyserver && ! $ENV{HTTP_PROXY});
+    $ENV{HTTPS_PROXY} = 'http://'.$proxyserver if ( $proxyserver && ! $ENV{HTTPS_PROXY});
+    $ENV{ALL_PROXY} = 'http://'.$proxyserver if ( $proxyserver && ! $ENV{ALL_PROXY});
     $ENV{HTTP_proxy_user} = $proxyuser if ($proxyuser && ! $ENV{HTTP_proxy_user});
     $ENV{HTTP_proxy_pass} = $proxypass if ($proxypass && ! $ENV{HTTP_proxy_pass});
     eval('
@@ -57338,7 +57357,10 @@ sub ThreadCompileAllRE {
         'POP3ConfigFile' => 'Initializing',
         'asspCpuAffinity' => 'Initializing',
         'enable8BITMIME' => 'Initializing',
-        'HTMLParser' => 'Initializing'
+        'HTMLParser' => 'Initializing',
+        'proxyserver' => 'Initializing',
+        'proxyuser' => 'Initializing',
+        'proxypass' => 'Initializing',
     );
     @PossibleOptionFiles=();
     for my $idx (0...$#ConfigArray) {
@@ -59953,6 +59975,23 @@ sub ssldebug {
     mlog(9,"SSL-DEBUG: $file:$line: $msg");
 }
 
+# set SSL parameters for LWP objects (https downloads)
+sub getLWPparms {
+    my %lwp_opts;
+    local $@;
+    if ($HTTP_OCSP_NO_STAPLE) {
+        my $staple = eval('IO::Socket::SSL::SSL_OCSP_NO_STAPLE');
+        if (! $@) {
+            $lwp_opts{ssl_opts}->{SSL_ocsp_mode} = $staple;
+        }
+    }
+    if ($HTTP_NO_VERIFY) {
+        $lwp_opts{ssl_opts}->{SSL_verify_mode} = eval('IO::Socket::SSL::SSL_VERIFY_NONE') || 0x00;
+        $lwp_opts{ssl_opts}->{SSL_check_crl} = 0x00;
+    }
+    return %lwp_opts;
+}
+
 sub getSSLPWD {
     return $SSLPKPassword;
 }
@@ -59976,7 +60015,9 @@ sub getSSLParms {
         $ssl{SSL_cipher_list} = $SSL_cipher_list;
         $ssl{SSL_honor_cipher_order} = 1;
     }
-    $ssl{SSL_verify_mode} = 0x00 ;
+    $ssl{SSL_verify_mode} = eval('IO::Socket::SSL::SSL_VERIFY_NONE');
+    $ssl{SSL_check_crl} = 0x00;
+    $ssl{SSL_ocsp_mode} = eval('IO::Socket::SSL::SSL_OCSP_NO_STAPLE');
     $ssl{SSL_version} = $SSL_version if $SSL_version;
     $ssl{Timeout} = $SSLtimeout;
 
@@ -60285,6 +60326,22 @@ sub fillPortArray {
             push @{$listen}, "[::]:$new" if $CanUseIOSocketINET6;
         }
     }
+}
+
+sub ConfigChangeProxyConf {my ($name, $old, $new, $init)=@_;
+    return '' if $new eq $old && ! $init;
+
+    $$name = $Config{$name} = $new unless $WorkerNumber;
+    mlog(0,"AdminUpdate: $name changed to $new from $old") if $WorkerNumber == 0 && ! $init;
+
+    $ENV{HTTP_proxy} = 'http://'.$proxyserver if ( $proxyserver );
+    $ENV{HTTP_PROXY} = 'http://'.$proxyserver if ( $proxyserver );
+    $ENV{HTTPS_PROXY} = 'http://'.$proxyserver if ( $proxyserver );
+    $ENV{ALL_PROXY} = 'http://'.$proxyserver if ( $proxyserver );
+    $ENV{HTTP_proxy_user} = $proxyuser if ( $proxyuser );
+    $ENV{HTTP_proxy_pass} = $proxypass if ( $proxypass );
+
+    return '';
 }
 
 sub ConfigChangeAdminPort {my ($name, $old, $new, $init)=@_;
@@ -70220,7 +70277,7 @@ sub registerGlobalClient {
     my $url = allRot($globalRegisterURL);
     $url = 'http://'.$url if $url !~ m!^(?:ht|f)tps?://!io;
 
-    my $ua = LWP::UserAgent->new();
+    my $ua = LWP::UserAgent->new(getLWPparms());
     $ua->agent("ASSP/$version$modversion ($^O; Perl/$]; LWP::UserAgent/$LWP::VERSION)");
     $ua->timeout(20);
     push @{ $ua->requests_redirectable }, 'POST';
@@ -70288,7 +70345,7 @@ sub sendGlobalFile {
     my $url = allRot($globalUploadURL);
     $url = 'http://'.$url if $url !~ m!^(?:ht|f)tps?://!io;
 
-    my $ua = LWP::UserAgent->new();
+    my $ua = LWP::UserAgent->new(getLWPparms());
     $ua->agent("ASSP/$version$modversion ($^O; Perl/$]; LWP::UserAgent/$LWP::VERSION)");
     $ua->timeout(20);
     push @{ $ua->requests_redirectable }, 'POST';
