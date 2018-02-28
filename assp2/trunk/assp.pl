@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18028';        # 28.01.2018 TE
+$build   = '18059';        # 28.02.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -445,6 +445,7 @@ our $CCignore8BitMIME = 0;               # (0/1) CCham, ForwardSpam and resend w
 
 our $CCchangeMSGDate = 0;                ## (0..31) change the 'Date:' MIME-header on CCmail (sendHamInbound), ForwardSpam (sendAllSpam) and resend mail
                                          ## MS-Exchange may require this, because duplicate mails will be removed silently, if they contain an equal 'Date:...' MIME-header
+                                         ## only the value for the seconds will be changed
                                          # bit 0 = 1 ( +1) -> set all bits (1 - 4) to 1 for backward compatibility ( same as 30 -> 2+4+8+16 )
                                          # bit 1 = 1 ( +2) -> force change at CCmail
                                          # bit 2 = 1 ( +4) -> force change at ForwardSpam
@@ -566,7 +567,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'A32BE90FB33A8492143C3E77DBCCD730EB354642'; }
+sub __cs { $codeSignature = 'A88E30739E72B660826CAFD8CBDF3B0592C41560'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -3017,14 +3018,15 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/srs.txt\',3);" />',undef,'7','msg003740','msg003741'],
 
 [0,0,0,'heading','DNSBL - RBL Validation <a href="http://sourceforge.net/p/assp/wiki/DNSBL" target=wiki><img height=12 width=12 src="' . $wikiinfo . '" alt="DNSBL" /></a>'],
-['ValidateRBL','Enable DNS Blacklist Validation ','0:disabled|1:block|2:monitor|3:score',\&listbox,1,'(.*)','configUpdateRBL',
-  'This requires an installed <a href="http://search.cpan.org/search?query=Net::DNS" rel="external">Net::DNS</a> module in PERL.',undef,undef,'msg003750','msg003751'],
+['ValidateRBL','Enable DNS Blacklist Validation For Connected IP Addresses','0:disabled|1:block|2:monitor|3:score',\&listbox,1,'(.*)','configUpdateRBL',
+  'The connected IP address will be checked for DNSBL hits. If enhancedOriginIPDetect is enabled, additionally DNSBL checks will be done for IP\'s on the mail routing way.<br />
+  This requires an installed <a href="http://search.cpan.org/search?query=Net::DNS" rel="external">Net::DNS</a> module in PERL.',undef,undef,'msg003750','msg003751'],
 ['ForceRBLCache','Early DNSBL Cache Blocking',0,\&checkbox,'','(.*)',undef,
   'If set, ASSP will use cached DNSBL hits to block messages before other tests. <b>testmode</b> will override this. <b>spamlover settings</b> will be ignored.',undef,undef,'msg003760','msg003761'],
 ['noRBL','Don\'t do DNSBL for these IPs*',80,\&textinput,'','(\S*)','ConfigMakeIPRe',
  'Enter IP addresses that you don\'t want to be DNSBL validated, separated by pipes (|). For example:  127.0.0.1|172.16..',undef,'7','msg003770','msg003771'],
-['RBLWL','Whitelisted DNSBL Validation',0,\&checkbox,0,'(.*)',undef,
-  'Enable DNSBL for whitelisted users also',undef,undef,'msg003780','msg003781'],
+['RBLWL','Whitelisted DNSBL Validation For Connected IP Addresses',0,\&checkbox,0,'(.*)',undef,
+  'Enable DNSBL for whitelisted IP\'s, domains and users also',undef,undef,'msg003780','msg003781'],
 ['AddRBLHeader','Add X-Assp-DNSBL Header',0,\&checkbox,1,'(.*)',undef,
   'Add X-Assp-DNSBL header to messages with positive reply from DNSBL.',undef,undef,'msg003790','msg003791'],
 ['RBLError','DNSBL Failed Reply',80,\&textinput,'554 5.7.1 DNS Blacklisted by RBLLISTED','(.*)',undef,
@@ -3457,7 +3459,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   <span class=\"negative\">Changing this value requires a restart of assp. Possibly a forced rebuildspamdb is required after the restart.</span>",undef,undef,'msg001240','msg001241'],
 ['DoPrivatSpamdb','Use also private entries for the Bayesian Spamdb and Hidden Markov Model databases','0:NO|1:for users only|2:for domains only|3:for users and domains',\&listbox,3,'(.*)','ConfigChangeDoPrivatSpamdb','If enabled, private entries (based on the local recipient and/or the report sender email address) will be added to the Bayesian and HMM databases. These private entries have a three times higher priority for users (full email address) and two times higher priority for domains (domain part of the email address) than global entries. To enable this option "spamdb" must be set to use a database "DB:" first!<br />
  <b>Setting this option to ON, will increase the record count for the spamdb and the HMM databases dramaticaly!</b>',undef,undef,'msg009630','msg009631'],
-['BayesMaxProcessTime','Bayesian and HMM Check Timeout ',3,\&textinput,'15','(\d+)',undef,'The Bayesian- and HMM checks are the most memory and CPU consuming tasks that ASSP is doing on a message. If such tasks running to long on one message, other messages could run in to SMTPIdleTimeout. Define here the maximum time in seconds that ASSP should spend on Bayesian Checks for one message. Default is 60.',undef,undef,'msg004720','msg004721'],
+['BayesMaxProcessTime','Bayesian and HMM Check Timeout ',3,\&textinput,'15','(\d+)',undef,'The Bayesian- and HMM checks are the most memory and CPU consuming tasks that ASSP is doing on a message. If such tasks running to long on one message, other messages could run in to SMTPIdleTimeout. Define here the maximum time in seconds that ASSP should spend on Bayesian Checks for one message. Default is 15.',undef,undef,'msg004720','msg004721'],
 ['BayesWL','Bayesian/HMM Check on Whitelisted NON Local Senders/Messages',0,\&checkbox,'','(.*)',undef,'If enabled, the Bayesian/HMM check is done on whitelisted NON local senders/messages.',undef,undef,'msg006120','msg006121'],
 ['BayesNP','Bayesian/HMM Check on NoProcessing Messages',0,\&checkbox,'','(.*)',undef,'If enabled, the Bayesian/HMM check is done on NoProcessing messages.',undef,undef,'msg007420','msg007421'],
 ['BayesLocal','Bayesian/HMM Check on Local Senders',0,\&checkbox,'','(.*)',undef,'If enabled, the Bayesian/HMM check is done on local and outgoing messages',undef,undef,'msg010360','msg010361'],
@@ -17188,7 +17190,7 @@ sub LoadHash {
    binmode($LH);
    %$hash = ();
    keys (%$hash) = $keys;      # preallocate Memory for Hash
-   mlog(0,"info: start loading $hashname from $file with approx. $keys") if $MaintenanceLog;
+   mlog(0,"info: start loading $hashname from $file with approx. $keys records") if $MaintenanceLog;
    while (<$LH>) {
      my ($k,$v) = split/\002/o;
      chomp $v;
@@ -18022,22 +18024,26 @@ sub setMSGDate {
     my $tz=$UseLocalTime ? tzStr() : '+0000';
     $time=~s/(...) (...) +(\d+) (........) (....)/$1, $3 $2 $5 $4/o;
     if (ref($msg) eq 'SCALAR') {    # $msg is a ref to the message text
-        $time = "date: $time $tz\r\n";
         if ($$msg =~ /(?:^|(?:$HeaderRe)+?)date:($HeaderValueRe)/ios) {
-            my $orgdate = 'X-ASSP-OriginalMailDate:' . $1;
+            $time = $1;
+            my $orgdate = 'X-ASSP-OriginalMailDate:' . $time;
+            $time =~ s/(\d\d:\d\d:)(\d\d)/$1.sprintf("%02d",int(rand(59)+1+$2)%60)/oe;
             $$msg =~ s/(^|\n)date:$HeaderValueRe/$1$time$orgdate/ios;
             mlog(0,"info: changed 'Date:' in MIME-header") if $ConnectionLog >= 2;
         } else {
+            $time = "date: $time $tz\r\n";
             $$msg = $time.$$msg;
         }
     } elsif (ref($msg) =~ /email/io) {   # $msg is an Email::MIME related object
-        $time = "$time $tz";
         eval {
             if (my $date = $msg->header('Date')) {
+                $time = $date;
+                $time =~ s/(\d\d:\d\d:)(\d\d)/$1.sprintf("%02d",int(rand(59)+1+$2)%60)/oe;
                 $msg->header_set('Date' => $time);
                 $msg->header_set('X-ASSP-OriginalMailDate' => $date);
                 mlog(0,"info: changed 'Date:' in MIME-header") if $ConnectionLog >= 2;
             } else {
+                $time = "$time $tz";
                 $msg->header_set('Date' => $time);
             }
         };
@@ -23844,6 +23850,7 @@ sub stateReset {
     delete $this->{gripdone};
     delete $this->{hmmValues};
     delete $this->{hmmQueryRelation};
+    delete $this->{hmmRelativeQueryRelation};
     delete $this->{hmmQuestion};
     delete $this->{hmmdone};
     delete $this->{islocalmailaddress};
@@ -42152,12 +42159,24 @@ sub HMMOK_Run {
             }
         }
     }
+    # the absolute answer / query relation
     $this->{hmmQuestion} = $this->{hmmres} if $this->{hmmQuestion} < $this->{hmmres};
     $this->{hmmQueryRelation} = $this->{hmmres} / $this->{hmmQuestion} if $this->{hmmQuestion};
     $this->{hmmQueryRelation} = 1 if $this->{hmmres} >= $maxBayesValues || $this->{hmmQueryRelation} > 1;
     $this->{hmmQueryRelation} ||= 0;
+
+    # the relative (maxBayesValues)  answer / query relation
+    my $hr = min($maxBayesValues,$this->{hmmres});
+    my $hQ = min($maxBayesValues,$this->{hmmQuestion});
+    $hQ = $hr if $hQ < $hr;
+    my $hQr;
+    $hQr = $hr / $hQ if $hQ;
+    $hQr = 1 if $hr >= $maxBayesValues || $hQr > 1;
+    $hQr ||= 0;
+    $this->{hmmRelativeQueryRelation} = $hQr;
+
     my $skipBonus;
-    if ($this->{hmmQueryRelation} < .8) {
+    if ($this->{hmmRelativeQueryRelation} < .75) {  # we got less than 75% answers - check the total count of answers to prevent wrong detection
         if ($this->{hmmres} < int($maxBayesValues / 12 + 1)) {
             mlog(0,"warning: the current HMMdb is possibly incompatible to this version of ASSP. Please run a rebuildspamdb. current: $currentDBVersion{HMMdb} - required: $requiredDBVersion{HMMdb}") if ($currentDBVersion{HMMdb} ne $requiredDBVersion{HMMdb} && ! ($ignoreDBVersionMissMatch & 2));
             mlog($fh,'HMM-Check has given less than '.int($maxBayesValues / 12 + 1).' results - using monitoring mode only');
@@ -48205,9 +48224,23 @@ $ret .= <<EOT;
 EOT
 
 #SMTP Connection Statistics
+my @msgStats = qw(
+smtpConn
+);
+my %st = ();
+map {$st{$_} = $Stats{$_};} @msgStats;
+my ($smin,$smax) = minmax(\%st);
+$smin = 0 if scalar(keys(%st)) == 1;
+%st = ();
+map {$st{$_} = $AllStats{$_};} @msgStats;
+my ($amin,$amax) = minmax(\%st);
+$amin = 0 if scalar(keys(%st)) == 1;
+%st = ();
+@msgStats = ();
+
 $ret .= StatLine({'stat'=>'smtpConn','text'=>'Accepted Logged SMTP Connections:','class'=>'statsOptionTitle'},
-                 {'text'=>"$Stats{smtpConn}",'class'=>'statsOptionValue positive','colspan'=>'2'},
-                 {'text'=>"$AllStats{smtpConn}",'class'=>'statsOptionValue positive','colspan'=>'2'})
+                 {'text'=>"$Stats{smtpConn}",'class'=>'statsOptionValue positive','colspan'=>'2','min'=>$smin,'max'=>$smax},
+                 {'text'=>"$AllStats{smtpConn}",'class'=>'statsOptionValue positive','colspan'=>'2','min'=>$amin,'max'=>$amax})
 
       . StatLine({'stat'=>'smtpConnSSL','text'=>'SSL-Port SMTP Connections:','class'=>'statsOptionTitle'},
                  {'text'=>"$Stats{smtpConnSSL}",'class'=>'statsOptionValue positive','colspan'=>'2'},
@@ -48414,7 +48447,7 @@ $ret .= <<EOT;
         <tbody id="StatItem7" class="on">
 EOT
 
-my @msgStats = qw(
+@msgStats = qw(
 bhams whites locals noprocessing spamlover bspams blacklisted helolisted invalidHelo
 forgedHelo mxaMissing ptrMissing ptrInvalid spambucket penaltytrap viri viridetected
 bombBlack bombs bombSender pbdenied pbextreme denyConnection sbblocked msgscoring
@@ -48422,12 +48455,14 @@ senderInvalidLocals internaladdresses scripts spffails rblfails uriblfails msgMa
 msgBackscatterErrors msgMSGIDtrErrors batvErrors msgMaxErrors msgDelayed msgNoRcpt
 msgNoSRSBounce dkimpre dkim localFrequency preHeader msgverify crashAnalyze Razor DCC
 );
-my %st;
+%st = ();
 map {$st{$_} = $Stats{$_};} @msgStats;
-my ($smin,$smax) = minmax(\%st);
-%st =();
+($smin,$smax) = minmax(\%st);
+$smin = 0 if scalar(keys(%st)) == 1;
+%st = ();
 map {$st{$_} = $AllStats{$_};} @msgStats;
-my ($amin,$amax) = minmax(\%st);
+$amin = 0 if scalar(keys(%st)) == 1;
+($amin,$amax) = minmax(\%st);
 %st = ();
 @msgStats = ();
 # Message Statistics
