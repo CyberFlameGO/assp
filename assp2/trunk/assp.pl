@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18059';        # 28.02.2018 TE
+$build   = '18064';        # 05.03.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -477,6 +477,8 @@ our $delayGripLow = 0.4;                 # 0 <= value <= 1 IP's with a GripList 
 our $protectASSP = 1;                    # (0/1) the internal 'rmtree' function will only remove files and folders in base/t[e]mp...  - other folders are ignored
 
 our $noSupportSummay = 0;                # (0/1) skips the output of a support summary in the configuration export function
+
+our $AllowCodeInRegex = 0;               # (0/1) allow the usage of executable perl code (?{code_to_run}) in regular expression - change this ONLY, if you really know what you do
 # *********************************************************************************************************************************************
 
 $BayesDomainPrior ||= 1;
@@ -567,7 +569,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'A88E30739E72B660826CAFD8CBDF3B0592C41560'; }
+sub __cs { $codeSignature = '2A838B5D2F4CF300914341F9F793CF37B42B1F2D'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -896,6 +898,7 @@ our %cryptConfigVars:shared = (
     'SSLPKPassword' => 1,
     'SSL_version' => 1,
     'SSL_cipher_list' => 1,
+    'SSLAdvancedServerConfigFile' => 1,
     'SSLWEBCertVerifyCB' => 1,
     'SSLWEBConfigure' => 1,
     'SSLSTATCertVerifyCB' => 1,
@@ -1557,7 +1560,7 @@ sub assp_socket_blocking {
 }
 
 sub defConfigArray {
- # last used msg number 010631
+ # last used msg number 010641
 
  # still unused msg numbers
  #
@@ -2524,7 +2527,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['PTRCacheInterval','Reversed Lookup Cache Refresh Interval',4,\&textinput,7,'(\d+\.?\d*|)','configUpdatePTRCR',
   'IP\'s in cache will be removed after this interval in days. 0 will disable the cache. <input type="button" value=" Show PTR Cache" onclick="javascript:popFileEditor(\''.$newDB.'pb/pbdb.ptr.db\',5);" />',undef,undef,'msg001860','msg001861'],
 ['DoDomainCheck','Validate MX or A Record','0:disabled|1:block|2:monitor|3:score',\&listbox,3,'(.*)',undef,
-  'If activated, the sender address and each address found in the following header lines (ReturnReceipt:, Return-Receipt-To:, Disposition-Notification-To:, Return-Path:, Reply-To:, Sender:, Errors-To:, List-...:) is checked for a valid MX or A record. Scoring is done for non existing MX ( mxValencePB ) record and non existing A record ( mxaValencePB ) - a messages fails (block), if both records are not found.',undef,undef,'msg001870','msg001871'],
+  'If activated, the sender address and each address found in the following header lines (ReturnReceipt:, Return-Receipt-To:, Disposition-Notification-To:, Return-Path:, Reply-To:, Sender:, Errors-To:, List-...:) is checked for a valid MX or A record. Scoring is done for non existing MX ( mxValencePB ) record and non existing A record ( mxaValencePB ) - a messages fails (block), if both records are not found. If only an IP-address is found for a MX, the A record check fails, if the IP has no valid PTR and DoInvalidPTR is enabled.',undef,undef,'msg001870','msg001871'],
 ['MXACacheInterval','Validate Domain MX Cache Refresh Interval',4,\&textinput,7,'(\d+\.?\d*|)','configUpdateMXACR',
   'IP\'s in cache will be removed after this interval in days. 0 will disable the cache.<input type="button" value=" Show MX Cache" onclick="javascript:popFileEditor(\''.$newDB.'pb/pbdb.mxa.db\',5);" />',undef,undef,'msg001880','msg001881'],
 ['DoNoFrom','Check for Existing From Header Tag and Address','0:disabled|2:monitor|3:score',\&listbox,3,'(.*)',undef,
@@ -4796,6 +4799,35 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
 ['SSLCertFile','SSL Certificate File (PEM format)',48,\&textinput,$dftCertFile,'(.*)','ConfigChangeSSL',
   "Full path to the file containing the server's SSL certificate or certificate-chain, for example : /usr/local/etc/ssl/certs/assp-cert.pem or c:/assp/certs/server-cert.pem. A general cert.pem file is already provided in \'assp/certs/server-cert.pem\'<br />
   For SNI support please read SSLWEBConfigure.",undef,undef,'msg008230','msg008231'],
+['SSLAdvancedServerConfigFile','File with Advanced SSL-Server Parameters',48,\&textinput,'','(.*)','ConfigChangeSSL',
+  'Full path to the text file containing the server\'s advanced SSL parameters.<br />
+  If your SSL-server configuration requires additionally SSL-parameters according to IO::Socket::SSL and/or Net::SSLeay (for example: special Elliptic-Curve Diffie-Hellmann Key Exchange) and you don\'t want to use SSLWEBConfigure , SSLSTATConfigure , SSLSMTPConfigure confuration options, you may define a text file with your parameters here.<br />
+  <b>NOTICE: assp will not check, if your configuration settings, made in this file, are valid - they are used as defined. In doubt, use SSLDEBUG to trace their effects.</b><br />
+  The settings in this file are passed as part of the IO::Socket::SSL configuration HASH to IO::Socket::SSL as they are defined<br />
+  Any setting redefined in this file will override default internal assp settings as well as the above assp SSL configuration settings. The assp SSL settings below this tag are not effected.<br />
+  The syntax in this this file is the same like a HASH definition in Perl:<br />
+  - lines starting with an # are comments and are ignored<br />
+  - empty lines are ignored<br />
+  - each definition for a parameter has to be terminated with a comma<br />
+  - keyword and value have to be separated with =&gt;<br /><br />
+  example:<br />
+  # this is my special Elliptic-Curve Diffie-Hellmann Key Exchange for all listeners<br />
+  SSL_dh_file =&gt; full_path_to_your_DH-File,<br />
+  SSL_ecdh_curve =&gt; secp384r1,<br />
+  next-key =&gt; {<br />
+  &nbsp;&nbsp;subkey1 =&gt; subvalue1,<br />
+  &nbsp;&nbsp;subkey2 =&gt; [ARRAY-item-0, ARRAY-item-1, ...],<br />
+  &nbsp;&nbsp;subkey3 =&gt; {<br />
+  &nbsp;&nbsp;&nbsp;&nbsp;key =&gt; value,<br />
+  &nbsp;&nbsp;&nbsp;&nbsp;...,<br />
+  &nbsp;&nbsp;},<br />
+  &nbsp;&nbsp;...,<br />
+  },<br />
+  ...,<br />
+  last-key =&gt;last-value,<br /><br />
+  The defined file is watched for changes by assp. An possible reread of this file is only shown if SSLDEBUG is set to ON.<br />
+  It is highly recommended to read the documentation of IO::Socket::SSL and/or Net::SSLeay!<br />
+  Because the location of this file can be outside the assp folder, it can\'t be modified using assp! Please use an external file editor.',undef,undef,'msg010640','msg010641'],
 ['noTLSIP','Exclude these IP\'s from TLS*',80,\&textinput,'','(\S*)','ConfigMakeIPRe','Enter IP\'s that you want to exclude from starting SSL/TLS, separated by pipes (|). For example, put all IP\'s here, that making trouble to switch to TLS every time, what will prevent ASSP from getting mails from or sending mails to this hosts.',undef,undef,'msg008250','msg008251'],
 ['banFailedSSLIP','Ban Failed SSL IP','0:disable|1:private only|2:public only|3:both',\&listbox,3,'(\d*)',undef,
  'If set (recommended is \'both\'), an IP that fails to connect via SSL/TLS will be banned for 12 hour from using SSL/TLS.<br />
@@ -5240,7 +5272,7 @@ The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries.
   <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/pop3collect.txt\',3);" />',undef,undef,'msg009090','msg009091']
 );
 
- # last used msg number 010631
+ # last used msg number 010641
 
  &loadModuleVars;
  -d "$base/language" or mkdirOP("$base/language",'0755');
@@ -7430,6 +7462,7 @@ our %SNMPag;
 our %SNMPAS;
 our %SocketCalls; keys %SocketCalls = 128;       #t
 our %SocketCallsNewCon;        #t
+our %SSLadvcfg;
 our %StatCon;
 our %StatText;
 our $SysLogObj;
@@ -7488,6 +7521,7 @@ our %webRequests;
 our %webAuthStore;
 our %uniRegex;
 our @AdminGroup;
+our @AnalyzeLog;
 our @ARINservers:shared;
 our @changedConfig:shared;
 our @currentCpuAffinity;
@@ -17941,8 +17975,10 @@ sub mlog {
     
     threads->yield();
     if (@m) {
+        push @AnalyzeLog, @m if (@AnalyzeLog);
         $mlogQueue{$WorkerNumber}->enqueue(Time::HiRes::time.' '.$_) for (@m);
     } else {
+        push @AnalyzeLog, $m if (@AnalyzeLog);
         $mlogQueue{$WorkerNumber}->enqueue(Time::HiRes::time.' '.$m);
     }
     threads->yield();
@@ -19527,6 +19563,7 @@ sub SetRE {
      }
  }
  $noOptimize = 1 if $r =~ m![^\\]?\\r(?:\*|\?|\{[\d, ]+\})!o; # Regexp::Optimizer bug for \r plus quantifier: a|\r? results in a|\r\? - so skip optimization
+ $noOptimize = 1 if $r =~ m!(?:^|[^\\])(\(\s*\?\{.+?[^\\]\}\))!o; # executable code in regex
 # my $how = 'default ';
  $desc =~ s/[ *]*$//o;
  $desc =~ s/\<[a-zA-Z0-9]+ .*?\<\/[a-zA-Z0-9]+\>//gio;
@@ -31744,7 +31781,7 @@ sub DKIMOK_Run {
       $this->{myheader} .= "X-Original-Authentication-Results: $myName; dkim=$result\r\n";
   }
   
-  if (($result eq "fail" || ($result eq "none" && $this->{isDKIM})) && ! $dkimpolicy_a->testing) {
+  if (($result eq "fail" || ($result eq "none" && $this->{isDKIM}) || ($result eq "invalid" && $this->{isDKIM} && $dkim->{signature_reject_reason} eq 'public key: not available')) && ! $dkimpolicy_a->testing) {
     $this->{prepend}="[DKIM]";
     mlog($fh,"$tlit DKIM signature failed - $detail - sender policy is: $dkimwhy_s - author policy is: $dkimwhy_a") if $ValidateSenderLog && $DoDKIM==3 || $DoDKIM==2;
     pbWhiteDelete($fh,$this->{ip});
@@ -33417,7 +33454,11 @@ sub MXAOK_Run {
                             $mfd{$mfd}->{ctime} = undef;
                             $queryError{$mfd} = undef;
                             $hasPrivat = 0;
-                            next DOMAIN;
+                            next DOMAIN if (! $DoInvalidPTR || getRRData($mxexchange,'PTR'));
+                            $mfd{$mfd}->{a} = undef;
+                            mlog( $fh,"$mfd - MX $mxexchange has no valid PTR - this MX has failed", 0)
+                                if $ValidateSenderLog;
+                            next MX;
                         } elsif ($hasPrivat != 0) {
                             $hasPrivat = 1;
                             push @noIP, $mxexchange;
@@ -50275,6 +50316,7 @@ sub SearchBomb {
 
 sub ConfigAnalyze {
     my ( $ba, $st, $fm, %fm, %to, %wl, $ip, $helo, $text, $ip3, $received , $emfd, $mailfrom, $rcptto, $hasheader, $headTo, $org_headTo);
+    @AnalyzeLog = (1);
     my $checkRegex = ! $silent && $AnalyzeLogRegex;
     my $mail = $qs{mail};
     if (! $mail && $qs{file}) {
@@ -51543,13 +51585,24 @@ sub ConfigAnalyze {
 
     	}
 
+        if (@AnalyzeLog > 1) {
+            shift(@AnalyzeLog);
+            $fm .= "<br /><b><font color=\"#003366\">Feature Matching Log:</font></b><br /><br />\n";
+            while (@AnalyzeLog) {
+                my $line = shift(@AnalyzeLog);
+                $line =~ s/\n[\t ]+/<br \/>\&nbsp;\&nbsp;\&nbsp;\&nbsp;/gos;
+                $fm .= "$line<br />\n";
+            }
+            @AnalyzeLog = (1);
+        }
+
         if (! $qs{return}) {
             $fm =~ s/($IPRe)/my$e=$1;($e!~$IPprivate)?"<a href=\"javascript:void(0);\" title=\"take an action on that IP\" onclick=\"popIPAction('$1');return false;\">$1<\/a>":$e;/goe;
             $fm =~ s/(')?($EmailAdrRe?\@$EmailDomainRe)(')?/"<a href=\"javascript:void(0);\" title=\"take an action on that address\" onclick=\"popAddressAction('".&encHTMLent($2)."');return false;\">".&encHTMLent($1.$2.$3)."<\/a>";/goe;
         } else {
             $fm =~ s/<a href[^>]+>|<\/a>//go;
         }
-        
+
         # Unicode Analyzes processing
         eval {
             $fm .= "<br /><hr><br />";
@@ -51645,7 +51698,19 @@ sub ConfigAnalyze {
             $fm .= "</div>\n" if (! $qs{return});
         } if($] ge '5.012000');
 
+        if (@AnalyzeLog > 1) {
+            shift(@AnalyzeLog);
+            $fm .= "<br /><b><font color=\"#003366\">Unicode Log:</font></b><br /><br />\n";
+            while (@AnalyzeLog) {
+                my $line = shift(@AnalyzeLog);
+                $line =~ s/\n[\t ]+/<br \/>\&nbsp;\&nbsp;\&nbsp;\&nbsp;/gos;
+                $fm .= "$line<br />\n";
+            }
+            @AnalyzeLog = (1);
+        }
+
         $fm .= "<br /><hr><br />";
+
         my ($ar,$got,$relation,$question,@t);
         if (! $lockBayes) {
             ($ar,$got,$relation,$question) = BayesWords(\$mail,$reportedBy);
@@ -51872,8 +51937,21 @@ sub ConfigAnalyze {
             $st .= " </table><br />\n";
         }
         $st .= "Values marked with an <font color='red'>*</font>, are irrelevant for the confidence calculation.<br />\n" if $baysConf;
+
+        if (@AnalyzeLog > 1) {
+            shift(@AnalyzeLog);
+            $st .= "<br /><b><font color=\"#003366\">HMM and Bayesian Log:</font></b><br /><br />\n";
+            while (@AnalyzeLog) {
+                my $line = shift(@AnalyzeLog);
+                $line =~ s/\n[\t ]+/<br \/>\&nbsp;\&nbsp;\&nbsp;\&nbsp;/gos;
+                $st .= "$line<br />\n";
+            }
+            @AnalyzeLog = (1);
+        }
+
         $st .= "</div><br />\n";
 TRANSLITONLY:
+        @AnalyzeLog = ();
         unless ($mystatus) {
             no warnings;
             fixutf8(\$mail);
@@ -59111,8 +59189,8 @@ sub checkOptionList {
     my $count = () = (wantarray ? $value =~ /(\n)/gos : $value =~ /([^\\]\|)/go);
     $count++ if length $value;
 
-    if ($value =~ /(?:^|[^\\])(\(\s*\?\{.+?[^\\]\}\))/o) {
-        return ("\x00\xff error: resulting regular expression in '$name' contains executable perl code '$1' - this is not allowed - the complete value is ignored!");
+    if (! $AllowCodeInRegex && $value =~ /(?:^|[^\\])(\(\s*\?\{.+?[^\\]\}\))/o) {
+        return ("\x00\xff error: resulting regular expression in '$name' contains executable perl code '$1' - this is not allowed (\$AllowCodeInRegex = 0) - the complete value is ignored!");
     }
 
     mlog(0,"option list file: '$fil' reloaded ($name) with ".nN($count)." records") if ($value && !$init && $fromfile && ! $calledfromThread);
@@ -60035,17 +60113,6 @@ sub getSSLParms {
     my ($asServer,$parms) = @_;
     my %ssl;
     # set the default SSL parameters
-    if ($asServer) {
-        $ssl{SSL_server} = 1;
-        $ssl{SSL_use_cert} = 1;
-        $ssl{SSL_cert_file} = $SSLCertFile;
-        $ssl{SSL_key_file} = $SSLKeyFile;
-        $ssl{SSL_ca_file} = $SSLCaFile if $SSLCaFile;
-        $ssl{SSL_passwd_cb} = \&getSSLPWD if getSSLPWD();
-    } else {
-        $ssl{SSL_ctx_free} = 1;
-        $ssl{SSL_session_cache_size} = 128;
-    }
     if ($SSL_cipher_list) {
         $ssl{SSL_cipher_list} = $SSL_cipher_list;
         $ssl{SSL_honor_cipher_order} = 1;
@@ -60055,6 +60122,56 @@ sub getSSLParms {
     $ssl{SSL_ocsp_mode} = eval('IO::Socket::SSL::SSL_OCSP_NO_STAPLE');
     $ssl{SSL_version} = $SSL_version if $SSL_version;
     $ssl{Timeout} = $SSLtimeout;
+    if ($asServer) {
+        $ssl{SSL_server} = 1;
+        $ssl{SSL_use_cert} = 1;
+        $ssl{SSL_cert_file} = $SSLCertFile;
+        $ssl{SSL_key_file} = $SSLKeyFile;
+        $ssl{SSL_ca_file} = $SSLCaFile if $SSLCaFile;
+        $ssl{SSL_passwd_cb} = \&getSSLPWD if getSSLPWD();
+
+        if ($SSLAdvancedServerConfigFile && -f $SSLAdvancedServerConfigFile && -r $SSLAdvancedServerConfigFile) {
+            if ($FileUpdate{$SSLAdvancedServerConfigFile.'SSLAdvancedServerConfigFile'} != ftime($SSLAdvancedServerConfigFile) || ($enablePermanentSSLContext && ! scalar keys %SSLServerContext)) {
+                $FileUpdate{$SSLAdvancedServerConfigFile.'SSLAdvancedServerConfigFile'} = ftime($SSLAdvancedServerConfigFile);
+                if ($open->(my $F,'<', $SSLAdvancedServerConfigFile )) {
+                    my $cfg;
+                    $F->binmode;
+                    $F->read($cfg,fsize($SSLAdvancedServerConfigFile));
+                    $F->close;
+                    local $@;
+                    %SSLadvcfg = ();
+                    my %s = eval($cfg);
+                    if ($@) {
+                        mlog(0,"error: can't evaluate SSLAdvancedServerConfigFile - please check the file syntax (key => value,) - $@") if $SSLDEBUG;
+                    } else {
+                        for (keys(%s)) {
+                            mlog(0,"info: SSL parameter '$_' in SSLAdvancedServerConfigFile will change the default from '$ssl{$_}' to '$s{$_}'") if $SSLDEBUG && exists $ssl{$_} && $s{$_} ne $ssl{$_};
+                            $SSLadvcfg{$_} = $s{$_};
+                            mlog(0,"info: advanced SSL parameter '$_' is set to '$SSLadvcfg{$_}' by SSLAdvancedServerConfigFile") if $SSLDEBUG;
+                        }
+                    }
+                } else {
+                    mlog(0,"error: unable to open SSLAdvancedServerConfigFile '$SSLAdvancedServerConfigFile' for reading");
+                    %SSLadvcfg = ();
+                }
+            }
+
+            for (keys(%SSLadvcfg)) {
+                mlog(0,"info: SSL parameter '$_' is changed from '$ssl{$_}' to '$SSLadvcfg{$_}' by SSLAdvancedServerConfigFile") if $SSLDEBUG && exists $ssl{$_} && $SSLadvcfg{$_} ne $ssl{$_};
+                $ssl{$_} = $SSLadvcfg{$_};
+                mlog(0,"info: SSL parameter '$_' is set to '$ssl{$_}' by SSLAdvancedServerConfigFile") if $SSLDEBUG;
+            }
+
+        } elsif ($SSLAdvancedServerConfigFile) {
+            mlog(0,"error: can't find SSLAdvancedServerConfigFile '$SSLAdvancedServerConfigFile'") if $SSLDEBUG;
+            %SSLadvcfg = ();
+        } else {
+            %SSLadvcfg = ();
+        }
+    } else {
+        $ssl{SSL_ctx_free} = 1;
+        $ssl{SSL_session_cache_size} = 128;
+    }
 
     my %failssl;
     foreach my $k (keys(%ssl)) {
@@ -60236,6 +60353,9 @@ sub ConfigChangeSSL {
             $old =~ s/\\/\//go;
             $new =~ s/^\s+(.*?)\s+$/$1/o;
             $old =~ s/^\s+(.*?)\s+$/$1/o;
+        }
+        if ($name eq 'SSLAdvancedServerConfigFile') {
+            delete $FileUpdate{"$old$name"}
         }
         $Config{$name} = ${$name} = $new;
         if (   ($name =~ /File$/o && -f $new && -r $new)

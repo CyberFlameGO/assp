@@ -1,3 +1,66 @@
+2018-03-05
+fixed in assp 2.6.2 *Fortress* build 18064:
+
+
+changed:
+
+- 'DoDomainCheck','Validate MX or A Record' is changed
+  'If activated, the sender address and each address found in the following header lines ....
+   ....
+   If only an IP-address is found for a MX, the A record check fails, if the IP has no valid PTR and DoInvalidPTR is enabled.
+
+
+- The analyzer now shows all log lines produced while the analyze task is running.
+
+- The DKIM check now fails, if the signature_reject_reason is 'public key: not available'
+
+
+
+added:
+
+- the hidden config parameter 'AllowCodeInRegex' is added to enable the code execution in regular expressions
+
+$AllowCodeInRegex = 0;   # (0/1) allow the usage of executable perl code (?{code_to_run}) in regular expression - change this ONLY, if you really know what you do
+
+
+- 'SSLAdvancedServerConfigFile','File with Advanced SSL-Server Parameters'
+  'Full path to the text file containing the server's advanced SSL parameters.
+  If your SSL-server configuration requires additionally SSL-parameters according to IO::Socket::SSL and/or Net::SSLeay (for example: special Elliptic-Curve Diffie-Hellmann Key Exchange)
+  and you don't want to use SSLWEBConfigure , SSLSTATConfigure , SSLSMTPConfigure confuration options, you may define a text file with your parameters here.
+  NOTICE: assp will not check, if your configuration settings, made in this file, are valid - they are used as defined. In doubt, use SSLDEBUG to trace their effects.
+  The settings in this file are passed as part of the IO::Socket::SSL configuration HASH to IO::Socket::SSL as they are defined.
+  Any setting redefined in this file will override default internal assp settings as well as the above assp SSL configuration settings.
+  The assp SSL settings below this tag are not effected.
+
+  The syntax in this this file is the same like a HASH definition in Perl:
+  - lines starting with an # are comments and are ignored
+  - empty lines are ignored
+  - each definition for a parameter has to be terminated with a comma
+  - keyword and value have to be separated with =>
+
+  example:
+  # this is my special Elliptic-Curve Diffie-Hellmann Key Exchange for all listeners
+  SSL_dh_file => full_path_to_your_DH-File,
+  SSL_ecdh_curve => secp384r1,
+  next-key => {
+    subkey1 => subvalue1,
+    subkey2 => [ARRAY-item-0, ARRAY-item-1, ...],
+    subkey3 => {
+      key => value,
+      ...,
+    },
+    ...,
+  },
+  ...,
+  last-key =>last-value,
+
+  The defined file is watched for changes by assp. An possible reread of this file is only shown if SSLDEBUG is set to ON.
+  It is highly recommended to read the documentation of IO::Socket::SSL and/or Net::SSLeay!
+  Because the location of this file can be outside the assp folder, it can't be modified using assp! Please use an external file editor.
+
+
+
+
 2018-02-28
 fixed in assp 2.6.2 *Fortress* build 18059:
 
