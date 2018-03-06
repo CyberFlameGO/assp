@@ -1,3 +1,56 @@
+2018-03-06
+fixed in assp 2.6.2 *Fortress* build 18065:
+
+
+added:
+
+'DKIMWLAddresses','Whitelist these Addresses for valid DKIM Signature *'
+ 'If a valid DKIM or DomainKey signature is found and the signature identity tag (i=user@domain.tld) matches any of these addresses, the mail will be processed as Whitelisted.
+  Note this matches the end of the identity address, so if you don't want to match subdomains then include the @. Note that example.com would also match spamexample.com but .example.com
+  won't match example.com. Wildcards are supported. For example: sourceforge.net|group*@google.com|.example.com
+  It is possible to make this check recipient dependend (eg: on a set of local domains and/or local users). Use wildcards (* and ?) to define domains.
+  
+  Use the following syntax to do this:
+  
+  *@anydomain=>*@any_local_domain - for domain to domain
+  *@*.anydomain=>*@any_local_domain - for any sub-domain to domain
+  user@anydomain=>*@*.any_local_domain - for user to any sub-domain
+  It is possible to define more than one entry at the left and the right side of the definition (=>), like:
+  *@anydomain|*@other_domain=>*@any_local_domain|*@other_local_domain - always separate multiple entries by pipes
+  
+  It is also possible to use a GroupDefinition in any or both sides, like:
+  [identitygroup]=>[recipientgroup]
+  [identitygroup1]|[identitygroup2]|*@domain=>[recipientgroup1]|[recipientgroup2]|user@local_domain
+  
+  NOTICE - that the local email addresses and domains are not checked to be local once.
+  To define special characters like '* and ?' - use their hexadecimal regex representation like '\x2A and \x3F'.'
+
+
+'DKIMNPAddresses','Noprocessing these Addresses for valid DKIM Signature *'
+ 'If a valid DKIM or DomainKey signature is found and the signature identity tag (i=user@domain.tld) matches any of these addresses, the mail will be processed as NoProcessing.
+  Note this matches the end of the identity address, so if you don't want to match subdomains then include the @. Note that example.com would also match spamexample.com but .example.com
+  won't match example.com. Wildcards are supported. For example: sourceforge.net|group*@google.com|.example.com
+  It is possible to make this check recipient dependend (eg: on a set of local domains and/or local users). Use wildcards (* and ?) to define domains.
+  
+  Use the following syntax to do this:
+  
+  *@anydomain=>*@any_local_domain - for domain to domain
+  *@*.anydomain=>*@any_local_domain - for any sub-domain to domain
+  user@anydomain=>*@*.any_local_domain - for user to any sub-domain
+  It is possible to define more than one entry at the left and the right side of the definition (=>), like:
+  *@anydomain|*@other_domain=>*@any_local_domain|*@other_local_domain - always separate multiple entries by pipes
+  
+  It is also possible to use a GroupDefinition in any or both sides, like:
+  [identitygroup]=>[recipientgroup]
+  [identitygroup1]|[identitygroup2]|*@domain=>[recipientgroup1]|[recipientgroup2]|user@local_domain
+  
+  NOTICE - that the local email addresses and domains are not checked to be local once.
+  To define special characters like '* and ?' - use their hexadecimal regex representation like '\x2A and \x3F'.'
+
+
+
+
+
 2018-03-05
 fixed in assp 2.6.2 *Fortress* build 18064:
 

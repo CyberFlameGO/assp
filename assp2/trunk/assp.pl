@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18064';        # 05.03.2018 TE
+$build   = '18065';        # 06.03.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -569,7 +569,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '2A838B5D2F4CF300914341F9F793CF37B42B1F2D'; }
+sub __cs { $codeSignature = '2EFD926458001BD345BE07D7A8071CC16F96FC8D'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1560,7 +1560,7 @@ sub assp_socket_blocking {
 }
 
 sub defConfigArray {
- # last used msg number 010641
+ # last used msg number 010661
 
  # still unused msg numbers
  #
@@ -2550,6 +2550,36 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['noDKIMAddresses','Do not any DKIM Check for these Addresses *',80,\&textinput,'','(.*)','ConfigMakeSLRe',
   'Mail from or to any of these envelope addresses will not be tagged and checked for DKIM. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com).',undef,undef,'msg001940','msg001941'],
 ['noDKIMIP','Exclude these IP\'s from any DKIM Check*',80,\&textinput,'','(\S*)','ConfigMakeIPRe','Enter IP\'s that you want to exclude from DKIM check, separated by pipes (|).',undef,undef,'msg001950','msg001951'],
+['DKIMWLAddresses','Whitelist these Addresses for valid DKIM Signature *',80,\&textinput,'','(.*)','ConfigMakePrivatRe',
+ 'If a valid DKIM or DomainKey signature is found and the signature identity tag (i=user@domain.tld) matches any of these addresses, the mail will be processed as Whitelisted.<br />
+  Note this matches the end of the identity address, so if you don\'t want to match subdomains then include the @. Note that example.com would also match spamexample.com but .example.com won\'t match example.com. Wildcards are supported. For example: sourceforge.net|group*@google.com|.example.com<br /><br />
+  It is possible to make this check recipient dependend (eg: on a set of local domains and/or local users). Use wildcards (* and ?) to define domains.<br />
+  Use the following syntax to do this:<br />
+  *@anydomain=>*@any_local_domain - for domain to domain<br />
+  *@*.anydomain=>*@any_local_domain - for any sub-domain to domain<br />
+  user@anydomain=>*@*.any_local_domain - for user to any sub-domain<br /><br />
+  It is possible to define more than one entry at the left and the right side of the definition (=&gt;), like:<br />
+  *@anydomain|*@other_domain=>*@any_local_domain|*@other_local_domain - always separate multiple entries by pipes<br />
+  It is also possible to use a GroupDefinition in any or both sides, like:<br />
+  [identitygroup]=>[recipientgroup]<br />
+  [identitygroup1]|[identitygroup2]|*@domain=>[recipientgroup1]|[recipientgroup2]|user@local_domain<br /><br />
+  NOTICE - that the local email addresses and domains are not checked to be local once.<br />
+  To define special characters like \'* and ?\' - use their hexadecimal regex representation like \'\\x2A and \\x3F\'.',undef,undef,'msg010650','msg010651'],
+['DKIMNPAddresses','Noprocessing these Addresses for valid DKIM Signature *',80,\&textinput,'','(.*)','ConfigMakePrivatRe',
+ 'If a valid DKIM or DomainKey signature is found and the signature identity tag (i=user@domain.tld) matches any of these addresses, the mail will be processed as NoProcessing.<br />
+  Note this matches the end of the identity address, so if you don\'t want to match subdomains then include the @. Note that example.com would also match spamexample.com but .example.com won\'t match example.com. Wildcards are supported. For example: sourceforge.net|group*@google.com|.example.com<br /><br />
+  It is possible to make this check recipient dependend (eg: on a set of local domains and/or local users). Use wildcards (* and ?) to define domains.<br />
+  Use the following syntax to do this:<br />
+  *@anydomain=>*@any_local_domain - for domain to domain<br />
+  *@*.anydomain=>*@any_local_domain - for any sub-domain to domain<br />
+  user@anydomain=>*@*.any_local_domain - for user to any sub-domain<br /><br />
+  It is possible to define more than one entry at the left and the right side of the definition (=&gt;), like:<br />
+  *@anydomain|*@other_domain=>*@any_local_domain|*@other_local_domain - always separate multiple entries by pipes<br />
+  It is also possible to use a GroupDefinition in any or both sides, like:<br />
+  [identitygroup]=>[recipientgroup]<br />
+  [identitygroup1]|[identitygroup2]|*@domain=>[recipientgroup1]|[recipientgroup2]|user@local_domain<br /><br />
+  NOTICE - that the local email addresses and domains are not checked to be local once.<br />
+  To define special characters like \'* and ?\' - use their hexadecimal regex representation like \'\\x2A and \\x3F\'.',undef,undef,'msg010660','msg010661'],
 ['DKIMCacheInterval','Validate DKIM-Pre-Check-Cache Refresh Interval',4,\&textinput,7,'(\d+\.?\d*|)','configUpdateDKIMCR',
   'Domains\'s in cache will be removed after this interval in days. 0 will disable the cache.<br />
   If activated a DKIM-pre-check will be done. If ASSP finds a DKIM-Signature in the mail header, it checks the DNS records of the sending domain for valid DKIM configurations and writes a record in to the DKIM-pre-check-cache, if it finds such configuration.<br />
@@ -2559,7 +2589,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['AddDKIMHeader','Add X-Assp-DKIM Header',0,\&checkbox,1,'(.*)',undef,
   'Add X-Assp-DKIM header.',undef,undef,'msg001970','msg001971'],
 
-['signedSenders','Senders need to SMIME or PGP Sign All Mail*',80,\&textinput,'file:files/signedSenders.txt','(.*)','ConfigMakePrivatRe',
+['signedSenders','Senders need to SMIME or PGP Sign All Mail *',80,\&textinput,'file:files/signedSenders.txt','(.*)','ConfigMakePrivatRe',
   'Domains and addresses which have to SMIME or PGP sign or encrypt all mail. If a match is found for a sender and the email is not signed or encryped, the mail will be rejected!<br />
   If configured, this check is done regardless any other assp setting - it will affect all incoming mails!<br />
   If a match is found and the mails is signed or encrypted, the mail will be processed as whitelisted mail!<br />
@@ -4804,7 +4834,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
   If your SSL-server configuration requires additionally SSL-parameters according to IO::Socket::SSL and/or Net::SSLeay (for example: special Elliptic-Curve Diffie-Hellmann Key Exchange) and you don\'t want to use SSLWEBConfigure , SSLSTATConfigure , SSLSMTPConfigure confuration options, you may define a text file with your parameters here.<br />
   <b>NOTICE: assp will not check, if your configuration settings, made in this file, are valid - they are used as defined. In doubt, use SSLDEBUG to trace their effects.</b><br />
   The settings in this file are passed as part of the IO::Socket::SSL configuration HASH to IO::Socket::SSL as they are defined<br />
-  Any setting redefined in this file will override default internal assp settings as well as the above assp SSL configuration settings. The assp SSL settings below this tag are not effected.<br />
+  Any setting redefined in this file will override default internal assp settings as well as the above assp SSL configuration settings. The assp SSL settings below this tag are not affected.<br />
   The syntax in this this file is the same like a HASH definition in Perl:<br />
   - lines starting with an # are comments and are ignored<br />
   - empty lines are ignored<br />
@@ -5272,7 +5302,7 @@ The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries.
   <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/pop3collect.txt\',3);" />',undef,undef,'msg009090','msg009091']
 );
 
- # last used msg number 010641
+ # last used msg number 010661
 
  &loadModuleVars;
  -d "$base/language" or mkdirOP("$base/language",'0755');
@@ -5755,6 +5785,8 @@ sub setMakeREVars {
  $MakeRE{whiteListedDomains}=\&setWhiteListedDomainsRE;
  $MakeRE{blackListedDomains}=\&setBlackListedDomainsRE;
  $MakeRE{signedSenders}=\&setSigSendersRE;
+ $MakeRE{DKIMWLAddresses}=\&setDKIMWLAddressesRE;
+ $MakeRE{DKIMNPAddresses}=\&setDKIMNPAddressesRE;
  $MakeRE{noProcessingDomains}=\&setNPDRE;
  $MakeRE{heloBlacklistIgnore}=\&setHBIRE;
  $MakeRE{URIBLCCTLDS}=\&setURIBLCCTLDSRE;
@@ -5938,7 +5970,9 @@ sub setMakeREVars {
 %MakePrivatDomRE = (
     'whiteListedDomains' => 1,
     'blackListedDomains' => 1,
-    'signedSenders'      => 1
+    'signedSenders'      => 1,
+    'DKIMWLAddresses'    => 1,
+    'DKIMNPAddresses'    => 1,
 );
 
 %preMakeRE = (          # all RE that are not in %MakeIPRE and %MakeSLRE
@@ -5968,6 +6002,8 @@ sub setMakeREVars {
     'VFRTRE' => 'VRFYforceRCPTTO',
     'whiteListedDomainsRE' => 'whiteListedDomains',
     'signedSendersRE' => 'signedSenders',
+    'DKIMWLAddressesRE' => 'DKIMWLAddresses',
+    'DKIMNPAddressesRE' => 'DKIMNPAddresses',
     'allLogReRE' => 1,
     'badattachL1RE' => 1,
     'badattachL2RE' => 1,
@@ -31794,22 +31830,42 @@ sub DKIMOK_Run {
     return 0;
   }
   if ($result eq "pass") {
-    mlog($fh,"$tlit DKIM signature $this->{dkimverified} - $detail - sender policy is: $dkimwhy_s - author policy is: $dkimwhy_a") if $ValidateSenderLog && $DoDKIM>=2;
-    $this->{messagereason}="DKIM $result";
-    pbAdd($fh,$this->{ip},'dkimOkValencePB','DKIMpass', 1);
     my $mf =lc $this->{mailfrom};
     my $domain;
+    my $changed;
     $domain = $1 if $mf=~/\@([^@]*)/o;
     DKIMCacheAdd($domain);     # DKIM is pass => all further mails should have a DKIM-Sig
-    if ( $fh && ! $this->{relayok} ) {      # clear the IP-PBBOX, set rwlok, skip PB-processing in case DKIM is OK
+    if ( ! $this->{relayok} ) {      # clear the IP-PBBOX, set rwlok, skip PB-processing in case DKIM is OK
         $this->{rwlok} = 1 if $DKIMpassAction & 1;
         $this->{nopb} = 1 if $DKIMpassAction & 2;
         if ($DKIMpassAction & 4) {
             mlog($fh,"info: remove IP-score from $this->{ip} - this mail passed the DKIM check") if ($SessionLog || $ValidateSenderLog) && exists $PBBlack{$this->{ip}};
             mlog($fh,"info: remove IP-score from $this->{cip} - this mail passed the DKIM check") if ($SessionLog || $ValidateSenderLog) && $this->{cip} && exists $PBBlack{$this->{cip}};
-            pbBlackDelete($fh, $this->{ip});
+            pbBlackDelete($fh, $this->{ip}) if $fh;
+        }
+        if (my $identity = eval{lc $dkim->{signature}->identity}) {
+            mlog($fh,"info: found DKIM signature identity '$identity'") if (($ValidateSenderLog && ($DKIMWLAddresses || $DKIMNPAddresses)) || $ValidateSenderLog > 1 || $SessionLog > 1);
+            my @tocheck = ($identity);
+            push(@tocheck,"$identity,$_") for (split(/\s+/o,lc $this->{rcpt}));
+            if ( matchRE(\@tocheck,'DKIMWLAddresses') ) {
+                $this->{DKIMidentityWLmatch} = $lastREmatch if ! $fh;
+                $this->{whitelisted} = 1;
+                $lastREmatch = undef;
+                $changed = ' - state changed to: whitelisted';
+            }
+            if ( matchRE(\@tocheck,'DKIMNPAddresses') ) {
+                $this->{DKIMidentityNPmatch} = $lastREmatch if ! $fh;
+                $this->{noprocessing} = 1;
+                $lastREmatch = undef;
+                $changed .= $changed ? ' and noprocessing' : ' - state changed to: noprocessing';
+            }
+        } else {
+            mlog($fh,"error: can't get DKIM signature identity - $@");
         }
     }
+    mlog($fh,"$tlit DKIM signature $this->{dkimverified} - $detail - sender policy is: $dkimwhy_s - author policy is: $dkimwhy_a$changed") if $ValidateSenderLog && $DoDKIM>=2;
+    $this->{messagereason}="DKIM $result";
+    pbAdd($fh,$this->{ip},'dkimOkValencePB','DKIMpass', 1);
     return 2;
   }
 
@@ -32390,20 +32446,12 @@ sub sigSMIMEPGPOK_Run {
     return 1 if ! $signedSenders;
     $this->{prepend} = '';
     
-    my $match;
-    $match = 1 if (matchRE([$this->{mailfrom}],'signedSenders'));
+    my @tocheck = ($this->{mailfrom});
+    push(@tocheck,"$this->{mailfrom},$_") for split(/\s+/o,lc $this->{rcpt} );
 
-    if (! $match) {
-        my @to = split(/\s+/o,lc $this->{rcpt} );
-        for (@to) {
-            if (matchRE(["$this->{mailfrom},$_"],'signedSenders')) {
-                $match = 1;
-                last;
-            }
-        }
-    }
-    return 1 unless $match;
-    if ($match && $this->{signed}) {
+    return 1 unless (matchRE(\@tocheck,'signedSenders'));
+
+    if ($this->{signed}) {
         mlog($fh,"signedSenders - SMIME/PGP signature found - whitelisted") if $ValidateSenderLog;
         $this->{whitelisted} = 1;
         return 1;
@@ -42882,6 +42930,24 @@ sub setSigSendersRE {
           'Signed Senders',$_[0]);
 }
 
+# compile the DKIM whitelist regular expression
+sub setDKIMWLAddressesRE {
+    my $new=shift;
+    $new||=$neverMatch; # regexp that never matches
+    SetRE('DKIMWLAddressesRE',"(?:$new)\$",
+          $regexMod,
+          'DKIM whitelisted',$_[0]);
+}
+
+# compile the DKIM NoProcessing regular expression
+sub setDKIMNPAddressesRE {
+    my $new=shift;
+    $new||=$neverMatch; # regexp that never matches
+    SetRE('DKIMNPAddressesRE',"(?:$new)\$",
+          $regexMod,
+          'DKIM NoProcessing',$_[0]);
+}
+
 # compile the regular expression for the list of two-level country code TLDs
 sub setURIBLCCTLDSRE {
     my $new=shift;
@@ -50585,8 +50651,8 @@ sub ConfigAnalyze {
             while ($s =~ /($EmailAdrRe\@$EmailDomainRe)/go) {
                 my $ss = batv_remove_tag(0,$1,'');
                 $to{lc $ss}=1;
-                $headTo ||= $s if (lc $who eq 'to');
-                $reportedBy ||= $s;
+                $headTo ||= $ss if (lc $who eq 'to');
+                $reportedBy ||= $ss;
                 $fm .=  " $who: $ss <br />  ";
             }
         }
@@ -50855,7 +50921,7 @@ sub ConfigAnalyze {
         $Con{$tmpfh} = {};
         $Con{$tmpfh}->{ip} = $ip;
         $Con{$tmpfh}->{mailfrom} = $mailfrom;
-        $Con{$tmpfh}->{rcpt} = $headTo;
+        $Con{$tmpfh}->{rcpt} = join(' ',keys %to);
         $Con{$tmpfh}->{orgrcpt} = $org_headTo;
         $Con{$tmpfh}->{helo} = $helo;
         $Con{$tmpfh}->{header} = $completeMail;
@@ -50864,6 +50930,14 @@ sub ConfigAnalyze {
             $Con{$tmpfh}->{isDKIM} = 1;
             if ( DKIMOK($tmpfh,\$completeMail,defined${chr(ord(",")<< 1)} && ($completeMail =~ /\r\n\.[\r\n]+$/o)) ) {
                 $fm .= "<b><font color='green'>&bull;</font> DKIM-check returned OK</b> $Con{$tmpfh}->{dkimverified}<br />\n";
+                $fm .= "<b><font color='green'>&bull;</font> DKIM-identity match</b> ($Con{$tmpfh}->{DKIMidentityWLmatch}) in <a href='./#DKIMWLAddresses'>DKIMWLAddresses</a> -&gt; <font color='blue'>whitelisted</font><br />\n" if $Con{$tmpfh}->{whitelisted};
+                $fm .= "<b><font color='green'>&bull;</font> DKIM-identity match</b> ($Con{$tmpfh}->{DKIMidentityNPmatch}) in <a href='./#DKIMNPAddresses'>DKIMNPAddresses</a> -&gt; <font color='green'>noprocessing</font><br />\n" if $Con{$tmpfh}->{noprocessing};
+                delete $Con{$tmpfh}->{whitelisted};
+                delete $Con{$tmpfh}->{noprocessing};
+                delete $Con{$tmpfh}->{DKIMidentityWLmatch};
+                delete $Con{$tmpfh}->{DKIMidentityNPmatch};
+                delete $Con{$tmpfh}->{rwlok};
+                delete $Con{$tmpfh}->{nopb};
             } else {
                 $fm .= "<b><font color='red'>&bull;</font> DKIM-check returned FAILED</b> $Con{$tmpfh}->{dkimverified}<br />\n";
             }
