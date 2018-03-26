@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18065';        # 06.03.2018 TE
+$build   = '18085';        # 26.03.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -569,7 +569,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '2EFD926458001BD345BE07D7A8071CC16F96FC8D'; }
+sub __cs { $codeSignature = '08232E9C3A4D45CA661B822B38C8D09BF5E909EC'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -597,7 +597,7 @@ our $SSL_read_ahead_max_time = 50;     # time in milliseconds used for read ahea
 our $maxSSLRenegDuration;
 BEGIN {$maxSSLRenegDuration = 10;} # maxSSLRenegDuration is referenced in the GUI - so we have to set the value at begin
 our $SSLContextMaxAge = 24 * 3600;
-our $SSLContextMaxUnused = 3600;
+our $SSLContextMaxUnused = 8 * 3600;
 
 our $tlds_alpha_URL = 'http://data.iana.org/TLD/tlds-alpha-by-domain.txt';
 our $tlds2_URL = 'http://george.surbl.org/two-level-tlds';
@@ -2204,11 +2204,13 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   145.146.0.0/16=>*@local.domain|user@mydomain|user2@*.mydomain # comment<br /><br />
  <span class="positive"> All fields marked by \'*\' accept  a filepath/filename : \'file:files/ipnp.txt\'.</span>',undef,'7','msg000740','msg000741'],
 ['noProcessing','No Processing Addresses*',60,\&textinput,'Thomas.Eckardt@thockar.com','(.*)','ConfigMakeSLRe',
- 'Mail solely to or from any of these addresses are proxied without processing. The envelope sender and recipients are checked. Like a more efficient version of Spam-Lovers &amp; redlist combined. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com).  Wildcards are supported (fribo*@domain.com). If you register TO addresses here, all recipients for a single mail must be marked as noprocessing to flag the mail as "noprocessing".',undef,undef,'msg000750','msg000751'],
+ 'Mail solely to or from any of these addresses are proxied without processing. The envelope sender and recipients are checked. Like a more efficient version of Spam-Lovers &amp; redlist combined. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com).  Wildcards are supported (fribo*@domain.com). If you register TO addresses here, all recipients for a single mail must be marked as noprocessing to flag the mail as "noprocessing".<br />
+  You should have also a look at DKIMNPAddresses , which can be a better, more secure option.',undef,undef,'msg000750','msg000751'],
 ['noProcessingFrom','No Processing Addresses From*',60,\&textinput,'','(.*)','ConfigMakeSLRe',
  'Mail solely from any of these addresses are proxied without processing. Accepts specific addresses (user@example.com), user parts (user) or entire domains (@example.com).  Wildcards are supported (fribo*@example.com).',undef,undef,'msg000760','msg000761'],
 ['noProcessingDomains','No Processing Domains*',60,\&textinput,'sourceforge.net|thockar.com','(.*)','ConfigMakeRe',
- 'Domains from which you want to receive all mail and  proxy without processing. Your ISP, domain registration, mail list servers, stock broker, or other key business partners might be good candidates. Note this matches the end of the address, so if you don\'t want to match subdomains then include the @. Note that buy.com would also match spambuy.com but .buy.com won\'t match buy.com. For example: sourceforge.net|@google.com|.buy.com',undef,undef,'msg000770','msg000771'],
+ 'Domains from which you want to receive all mail and  proxy without processing. Your ISP, domain registration, mail list servers, stock broker, or other key business partners might be good candidates. Note this matches the end of the address, so if you don\'t want to match subdomains then include the @. Note that buy.com would also match spambuy.com but .buy.com won\'t match buy.com. For example: sourceforge.net|@google.com|.buy.com<br />
+  You should have also a look at DKIMNPAddresses , which can be a better, more secure option to use.',undef,undef,'msg000770','msg000771'],
 ['npRe','Regular Expression to Identify No Processing Mail*',60,\&textinput,'','(.*)','ConfigCompileRe',
  'If a message matches this Perl regular expression ASSP will treat the message as a \'No Processing\' mail. For example: 169\.254\.122\.|172\.16\.|\\[autoreply\\].',undef,undef,'msg000780','msg000781'],
 ['npSize','Message Size Limit',10,\&textinput,'500000','(.*)',undef,'ASSP will treat incoming messages larger than this SIZE (in bytes) as \'No Processing\' mail, after the header part of the mail and MaxBytes of the mail body are received. IP-, handshake- and header- checks will be done regardless the noprocessing flag (which is in this case ignored for these checks), all actions that require the full mail are skipped. Empty or 0 disables the feature.<br />
@@ -2248,7 +2250,8 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   [sendergroup]=>[recipientgroup]<br />
   [sendergroup1]|[sendergroup2]|*@domain=>[recipientgroup1]|[recipientgroup2]|user@local_domain<br /><br />
   NOTICE - that the local email addresses and domains are not checked to be local once.<br />
-  To define special characters like \'* and ?\' - use their hexadecimal regex representation like \'\\x2A and \\x3F\'.',undef,undef,'msg000850','msg000851'],
+  To define special characters like \'* and ?\' - use their hexadecimal regex representation like \'\\x2A and \\x3F\'.<br />
+  You should have also a look at DKIMWLAddresses , which is a better, more secure option.',undef,undef,'msg000850','msg000851'],
 ['ValidateRWL','Enable Realtime Whitelist Validation',0,\&checkbox,'','(.*)','configUpdateRWL','RWL: Real-time white list. These are lists of IP addresses that have
  somehow been verified to be from a known good host. Senders that pass RWL validation will pass IP-based filters. This requires an installed <a href="http://search.cpan.org/search?query=Net::DNS" rel="external">Net::DNS</a> module in PERL. ',undef,undef,'msg000870','msg000871'],
 ['RWLwhitelisting','Whitelist all RWL Validated Addresses',0,\&checkbox,'','(.*)',undef,'If set, the message will also pass Bayesian Filter and URIBL.',undef,undef,'msg000880','msg000881'],
@@ -2551,9 +2554,9 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   'Mail from or to any of these envelope addresses will not be tagged and checked for DKIM. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com).',undef,undef,'msg001940','msg001941'],
 ['noDKIMIP','Exclude these IP\'s from any DKIM Check*',80,\&textinput,'','(\S*)','ConfigMakeIPRe','Enter IP\'s that you want to exclude from DKIM check, separated by pipes (|).',undef,undef,'msg001950','msg001951'],
 ['DKIMWLAddresses','Whitelist these Addresses for valid DKIM Signature *',80,\&textinput,'','(.*)','ConfigMakePrivatRe',
- 'If a valid DKIM or DomainKey signature is found and the signature identity tag (i=user@domain.tld) matches any of these addresses, the mail will be processed as Whitelisted.<br />
+ 'If a valid DKIM or DomainKey signature is found and the signature identity (mostly the signature tag i=user@domain.tld) matches any of these addresses, the mail will be passed and saved as if it were Whitelisted. The message will pass filters as Whitelisted and will be added to the corpus just like mail from a whitelisted sender would be.  Unlike a true whitelisted sender, no whitelist address additions will be made.<br />
   Note this matches the end of the identity address, so if you don\'t want to match subdomains then include the @. Note that example.com would also match spamexample.com but .example.com won\'t match example.com. Wildcards are supported. For example: sourceforge.net|group*@google.com|.example.com<br /><br />
-  It is possible to make this check recipient dependend (eg: on a set of local domains and/or local users). Use wildcards (* and ?) to define domains.<br />
+  It is possible to make this check recipient dependend (eg: on a set of local domains and/or local users). Use wildcards (* and ?) to define receipient domains.<br />
   Use the following syntax to do this:<br />
   *@anydomain=>*@any_local_domain - for domain to domain<br />
   *@*.anydomain=>*@any_local_domain - for any sub-domain to domain<br />
@@ -2566,9 +2569,9 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   NOTICE - that the local email addresses and domains are not checked to be local once.<br />
   To define special characters like \'* and ?\' - use their hexadecimal regex representation like \'\\x2A and \\x3F\'.',undef,undef,'msg010650','msg010651'],
 ['DKIMNPAddresses','Noprocessing these Addresses for valid DKIM Signature *',80,\&textinput,'','(.*)','ConfigMakePrivatRe',
- 'If a valid DKIM or DomainKey signature is found and the signature identity tag (i=user@domain.tld) matches any of these addresses, the mail will be processed as NoProcessing.<br />
+ 'If a valid DKIM or DomainKey signature is found and the signature identity (mostly the signature tag i=user@domain.tld) matches any of these addresses, the mail will be passed and saved as if it were NoProcessing.<br />
   Note this matches the end of the identity address, so if you don\'t want to match subdomains then include the @. Note that example.com would also match spamexample.com but .example.com won\'t match example.com. Wildcards are supported. For example: sourceforge.net|group*@google.com|.example.com<br /><br />
-  It is possible to make this check recipient dependend (eg: on a set of local domains and/or local users). Use wildcards (* and ?) to define domains.<br />
+  It is possible to make this check recipient dependend (eg: on a set of local domains and/or local users). Use wildcards (* and ?) to define recipient domains.<br />
   Use the following syntax to do this:<br />
   *@anydomain=>*@any_local_domain - for domain to domain<br />
   *@*.anydomain=>*@any_local_domain - for any sub-domain to domain<br />
@@ -2756,7 +2759,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   'Addresses will be removed after this interval in days. For example 3. <input type="button" value=" Show Invalid Addresses" onclick="javascript:popFileEditor(\''.$newDB.'pb/pbdb.trap.db\',5);" />',undef,undef,'msg002440','msg002441'],
 ['PenaltyUseNetblocks','Use IP Netblocks',0,\&checkbox,'1','(.*)',undef,
   'Perform the IP address checks of the sending host based on the /24 subnet  rather than on the specific IP.',undef,undef,'msg002450','msg002451'],
-['PenaltyError','Penalty Reply',80,\&textinput,'','^([245]\d\d .*|)$',undef,
+['PenaltyError','Penalty Reply',80,\&textinput,'554 5.7.1 Error, send your mail to postmaster@LOCALDOMAIN to ensure delivery','^([245]\d\d .*|)$',undef,
   'If set SMTP reply for Penalty Deny. eg: \'554 5.7.1 Error, send your mail to postmaster@LOCALDOMAIN to ensure delivery\'. The literal LOCALDOMAIN will be replaced by the recipient domain. The literal LOCALUSER will be replaced by the recipient user part. For example:554 5.7.1 Mail appears to be unsolicited -- send error reports to postmaster@LOCALDOMAIN.',undef,undef,'msg002460','msg002461'],
 ['PenaltyDuration','Penalty Interval',4,\&textinput,60,'(\d?\d?\d?\d?)','updatePenaltyDuration',
   'IP\'s will be kept in the BlackBox (PBBlack) if their score exceeds the Penalty Limit during this interval (minutes).',undef,undef,'msg002470','msg002471'],
@@ -3272,12 +3275,27 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   ~allowExe => --(?:cmd|com|cpl|exe|exe\-bin|lnk|pif) - which is the same like: --cmd|--com|--cpl|--exe|--exe\-bin|--lnk|--pif <br />
   ~forceAllowExe => -+(?:cmd|com|cpl|exe|exe\-bin|lnk|pif)<br />
   [IT]=>~~devRule , block-out=>~allowExe , block-in => ~forceAllowExe<br /><br />
-  Do <b>NOT use nested brackets</b> like in --(?:c<b>(?:md|om|pl)</b>|exe<b>(?:\-bin)?</b>|lnk|pif) to define any exception!<br />
+  Do <b>NOT use nested brackets</b> like in --(?:c<b>(?:md|om|pl)</b>|exe<b>(?:\-bin)?</b>|lnk|pif) to define any exception!<br /><br />
+  It may possible, that you want assp to deliver mails sent from a specific domain or emailaddress any way (without an attachment check). For security reasons this behavior can be only forced, if the sender was validated by SPF and/or DKIM and/or SMIME/PGP (Sig). The check is done by assp at runtime (mail processing) only!
+  The definition described below must be done sepately for evey "good","block" as well as "zip" tag, for which the attachment check should be skipped.<br />
+  The (not case sensitive) definition tag starts with NoCheckIf= , followed by at least one state of "spf","dkim" or "sig". These states can be AND combined by writing them simply together like SpfDkim or SpfDkimSig in one word. To combine them in an OR logic, separate them by a dot like: Spf.Dkim . An combination for OR - AND would be: Spf.DkimSig . Whitespaces are not allowed in a NoCheckIf= definition!<br />
+  spf - the mail passed the SPF check - Notice: to validate against IP addresses for non SPF domains, use SPFoverride <br />
+  dkim - the mail is DKIM signed and passed the DKIM check<br />
+  sig - the mail contains a valid SMIME or PGP signature<br /><br />
+  examples:<br />
+  ~~allowSDSSIn=>good-in=>NoCheckIf=SpfDkim.SpfSig,block-in=>NoCheckIf=SpfDkim.SpfSig<br />
+  sender@domain.org=>~~allowSDSSIn<br />
+  or<br />
+  sender@domain.org=>good-in=>NoCheckIf=SpfDkim.SpfSig,block-in=>NoCheckIf=SpfDkim.SpfSig<br />
+  which means: for sender@domain.org (sender) the good and the block check will be skipped, if the mail is SPF checked and DKIM validated - or the mail is SPF checked and has a SMIME/PGP signature.<br /><br />
+  *@domain.org=>good-in=>NoCheckIf=Dkim.Sig,block-in=>NoCheckIf=Dkim.Sig<br />
+  which means: for the sending domain @domain.org the good and the block check will be skipped, if the mail is DKIM validated or has a SMIME/PGP signature.<br /><br />
+
   ASSP will resolve all extension regular expression templates and all rule tempates and will combine them all in to one resulting domain or user attachment rule.<br />
   ASSP will throw a warning, if a rule template is define multipe times - like: *@domain.com=~~commonRule,~~devRule - here ~~devRule already contains ~~commonRule<br />
   It may happen, that the resulting attachment rule contains one or more extension regular expressions multiple times - this is harmless and will be internaly corrected, but try to prevent it.<br /><br />
   
-  This feature replaces all of the above level definitions (BadAttachL1 ....L2 ....), if at least one valid (not zip:... from the ASSP_AFC Plugin) attachment blocking or allow rule is found for the envelope sender or the first envelope recipient of a mail!<br />
+  This feature replaces all of the above level definitions ( BadAttachL1 , BadAttachL2 , BadAttachL3 , GoodAttach ), if at least one valid (not zip:... from the ASSP_AFC Plugin) attachment blocking or allow rule is found for the envelope sender or the first envelope recipient of a mail!<br />
   good, good-out and good-in - and also - block, block-out and block-in - will be logical OR (pipe \'|\') combined from the matched rule for the first envelope recipient and the envelope sender - according to the mail flow.<br />
   The defined blocking rules for the envelope sender and the first envelope recipient are than combined together using the same OR logic (pipe \'|\') at runtime.<br />
   The attachment block rules for a specific email are looking as follows: (replace block with good to get the attachment good rules)<br />
@@ -4221,7 +4239,7 @@ For example: mysql/dbimport<br />
 ['LDAPtimeout','LDAP Query Timeout',2,\&textinput,15,'(\d+)',undef,'timeout when connecting to the remote server. The default is 15 seconds.',undef,undef,'msg007230','msg007231'],
 ['LDAPLogin','LDAP Login',80,\&passinput,'','(.*)',undef,'Most LDAP servers require a login and password before they allow queries.<br />
  Enter the DN specification for a user with sufficient permissions here.<br />
- For example: cn=Administrator,cn=Users,DC=yourcompany,DC=com',undef,undef,'msg007240','msg007241'],
+ For example: CN=Administrator,CN=Users,DC=yourcompany,DC=com',undef,undef,'msg007240','msg007241'],
 ['LDAPPassword','LDAP Password',20,\&passinput,'','(.*)',undef,'Enter the password for the specified LDAP login here.',undef,undef,'msg007250','msg007251'],
 ['LDAPVersion','LDAP Version',1,\&textinput,3,'(\d+)',undef,'Enter the version for the specified LDAP here.',undef,undef,'msg007260','msg007261'],
 ['ldLDAPRoot','LDAP Root container for Local Domains',80,\&textinput,'','(.*)',undef,'The LDAP lookup will use this container and all sub-containers to match the local domain query.<br />
@@ -4234,7 +4252,7 @@ For example: mysql/dbimport<br />
   for example: (&amp;(|(|(|(|(&amp;(objectclass=user)(objectcategory=person))(objectcategory=group))(objectclass=publicfolder))(!(objectclass=contact)))(objectclass=msExchDynamicDistributionList))(proxyaddresses=smtp:*@DOMAIN))',undef,undef,'msg007280','msg007281'],
 ['LDAPRoot','LDAP Root container for Local Addresses',80,\&textinput,'','(.*)',undef,'The LDAP lookup will use this container and all sub-containers to match the local email address query.<br />
  The literal DOMAIN is replaced by the domain part of SMTP recipient (eg. domain.com) during the search.<br />
- For example: DC=yourcompany,DC=com.<br />
+ For example: CN=Users,DC=yourcompany,DC=com or the complete domain DC=yourcompany,DC=com.<br />
  If you use DOMAIN here, you must check "LDAP failures return false" below or non local domains will be treated as local.',undef,undef,'msg007270','msg007271'],
 ['LDAPFilter','LDAP Filter for Local Addresses',80,\&textinput,'','(\S*)',undef,'This filter is used to query the LDAP database. This strongly depends on the LDAP structure.<br />
  The filter must return an entry if the recipient address matches with that of any user.<br />
@@ -4246,9 +4264,9 @@ For example: mysql/dbimport<br />
  or<br />
  (|(mail=EMAILADDRESS)(mailaddress=EMAILADDRESS))<br />
  or<br />
- (&amp;(objectClass=user)(objectcategory=person)(mail=EMAILADDRESS)(! msExchHideFromAddressLists=TRUE))
- or<br />
- (&amp;(|(|(|(|(&amp;(objectclass=user)(objectcategory=person))(objectcategory=group))(objectclass=publicfolder))(!(objectclass=contact)))(objectclass=msExchDynamicDistributionList))(proxyaddresses=smtp:EMAILADDRESS))',undef,undef,'msg007290','msg007291'],
+ (&amp;(objectClass=user)(objectcategory=person)(mail=EMAILADDRESS)(!(msExchHideFromAddressLists=TRUE)))<br />
+ or (eg. AD/Exchange 2013/2016)<br />
+ (&amp;(|(|(|(|(&amp;(objectclass=user)(objectcategory=person))(objectcategory=group))(objectclass=publicfolder))(!(objectclass=contact)))(objectclass=msExchDynamicDistributionList))(proxyaddresses=smtp:EMAILADDRESS)(!(msExchHideFromAddressLists=TRUE)))',undef,undef,'msg007290','msg007291'],
 ['LDAPcrossCheckInterval','Clean Up local LDAP/VRFY Database <sup>s</sup>',40,\&textinput,12,$ScheduleGUIRe,'configChangeSched',
   'Delete outdated entries from the LDAP/VRFY cache. Check the LDAP cache to the LDAP server and/or VRFY-MTA and delete not existing entries.<br />
   Defaults to 12 hours. Is only used, if ldaplistdb is defined in the database section!',undef,undef,'msg007300','msg007301'],
@@ -4846,7 +4864,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
   SSL_ecdh_curve =&gt; secp384r1,<br />
   next-key =&gt; {<br />
   &nbsp;&nbsp;subkey1 =&gt; subvalue1,<br />
-  &nbsp;&nbsp;subkey2 =&gt; [ARRAY-item-0, ARRAY-item-1, ...],<br />
+  &nbsp;&nbsp;subkey2 =&gt; { key =&gt; value, },<br />
   &nbsp;&nbsp;subkey3 =&gt; {<br />
   &nbsp;&nbsp;&nbsp;&nbsp;key =&gt; value,<br />
   &nbsp;&nbsp;&nbsp;&nbsp;...,<br />
@@ -4856,6 +4874,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
   ...,<br />
   last-key =&gt;last-value,<br /><br />
   The defined file is watched for changes by assp. An possible reread of this file is only shown if SSLDEBUG is set to ON.<br />
+  This option can also be used to define a SNI configuration for a relative small set of domains, instead using SSLWEBConfigure, SSLSTATConfigure and SSLSMTPConfigure.<br />
   It is highly recommended to read the documentation of IO::Socket::SSL and/or Net::SSLeay!<br />
   Because the location of this file can be outside the assp folder, it can\'t be modified using assp! Please use an external file editor.',undef,undef,'msg010640','msg010641'],
 ['noTLSIP','Exclude these IP\'s from TLS*',80,\&textinput,'','(\S*)','ConfigMakeIPRe','Enter IP\'s that you want to exclude from starting SSL/TLS, separated by pipes (|). For example, put all IP\'s here, that making trouble to switch to TLS every time, what will prevent ASSP from getting mails from or sending mails to this hosts.',undef,undef,'msg008250','msg008251'],
@@ -14219,7 +14238,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.77;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.78;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.05;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -23664,7 +23683,7 @@ sub setBSRE {
     push(@s,'^(?:'.join('|',@u).')@') if @u;
     push(@s,'(?:'.join('|',@d).')$') if @d;
     my $s=join("|",@s);
-    $s =~ s/\@/\\\@/go;
+    $s =~ s/([@+])/\\$1/go;
     $s='<not a valid list>' unless $s;
     SetRE('BSRE',$s,
           $regexMod,
@@ -26845,11 +26864,11 @@ sub getOriginIPs {
     if ($enhancedOriginIPDetect == 2 && @sips && $rcvlines >= $needlines) {
         my $sip = pop @sips;
         $oip = @sips ? $sips[-1] : undef;
-        push @ignoredIP, $sip;
         delete $ptr{$sip};
+        push @ignoredIP, "first origin $sip";
     }
-    mlog(0,"info: enhanced Originated IP detection ignored IP's: ".join(' ,',@ignoredIP)) if $ConnectionLog >= 2 && @ignoredIP;
-    mlog(0,"info: enhanced Originated IP detection found IP's: ".join(' ,',@sips)) if $ConnectionLog >= 2 && @sips;
+    mlog(0,"info: enhanced Originated IP detection ignored IP's: ".join(' ,',@ignoredIP)) if ($ConnectionLog >= 2 || ($ConnectionLog && $ipmatchLogging)) && @ignoredIP;
+    mlog(0,"info: enhanced Originated IP detection found IP's: ".join(' ,',@sips)) if ($ConnectionLog >= 2 || ($ConnectionLog && $ipmatchLogging)) && @sips;
     @sips = reverse @sips;
     return \@sips,\%ptr,$oip;
 }
@@ -31845,6 +31864,8 @@ sub DKIMOK_Run {
         }
         if (my $identity = eval{lc $dkim->{signature}->identity}) {
             mlog($fh,"info: found DKIM signature identity '$identity'") if (($ValidateSenderLog && ($DKIMWLAddresses || $DKIMNPAddresses)) || $ValidateSenderLog > 1 || $SessionLog > 1);
+            $this->{myheader} .= "X-ASSP-DKIMidentity: $identity\r\n" if $AddDKIMHeader;
+            my @flags;
             my @tocheck = ($identity);
             push(@tocheck,"$identity,$_") for (split(/\s+/o,lc $this->{rcpt}));
             if ( matchRE(\@tocheck,'DKIMWLAddresses') ) {
@@ -31852,13 +31873,16 @@ sub DKIMOK_Run {
                 $this->{whitelisted} = 1;
                 $lastREmatch = undef;
                 $changed = ' - state changed to: whitelisted';
+                push @flags, 'whitelisted';
             }
             if ( matchRE(\@tocheck,'DKIMNPAddresses') ) {
                 $this->{DKIMidentityNPmatch} = $lastREmatch if ! $fh;
                 $this->{noprocessing} = 1;
                 $lastREmatch = undef;
                 $changed .= $changed ? ' and noprocessing' : ' - state changed to: noprocessing';
+                push @flags, 'noprocessing';
             }
+            $this->{myheader} .= "X-ASSP-DKIM-FlagState: ".(join(', ',@flags))."\r\n" if @flags && $AddDKIMHeader;
         } else {
             mlog($fh,"error: can't get DKIM signature identity - $@");
         }
@@ -31898,6 +31922,8 @@ sub DKIMgen_Run {
     my $fh = shift;
     my $this = $Con{$fh};
     my $domain;
+    my $mf = lc $this->{mailfrom};
+    my $user;
     my $dkim;
     my $signature;
     my $sigobj;
@@ -31917,18 +31943,25 @@ sub DKIMgen_Run {
 
     while ($this->{header} =~ /($HeaderNameRe):($HeaderValueRe)/igos) {
 
-        next if lc($1) ne 'from';
+        next if lc($1) ne 'from' && lc($1) ne 'sender';
         my $s = $2;
         &headerUnwrap($s);
-        if ($s =~ /<$EmailAdrRe\@($EmailDomainRe)>/io || $s =~ /$EmailAdrRe\@($EmailDomainRe)/io) {
-            $domain = $1;
+        if ($s =~ /<($EmailAdrRe)\@($EmailDomainRe)>/io || $s =~ /($EmailAdrRe)\@($EmailDomainRe)/io) {
+            $user = $1;
+            $domain = $2;
+            $mf = "$user\@$domain";
             last;
         }
     }
 
-    ($domain) = $this->{mailfrom} =~ /^[^@]+\@([^@]+)$/o unless $domain;
-    return unless $domain;
-    $domain = lc($domain);
+    unless ($domain && $user) {
+        ($user,$domain) = $mf =~ /^([^@]+)\@([^@]+)$/o;
+        $DKIM{Identity} = $domain;    # there is no from: and no sender: header, we need to set the identity DKIM value
+    }
+    unless ($domain) {
+        mlog($fh,"warning: DKIM is unable to detect the sender identity - From: or Sender: or envelope sender - DKIM signature was not added") if $DKIMlogging;
+        return;
+    }
     return unless exists $DKIMInfo{$domain};
     
     $numSelectors = scalar(keys %{$DKIMInfo{$domain}});
@@ -31956,7 +31989,21 @@ sub DKIMgen_Run {
             $mode = 'Domainkey' if (uc $mode eq 'DOMAINKEY');
             next;
         }
+        my $vo = $v;
+        $v =~ s/DOMAIN/$domain/og;
+        $v =~ s/USER/$user/og;
+        $v =~ s/EMAILADDRESS/$mf/og;
+        if ($k eq 'Timestamp' || $k eq 'Expiration') {
+             $v = 0 if $k eq 'Timestamp' && ! defined $v;
+             if ($v =~ /(\d+)/o) {
+                 $v = time + $1;
+             } else {
+                 mlog(0,"DKIM: '$k=$v' is ignored - value is not valid") if $DKIMlogging == 3 or $debug or $ThreadDebug;
+                 next;
+             }
+        }
         $DKIM{$k} = $v;
+        mlog(0,"DKIM: set $k = $v") if ($vo ne $v && ($DKIMlogging == 3 || $debug || $ThreadDebug));
     }
     eval { $Mail::DKIM::DNS::RESOLVER = getDNSResolver(); };
 
@@ -35515,6 +35562,33 @@ sub isAttachment {
     return 0;
 }
 
+# check attachment NoCheckIf definitions
+sub attachNoCheckIf {
+    my $fh = shift;
+    return unless $_[0];
+    my $this = $Con{$fh};
+    my %h = ('spf' => [1,$this->{spfok}], 'dkim' => [2,($this->{dkimresult} eq "pass")] , 'sig' => [4,$this->{signed}]);
+    my $flags = 0;
+    for (keys(%h)) {   # get the set flags at runtime
+        $flags |= $h{$_}[0] if $h{$_}[1];
+    }
+    my @test;
+    my $i = 0;
+    while ($_[0] =~ s/NoCheckIf\s*=\s*(spf|dkim|sig|\s*\.+\s*)/NoCheckIf=/oi) {
+       my $m = lc $1;
+       if ($m =~ /\s*\.+\s*/o) {
+           $i++;
+           next;
+       }
+       $test[$i] |= $h{$m}[0];
+    }
+    $_[0] =~ s/NoCheckIf[^\|]*//iog;  # remove all NoCheckIf=..
+    $_[0] =~ s/\|\|+/\|/go;
+    $_[0] =~ s/^\|//o;
+    $_[0] =~ s/\|$//o;
+    return (grep { $flags == $_} @test) ? 1 : 0;
+}
+
 # make AttachmenRegex at runtime
 sub makeRunAttachRe {
     my @remove;  # remove -+ext and the corresponding ext
@@ -35531,6 +35605,7 @@ sub makeRunAttachRe {
     $_[0] =~ s/\|\|+/\|/go;
     $_[0] =~ s/^\|//o;
     $_[0] =~ s/\|$//o;
+    return;
 }
 
 # checks for blocked attachments
@@ -35603,6 +35678,15 @@ sub CheckAttachments {
 
         makeRunAttachRe($attre[0]);
         makeRunAttachRe($attre[1]);
+
+        if ( attachNoCheckIf($fh,$attre[0]) ) {
+            mlog($fh,"info: skip user based attachment 'good' check, because 'NoCheckIf' match found") if $AttachmentLog;
+            $attre[0] = '.*';
+        }
+        if ( attachNoCheckIf($fh,$attre[1]) ) {
+            mlog($fh,"info: skip user based attachment 'block' check, because 'NoCheckIf' match found") if $AttachmentLog;
+            $attre[1] = "\x{AA}\x{AA}\x{AA}\x{AA}\x{AA}";
+        }
 
         if ($attre[0] || $attre[1]) {
             $attre[0] = qq[\\.(?:$attre[0])\$] if $attre[0];
@@ -37336,8 +37420,9 @@ sub reply {
         $r =~ s/\r|\n//go;
         if ($l =~ /^53[458]/o && !$Con{$cli}->{relayok} && ! &AUTHErrorsOK($cli)) {
             $Con{$cli}->{prepend}="[MaxAUTHErrors]";
-            my $d = $MaxAUTHErrors == -1 ? 'AUTH-honeypot ' : '';
-            mlog($cli,"max sender authentication errors ($d$MaxAUTHErrors) exceeded -- dropping connection - after reply: $r from $serIP");
+            my $d = $MaxAUTHErrors == -1 ? 'AUTH-honeypot' : '';
+            my $m = $MaxAUTHErrors == -1 ? '' : " $MaxAUTHErrors";
+            mlog($cli,"max sender authentication errors ($d$m) exceeded -- dropping connection - after reply: $r from $serIP");
             &NoLoopSyswrite($cli,$l,0);
             done($fh);
             return;
@@ -40113,7 +40198,7 @@ sub BlockReportGen {
  <col /><col /><col />
  <tr>
   <th colspan="3" id="header">
-   <img src=cid:1001 alt="powered by ASSP on $myName">
+   <img src=cid:1001 alt="powered by ASSP on $myName" />
    $userhtml
   </th>
  </tr>
@@ -40302,7 +40387,7 @@ Content-Type: text/html; charset=utf-8
 Content-Transfer-Encoding: Quoted-Printable
 
 EOT
-    my $htmlhead = &BlockReportHTMLTextWrap(<<'EOT' . <<"EOT1" . &BlockReportGetCSS() . ($enableBRtoggleButton ? <<'EOT2' : <<'EOT3')); eval(<<'WHITCHWORKER') if $enableBRtoggleButton;
+    my $htmlhead = &BlockReportHTMLTextWrap(<<'EOT' . <<"EOT1" . &BlockReportGetCSS());
 
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
   "http://www.w3.org/TR/html4/loose.dtd">
@@ -40312,6 +40397,8 @@ EOT
 EOT
 <title>Spam filtering block report from $myName</title>
 EOT1
+
+    my $htmlhead2 = &BlockReportHTMLTextWrap($enableBRtoggleButton ? <<'EOT2' : <<'EOT3'); eval(<<'WHITCHWORKER') if $enableBRtoggleButton;
 
 <script type="text/javascript">
 var show = 'inline';
@@ -40333,7 +40420,7 @@ EOT2
 </head>
 <body>
 EOT3
-my $rt;($rt = $WorkerNumber > 0) and $htmlhead =~ s/(\x68)(\164)(\d+)/${$rt+1}\157${$rt}/go;
+my $rt;($rt = $WorkerNumber > 0) and $htmlhead2 =~ s/(\x68)(\164)(\d+)/${$rt+1}\157${$rt}/go;
 WHITCHWORKER
     if (   matchSL( $this->{mailfrom}, 'EmailAdmins', 1 )
         or matchSL( $this->{mailfrom}, 'BlockReportAdmins', 1 )
@@ -40677,11 +40764,11 @@ s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockRep
                       if (! $faddress && $is_admin);
                     $line =~ s/\[spam found\](\s*\(.*?\))( \Q$subjectStart\E)/<span name="tohid"><br \/><span class="spam">spam reason: <\/span>$1<\/span>$2/;
                     $line =~ s/($SpamTagRE|\[(?:TLS-(?:in|out)|SSL-(?:in|out)|PersonalBlack)\])/<span name="tohid">$1<\/span>/gio;
-                    my $leftbut = '<a href="mailto:'.$EmailBlockReport.$EmailBlockReportDomain.'?subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$myName.'&body=%23%23%23'.$filename.'%23%23%23'.$addWhiteHint.$addFileHint.$addScanHint.'%0D%0A" class="reqlink" target="_blank" title="request ASSP on '.$myName.' to resend this blocked email"><img src=cid:1000 alt="request ASSP on '.$myName.' to resend this blocked email"> Resend </a>';
-                    my $rightbut = '<a href="mailto:'.$ofilename.$EmailBlockReportDomain.'?&subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$myName.'" class="reqlink" target="_blank" title="request ASSP on '.$myName.' to resend this blocked email"><img src=cid:1000 alt="request ASSP on '.$myName.' to resend this blocked email"> Resend </a>';
-                    $rightbut = '' if (&matchSL(\@to,'BlockResendLinkLeft') or
+                    my $leftbut = '<a href="mailto:'.$EmailBlockReport.$EmailBlockReportDomain.'?subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$myName.'&body=%23%23%23'.$filename.'%23%23%23'.$addWhiteHint.$addFileHint.$addScanHint.'%0D%0A" class="reqlink" target="_blank" title="request ASSP on '.$myName.' to resend this blocked email"><img src=cid:1000 alt="request ASSP on '.$myName.' to resend this blocked email" /> Resend </a>';
+                    my $rightbut = '<a href="mailto:'.$ofilename.$EmailBlockReportDomain.'?&subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$myName.'" class="reqlink" target="_blank" title="request ASSP on '.$myName.' to resend this blocked email"><img src=cid:1000 alt="request ASSP on '.$myName.' to resend this blocked email" /> Resend </a>';
+                    $rightbut = '<img src=cid:1000 style="display: none;" />' if (&matchSL(\@to,'BlockResendLinkLeft') or
                                              ($BlockResendLink == 1 && ! matchSL(\@to,'BlockResendLinkRight')));
-                    $leftbut = '' if (&matchSL(\@to,'BlockResendLinkRight') or
+                    $leftbut = '<img src=cid:1000 style="display: none;" />' if (&matchSL(\@to,'BlockResendLinkRight') or
                                              ($BlockResendLink == 2 && ! matchSL(\@to,'BlockResendLinkLeft')));
                     $line =~ s/^(.+\)\s*)(\Q$subjectStart\E.+?\Q$subjectEnd\E.*)$/$1<br\/><strong>$2<\/strong>/ unless $faddress;
                     $line =~ s/(.*)/\n<tr$bgcolor>\n<td class="leftlink">$leftbut\n<\/td>\n<td class="inner">$1\n<\/td>\n<td class="rightlink">$rightbut\n<\/td>\n<\/tr>/o;
@@ -40698,7 +40785,7 @@ s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockRep
 s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockReportDomain\?subject=add\%20to\%20whitelist&body=$1\%0D\%0A" title="add this email address to whitelist" target="_blank">$1<\/a>&nbsp;<a href="$prot:\/\/$host:$webAdminPort\/addraction?address=$1&showlogout=1" target="_blank" title="take an action via web on address $1">\@<\/a>/go
                       if (! $faddress && $is_admin);
                     $line =~ s/^(.+\)\s*)(\Q$subjectStart\E.+?\Q$subjectEnd\E.*)$/$1<br\/><strong>$2<\/strong>/ unless $faddress;
-                    $line =~ s/(.*)/\n<tr$bgcolor>\n<td class="leftlink">&nbsp;\n<\/td>\n<td class="inner">$1\n<\/td>\n<td class="rightlink">&nbsp;\n<\/td>\n<\/tr>/o;
+                    $line =~ s/(.*)/\n<tr$bgcolor>\n<td class="leftlink">&nbsp;<img src=cid:1000 style="display: none;" \/>\n<\/td>\n<td class="inner">$1\n<\/td>\n<td class="rightlink">&nbsp;<img src=cid:1000 style="display: none;" \/>\n<\/td>\n<\/tr>/o;
                     push( @{ $buser->{ lc($address) }{html} }, $line );
                 }
             } else {
@@ -40720,8 +40807,10 @@ s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockRep
         }
         $FLogFile->close;
     }
+    my $found = 0;
     while ( my ($ad,$v) = each %$buser ) {
         next if ( $ad eq 'sum' );
+        $found = 1;
         push( @{ $buser->{$ad}{html} }, "\n</table>\n<br />\n");
         delete $buser->{$ad}{bgcolor};
         if (exists $buser->{$ad}{filtercount}) {
@@ -40748,8 +40837,13 @@ s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockRep
     $buser->{sum}{textparthead} = $textparthead;
     $buser->{sum}{htmlparthead} = $htmlparthead;
     $buser->{sum}{htmlhead}     = $htmlhead;
-
-    $buser->{sum}{html} .= "\n".($enableBRtoggleButton ? <<'EOT1' : <<'EOT2');
+    $htmlhead2 = <<'EOT' unless $found;
+</head>
+<body>
+EOT
+    $buser->{sum}{htmlhead}    .= $htmlhead2;
+    
+    $buser->{sum}{html} .= "\n".($enableBRtoggleButton && $found ? <<'EOT1' : <<'EOT2');
 <input type="button" name="toggle" value="toggle view" onclick="show=((show=='none')?'inline':'none');changeview(show);return false;"
  title="click the button to simplify or to extend the BlockReport view - requires javascript to be enabled in your mail clients HTML view">
 <br />
@@ -40773,7 +40867,7 @@ EOT2
         $buser->{sum}{text} .= $t10text . "\r\n\r\n" . &needEs($lines, ' line','s') . " with $bytes analysed in " .
             &needEs($numfiles,' logfile','s') . " on host $myName in $runtime seconds - running ASSP version $MAINVERSION\r\n";
     } else {
-        $buser->{sum}{html} .= "\n".($enableBRtoggleButton ? <<'EOT' : '');
+        $buser->{sum}{html} .= "\n".($enableBRtoggleButton && $found ? <<'EOT' : '');
 <script type="text/javascript">
 <!--
 show = "none";
@@ -41429,7 +41523,7 @@ sub BlockReportBody {
  <col /><col /><col />
  <tr>
   <th colspan="3" id="header">
-   <img src=cid:1001 alt="powered by ASSP on $myName">
+   <img src=cid:1001 alt="powered by ASSP on $myName" />
    $userhtml
   </th>
  </tr>
@@ -41438,8 +41532,29 @@ EOT
                 while ( @{ $user{$ad}{html} } ) { push( @htmlreasons, BlockReportHTMLTextWrap(shift @{ $user{$ad}{html} } )); }
             }
             if ( scalar( keys %user ) < 2 ) {
-                push( @textreasons,"\nno blocked email found in the last $numdays day(s)\n\n");
-                push( @htmlreasons,"\nno blocked email found in the last $numdays day(s)\n\n");
+                push(
+                    @textreasons,
+                    &BlockReportText('text', 'any requested address', $numdays, 'no', $this->{mailfrom})
+                  );
+                my $userhtml =
+                  &BlockReportText( 'html', 'any requested address', $numdays, 'no',
+                    $this->{mailfrom} );
+                push( @htmlreasons,  BlockReportHTMLTextWrap(<<"EOT"));
+<table id="report">
+ <col /><col /><col />
+ <tr>
+  <th colspan="3" id="header">
+   <img src=cid:1001 alt="powered by ASSP on $myName" /><img src=cid:1000 style="display: none;" />
+   $userhtml
+  </th>
+ </tr>
+ <tr class=3D"odd">
+  <td class=3D"leftlink">&nbsp;</td>
+  <td class=3D"inner">ASSP on $myName has not found any blocked email for your request.</td>
+  <td class=3D"rightlink">&nbsp;</td>
+ </tr>
+</table>
+EOT
             }
             push( @textreasons, $user{sum}{text} );
             push( @htmlreasons, $user{sum}{html} );
@@ -50930,8 +51045,10 @@ sub ConfigAnalyze {
             $Con{$tmpfh}->{isDKIM} = 1;
             if ( DKIMOK($tmpfh,\$completeMail,defined${chr(ord(",")<< 1)} && ($completeMail =~ /\r\n\.[\r\n]+$/o)) ) {
                 $fm .= "<b><font color='green'>&bull;</font> DKIM-check returned OK</b> $Con{$tmpfh}->{dkimverified}<br />\n";
-                $fm .= "<b><font color='green'>&bull;</font> DKIM-identity match</b> ($Con{$tmpfh}->{DKIMidentityWLmatch}) in <a href='./#DKIMWLAddresses'>DKIMWLAddresses</a> -&gt; <font color='blue'>whitelisted</font><br />\n" if $Con{$tmpfh}->{whitelisted};
-                $fm .= "<b><font color='green'>&bull;</font> DKIM-identity match</b> ($Con{$tmpfh}->{DKIMidentityNPmatch}) in <a href='./#DKIMNPAddresses'>DKIMNPAddresses</a> -&gt; <font color='green'>noprocessing</font><br />\n" if $Con{$tmpfh}->{noprocessing};
+                my $hint = $Con{$tmpfh}->{whitelisted} ? " -&gt; <font color='blue'>whitelisted</font>" : '';
+                $fm .= "<b><font color='green'>&bull;</font> DKIM-identity match</b> ($Con{$tmpfh}->{DKIMidentityWLmatch}) in <a href='./#DKIMWLAddresses'>DKIMWLAddresses</a>$hint<br />\n" if $Con{$tmpfh}->{DKIMidentityWLmatch};
+                $hint = $Con{$tmpfh}->{noprocessing} ? " -&gt; <font color='green'>noprocessing</font>" : '';
+                $fm .= "<b><font color='green'>&bull;</font> DKIM-identity match</b> ($Con{$tmpfh}->{DKIMidentityNPmatch}) in <a href='./#DKIMNPAddresses'>DKIMNPAddresses</a>$hint<br />\n" if $Con{$tmpfh}->{DKIMidentityNPmatch};
                 delete $Con{$tmpfh}->{whitelisted};
                 delete $Con{$tmpfh}->{noprocessing};
                 delete $Con{$tmpfh}->{DKIMidentityWLmatch};
@@ -58286,7 +58403,7 @@ sub ConfigMakeSLRe {
     push( @s, '.*?@(?:' . join( '|', sort @d ) . ')' ) if @d;
     my $s;
     $s = '(?:^(?:' . join( '|', @s ) . ')$)' if @s;
-    $s =~ s/\@/\\\@/go;
+    $s =~ s/([@+])/\\$1/go;
     $s ||= $neverMatch;    # regexp that never matches
     $ret .= ConfigShowError( 1, "ERROR: !!!!!!!!!! missing MakeSLRE{$name} in code !!!!!!!!!!" )
       if ! exists $MakeSLRE{$name} && $WorkerNumber == 0;
@@ -58333,6 +58450,7 @@ sub ConfigMakeSLReSL {
             if (! exists $entry_uad{$adlc} ) {
                 push( @uad, $ad );
                 $adue =~ s/\@/\\@/io;
+                $adue =~ s/\+/\\+/iog;
             }
             $entry_uad{$adlc} = 1;
         } elsif ( $ad =~ s/^\@//o ) {
@@ -58344,6 +58462,7 @@ sub ConfigMakeSLReSL {
         } else {
             if (! exists $entry_u{$adlc} ) {
                 push( @u, $ad );
+                $adue =~ s/\+/\\+/iog;
                 $adue .= '\@' if $adue !~ /\@$/o;
                 $adue .= '.*';
             }
@@ -58358,7 +58477,7 @@ sub ConfigMakeSLReSL {
     push( @s, '.*?@(?:' . join( '|', sort @d ) . ')' ) if @d;
     my $s;
     $s = '(?:^(?:' . join( '|', @s ) . ')$)' if @s;
-    $s =~ s/\@/\\\@/go;
+    $s =~ s/([@+])/\\$1/go;
     $s ||= $neverMatch;    # regexp that never matches
     $ret .= ConfigShowError( 1, "ERROR: !!!!!!!!!! missing MakeSLRE{$name} in code !!!!!!!!!!" )
       if ! exists $MakeSLRE{$name} && $WorkerNumber == 0;
@@ -62065,10 +62184,8 @@ sub configUpdateRBLMH {
       unless $init || $new eq $old;
     ${$name} = $Config{$name} = $new;
     if ( $new <= 0 ) {
-        mlog( 0,
-"AdminUpdate:error DNSBL disabled', RBLmaxhits must be > 0 before enabling DNSBL.</span>';"
-        ) if $Config{ValidateRBL};
-        ( $ValidateRBL, $Config{ValidateRBL} ) = 0;
+        mlog( 0, "AdminUpdate:error DNSBL disabled', RBLmaxhits must be > 0 before enabling DNSBL.</span>';" ) if $Config{ValidateRBL};
+        $ValidateRBL = $Config{ValidateRBL} = 0;
         return '<span class="negative">*** RBLmaxhits must be > 0 before enabling DNSBL.</span>';
     } else {
         configUpdateRBLMR( 'RBLmaxreplies', '', $Config{RBLmaxreplies}, 'Cascading' );
@@ -62081,11 +62198,9 @@ sub configUpdateRBLMR {
       unless $init || $new eq $old;
     ${$name} = $Config{$name} = $new;
     if ( $new < $RBLmaxhits ) {
-        mlog( 0, "AdminUpdate:error DNSBL disabled, RBLmaxreplies not >= RBLmaxhits" )
-          if $Config{ValidateRBL};
-        ( $ValidateRBL, $Config{ValidateRBL} ) = 0;
-        return
-'<span class="negative">*** RBLmaxreplies must be >= RBLmaxhits before enabling DNSBL.</span>';
+        mlog( 0, "AdminUpdate:error DNSBL disabled, RBLmaxreplies not >= RBLmaxhits" ) if $Config{ValidateRBL};
+        $ValidateRBL = $Config{ValidateRBL} = 0;
+        return '<span class="negative">*** RBLmaxreplies must be >= RBLmaxhits before enabling DNSBL.</span>';
     } else {
         configUpdateRBLSP( 'RBLServiceProvider', '', $Config{RBLServiceProvider}, 'Cascading' );
     }

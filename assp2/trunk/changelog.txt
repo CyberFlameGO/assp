@@ -1,3 +1,80 @@
+2018-03-26
+fixed in assp 2.6.2 *Fortress* build 18085:
+
+- If an emailaddress, that contains a '+' was used in any address list matching parameter, assp never found a match, because the '+' was missinterpreted as a regular expression quantifier.
+
+- enhance logging for 'enhanced Originated IP detection'
+
+- the blockreport design was broken, if no blocked mail was found
+
+
+
+changed:
+
+- The default value for 'PenaltyError' is changed to '554 5.7.1 Error, send your mail to postmaster@LOCALDOMAIN to ensure delivery'.
+
+
+- 'userAttach' got a functional enhancement
+  ASSP_AFC.pm is updated to version 4.78 to support the same behavior.
+  ...
+  It may possible, that you want assp to deliver mails sent from a specific domain or emailaddress any way (without an attachment check). For security reasons this behavior can be only forced,
+  if the sender was validated by SPF and/or DKIM and/or SMIME/PGP (Sig). The check is done by assp at runtime (mail processing) only!
+  The definition described below must be done sepately for evey "good","block" as well as "zip" tag, for which the attachment check should be skipped.
+  The (not case sensitive) definition tag starts with NoCheckIf= , followed by at least one state of "spf","dkim" or "sig".
+  These states can be AND combined by writing them simply together like SpfDkim or SpfDkimSig in one word. To combine them in an OR logic, separate them by a dot like: Spf.Dkim .
+  An combination for OR - AND would be: Spf.DkimSig . Whitespaces are not allowed in a NoCheckIf= definition!
+  
+  spf - the mail passed the SPF check - Notice: to validate against IP addresses for non SPF domains, use SPFoverride
+  dkim - the mail is DKIM signed and passed the DKIM check
+  sig - the mail contains a valid SMIME or PGP signature
+  
+  examples:
+  ~~allowSDSSIn=>good-in=>NoCheckIf=SpfDkim.SpfSig,block-in=>NoCheckIf=SpfDkim.SpfSig
+  sender@domain.org=>~~allowSDSSIn
+  or<br />
+  sender@domain.org=>good-in=>NoCheckIf=SpfDkim.SpfSig,block-in=>NoCheckIf=SpfDkim.SpfSig
+  which means: for sender@domain.org (sender) the good and the block check will be skipped, if the mail is SPF checked and DKIM validated - or the mail is SPF checked and has a SMIME/PGP signature.
+  
+  *@domain.org=>good-in=>NoCheckIf=Dkim.Sig,block-in=>NoCheckIf=Dkim.Sig
+  which means: for the sending domain @domain.org the good and the block check will be skipped, if the mail is DKIM validated or has a SMIME/PGP signature.
+  ...
+  
+
+- The template file 'dkim/dkimconfig.txt' is updated to version 1.01 to describe additionally DKIM settings
+
+  ...
+  # Inside the selector section you can define any supported value. Please read RFC 4871 or the documentation of the Perl module
+  # Mail::DKIM to findout what values are for!
+  #
+  # For example:
+  #    Identity=EMAILADDRESS
+  #    Timestamp=0
+  #    Expiration=86400
+  #
+  # The following replacement will be done by assp in every defined value:
+  # The litteral DOMAIN will be replaced by the senders domain part.
+  # The litteral USER will be replaced by the senders user part.
+  # The litteral EMAILADDRESS will be replaced by the senders emailaddress.
+  # The current time will be added at runtime to the values defined for Timestamp and Expiration, The values have to be defined in seconds!
+  ...  
+
+
+- An better example for Microsoft Exchange (AD) is added to 'LDAPFilter'
+
+  ...
+  or (eg. AD/Exchange 2013/2016)
+ (&(|(|(|(|(&(objectclass=user)(objectcategory=person))(objectcategory=group))(objectclass=publicfolder))(!(objectclass=contact)))(objectclass=msExchDynamicDistributionList))(proxyaddresses=smtp:EMAILADDRESS)(!(msExchHideFromAddressLists=TRUE)))
+
+
+
+- If 'AddDKIMHeader' is set to ON, the following X-ASSP- header lines will be added to incoming emails and .eml files:
+  
+  X-ASSP-DKIMidentity: IDENTITY-STRING
+  X-ASSP-DKIM-FlagState: [whitelisted][, noprocessing]
+
+
+
+
 2018-03-06
 fixed in assp 2.6.2 *Fortress* build 18065:
 
@@ -5,7 +82,7 @@ fixed in assp 2.6.2 *Fortress* build 18065:
 added:
 
 'DKIMWLAddresses','Whitelist these Addresses for valid DKIM Signature *'
- 'If a valid DKIM or DomainKey signature is found and the signature identity tag (i=user@domain.tld) matches any of these addresses, the mail will be processed as Whitelisted.
+ 'If a valid DKIM or DomainKey signature is found and the signature identity (e.g. i=user@domain.tld) matches any of these addresses, the mail will be processed as Whitelisted.
   Note this matches the end of the identity address, so if you don't want to match subdomains then include the @. Note that example.com would also match spamexample.com but .example.com
   won't match example.com. Wildcards are supported. For example: sourceforge.net|group*@google.com|.example.com
   It is possible to make this check recipient dependend (eg: on a set of local domains and/or local users). Use wildcards (* and ?) to define domains.
@@ -27,7 +104,7 @@ added:
 
 
 'DKIMNPAddresses','Noprocessing these Addresses for valid DKIM Signature *'
- 'If a valid DKIM or DomainKey signature is found and the signature identity tag (i=user@domain.tld) matches any of these addresses, the mail will be processed as NoProcessing.
+ 'If a valid DKIM or DomainKey signature is found and the signature identity (i=user@domain.tld) matches any of these addresses, the mail will be processed as NoProcessing.
   Note this matches the end of the identity address, so if you don't want to match subdomains then include the @. Note that example.com would also match spamexample.com but .example.com
   won't match example.com. Wildcards are supported. For example: sourceforge.net|group*@google.com|.example.com
   It is possible to make this check recipient dependend (eg: on a set of local domains and/or local users). Use wildcards (* and ?) to define domains.
