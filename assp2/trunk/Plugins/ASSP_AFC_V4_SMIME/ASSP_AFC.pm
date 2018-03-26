@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 4.77 2017/12/28 17:30:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 4.78 2018/03/25 14:30:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -201,9 +201,9 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.77 2017/12/28 17:30:00 TE Exp $' =~ /,v ([\d.]+) /);
-our $MINBUILD = '(17292)';
-our $MINASSPVER = '2.5.5'.$MINBUILD;
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.78 2018/03/25 14:30:00 TE Exp $' =~ /,v ([\d.]+) /);
+our $MINBUILD = '(18085)';
+our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
 
 $main::ModuleList{'Plugins::ASSP_AFC'} = $VERSION.'/'.$VERSION;
@@ -335,7 +335,8 @@ sub get_config {
  For example:<br />
  zip:user@domain.tld => good => ai|asc|bhx|dat|doc|eps|zip<br />
  zip:*@domain.tld => good => ai|asc|bhx , good-out => eps|gif , good-in => htm|html , block => pdf|ppt , block-out => rar|rpt , block-in => xls|exe\-bin|:MSOM|crypt\-zip|encrypt<br />
- zip:user@domain.tld => ~~commonZipRule => block => ~zipblock|:CSC<br /><br />
+ zip:user@domain.tld => ~~commonZipRule => block => ~zipblock|:CSC<br />
+ zip:*@domain.org=>good-in=>NoCheckIf=Dkim.Sig,block-in=>NoCheckIf=Dkim.Sig<br /><br />
  Those definitions (notice the leading zip:) are only used inside compressed files.<br />
  For the usage of extension templates (~template) and rule templates (~~template) please read the GUI for UserAttach (requires at least assp 2.5.5 build 17243).<br />
  The extension \'crypt-zip\' could be used to allow or deni encrypted compressed attachments for users at any compression level.<br />
@@ -967,6 +968,15 @@ sub process {
 
                     &main::makeRunAttachRe($attre[0]);
                     &main::makeRunAttachRe($attre[1]);
+
+                    if ( &main::attachNoCheckIf($fh,$attre[0]) ) {
+                        mlog($fh,"info: skip user based attachment 'good' check, because 'NoCheckIf' match found") if $main::AttachmentLog;
+                        $attre[0] = '.*';
+                    }
+                    if ( &main::attachNoCheckIf($fh,$attre[1]) ) {
+                        mlog($fh,"info: skip user based attachment 'block' check, because 'NoCheckIf' match found") if $main::AttachmentLog;
+                        $attre[1] = "\x{AA}\x{AA}\x{AA}\x{AA}\x{AA}";
+                    }
 
                     if ($attre[0] || $attre[1]) {
                         $attre[0] = qq[\\.(?:$attre[0])\$] if $attre[0];
@@ -1776,6 +1786,15 @@ sub isZipOK {
 
         &main::makeRunAttachRe($attZipre[0]);
         &main::makeRunAttachRe($attZipre[1]);
+
+        if ( &main::attachNoCheckIf($this->{self},$attZipre[0]) ) {
+            mlog($this->{self},"info: skip user based compressed attachment 'good' check, because 'NoCheckIf' match found") if $main::AttachmentLog;
+            $attZipre[0] = '.*';
+        }
+        if ( &main::attachNoCheckIf($this->{self},$attZipre[1]) ) {
+            mlog($this->{self},"info: skip user based compressed attachment 'block' check, because 'NoCheckIf' match found") if $main::AttachmentLog;
+            $attZipre[1] = "\x{AA}\x{AA}\x{AA}\x{AA}\x{AA}";
+        }
 
         if ($attZipre[0] || $attZipre[1]) {
             $attZipre[0] = qq[\\.(?:$attZipre[0])\$] if $attZipre[0];
