@@ -1,4 +1,4 @@
-# version 1.00
+# version 1.01
 #
 # DKIM and Domainkey configuration file - all entries are case sensitive
 #
@@ -60,6 +60,18 @@
 #
 # Inside the selector section you can define any supported value. Please read RFC 4871 or the documentation of the Perl module
 # Mail::DKIM to findout what values are for!
+#
+# For example:
+#    Identity=EMAILADDRESS
+#    Timestamp=0
+#    Expiration=86400
+#
+# The following replacement will be done by assp in every defined value:
+# The litteral DOMAIN will be replaced by the senders domain part.
+# The litteral USER will be replaced by the senders user part.
+# The litteral EMAILADDRESS will be replaced by the senders emailaddress.
+# The current time will be added at runtime to the values defined for Timestamp and Expiration, The values have to be defined in seconds!
+# 
 # You can define as many domains as you want. You can also define as many selectors inside a domain as you want. If there are
 # more than one selectors defined inside a domain, ASSP will use the selectors randomly, but only one per mail (one signature per mail).
 #
