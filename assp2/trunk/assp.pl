@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18085';        # 26.03.2018 TE
+$build   = '18087';        # 28.03.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -569,7 +569,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '08232E9C3A4D45CA661B822B38C8D09BF5E909EC'; }
+sub __cs { $codeSignature = '06BA00F5118EF88F66A1F085DE27A4E7D4BB23D8'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -30780,8 +30780,8 @@ sub DMARCget_Run {
    while ($this->{header} =~ /X-Original-Authentication-Results:($HeaderValueRe)/gios) {
        my $h = $1;
        headerUnwrap($h);
-       $this->{dmarc}->{auth_results}->{spf} = $1 if $h =~ /spf=([\s\r\n;]+)/io;
-       $this->{dmarc}->{auth_results}->{dkim} = $1 if $h =~ /dkim=([\s\r\n;]+)/io;
+       $this->{dmarc}->{auth_results}->{spf} = $1 if $h =~ /spf=([^\s\r\n;]+)/io;
+       $this->{dmarc}->{auth_results}->{dkim} = $1 if $h =~ /dkim=([^\s\r\n;]+)/io;
        $this->{dmarc}->{policy_evaluated}->{reason} = 'trusted_forwarder';
    }
    if (! $this->{dmarc}->{auth_results}->{spf} && ! $this->{dmarc}->{auth_results}->{dkim}) {
@@ -43721,7 +43721,7 @@ sub clean {
         my (@sender,@receipt,$sub);
         while (/($HeaderNameRe):($HeaderValueRe)/igos) {
             my($head,$val) = ($1,$2);
-            next if $head =~ /^(?:x-assp|(?:(?:X-Google-)?DKIM|DomainKey)-Signature)|X-Original-Authentication-Results/oi;
+            next if $head =~ /^(?:x-assp|(?:(?:X-Google-)?DKIM|DomainKey)-Signature)|X-Original-Authentication-Results/io;
             if (!$helo && $head =~ /^received$/io) {
                 $helo = $1 if $val =~ /[\s\]]helo=([^\)]+)\)/io;
             }
@@ -50818,7 +50818,8 @@ sub ConfigAnalyze {
             delete $Con{$tmpfh};
         }
 
-        $reportedBy = '' unless ($DoPrivatSpamdb && localmailaddress(0, $reportedBy));
+        my $bayesreportedBy = $reportedBy;
+        $bayesreportedBy = '' unless ($DoPrivatSpamdb && localmailaddress(0, $bayesreportedBy));
         $fm =~ s/  $/<br \/><br \/>\n/o;
 
         $fm .= "<b><font size=\"3\" color=\"#003366\">Feature Matching:</font></b><br /><br />";
@@ -50979,6 +50980,12 @@ sub ConfigAnalyze {
             }
         }
 
+        my $sigok;
+        if ($mail =~ /Content-Type:\s*multipart\/signed\s*;|protocol\s*=\s*"?application\/((?:pgp|(?:x-)?pkcs7)-signature|pkcs7-mime)/io) {
+            $fm .= "<b><font color='orange'>&bull;</font> found a digital signature - '$1'<br />\n";
+            $sigok = 1;
+        }
+
         $checkRegex && $preHeaderRe && SearchBomb( "preHeaderRe", $textheader );
         if ( $preHeaderRe && $text =~ /($preHeaderReRE)/ ) {
             $fm .= "<b><font color='red'>&bull;</font> <a href='./#preHeaderRe'>preHeaderRe</a></b>: '".($1||$2)."'<br />\n";
@@ -51014,9 +51021,15 @@ sub ConfigAnalyze {
             $fm .= "<font color='green'>&nbsp;&bull;</font> matching blockstrictSPFRe($incFound): '$bombsrch'<br />\n"
               if $bombsrch;
           }
+
+
+        my $dkimok;
+        my $spfok;
+
         if ( exists $SPFCache{"$ip $emfd"} ) {
             my ( $ct, $status, $result ) = split( ' ', $SPFCache{"$ip $emfd"} );
             my $color = (($status eq 'pass') ? 'green' : 'orange');
+            $spfok = 1 if ($status eq 'pass');
             $fm .= "<b><font color='$color'>&bull;</font> $ip is in SPFCache</b>: status=$status with helo=$result<br />\n";
           }
 
@@ -51055,6 +51068,7 @@ sub ConfigAnalyze {
                 delete $Con{$tmpfh}->{DKIMidentityNPmatch};
                 delete $Con{$tmpfh}->{rwlok};
                 delete $Con{$tmpfh}->{nopb};
+                $dkimok = 'pass';
             } else {
                 $fm .= "<b><font color='red'>&bull;</font> DKIM-check returned FAILED</b> $Con{$tmpfh}->{dkimverified}<br />\n";
             }
@@ -51064,6 +51078,7 @@ sub ConfigAnalyze {
 
         if ($ip && ($mailfrom || $helo)) {
             if ( SPFok($tmpfh)) {
+                $spfok = 1;
                 $fm .= "<b><font color='green'>&bull;</font> SPF-check returned OK</b> for $ip -&gt; $mailfrom, $helo<br />\n";
                 $fm .= "<font color='green'>&nbsp;&bull;</font> $Con{$tmpfh}->{received_spf}<br />\n" if $Con{$tmpfh}->{received_spf};
             } else {
@@ -51307,6 +51322,8 @@ sub ConfigAnalyze {
                 }
             }
             my $tmpfh = time;
+            my $direction = $reportedBy ? 'incoming' : 'outgoing';
+            mlog(0,"info: analyzing attachments in $direction email");
             foreach my $part ( @parts ) {
                 $Con{$tmpfh} = {};
                 if ($UseAvClamd && $CanUseAvClamd) {
@@ -51336,7 +51353,8 @@ sub ConfigAnalyze {
                     }
 
                     $Con{$tmpfh} = {};
-                    $Con{$tmpfh}->{relayok} = $reportedBy ? 1 : 0;
+                    $Con{$tmpfh}->{relayok} = $reportedBy ? 0 : 1;
+                    $Con{$tmpfh}->{self} = $tmpfh;
                     $self->{detectBinEXE} = 1;
                     $self->{blockEncryptedZIP} = ${'ASSP_AFCblockEncryptedZIP'};
                     $self->{attZipRun} = sub { return 1 };
@@ -51344,6 +51362,11 @@ sub ConfigAnalyze {
                     $Con{$tmpfh}->{rcpt} = "$reportedBy " if $reportedBy;
                     $Con{$tmpfh}->{rcpt} .= join(' ',keys %to);
                     $Con{$tmpfh}->{mailfrom} = $mailfrom;
+                    
+                    $Con{$tmpfh}->{spfok} = $spfok;
+                    $Con{$tmpfh}->{dkimresult} = $dkimok;
+                    $Con{$tmpfh}->{signed} = $sigok;
+
                     @ASSP_AFC::attZipre = ();
                     if (my $exetype = $self->isAnEXE( \$part->body) ) {
                         $fm .= "<b><font color='orange'>&bull; attachment $orgname is or contains an executable - $exetype</font></b><br />";
@@ -51355,19 +51378,22 @@ sub ConfigAnalyze {
                             $fm .= "<b><font color='orange'>&bull; attachment : $self->{exetype}</font></b><br />";
                         }
 
-                        $ASSP_AFC::attZipre[0] =~ s/^\\\.\(\?\://o;
-                        $ASSP_AFC::attZipre[0] =~ s/[\)\$]+$//o;
-                        $ASSP_AFC::attZipre[1] =~ s/^\\\.\(\?\://o;
-                        $ASSP_AFC::attZipre[1] =~ s/[\)\$]+$//o;
+                        my @att = @ASSP_AFC::attZipre;
+                        $att[0] =~ s/^\\\.\(\?\://o;
+                        $att[0] =~ s/[\)\$]+$//o;
+                        $att[1] =~ s/^\\\.\(\?\://o;
+                        $att[1] =~ s/[\)\$]+$//o;
+                        $att[0] .= ' all-match' if $att[0] eq '.*';
+                        $att[1] = 'never-match' if $att[1] =~ /\xAA{5}/o;
                         my $rcpt = [split(/ /o,$Con{$tmpfh}->{rcpt})]->[0];
                         if ($ASSP_AFC::attZipre[1]) {
-                            $fm .= " <b><font color='blue'>&bull;</font></b> ZIP: $Con{$tmpfh}->{mailfrom} -&gt; $rcpt =&gt; <font color='blue'>block =&gt;</font> $ASSP_AFC::attZipre[1]<br />";
+                            $fm .= " <b><font color='blue'>&bull;</font></b> ZIP: $Con{$tmpfh}->{mailfrom} -&gt; $rcpt =&gt; <font color='blue'>block =&gt;</font> $att[1]<br />";
                             $fm .= " <b><font color='red'>&bull; ZIP: bad compressed attachment $orgname</font></b><br />" if $orgname =~ /$ASSP_AFC::attZipre[1]/i;
                         } else {
                             $fm .= " <b><font color='blue'>&bull;</font></b> ZIP: $Con{$tmpfh}->{mailfrom} -&gt; $rcpt =&gt; no 'block' rule found for compressed attachments<br />";
                         }
                         if ($ASSP_AFC::attZipre[0]) {
-                            $fm .= " <b><font color='blue'>&bull;</font></b> ZIP: $Con{$tmpfh}->{mailfrom} -&gt; $rcpt =&gt; <font color='blue'>good =&gt;</font> $ASSP_AFC::attZipre[0]<br />";
+                            $fm .= " <b><font color='blue'>&bull;</font></b> ZIP: $Con{$tmpfh}->{mailfrom} -&gt; $rcpt =&gt; <font color='blue'>good =&gt;</font> $att[0]<br />";
                             $fm .= " <b><font color='red'>&bull; ZIP: not good compressed attachment $orgname</font></b><br />" if $orgname !~ /$ASSP_AFC::attZipre[0]/i;
                         } else {
                             $fm .= " <b><font color='blue'>&bull;</font></b> ZIP: $Con{$tmpfh}->{mailfrom} -&gt; $rcpt =&gt; no 'good' rule found for compressed attachments<br />";
@@ -51393,8 +51419,19 @@ sub ConfigAnalyze {
                         &makeRunAttachRe($attre[0]);
                         &makeRunAttachRe($attre[1]);
 
+                        if ( attachNoCheckIf($tmpfh,$attre[0]) ) {
+                            mlog($tmpfh,"info: skip user based attachment 'good' check, because 'NoCheckIf' match found");
+                            $attre[0] = '.*';
+                        }
+                        if ( attachNoCheckIf($tmpfh,$attre[1]) ) {
+                            mlog($tmpfh,"info: skip user based attachment 'block' check, because 'NoCheckIf' match found");
+                            $attre[1] = "\x{AA}\x{AA}\x{AA}\x{AA}\x{AA}";
+                        }
+
                         if ($attre[0] || $attre[1]) {
                             my @att = @attre;
+                            $att[0] .= ' all-match' if $att[0] eq '.*';
+                            $att[1] = 'never-match' if $att[1] eq "\x{AA}\x{AA}\x{AA}\x{AA}\x{AA}";
                             $attre[0] = qq[\\.(?:$attre[0])\$] if $attre[0];
                             $attre[1] = qq[\\.(?:$attre[1])\$] if $attre[1];
                             $self->{attRun} = sub { return
@@ -51904,7 +51941,7 @@ sub ConfigAnalyze {
 
         my ($ar,$got,$relation,$question,@t);
         if (! $lockBayes) {
-            ($ar,$got,$relation,$question) = BayesWords(\$mail,$reportedBy);
+            ($ar,$got,$relation,$question) = BayesWords(\$mail,$bayesreportedBy);
             push(@t, @$ar);
         } else {
             $got = {};
@@ -51977,7 +52014,7 @@ sub ConfigAnalyze {
             if ($DoHMM) {
                 my $tmpfh = time;
                 $Con{$tmpfh} = {};
-                $Con{$tmpfh}->{rcpt} = $reportedBy;
+                $Con{$tmpfh}->{rcpt} = $bayesreportedBy;
                 &HMMOK_Run($tmpfh,\$mail);
                 $hmmprobd = $hmmprob = $Con{$tmpfh}->{hmmprob};
                 $hmmconf = $Con{$tmpfh}->{hmmconf};

@@ -1,3 +1,10 @@
+2018-03-28
+fixed in assp 2.6.2 *Fortress* build 18087:
+
+- the 'userAttach' functional enhancement (build 18085) was not recognized by the mail analyzer
+
+
+
 2018-03-26
 fixed in assp 2.6.2 *Fortress* build 18085:
 
