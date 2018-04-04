@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18087';        # 28.03.2018 TE
+$build   = '18094';        # 04.04.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -569,7 +569,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '06BA00F5118EF88F66A1F085DE27A4E7D4BB23D8'; }
+sub __cs { $codeSignature = '6CF02A08CCFD21893A3EFF042C1DA5CFF36AA035'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1560,7 +1560,7 @@ sub assp_socket_blocking {
 }
 
 sub defConfigArray {
- # last used msg number 010661
+ # last used msg number 010671
 
  # still unused msg numbers
  #
@@ -3015,6 +3015,9 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  'Put any sender domain (or address) in to this list, for which you want to disable the DMARC check - for example if an invalid DMARC record is published.<br />
  Use \'noDMARCReportDomain\' if you only want to disable DMARC reports.<br />
  Accepts entire domains (@example.com) (specific addresses (user@example.com) and user parts (user) are accepted, but not usefull!). Wildcards are supported (@*example.com or @*.example.com).',undef,undef,'msg010530','msg010531'],
+['trustedAuthForwarders','X-Original-Authentication-Results Trusted Forwarder*',80,\&textinput,'','(.*)','ConfigCompileRe','
+ If an email contains a valid DKIM signature and the signature protects the "X-Original-Authentication-Results" header line in its h= tag (RFC7601) and the host in this header line matches this regular expression, DMARC will fully trust the provided original authentication results for SPF and DKIM.<br />
+ For example:  mx\d*\.domain\.com or ^2\.2\.2\.2$',undef,undef,'msg010670','msg010671'],
 ['DMARCReportFrom','From Address for DMARC Reports',40,\&textinput,'','('.$EmailAdrRe.'(?:\@'.$EmailDomainRe.')?|)',undef,
   'The email address to be used as FROM: address to send <a href="http://www.dmarc.org/" rel="external">DMARC</a> reports. If blank, no DMARC reports will be sent! If only the user name is defined, assp will add the domain name that belongs to the report.',undef,undef,'msg009730','msg009731'],
 ['noDMARCReportDomain','Don\'t send DMARC reports to these Addresses/Domains*',80,\&textinput,'','(.*)','ConfigMakeSLRe',
@@ -5321,7 +5324,7 @@ The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries.
   <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/pop3collect.txt\',3);" />',undef,undef,'msg009090','msg009091']
 );
 
- # last used msg number 010661
+ # last used msg number 010671
 
  &loadModuleVars;
  -d "$base/language" or mkdirOP("$base/language",'0755');
@@ -6023,6 +6026,7 @@ sub setMakeREVars {
     'signedSendersRE' => 'signedSenders',
     'DKIMWLAddressesRE' => 'DKIMWLAddresses',
     'DKIMNPAddressesRE' => 'DKIMNPAddresses',
+    'trustedAuthForwardersRE' => '1',
     'allLogReRE' => 1,
     'badattachL1RE' => 1,
     'badattachL2RE' => 1,
@@ -23749,6 +23753,7 @@ sub stateReset {
     $this->{delaydone} = '';
     $this->{delayed} = '';
     $this->{delayqueue} = '';
+    $this->{dkimheaders} = '';
     $this->{dkimverified} = '';
     delete $this->{dkimresult};
     $this->{dlslre} = '';
@@ -30507,6 +30512,7 @@ sub DKIMpreCheckOK_Run {
    $this->{prepend}='';
    my $mf = lc $this->{mailfrom};
    my $domain; $domain = $1 if $mf=~/\@([^@]*)/o;
+   $this->{dkimresult} = "none";
    return 1 if (! $domain);
 
    my $err = "554 5.7.7 DKIM domain mismatch for $this->{mailfrom}";
@@ -30518,8 +30524,7 @@ sub DKIMpreCheckOK_Run {
    if ($foundCache) {
        if ($this->{isDKIM}) {           # cache must be first in this line for time update
            return DKIMOK($fh,\$this->{org_header},!defined${chr(ord(",")<< 1)}) ? 1 : 0;
-       }
-       if (! $this->{isDKIM}) {
+       } else {
            $this->{dkimresult} = 'fail';
            $this->{prepend}="[DKIM]";
            $this->{messagereason}="DKIM domain mismatch - $domain found in DKIMCache, but no DKIM-Signature found in mail header";
@@ -30777,12 +30782,18 @@ sub DMARCget_Run {
        return;
    }
 
-   while ($this->{header} =~ /X-Original-Authentication-Results:($HeaderValueRe)/gios) {
-       my $h = $1;
-       headerUnwrap($h);
-       $this->{dmarc}->{auth_results}->{spf} = $1 if $h =~ /spf=([^\s\r\n;]+)/io;
-       $this->{dmarc}->{auth_results}->{dkim} = $1 if $h =~ /dkim=([^\s\r\n;]+)/io;
-       $this->{dmarc}->{policy_evaluated}->{reason} = 'trusted_forwarder';
+   if ($this->{dkimheaders} =~ /x-original-authentication-results/o && $trustedAuthForwarders) {
+       while ($this->{header} =~ /(?:^|\n)X-Original-Authentication-Results:($HeaderValueRe)/gios) {
+           my $h = $1;
+           headerUnwrap($h);
+           my $fwhost = $1 if $h =~ /^\s*([^\s;]+)/io;
+           if ($fwhost && matchRE([$fwhost],'trustedAuthForwarders')) {
+               $this->{dmarc}->{auth_results}->{spf} = $this->{dmarc}->{auth_results}->{dkim} = undef;
+               $this->{dmarc}->{auth_results}->{spf} = $1 if $h =~ /[; ]spf=([^\s;]+)/io;
+               $this->{dmarc}->{auth_results}->{dkim} = $1 if $h =~ /[; ]dkim=([^\s;]+)/io;
+               $this->{dmarc}->{policy_evaluated}->{reason} = 'trusted_forwarder';
+           }
+       }
    }
    if (! $this->{dmarc}->{auth_results}->{spf} && ! $this->{dmarc}->{auth_results}->{dkim}) {
        while ($this->{header} =~ /X-Spam-Report:($HeaderValueRe)/gios) {    # SF workaround
@@ -31854,6 +31865,7 @@ sub DKIMOK_Run {
     my $changed;
     $domain = $1 if $mf=~/\@([^@]*)/o;
     DKIMCacheAdd($domain);     # DKIM is pass => all further mails should have a DKIM-Sig
+    my $identity;
     if ( ! $this->{relayok} ) {      # clear the IP-PBBOX, set rwlok, skip PB-processing in case DKIM is OK
         $this->{rwlok} = 1 if $DKIMpassAction & 1;
         $this->{nopb} = 1 if $DKIMpassAction & 2;
@@ -31862,7 +31874,8 @@ sub DKIMOK_Run {
             mlog($fh,"info: remove IP-score from $this->{cip} - this mail passed the DKIM check") if ($SessionLog || $ValidateSenderLog) && $this->{cip} && exists $PBBlack{$this->{cip}};
             pbBlackDelete($fh, $this->{ip}) if $fh;
         }
-        if (my $identity = eval{lc $dkim->{signature}->identity}) {
+        if ($identity = lc $dkim->{signature}->identity) {
+            $this->{dkimidentity} = $identity if ! $fh;
             mlog($fh,"info: found DKIM signature identity '$identity'") if (($ValidateSenderLog && ($DKIMWLAddresses || $DKIMNPAddresses)) || $ValidateSenderLog > 1 || $SessionLog > 1);
             $this->{myheader} .= "X-ASSP-DKIMidentity: $identity\r\n" if $AddDKIMHeader;
             my @flags;
@@ -31883,11 +31896,13 @@ sub DKIMOK_Run {
                 push @flags, 'noprocessing';
             }
             $this->{myheader} .= "X-ASSP-DKIM-FlagState: ".(join(', ',@flags))."\r\n" if @flags && $AddDKIMHeader;
+            $identity = " - identity is: $identity";
         } else {
             mlog($fh,"error: can't get DKIM signature identity - $@");
         }
+        $this->{dkimheaders} = $dkim->{signature}->headerlist;
     }
-    mlog($fh,"$tlit DKIM signature $this->{dkimverified} - $detail - sender policy is: $dkimwhy_s - author policy is: $dkimwhy_a$changed") if $ValidateSenderLog && $DoDKIM>=2;
+    mlog($fh,"$tlit DKIM signature $this->{dkimverified} - $detail$identity - sender policy is: $dkimwhy_s - author policy is: $dkimwhy_a$changed") if $ValidateSenderLog && $DoDKIM>=2;
     $this->{messagereason}="DKIM $result";
     pbAdd($fh,$this->{ip},'dkimOkValencePB','DKIMpass', 1);
     return 2;
@@ -38623,7 +38638,7 @@ sub ListReportExec {
     );
     $global = 0 unless $isadmin;
     
-    if ( $EmailErrorsModifyWhite == 2 && ($this->{reportaddr} eq 'EmailSpam' or $this->{reportaddr} eq 'EmailHam') ) {
+    if ( $EmailErrorsModifyWhite == 2 && ($this->{reportaddr} eq 'EmailSpam' || $this->{reportaddr} eq 'EmailHam') ) {
         ShowWhiteReport( $ad, $this );
         return;
     }
@@ -38641,7 +38656,7 @@ sub ListReportExec {
             $ad = $this->{mailfrom} if $list eq $redlist;
         }
 
-        if ( ($list eq 'Redlist' && $list->{ lc $ad }) || ($list eq 'Whitelist') && &Whitelist($ad,$this->{mailfrom},'')) {
+        if ( ($list eq 'Redlist' && $list->{ lc $ad }) || ($list eq 'Whitelist' && &Whitelist($ad,$this->{mailfrom},''))) {
 
             ($list eq 'Redlist') ? delete $list->{ lc $ad } : &Whitelist($ad,$this->{mailfrom},'delete');
             my @wout;
@@ -38699,9 +38714,18 @@ sub ListReportExec {
             if ( ( $this->{reportaddr} eq 'EmailSpam' ) ) {
             }
             else {
-                if ( $this->{report} !~ /\Q$rea\E: not on/ )
-                {
-                    $this->{report} .= "$ad: not on " . lc $list . " - not removed\n";
+                if ($list eq 'Redlist' || $WhitelistPrivacyLevel == 0) {
+                    if ( $this->{report} !~ /\Q$rea\E: not on/ )
+                    {
+                        my $where = ($list eq 'Redlist') ? '' : ' (global)';
+                        $this->{report} .= "$ad: not on " . lc $list . "$where - not removed\n";
+                    }
+                } else {
+                    if ( $this->{report} !~ /\Q$ad,$this->{mailfrom}\E is not on Whitelist/ )
+                    {
+                        my $where = $WhitelistPrivacyLevel == 1 ? '(domain)' : '(privat)';
+                        $this->{report} .= "$ad,$this->{mailfrom} is not on Whitelist $where - not removed\n";
+                    }
                 }
             }
         }
@@ -38762,13 +38786,14 @@ sub ListReportExec {
         if ( &Whitelist($mf) ) {
             if ( $this->{report} !~ /\Q$rea\E is on Whitelist/ )
             {
-                $this->{report} .= "\n$mf is on Whitelist\n\n";
+                $this->{report} .= "\n$mf is on Whitelist (global)\n\n";
             }
         }
         if ( &Whitelist($mf,$this->{mailfrom}) ) {
             if ( $this->{report} !~ /\Q$mf,$this->{mailfrom}\E is on Whitelist/ )
             {
-                $this->{report} .= "\n$mf,$this->{mailfrom} is on Whitelist\n\n";
+                my $where = $WhitelistPrivacyLevel == 0 ? '(global)' : ($WhitelistPrivacyLevel == 1 ? '(domain)' : '(privat)');
+                $this->{report} .= "\n$mf,$this->{mailfrom} is on Whitelist $where\n\n";
             }
         }
         if ( $whiteListedDomains && matchRE([$mf,"$mf,$this->{mailfrom}"],'whiteListedDomains',1) ) {
@@ -39127,26 +39152,27 @@ sub ShowWhiteReport {
     if ( &Whitelist($mf) ) {
 
         if ( $this->{report} !~ /\Q$mf\E is on Whitelist/ ) {
-            $this->{report} .= "\n$mf is on Whitelist\n\n";
+            $this->{report} .= "\n$mf is on Whitelist (global)\n\n";
         }
 
     }
     else {
         if ( $this->{report} !~ /\Q$mf\E is not on Whitelist/ ) {
-            $this->{report} .= "$mf is not on Whitelist\n";
+            $this->{report} .= "$mf is not on Whitelist (global)\n";
         }
     }
 
+    my $where = $WhitelistPrivacyLevel == 0 ? '(global)' : ($WhitelistPrivacyLevel == 1 ? '(domain)' : '(privat)');
     if ( &Whitelist( $mf, $this->{mailfrom} ) ) {
 
         if ( $this->{report} !~ /\Q$mf,$this->{mailfrom}\E is on Whitelist/ ) {
-            $this->{report} .= "\n$mf,$this->{mailfrom} is on Whitelist\n\n";
+            $this->{report} .= "\n$mf,$this->{mailfrom} is on Whitelist $where\n\n";
         }
 
     }
     else {
         if ( $this->{report} !~ /\Q$mf,$this->{mailfrom}\E is not on Whitelist/ ) {
-            $this->{report} .= "$mf,$this->{mailfrom} is not on Whitelist\n";
+            $this->{report} .= "$mf,$this->{mailfrom} is not on Whitelist $where\n";
         }
     }
 
@@ -40249,18 +40275,29 @@ EOT
             if ( $addr =~ /\*/o and $to ) {
                 my $for = $addr;
                 $addr =~ s/\*\@//o;
-                push( @textreasons,
-"---------------------------------- $addr -----------------------------------\n\n"
-                );
-                push( @htmlreasons,BlockReportHTMLTextWrap(
-"---------------------------------- $addr -----------------------------------<br />\n<br />\n")
-                );
-                push( @textreasons,
-"\nno blocked email found for domain $addr in the last $numdays day(s)\n\n"
-                );
-                push( @htmlreasons,
-"<br />\nno blocked email found for domain $addr in the last $numdays day(s)<br />\n<br />\n"
-                );
+                push(
+                    @textreasons,
+                    &BlockReportText( 'text', "domain $addr", $numdays, 'no', $to)
+                  );
+                my $userhtml =
+                    &BlockReportText( 'html', "domain $addr", $numdays, 'no', $to
+                  );
+                push( @htmlreasons,  BlockReportHTMLTextWrap(<<"EOT"));
+<table id="report">
+ <col /><col /><col />
+ <tr>
+  <th colspan="3" id="header">
+   <img src=cid:1001 alt="powered by ASSP on $myName" /><img src=cid:1000 style="display: none;" />
+   $userhtml
+  </th>
+ </tr>
+ <tr class=3D"odd">
+  <td class=3D"leftlink">&nbsp;</td>
+  <td class=3D"inner">ASSP on $myName has not found any blocked email for domain $addr.</td>
+  <td class=3D"rightlink">&nbsp;</td>
+ </tr>
+</table>
+EOT
                 push( @textreasons, $user{sum}{text} );
                 push( @htmlreasons, $user{sum}{html} );
                 @textreasons = () if ( $BlockReportFormat == 2 );
@@ -49571,6 +49608,7 @@ x-xss-protection: 0
     $qs{stattype} = lc($qs{stattype});
     my $statfile = lc($qs{stattype}).'GraphStats';
     my $xstep = (ASSP_SVG::SVG_time_to_sec($to) - ASSP_SVG::SVG_time_to_sec($from))/substr($size,0,3);
+    $xstep ||= 1;
     my $fy = substr($from,0,4);
     my $fm = substr($from,5,2);
     my $ty = substr($to,0,4);
@@ -49606,7 +49644,7 @@ x-xss-protection: 0
         }
     }
     $dp.= "#\n";
-
+    
     my $name = $qs{name};
     my @confp;
     my $plot;
@@ -51057,21 +51095,22 @@ sub ConfigAnalyze {
         if ($hasDKIM) {
             $Con{$tmpfh}->{isDKIM} = 1;
             if ( DKIMOK($tmpfh,\$completeMail,defined${chr(ord(",")<< 1)} && ($completeMail =~ /\r\n\.[\r\n]+$/o)) ) {
-                $fm .= "<b><font color='green'>&bull;</font> DKIM-check returned OK</b> $Con{$tmpfh}->{dkimverified}<br />\n";
+                $fm .= "<b><font color='green'>&bull;</font> DKIM-check returned OK</b> $Con{$tmpfh}->{dkimverified} for identity '$Con{$tmpfh}->{dkimidentity}'<br />\n";
                 my $hint = $Con{$tmpfh}->{whitelisted} ? " -&gt; <font color='blue'>whitelisted</font>" : '';
                 $fm .= "<b><font color='green'>&bull;</font> DKIM-identity match</b> ($Con{$tmpfh}->{DKIMidentityWLmatch}) in <a href='./#DKIMWLAddresses'>DKIMWLAddresses</a>$hint<br />\n" if $Con{$tmpfh}->{DKIMidentityWLmatch};
                 $hint = $Con{$tmpfh}->{noprocessing} ? " -&gt; <font color='green'>noprocessing</font>" : '';
                 $fm .= "<b><font color='green'>&bull;</font> DKIM-identity match</b> ($Con{$tmpfh}->{DKIMidentityNPmatch}) in <a href='./#DKIMNPAddresses'>DKIMNPAddresses</a>$hint<br />\n" if $Con{$tmpfh}->{DKIMidentityNPmatch};
-                delete $Con{$tmpfh}->{whitelisted};
-                delete $Con{$tmpfh}->{noprocessing};
-                delete $Con{$tmpfh}->{DKIMidentityWLmatch};
-                delete $Con{$tmpfh}->{DKIMidentityNPmatch};
-                delete $Con{$tmpfh}->{rwlok};
-                delete $Con{$tmpfh}->{nopb};
                 $dkimok = 'pass';
             } else {
                 $fm .= "<b><font color='red'>&bull;</font> DKIM-check returned FAILED</b> $Con{$tmpfh}->{dkimverified}<br />\n";
             }
+            delete $Con{$tmpfh}->{whitelisted};
+            delete $Con{$tmpfh}->{noprocessing};
+            delete $Con{$tmpfh}->{DKIMidentityWLmatch};
+            delete $Con{$tmpfh}->{DKIMidentityNPmatch};
+            delete $Con{$tmpfh}->{dkimidentity};
+            delete $Con{$tmpfh}->{rwlok};
+            delete $Con{$tmpfh}->{nopb};
         }
 
         DMARCget($tmpfh);
@@ -54070,6 +54109,7 @@ sub ConfigEdit {
  my $fil = $qs{file};
  $qs{note} = lc $qs{note};
  my $htmlfil;
+ my $sortTag;
  my $note = q{};
  my ($cidr,$regexp1,$regexp2);
  my ($s1,$s2,$editButtons,$option, $ishash, $hash);
@@ -54202,7 +54242,7 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
       if ($ishash) {
         if ($hash) {
             $s1 =~ s/\[(\+?\d{4}\-\d{2}\-\d{2}\,\d{2}\:\d{2}\:\d{2})\]/&timeval($1)/geo
-                if $hash ne 'Stats';
+                if $hash ne 'Stats' && $hash ne 'ScoreStats';
             if ($qs{B1}=~/Save to Importfile/io) {
                 my $filename = getHashBDBName($hash);
                 $filename = "/$filename" if $filename !~ /\//o;
@@ -54479,7 +54519,8 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
                 next unless $k;
                 $v =~ s/(\d{10,11})/'[' . &timestring($1,'','YYYY-MM-DD,hh:mm:ss') . ']'/geo
                     if (   $qs{note} ne 'm'
-                        && $hash ne 'Stats');
+                        && $hash ne 'Stats'
+                        && $hash ne 'ScoreStats');
                 push @S1, encodeHTMLEntities("$k\|::\|$v");
                 if ($i++ == 1000) {
                     &ThreadMonitorMainLoop("read HASH $hash - $i records - for GUI-Edit");
@@ -54529,6 +54570,8 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
 
   my $slo;
   $slo = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="button"  name="showlogout" value="  logout " onclick="window.location.href=\'./logout\';return false;"/></span>' if exists $qs{showlogout};
+
+  $sortTag = '&nbsp;&nbsp;sort:&nbsp;&nbsp;<a href="javascript:void(0);" onclick="sortUp();return false;">&#x25B2;</a>&nbsp;&nbsp;<a href="javascript:void(0);" onclick="sortDown();return false;">&#x25BC;</a>' if $hash;
 
   if ($eF->( $fil ) or $fil =~ /^DB-/o) {
       if($qs{note} eq '8' or $qs{note} eq '9') {
@@ -54607,50 +54650,50 @@ $headerHTTP
 	// Javascript code and layout adapted from TinyMCE
 	// http://tinymce.moxiecode.com/
     <!--
-    var wHeight=0, wWidth=0, owHeight=0, owWidth=0;
-	
-    function resizeInputs() {
-	    var contents = document.getElementById('contents');
-	    var notebox = document.getElementById('notebox');
-		//alert(el2.offsetHeight);
+var wHeight=0, wWidth=0, owHeight=0, owWidth=0;
 
-	    if (!isIE()) {
-	    	 //alert(navigator.userAgent);
-	         wHeight = self.innerHeight - (notebox.offsetHeight+150);
-	         wWidth = self.innerWidth - 50;
-	    } else {
-			 //alert(navigator.userAgent);
-	         wHeight = document.body.clientHeight - (notebox.offsetHeight+150);
-	         wWidth = document.body.clientWidth - 50;
-	    }
+function resizeInputs() {
+    var contents = document.getElementById('contents');
+    var notebox = document.getElementById('notebox');
+	//alert(el2.offsetHeight);
 
-	    contents.style.height = Math.abs(wHeight) + 'px';
-	    contents.style.width  = Math.abs(wWidth) + 'px';
-	    container.style.height = Math.abs(wHeight - 18) + 'px';
+    if (!isIE()) {
+    	 //alert(navigator.userAgent);
+         wHeight = self.innerHeight - (notebox.offsetHeight+150);
+         wWidth = self.innerWidth - 50;
+    } else {
+		 //alert(navigator.userAgent);
+         wHeight = document.body.clientHeight - (notebox.offsetHeight+150);
+         wWidth = document.body.clientWidth - 50;
     }
-    
-	function isIE () {
-		var check,agent;
-		check=/MSIE/i;
-		agent=navigator.userAgent;
-		if(check.test(agent)) {
-			return true;
-		} 
-		else {
-			return false;
-		}
+
+    contents.style.height = Math.abs(wHeight) + 'px';
+    contents.style.width  = Math.abs(wWidth) + 'px';
+    container.style.height = Math.abs(wHeight - 18) + 'px';
+}
+
+function isIE () {
+	var check,agent;
+	check=/MSIE/i;
+	agent=navigator.userAgent;
+	if(check.test(agent)) {
+		return true;
+	} 
+	else {
+		return false;
 	}
+}
 
 
-	function confirmDelete(FileName)
-	{
-		var strmsg ="Are you sure you wish to delete: \\n" + FileName  + "\\n This action cannot be undone";
-		var agree=confirm( strmsg );
-		if (agree)
-			return true;
-		else
-			return false;
-	}
+function confirmDelete(FileName)
+{
+	var strmsg ="Are you sure you wish to delete: \\n" + FileName  + "\\n This action cannot be undone";
+	var agree=confirm( strmsg );
+	if (agree)
+		return true;
+	else
+		return false;
+}
 
 function popFileEditor(filename,note)
 {
@@ -54682,12 +54725,22 @@ function remember(content)
 function getInput() { return document.getElementById("contents").value; }
 function setOutput(string) {document.getElementById("contents").value=string; }
 
-function replaceIt() { try {
-var findText = document.getElementById("find").value;
-var replaceText = document.getElementById("replace").value;
-setOutput(getInput().replace(eval("/"+findText+"/ig"), replaceText));
-} catch(e){}}
+function replaceIt() {
+    try {
+        var findText = document.getElementById("find").value;
+        var replaceText = document.getElementById("replace").value;
+        setOutput(getInput().replace(eval("/"+findText+"/ig"), replaceText));
+    } catch(e){
+    }
+}
 
+function sortUp() {
+    setOutput(getInput().split("\\n").sort().join("\\n"));
+}
+
+function sortDown() {
+    setOutput(getInput().split("\\n").sort().reverse().join("\\n"));
+}
       //-->
     //]]>
     </script>
@@ -54715,7 +54768,7 @@ setOutput(getInput().replace(eval("/"+findText+"/ig"), replaceText));
         <span style="float: left;">$s3<a href="javascript:void(0);" onclick="remember();return false;"><img height=12 width=12 src="$wikiinfo" alt="open the remember me window"/></a>&nbsp; Contents of $htmlfil</span><br /><hr /><br />
         <div id="message" style="float: right">$s2</div>
         <br style="clear: both;" />
-        <span style="align: left">Replace: <input type="text" id="find" size="20" /> with <input type="text" id="replace" size="20" /> <input type="button" value="Replace" onclick="replaceIt();" /></span>
+        <span style="align: left">Replace: <input type="text" id="find" size="20" /> with <input type="text" id="replace" size="20" /> <input type="button" value="Replace" onclick="replaceIt();" />$sortTag</span>
         <div>
           <div id="container">
             <div id="divlines">

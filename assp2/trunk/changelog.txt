@@ -1,3 +1,28 @@
+2018-04-04
+fixed in assp 2.6.2 *Fortress* build 18094:
+
+- the scheduled blockreport design was still broken, if no blocked mail was found
+
+- if a very short time range (eg. less than 5 minutes) was defined for a statistic graph, an "modulus by 0" exception caused a mainthread crash
+
+
+added:
+
+'trustedAuthForwarders','X-Original-Authentication-Results Trusted Forwarder*'
+ If an email contains a valid DKIM signature and the signature protects the "X-Original-Authentication-Results" header line in its h= tag (RFC7601) and the host in this header line matches
+ this regular expression, DMARC will fully trust the provided original authentication results for SPF and DKIM.
+ For example:  mx\d*\.domain\.com or ^2\.2\.2\.2$'
+
+
+changed:
+
+- images\svg.js (images.zip) is updated to version 1.04 - the click on a statistical graph now shows also the date (not only the time)
+
+- for whitelist modifications and reports using the email-interface, the 'WhitelistPrivacyLevel' states (global,domain,privat) are show in addition to prevent confusion
+
+- if hash data are shown in the GUI-Edit dialog, a sort (up/down ward) option is available
+
+
 2018-03-28
 fixed in assp 2.6.2 *Fortress* build 18087:
 
