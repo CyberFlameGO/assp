@@ -1,3 +1,10 @@
+2018-04-13
+fixed in assp 2.6.2 *Fortress* build 18103:
+
+- Depending on the configuration and the installed/enabled perl modules, the HMM check and the Bayesian check may caused an "malformed UTF-8 character" exception, followed by a SMTP-worker restart.
+
+
+
 2018-04-12
 fixed in assp 2.6.2 *Fortress* build 18102:
 

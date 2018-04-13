@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18102';        # 12.04.2018 TE
+$build   = '18103';        # 13.04.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -574,7 +574,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '68222D0412D2BBB473C1928C125F922CFA7B21E1'; }
+sub __cs { $codeSignature = '56327BA29387A95A4CCAFDE12494CCCA7A254229'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -42608,7 +42608,7 @@ sub HMMOK_Run {
     }
 
     my $msg_is7bit = is_7bit_clean($msg);
-    if(!$this->{whitelisted} && $whiteRe && ( $bd=~/($whiteReRE)/ || ($msg_is7bit && $$msg=~/($whiteReRE)/) )) {
+    if(!$this->{whitelisted} && $whiteRe && ( eval{$bd=~/($whiteReRE)/} || ($msg_is7bit && $$msg=~/($whiteReRE)/) )) {
         $this->{whitelisted}=1;
         my ($r1,$r2) = ($1,$2);
         mlogRe($fh,($r1||$r2),'whiteRe','whitelisting');
@@ -42642,11 +42642,11 @@ sub HMMOK_Run {
         $this->{bayesdone} = $this->{nobayesian} = 1;
         return 1;
     }
-    if(!($this->{allLoveBaysSpam} & 1) && $baysSpamLoversRe && ($bd=~/($baysSpamLoversReRE)/ || ($msg_is7bit && $$msg=~/($baysSpamLoversReRE)/))) {
+    if(!($this->{allLoveBaysSpam} & 1) && $baysSpamLoversRe && (eval{$bd=~/($baysSpamLoversReRE)/} || ($msg_is7bit && $$msg=~/($baysSpamLoversReRE)/))) {
         mlogRe($fh,($1||$2),'baysSpamLoversRe','spamlover');
         $this->{allLoveBaysSpam}=1;
     }
-    if(!($this->{spamlover} & 1) && $SpamLoversRe && ($bd=~/($SpamLoversReRE)/ || ($msg_is7bit && $$msg=~/($SpamLoversReRE)/))) {
+    if(!($this->{spamlover} & 1) && $SpamLoversRe && (eval{$bd=~/($SpamLoversReRE)/} || ($msg_is7bit && $$msg=~/($SpamLoversReRE)/))) {
         mlogRe($fh,($1||$2),'SpamLoversRe','spamlover');
         $this->{spamlover}=1;
     }
@@ -43169,7 +43169,7 @@ sub BayesOK_Run {
     $ip = $this->{cip} if $this->{ispip} && $this->{cip};
 
     my $msg_is7bit = is_7bit_clean($msg);
-    if(!$this->{whitelisted} && $whiteRe && ( $bd=~/($whiteReRE)/ || ($msg_is7bit && $$msg=~/($whiteReRE)/) )) {
+    if(!$this->{whitelisted} && $whiteRe && ( eval{$bd=~/($whiteReRE)/} || ($msg_is7bit && $$msg=~/($whiteReRE)/) )) {
         $this->{whitelisted}=1;
         my ($r1,$r2) = ($1,$2);
         mlogRe($fh,($r1||$r2),'whiteRe','whitelisting');
@@ -43204,11 +43204,11 @@ sub BayesOK_Run {
         $this->{nobayesian} = 1;
         return 1;
     }
-    if(!($this->{allLoveBaysSpam} & 1) && $baysSpamLoversRe && ($bd=~/($baysSpamLoversReRE)/ || ($msg_is7bit && $$msg=~/($baysSpamLoversReRE)/))) {
+    if(!($this->{allLoveBaysSpam} & 1) && $baysSpamLoversRe && (eval{$bd=~/($baysSpamLoversReRE)/} || ($msg_is7bit && $$msg=~/($baysSpamLoversReRE)/))) {
         mlogRe($fh,($1||$2),'baysSpamLoversRe','spamlover');
         $this->{allLoveBaysSpam}=1;
     }
-    if(!($this->{spamlover} & 1) && $SpamLoversRe && ($bd=~/($SpamLoversReRE)/ || ($msg_is7bit && $$msg=~/($SpamLoversReRE)/))) {
+    if(!($this->{spamlover} & 1) && $SpamLoversRe && (eval{$bd=~/($SpamLoversReRE)/} || ($msg_is7bit && $$msg=~/($SpamLoversReRE)/))) {
         mlogRe($fh,($1||$2),'SpamLoversRe','spamlover');
         $this->{spamlover}=1;
     }
@@ -71741,12 +71741,12 @@ sub printallCon {
        print $OUT "this->$k = $v$t\n";
        eval {
            if (ref($v) eq 'HASH') {
-               print $OUT "values of HASH this->$k :\n";
-               print $OUT "this->$k = $_ => ${$v}{$_}\n" foreach (sort keys %{$v});
+               print $OUT "  values of HASH this->$k :\n";
+               print $OUT "    this->$k = $_ => ${$v}{$_}\n" foreach (sort keys %{$v});
            }
            if (ref($v) eq 'ARRAY') {
-               print $OUT "values of ARRAY this->$k :\n";
-               print $OUT "this->$k = $_\n" for (sort @{$v});
+               print $OUT "  values of ARRAY this->$k :\n";
+               print $OUT "    this->$k = $_\n" for (sort @{$v});
            }
        }
     }
@@ -71760,12 +71760,12 @@ sub printallCon {
            print $OUT "friend->$k = $v$t\n";
            eval {
                if (ref($v) eq 'HASH') {
-                   print $OUT "values of HASH friend->$k :\n";
-                   print $OUT "friend->$k = $_ => ${$v}{$_}\n" foreach (sort keys %{$v});
+                   print $OUT "  values of HASH friend->$k :\n";
+                   print $OUT "    friend->$k = $_ => ${$v}{$_}\n" foreach (sort keys %{$v});
                }
                if (ref($v) eq 'ARRAY') {
-                   print $OUT "values of ARRAY friend->$k :\n";
-                   print $OUT "friend->$k = $_\n" for (sort @{$v});
+                   print $OUT "  values of ARRAY friend->$k :\n";
+                   print $OUT "    friend->$k = $_\n" for (sort @{$v});
                }
            }
         }
