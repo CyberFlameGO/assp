@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18103';        # 13.04.2018 TE
+$build   = '18107';        # 17.04.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -479,9 +479,6 @@ our $protectASSP = 1;                    # (0/1) the internal 'rmtree' function 
 our $noSupportSummay = 0;                # (0/1) skips the output of a support summary in the configuration export function
 
 our $AllowCodeInRegex = 0;               # (0/1) allow the usage of executable perl code (?{code_to_run}) in regular expression - change this ONLY, if you really know what you do
-
-our $DoARC = 0;                          # (0/1/2/3) do ARC - Authenticated Received Chain 0=disabled, 1=verify, 2=sign, 3=verify and sign  !!!!  EXPERIMENTAL  !!!! - for signing a valid DKIM configuration must be available for the signing domain
-our $ARCSigningHost = '';                # host (FQHN) name to be used for ARC signing - if not defined, myName is used - the signing domain is parsed from the senders address (header From: or Sender:) in outgoing mails - and this value (or myName) in imcoming mails
 # *********************************************************************************************************************************************
 
 our $trustedFWSF = 'mx.sourceforge.net,lists.sourceforge.net';   # comma separed list of host1,helo1,host2,helo2,.... for an exact host match in the first line of an X-Spam-Report: spamassassin header!
@@ -574,7 +571,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '56327BA29387A95A4CCAFDE12494CCCA7A254229'; }
+sub __cs { $codeSignature = 'A5EA57B4504F4B8E25E6DDC864B07E005CAA3783'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1566,7 +1563,7 @@ sub assp_socket_blocking {
 }
 
 sub defConfigArray {
- # last used msg number 010671
+ # last used msg number 010701
 
  # still unused msg numbers
  #
@@ -1691,7 +1688,7 @@ sub defConfigArray {
   For example: if you want incoming TCP connections on port 465 (SMTP-SSL) to be forwarded to your email server.<br /><br />
   <p><small><i>Example:</i>10.1.1.1:22=&gt;172.16.22.33:22|0.0.0.0:465=&gt;192.168.1.25:465&lt;=12.1.1.3,34.5.6.0/16,67.23.2.1-67.23.2.5|10.1.1.1:1477=&gt;192.168.1.23:1234&lt;=120.5.1.3,134.5.19.7,[allow_proxy_1234]</small></p><br /><br />
   Those connection are not especially SMTP related and they are not inspected by assp. Any application that uses the TCP layer, can use such a proxy (eg. SSH, RDP, VNC, POP3, HTTP, LDAP, Notes ...).<br />
-  Proxy connections can be define in any direction: private&lt;-&gt;private , private&lt;-&gt;public , public&lt;-&gt;private and public&lt;-&gt;public<br /><br />
+  Proxy connections can be defined in any direction: private&lt;-&gt;private , private&lt;-&gt;public , public&lt;-&gt;private and public&lt;-&gt;public<br /><br />
   The syntax is: localIP:localPORT=&gt;forwardIP:forwardPORT[&lt;=AllowfromIP1,AllowfromIP2,...]|next Proxy configuration|....<br /><br />
   The file-option (eg. file:files/proxy_conf.txt) is supported - if used, define one proxy configuration per line.<br />
   You have to configure the IP-address and IP-port for both - local and forward values! The optional AllowfromIP extension are comma separated values of IP-addresses (eg. 192.168.1.1), IP-networks (eg. 10.1.1.0/24) and IP-address ranges (172.16.1.3-172.16.1.10) from where connections are allowed. Groups definitions (eg. [allow_ssh_proxy]) may be used in AllowfromIP. If there is no allow value defined, all source IP addresses will be accepted!',undef,undef,'msg008300','msg008301'],
@@ -1791,8 +1788,10 @@ sub defConfigArray {
  'A list of local IP-addresses, for which the \'local frequency check\' should not be done.<br />
   For example: 145.145.145.145|145.146. ',undef,undef,'msg010110','msg010111'],
 
-['genDKIM','Generate and Add DKIM <a href="http://en.wikipedia.org/wiki/DomainKeys_Identified_Mail" target=wiki><img height=12 width=12 src="' . $wikiinfo . '" alt="Network Flow" /></a> signatures to relayed messages',0,\&checkbox,'','(.*)',undef,'If selected, ASSP will add DKIM signatures to relayed messages if it finds a valid DKIM configuration in DKIMgenConfig for the sending domain. This will also be done for noprocessing mails. This requires an installed <a href="http://search.cpan.org/search?query=Mail::DKIM" rel="external">Mail::DKIM</a> module in PERL.',undef,undef,'msg001210','msg001211'],
-['DKIMgenConfig','The File with the DKIM configurations*',40,\&textinput,'file:dkim/dkimconfig.txt','(file:\S*)','configUpdateDKIMConf','The file that contains the DKIM configuration. A description how to configure DKIM could be found in the default file dkim/dkimconfig.txt.<br />
+['genDKIM','Generate and Add DKIM or DomainKey <a href="http://en.wikipedia.org/wiki/DomainKeys_Identified_Mail" target=wiki><img height=12 width=12 src="' . $wikiinfo . '" alt="Network Flow" /></a> signatures to relayed messages',0,\&checkbox,'','(.*)',undef,'If selected, ASSP will add DKIM signatures to relayed messages, if it finds a valid DKIM configuration in DKIMgenConfig for the sending domain. This will also be done for noprocessing mails. This requires an installed <a href="http://search.cpan.org/search?query=Mail::DKIM" rel="external">Mail::DKIM</a> module in PERL.',undef,undef,'msg001210','msg001211'],
+['genARC','Generate and Add Authenticated Received Chain (ARC) signatures to all messages',0,\&checkbox,'','(.*)',undef,'If selected, ASSP will add <a href="http://arc-spec.org" rel="external">Authenticated Received Chain (ARC)</a> signatures to all messages, if it finds a valid DKIM configuration in DKIMgenConfig for the sending domain. This will also be done for noprocessing mails. If available, the check results for SPF, DKIM and DMARC will be provided in the generated ARC-signature. This requires an installed <a href="http://search.cpan.org/search?query=Mail::DKIM" rel="external">Mail::DKIM</a> module in PERL.',undef,undef,'msg010680','msg010681'],
+['ARCSigningHost','Host (FQHN) Name to be used for ARC Signing',40,\&textinput,'','(.*)',undef,'The full qualified host name to be used for <a href="http://arc-spec.org" rel="external">Authenticated Received Chain (ARC)</a> signing. If not defined, myName is used. The signing domain is parsed from the senders address (header From: or Sender:) in outgoing mails - and this value (or myName) in incoming mails.',undef,undef,'msg010690','msg010691'],
+['DKIMgenConfig','The File with the DKIM and ARC configurations*',40,\&textinput,'file:dkim/dkimconfig.txt','(file:\S*)','configUpdateDKIMConf','The file that contains the DKIM and ARC configuration. A description how to configure DKIM, DomainKey and ARC could be found in the default file dkim/dkimconfig.txt.<br />
 <hr /><div class="cfgnotes">Notes On Relaying</div><input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/relaying.txt\',3);" />',undef,undef,'msg001220','msg001221'],
 
 [0,0,0,'heading','SMTP Session Limits '],
@@ -2516,7 +2515,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['noSpoofingCheckDomain','Don\'t do Spoofing Check for these Addresses/Domains*',80,\&textinput,'','(.*)','ConfigMakeSLRe',
  'Accepts specific addresses (user@example.com), user parts (user) or entire domains (@example.com). Wildcards are supported (fribo*@example.com).',undef,undef,'msg001780','msg001781'],
 ['DoNoSpoofing4From','Do NoSpoofing for from:',0,\&checkbox,'','(.*)',undef,
-  'Do the NoSpoofing check also for header \'from:\' addresses.',undef,undef,'msg009850','msg009851'],
+  'Do the NoSpoofing check also for header \'from:\', \'sender:\', \'reply-to:\' and \'errors-to:\' addresses.',undef,undef,'msg009850','msg009851'],
 ['DoReversed','Reversed Lookup','0:disabled|1:block|2:monitor|3:score',\&listbox,3,'(.*)',undef,
   'If activated, each sender IP is checked for the existence of a PTR record. Having no PTR record is a fault. Scoring is done using ptmValencePB . This requires an installed <a href="http://search.cpan.org/search?query=Net::DNS" rel="external">Net::DNS</a> module in PERL.',undef,undef,'msg001800','msg001801'],
 ['DoReversedWL','Do Reversed Lookup for Whitelisted',0,\&checkbox,'1','(.*)',undef,
@@ -2539,12 +2538,14 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   'If activated, the sender address and each address found in the following header lines (ReturnReceipt:, Return-Receipt-To:, Disposition-Notification-To:, Return-Path:, Reply-To:, Sender:, Errors-To:, List-...:) is checked for a valid MX or A record. Scoring is done for non existing MX ( mxValencePB ) record and non existing A record ( mxaValencePB ) - a messages fails (block), if both records are not found. If only an IP-address is found for a MX, the A record check fails, if the IP has no valid PTR and DoInvalidPTR is enabled.',undef,undef,'msg001870','msg001871'],
 ['MXACacheInterval','Validate Domain MX Cache Refresh Interval',4,\&textinput,7,'(\d+\.?\d*|)','configUpdateMXACR',
   'IP\'s in cache will be removed after this interval in days. 0 will disable the cache.<input type="button" value=" Show MX Cache" onclick="javascript:popFileEditor(\''.$newDB.'pb/pbdb.mxa.db\',5);" />',undef,undef,'msg001880','msg001881'],
-['DoNoFrom','Check for Existing From Header Tag and Address','0:disabled|2:monitor|3:score',\&listbox,3,'(.*)',undef,
-  'If enabled, the MIME header is checked for a valid From: header tag. The scoring value is set with nofromValencePB.',undef,undef,'msg001890','msg001891'],
-['DoNoFromWL','Do DoNoFrom for Whitelisted',0,\&checkbox,'1','(.*)',undef,
-  'Check for existing From header and address for whitelisted addresses.',undef,undef,'msg001900','msg001901'],
-['DoNoFromNP','Do DoNoFrom for NoProcessing',0,\&checkbox,'1','(.*)',undef,
-  'Check for existing From header and address for noprocessing addresses.',undef,undef,'msg001910','msg001911'],
+['DoNoFrom','Check for Existing and Valid From: and Sender: Header Tag and Address','0:disabled|2:monitor|3:score',\&listbox,3,'(.*)',undef,
+  'If enabled, the MIME header is checked for valid From: and Sender: header tags.<br />
+  This header check fails and faults are counted, if both headers (From: and Sender:) are missing - or if any of these headers contains not a valid email address - or if multiple of the same headers are found.<br />
+  The scoring value nofromValencePB is added for each detected fault.',undef,undef,'msg001890','msg001891'],
+['DoNoFromWL','Do DoNoFrom for Whitelisted',0,\&checkbox,'','(.*)',undef,
+  'Check for existing From: or Sender: header and address for whitelisted emails.',undef,undef,'msg001900','msg001901'],
+['DoNoFromNP','Do DoNoFrom for NoProcessing',0,\&checkbox,'','(.*)',undef,
+  'Check for existing From: or Sender: header and address for noprocessing emails.',undef,undef,'msg001910','msg001911'],
 ['removeDispositionNotification','Remove Disposition Notification Headers',80,\&textinput,'','((?:Disposition-Notification-To|Return-Receipt-To|ReturnReceipt)(?:\|(?:Disposition-Notification-To|Return-Receipt-To|ReturnReceipt)){0,2}|)',undef,
   'To remove any headers : "ReturnReceipt: , Return-Receipt-To: and Disposition-Notification-To:" from not whitelisted and not noprocessing incoming mails, define the unwanted headers as regular expression.<br />
   for example: Disposition-Notification-To<br />
@@ -2573,6 +2574,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   [identitygroup]=>[recipientgroup]<br />
   [identitygroup1]|[identitygroup2]|*@domain=>[recipientgroup1]|[recipientgroup2]|user@local_domain<br /><br />
   NOTICE - that the local email addresses and domains are not checked to be local once.<br />
+  It is NOT recommended to disable \'DKIMCacheInterval\' if this feature is configured, otherwise only the Plugin Level 2 (complete mail) checks will be affected by this settings!<br />
   To define special characters like \'* and ?\' - use their hexadecimal regex representation like \'\\x2A and \\x3F\'.',undef,undef,'msg010650','msg010651'],
 ['DKIMNPAddresses','Noprocessing these Addresses for valid DKIM Signature *',80,\&textinput,'','(.*)','ConfigMakePrivatRe',
  'If a valid DKIM or DomainKey signature is found and the signature identity (mostly the signature tag i=user@domain.tld) matches any of these addresses, the mail will be passed and saved as if it were in noProcessingDomains or noProcessing .<br />
@@ -2588,15 +2590,20 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   [identitygroup]=>[recipientgroup]<br />
   [identitygroup1]|[identitygroup2]|*@domain=>[recipientgroup1]|[recipientgroup2]|user@local_domain<br /><br />
   NOTICE - that the local email addresses and domains are not checked to be local once.<br />
+  It is NOT recommended to disable \'DKIMCacheInterval\' if this feature is configured, otherwise only the Plugin Level 2 (complete mail) checks will be affected by this settings!<br />
   To define special characters like \'* and ?\' - use their hexadecimal regex representation like \'\\x2A and \\x3F\'.',undef,undef,'msg010660','msg010661'],
 ['DKIMCacheInterval','Validate DKIM-Pre-Check-Cache Refresh Interval',4,\&textinput,7,'(\d+\.?\d*|)','configUpdateDKIMCR',
   'Domains\'s in cache will be removed after this interval in days. 0 will disable the cache.<br />
-  If activated a DKIM-pre-check will be done. If ASSP finds a DKIM-Signature in the mail header, it checks the DNS records of the sending domain for valid DKIM configurations and writes a record in to the DKIM-pre-check-cache, if it finds such configuration.<br />
+  If activated a DKIM-pre-check will be done. If ASSP finds a DKIM-Signature in the mail header, it checks the DNS records of the sending domain for valid DKIM configurations and writes a record in to the DKIM-pre-check-cache, if it finds such configuration. If a mail is DKIM signed, the DKIM-pre-check will check the DKIM or DomainKey identity and consistency of the received header.<br />
+  The DKIM-pre-check will also set all states and flags for the mail, as they would be set by the full DKIM/DomainKey check.<br />
   If ASSP does not find a DKIM-Signature in the mail header, it also checks the DNS records of the sending domain for valid DKIM configurations. If it find such a configuration, the mail is considered spam, because it should have a DKIM-Signature.<br />
   The next mail from a domain that is found in this cache, must have a DKIM-Signature to pass the DKIM-pre-check. How ever, some DNS records are wrong or inaccurate and will cause ASSP to block mails because of this - register such domains and/or IP\'s in noDKIMAddresses and/or noDKIMIP .<br />
   <input type="button" value=" Show DKIM Cache" onclick="javascript:popFileEditor(\''.$newDB.'pb/pbdb.dkim.db\',5);" />',undef,undef,'msg001960','msg001961'],
 ['AddDKIMHeader','Add X-Assp-DKIM Header',0,\&checkbox,1,'(.*)',undef,
-  'Add X-Assp-DKIM header.',undef,undef,'msg001970','msg001971'],
+  'Add a X-Assp-DKIM: result header.',undef,undef,'msg001970','msg001971'],
+
+['DoARC','Validate Authenticated Received Chain (ARC) Signatures','0:disabled|1:enabled',\&listbox,0,'(.*)',undef,
+  'If enabled, <a href="http://arc-spec.org" rel="external">Authenticated Received Chain (ARC)</a> signed Mails are checked for the right signature sequence and contents. ASSP will show the ARC results and will trust the provided Authenticated Results for DKIM, SPF and DMARC if the signing host/domain matches \'trustedAuthForwarders\'. This requires an installed <a href="http://search.cpan.org/search?query=Mail::DKIM::Verifier" rel="external">Mail::DKIM::Verifier</a> module in PERL.',undef,undef,'msg010700','msg010701'],
 
 ['signedSenders','Senders need to SMIME or PGP Sign All Mail *',80,\&textinput,'file:files/signedSenders.txt','(.*)','ConfigMakePrivatRe',
   'Domains and addresses which have to SMIME or PGP sign or encrypt all mail. If a match is found for a sender and the email is not signed or encryped, the mail will be rejected!<br />
@@ -3023,7 +3030,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  Accepts entire domains (@example.com) (specific addresses (user@example.com) and user parts (user) are accepted, but not usefull!). Wildcards are supported (@*example.com or @*.example.com).',undef,undef,'msg010530','msg010531'],
 ['trustedAuthForwarders','X-Original-Authentication-Results and Authenticated Received Chain(ARC) Trusted Forwarder*',80,\&textinput,'','(.*)','ConfigCompileRe','
  If an email contains a valid DKIM signature and the signature protects the "X-Original-Authentication-Results" header line in its h= tag (RFC7601) and the host in this header line matches this regular expression, DMARC will fully trust the provided original authentication results for SPF, DKIM and DMARC.<br />
- If a host match is found for the most recent <a href="http://arc-spec.org" rel="external">Authenticated-Received-Chain(ARC)-Signature</a> instance, the SPF-check, the DKIM-check and the DMARC-check will fully trust the provided ARC results.<br />
+ If DoARC is enabled and a host match is found for the most recent <a href="http://arc-spec.org" rel="external">Authenticated-Received-Chain(ARC)-Signature</a> instance (highest instance number), the SPF-check, the DKIM-check and the DMARC-check will fully trust the provided ARC results.<br />
  For example: ^mx\d*\.domain\.com$ or ^2\.2\.2\.2$<br /><br />
  An regular expression for the values of myName and myNameAlso are already added!.',undef,undef,'msg010670','msg010671'],
 ['DMARCReportFrom','From Address for DMARC Reports',40,\&textinput,'','('.$EmailAdrRe.'(?:\@'.$EmailDomainRe.')?|)',undef,
@@ -4216,7 +4223,7 @@ For example: mysql/dbimport<br />
 ['ScanLog','Enable ClamAV logging','0:nolog|1:standard|2:verbose|3:diagnostic',\&listbox,1,'(.*)',undef,
   '',undef,undef,'msg007080','msg007081'],
 ['DKIMlogging','Enable DKIM logging','0:nolog|1:standard|2:verbose|3:diagnostic',\&listbox,1,'(.*)',undef,
-  '',undef,undef,'msg007090','msg007091'],
+  'DKIM and ARC signing log level. Set to diagnostic, the generated signatures will be veryfied after creation.',undef,undef,'msg007090','msg007091'],
 ['WorkerLog','Enable thread action logging','0:nolog|1:standard|2:verbose|3:diagnostic',\&listbox,0,'(.*)',undef,
   '',undef,undef,'msg007100','msg007101'],
 ['SignalLog','Enable central Perl-signal logging','0:nolog|1:standard|2:verbose',\&listbox,1,'(.*)',undef,
@@ -4777,7 +4784,20 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
 ['RunRebuildNow','Run RebuildSpamdb now',0,\&checkbox,'','(.*)','ConfigChangeRunTaskNow',
   'If selected, RebuildSpamdb will be started immediately.<br />' .
   "<input type=button value=\"Apply Changes and Run Rebuild SpamDB Now (if checked)\" onclick=\"document.forms['ASSPconfig'].theButtonX.value='Apply Changes';document.forms['ASSPconfig'].submit();WaitDiv();return false;\" />&nbsp;<input type=button value=\"Refresh Browser\" onclick=\"document.forms['ASSPconfig'].theButtonRefresh.value='Apply Changes';document.forms['ASSPconfig'].submit();WaitDiv();return false;\" />" .
-  '<hr /><div class="cfgnotes">Last Result Of Rebuildspamdb</div><input type="button" value="Last Run Rebuildspamdb" onclick="javascript:popFileEditor(\'rebuildrun.txt\',5);" />
+  '<hr /><div class="cfgnotes">An real problem may become disclaimers and privat and corporate signatues. They are always added to outgoing mails, but also to local mails and reports. They can be found in most of the answers to your mails. And for example, they may be added by spammers to there spam mails - trying to fake good mails. Nobody can say, how the occurrence of such a disclaimer will affect the HMM and Bayesian results. It may possible, that these results differs from day to day, or block good mails, or let spam pass.
+  The only way to prevent such results, is to remove the disclaimers, before the rebuildspamdb task builds the spamdb and HMMdb.<br />
+  To tell assp, which are your disclaimers, open the file files/disclaimer.txt using the "disclaimer definition" button below and put the disclaimers in to this file, the same way they are shown in your mail client. If you want to define multiple disclaimers, separate them by a line with a single dot. Lines in this file starting with an "#" are considered a comment, empty lines are ignored. ASSP will build a regular expression to identify and remove the disclaimers.<br /><br />
+  <b>example:<br /><br />
+  # a comment<br />
+  your first disclaimers first line here<br />
+  your first disclaimers second line here<br />
+  .<br />
+  # also a comment<br />
+  your second disclaimers first line here<br />
+  your second disclaimers second line here</b><br /><br />
+  <input type="button" value="disclaimer definition" onclick="javascript:popFileEditor(\'files/disclaimer.txt\',1);" /><br />
+  This file will only be read at the rebuild task start. The resulting regular expression is written to "files/optRE/disclaimer.txt" <input type="button" value="show disclaimer regex" onclick="javascript:popFileEditor(\'files/optRE/disclaimer.txt\',5);" /></div>
+  <hr /><div class="cfgnotes">Last Result Of Rebuildspamdb</div><input type="button" value="Last Run Rebuildspamdb" onclick="javascript:popFileEditor(\'rebuildrun.txt\',5);" />
   <hr /><div class="cfgnotes">Rebuildspamdb-debug-output - create the file \'rebuilddebug.txt\' to enable the debug mode - delete the file to stop the debug mode for the rebuildspamdb task</div><input type="button" value="Rebuildspamdb-debug-output" onclick="javascript:popFileEditor(\'rebuilddebug.txt\',3);" />
   <hr /><div class="cfgnotes">normfile - shows current:<br />
   Corpus-Norm , Corrected-SpamFiles , Corrected-NotSpamFiles , Spamlog-Files , NotSpamlog-Files , SpamWords/File , Hamwords/File , Spamwords , Hamwords</div><input type="button" value="normfile" onclick="javascript:popFileEditor(\'normfile\',3);" />
@@ -5332,7 +5352,7 @@ The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries.
   <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/pop3collect.txt\',3);" />',undef,undef,'msg009090','msg009091']
 );
 
- # last used msg number 010671
+ # last used msg number 010701
 
  &loadModuleVars;
  -d "$base/language" or mkdirOP("$base/language",'0755');
@@ -7933,7 +7953,7 @@ if ($@) {
 sub write_rebuild_module {
 my $curr_version = shift;
 
-my $rb_version = '7.45';
+my $rb_version = '7.46';
 my $keepVersion;
 
 if (open my $ADV, '<',"$base/lib/rebuildspamdb.pm") {
@@ -8094,7 +8114,7 @@ if ($main::eF->("$main::base/files/disclaimer.txt")) {
     }
     if ($disclaimerRe) {
         $disclaimerRe =~ s/^(?:$UTF8BOMRE)?\s*//os;
-        $disclaimerRe =~ s/^#.*//go;
+        $disclaimerRe =~ s/^\s*#.*//go;
         $disclaimerRe =~ s/([^\r])\n/$1\r\n/gos;
         $disclaimerRe =~ s/^\s+$//os;
     }
@@ -9908,8 +9928,9 @@ sub rb_add {
         }
         if ( $header =~ /X-Forwarded-For: ($IPRe)/io) {
             $cip = $1;
-    		while ( $header =~ /Received:($main::HeaderValueRe)/gios ) {
-                my $h = $1;
+    		while ( $header =~ /($main::HeaderNameRe):($main::HeaderValueRe)/gios) {
+                next if lc($1) ne 'received';
+                my $h = $2;
                 if ( $h =~ /\s+from\s+(?:(\S+)\s)?(?:.+?)\Q$cip\E(?::$PortRe)?\]?\)(.{1,80})by.{1,20}/gis ) {
                     $cipHelo = $1;
                     $curHelo = $1 if $1;
@@ -9925,8 +9946,9 @@ sub rb_add {
                 $cip = '';
             }
         } elsif ( $main::ispHostnames ) {
-            while ( $header =~ /Received:($main::HeaderValueRe)/gios ) {
-                my $h = $1;
+            while ( $header =~ /($main::HeaderNameRe):($main::HeaderValueRe)/gios ) {
+                next if lc($1) ne 'received';
+                my $h = $2;
                 if ( $h =~ /\s+from\s+(?:(\S+)\s)?(?:.+?)($IPRe)(.{1,80})by.{1,20}(?:$main::ispHostnamesRE)/gios ) {
                     $cip = $2;
                     $cipHelo = $1 || $cip;
@@ -9990,7 +10012,7 @@ sub rb_add {
     my $OK;
     ($content,$OK) = &main::clean($content);
     return if (rb_checkRunTime($startTime,"reached $movetime s after content cleanup on $fn"));
-    $content =~ s/$disclaimerRe//g if $disclaimerRe;
+    eval{$content =~ s/$disclaimerRe//g} if $disclaimerRe;
     my $BayesCont = $main::BayesCont;
     my @HMMhamWords;
     my @HMMspamWords;
@@ -11110,9 +11132,11 @@ EOT
 $lngmsg{'msg500062'} = <<EOT;
 <b>You may put here helo=aaa.bbb.helo or ip=123.123.123.123 to look up the helo/ip information. text=abc will start a lookup in the regular expression files for the "abc" matching regex.<br />
 Put helo=domain.com and ip=123.123.123.123 in two lines, to lookup SPF results.</b>
-<p>Note: Analysis is performed using the current spam database --
-if yours was rebuilt since the time the mail was received you'll
-receive a different result.</p>
+<p>Note: Analysis is performed using the current spam database, hashes and lists --
+if yours was rebuilt since the time the mail was received, you'll receive a different result.
+This also applies to the feature matching results, they may be diffent from the results when the mail was received.
+All feature matching results are shown stateless - which means for example: if 'noprocessing' and a 'RBL/DNSBL hit' is shown here, in the real mail processing, the RBL check may be skipped because of the
+noprocessing state.</p>
 EOT
 
 $lngmsg{'msg500063'} = <<EOT;
@@ -14318,7 +14342,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.78;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.79;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.05;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -21877,7 +21901,7 @@ sub sendquedata {
   my ($domain) = $friend->{mailfrom} =~ /^[^@]+\@([^@]+)$/o;
   if (($neverQueueSize && $friend->{maillength} > $neverQueueSize) ||
        (($friend->{ismaxsize} || ($friend->{noprocessing} & 1)) &&
-       ! (($genDKIM || ($DoARC & 2)) && $CanUseDKIM && $friend->{relayok} && exists $DKIMInfo{lc $domain}) &&
+       ! (($genDKIM || $genARC) && $CanUseDKIM && $friend->{relayok} && exists $DKIMInfo{lc $domain}) &&
        ! $runlvl2PL))
   {    # queueing is switched of for some reasons
      $this->{noMoreQueued} = 1;
@@ -21907,7 +21931,7 @@ sub sendquedata {
   if (! $friend->{isbounce} &&
       ! $CanUseEMM &&
       ! $runlvl2PL &&
-      ! ($genDKIM || ($DoARC & 2)) &&
+      ! ($genDKIM || $genARC) &&
       (! $DoDKIM || ($DoDKIM && (! $friend->{isDKIM} || $friend->{relayok})))) {    # Email::MIME::Modfier is not installed
 
      $this->{noMoreQueued} = 1;
@@ -21951,7 +21975,7 @@ sub sendquedata {
       $done &&
       ! $convert &&
       ! $runlvl2PL &&
-      ! ($genDKIM || ($DoARC & 2)) &&
+      ! ($genDKIM || $genARC) &&
       (! $DoDKIM || ($DoDKIM && (! $friend->{isDKIM} || $friend->{relayok})))) {    # no conversion to do
 
      $this->{noMoreQueued} = 1;
@@ -22325,7 +22349,7 @@ if ((! $friend->{noprocessing} || $convertNP) && $convert && ! $friend->{signed}
   }
 } # end convert
 
-  if ($genDKIM || ($DoARC & 2)) {
+  if ($genDKIM || $genARC) {
       unless ($friend->{IS8BITMIME}) {
           $utf8off->(\$friend->{header});
           fixCRLF(\$friend->{header});   # make LF CR RFC conform
@@ -23508,7 +23532,7 @@ sub resend_mail {
 ###
 
 # create Message-ID signature and DKIM signature if needed
-      if (! $islocal && $relayHost && ($DoMSGIDsig || $genDKIM || ($DoARC & 2))) {
+      if (! $islocal && $relayHost && ($DoMSGIDsig || $genDKIM || $genARC)) {
           $Con{$fh} = {};
           $Con{$fh}->{relayok} = 1;
           $Con{$fh}->{mailfrom} = $mailfrom;
@@ -23523,9 +23547,9 @@ sub resend_mail {
                   }
               }
           }
-          if ($genDKIM || ($DoARC & 2)) {
+          if ($genDKIM || $genARC) {
               $Con{$fh}->{header} = $message;
-              getARC($fh) if ($DoARC & 1);
+              getARC($fh) if $DoARC;
               DKIMgen($fh);
               $message = $Con{$fh}->{header};
           }
@@ -23844,6 +23868,7 @@ sub stateReset {
     $this->{doneDoDomainIP} = '';
     $this->{donotdelay} = '';
     $this->{doNotTimeout} = '';
+    $this->{'errors-to'} = '';
     $this->{filescandone} = '';
     $this->{forgedHeloOK} = '';
     $this->{forgedhelodone} = '';
@@ -23931,6 +23956,7 @@ sub stateReset {
     $this->{redre} = '';
     %{$this->{rememberMessageScore}} = (); undef %{$this->{rememberMessageScore}};  delete $this->{rememberMessageScore};
     $this->{RFC2047} = '';    # non printable in MIME encoded
+    $this->{'reply-to'} = '';
     $this->{runlvl1PL} = '';
     $this->{rwlok} = 0;
     $this->{saveprepend2} = '';
@@ -23938,6 +23964,7 @@ sub stateReset {
     $this->{sayMessageOK} = '';
     delete $this->{scanfile};
     %{$this->{scores}} = (); undef %{$this->{scores}}; delete $this->{scores};
+    $this->{sender} = '';
     $this->{senderok} = '';
     @{$this->{senders}} = (); undef @{$this->{senders}}; delete $this->{senders};
     $this->{signed} = '';
@@ -24401,6 +24428,7 @@ sub getline {
             pbAdd( $fh, $this->{ip}, 'ihValencePB', "InvalidHELO" );
             $this->{prescore} += ${'ihValencePB'}[0];
             $this->{invalidhelofound} = 1;
+            $Stats{invalidHelo}++;
             mlog($fh,"info: found invalid helo '$helo' - is immediatly blocked by invalidHeloRe");
             sendque( $fh, "554 5.7.1 the connection is rejected - bad host identity detected\r\n" );
             $this->{closeafterwrite} = 1;
@@ -27082,22 +27110,25 @@ sub getheader {
             return;
         }
 
-        if ($this->{SRSorgAddress}) {                    # $this->{SRSorgAddress} is still quoted !
+        if ($this->{SRSorgAddress}) {                    # \Q and \E missing? $this->{SRSorgAddress} is still quoted !
             $this->{nodkim} = 1 if $this->{header} =~ s/$this->{SRSorgAddress}/$this->{SRSnewAddress}/gi;
         }
         
-        if (! $this->{from} && $this->{header} =~ /(?:^|\n)from:($HeaderValueRe)/oi) {
-            my $from = $1;
-            headerUnwrap($from);
-            $this->{from} = $1 if $from =~ /<($EmailAdrRe\@$EmailDomainRe)>/oi;
-            $this->{from} = $1 if !$this->{from} && $from =~ /($EmailAdrRe\@$EmailDomainRe)/oi;
+        for my $tag (qw(from sender reply-to errors-to)) {
+            if (! $this->{$tag} && $this->{header} =~ /(?:^|\n)$tag:($HeaderValueRe)/i) {
+                my $from = $1;
+                headerUnwrap($from);
+                $this->{$tag} = $1 if $from =~ /<($EmailAdrRe\@$EmailDomainRe)>/oi;
+                $this->{$tag} = $1 if !$this->{$tag} && $from =~ /($EmailAdrRe\@$EmailDomainRe)/oi;
+            }
         }
 
         # get TO,CC,BCC address lists from header
         for my $tag (qw(to cc bcc)) {
             $this->{$tag.'rcpt'} = {};
-            while ($this->{header} =~ /(?:^|\n)$tag:($HeaderValueRe)/ig) {
-                my $val = $1;
+            while ($this->{header} =~ /($HeaderNameRe):($HeaderValueRe)/igo) {
+                next if lc($1) ne $tag;
+                my $val = $2;
                 headerUnwrap($val);
                 while ($val =~ /($EmailAdrRe\@$EmailDomainRe)/goi) {
                     $this->{$tag.'rcpt'}->{lc $1} = 1;
@@ -27253,8 +27284,9 @@ sub getheader {
             my $cip = ipv6expand($cip2);
             $this->{cip} = ipv6expand(ipv6TOipv4($cip2));
             my $orgHelo = $this->{helo};
-	        while ( $this->{header} =~ /Received:($HeaderValueRe)/gios ) {
-                my $h = $1;
+	        while ( $this->{header} =~ /($HeaderNameRe):($HeaderValueRe)/gios ) {
+                next if lc($1) ne 'received';
+                my $h = $2;
                 if ( $h =~ /\s+from\s+(?:([^\s]+)\s)?(?:.+?)(?:\Q$this->{cip}\E|\Q$cip\E|\Q$cip2\E)(?::$PortRe)?\]?\)(.{1,80})by.{1,20}/gis ) {
 
                     $this->{ciphelo} = $1;
@@ -27278,8 +27310,9 @@ sub getheader {
 	    } elsif ( ($this->{received} || $this->{relayok}) && $this->{ispip} && $ispHostnames && !$this->{cipdone} ) {
             $this->{cipdone} = 1;
             my $orgHelo = $this->{helo};
-	        while ( $this->{header} =~ /Received:($HeaderValueRe)/gios ) {
-                my $h = $1;
+	        while ( $this->{header} =~ /($HeaderNameRe):($HeaderValueRe)/gios ) {
+                next if lc($1) ne 'received';
+                my $h = $2;
                 if ( $h =~ /\s+from\s+(?:([^\s]+)\s)?(?:.+?)($IPRe)(.{1,80})by.{1,20}($ispHostnamesRE)/gis ) {
                     my $cip = ipv6expand(ipv6TOipv4($2));
                     my $helo = $1;
@@ -27320,7 +27353,7 @@ sub getheader {
             }
         }
 
-        if ($CanUseDKIM && Mail::DKIM->VERSION >= 0.50 && ($DoARC & 1) && ($DoDKIM || $DoDMARC || $ValidateSPF)) {
+        if ($CanUseDKIM && Mail::DKIM->VERSION >= 0.50 && $DoARC && ($DoDKIM || $DoDMARC || $ValidateSPF)) {
           # experimental ARC processing
           # first we do a very simple and fast check
             my %h = ('seal' => 1, 'message-signature' => 2, 'authentication-results' => 4);
@@ -27416,7 +27449,7 @@ sub getheader {
         if (&MsgScoreTooHigh($fh,$done)) {$this->{skipnotspam} = 0;return;}
 
         if (! $this->{whitelisted} ) {
-            if (! &NoSpoofingOK( $fh, 'mailfrom' ) || ($DoNoSpoofing4From && ! &NoSpoofingOK( $fh, 'from' )) ) {
+            if (! &NoSpoofingOK( $fh, 'mailfrom' ) || ($DoNoSpoofing4From && (! &NoSpoofingOK( $fh, 'from' ) || ! &NoSpoofingOK( $fh, 'sender' ) || ! &NoSpoofingOK( $fh, 'reply-to' ) || ! &NoSpoofingOK( $fh, 'errors-to' ))) ) {
                 my $slok = $this->{allLoveISSpam} == 1;
                 $Stats{senderInvalidLocals}++ unless $slok;
                 $reply = $SenderInvalidError;
@@ -27490,11 +27523,6 @@ sub getheader {
         &GRIPvalue($fh,$this->{ip});
         if (&MsgScoreTooHigh($fh,$done)) {$this->{skipnotspam} = 0;return;}
 
-        if (! &FromStrictOK($fh)) {
-            if ($this->{error}) {$this->{skipnotspam} = 0;return;}
-        }
-        if (&MsgScoreTooHigh($fh,$done)) {$this->{skipnotspam} = 0;return;}
-
         # header is done
 
         if(!$this->{bspams} && !$this->{noprocessing} && !$this->{whitelisted} && $WhitelistOnly) {
@@ -27534,11 +27562,6 @@ sub getheader {
             $this->{whitelisted} = 1;
         }
         
-        if (! &DomainIPOK($fh)) {
-            $this->{skipnotspam} = 0;return;
-        }
-        if (&MsgScoreTooHigh($fh,$done)) {$this->{skipnotspam} = 0;return;}
-
         if (! &SenderBaseOK($fh,$this->{ip})) {
             $this->{prepend} = '';
             my $slok=$this->{allLoveSBSpam}==1;
@@ -27548,6 +27571,16 @@ sub getheader {
             $reply =~ s/REASON/$this->{messagereason}/go;
             thisIsSpam($fh,$this->{messagereason},$spamSBLog,$reply,$DoCountryBlocking == 4,$slok,0);
             if ($this->{error}) {$this->{skipnotspam} = 0;return;}
+        }
+        if (&MsgScoreTooHigh($fh,$done)) {$this->{skipnotspam} = 0;return;}
+
+        if (! &FromStrictOK($fh)) {
+            if ($this->{error}) {$this->{skipnotspam} = 0;return;}
+        }
+        if (&MsgScoreTooHigh($fh,$done)) {$this->{skipnotspam} = 0;return;}
+
+        if (! &DomainIPOK($fh)) {
+            $this->{skipnotspam} = 0;return;
         }
         if (&MsgScoreTooHigh($fh,$done)) {$this->{skipnotspam} = 0;return;}
 
@@ -27930,7 +27963,7 @@ sub SPFok {
     if (   $DoSPFinHeader
         && defined $this->{spfok}
         && ! $this->{error}
-        && $this->{header} =~ /\nfrom:\s*($HeaderValueRe)/ois)   # and 'from:'
+        && $this->{header} =~ /(?:^|\n)from:\s*($HeaderValueRe)/ois)   # and 'from:'
     {
         my $head = $1;
         headerUnwrap($head);
@@ -28391,8 +28424,9 @@ sub GRIPvalue_Run {
     $this->{gripdone} = 1;
     $ip = $this->{cip} if $this->{ispip} && $this->{cip};
 
-    skipCheck($this,'sb','ro','co','nb','nbw','wl','np',sub{$ip =~ /$IPprivate/o;}) && return 1;
-
+    skipCheck($this,'sb','ro','co','nb','nbw','wl',sub{$ip =~ /$IPprivate/o;}) && return 1;
+    return 1 if $this->{noprocessing} & 1;
+    
     $this->{messagereason} = '';
     my	$ipnet = &ipNetwork($ip, 1);
     $ipnet =~ s/\.0+$//o;
@@ -29313,7 +29347,8 @@ sub MsgIDOK_Run {
     my $ip = $this->{ip};
     $ip = $this->{cip} if $this->{ispip} && $this->{cip};
     mlog($fh,"Message-ID found: $this->{msgid}") if $this->{msgid} && $ValidateSenderLog >= 2;
-    skipCheck($this,'co','ib','nd','sb','ro','wl','np','rw','ispcip') && return 1;
+    skipCheck($this,'co','ib','nd','sb','ro','wl','rw','ispcip') && return 1;
+    return 1 if $this->{noprocessing} & 1;
     return 1 if $this->{ip}=~/$IPprivate/o;
     return 1 if matchIP( $ip, 'noMsgID', $fh ,0);
 
@@ -29392,7 +29427,8 @@ sub RWLok_Run {
     return 1 unless $ip;
     return 1 if $this->{RWLokDone};
     $this->{RWLokDone} = 1;
-    skipCheck($this,'sb','ro','wl','np','rw','co','ispcip') && return 1;
+    skipCheck($this,'sb','ro','wl','rw','co','ispcip') && return 1;
+    return 1 if $this->{noprocessing} & 1;
     return 1 if $ip=~/$IPprivate/o;
     return 1 if ! $this->{ispip} && matchIP($this->{ip},'noRWL',$fh,0);
     return 1 if $this->{ispip} && $this->{cip} && matchIP($ip,'noRWL',$fh,0);
@@ -30864,7 +30900,8 @@ sub DMARCget_Run {
    return unless $ValidateSPF && $DoDKIM && $DoDMARC;
    my $this = $Con{$fh};
    $fh = 0 if "$fh" =~ /^\d+$/o;
-   skipCheck($this,'aa','ro','np','invalidSenderDomain') && return;
+   skipCheck($this,'aa','ro','invalidSenderDomain') && return;
+   return if $this->{noprocessing} & 1;
    # do not report to reports
    return if $this->{subject3} =~ /$DMARCReportSubjectRe/i;
    my $mfd;
@@ -30919,8 +30956,9 @@ sub DMARCget_Run {
 
    my $trustedforwarder;
    if (! $this->{dmarc}->{policy_evaluated}->{reason} && $this->{dkimheaders} =~ /(?:x-original-)?authentication-results/oi && $trustedAuthForwarders) {
-       while ($this->{header} =~ /(?:^|\n)(?:X-Original-)?Authentication-Results:($HeaderValueRe)/gios) {
-           my $h = $1;
+       while ($this->{header} =~ /($HeaderNameRe):($HeaderValueRe)/gios) {
+           my $h = $2;
+           next if $1 !~ /^(?:X-Original-)?Authentication-Results$/oi;
            headerUnwrap($h);
            my $fwhost;
            $fwhost = $1 if $h =~ /^\s*([^\s;]+)/io;
@@ -30939,8 +30977,9 @@ sub DMARCget_Run {
        while (@fw) {
            push(@match,[shift @fw, shift @fw]);
        }
-       while ($this->{header} =~ /X-Spam-Report:($HeaderValueRe)/gios) {    # SF workaround
-           my $h = lc $1;
+       while ($this->{header} =~ /($HeaderNameRe):($HeaderValueRe)/gios) {    # SF workaround
+           next if lc($1) ne 'x-spam-report';
+           my $h = lc $2;
            my $host = $h;
            $host =~ s/^([^\r\n]+)\r?\n.*/$1/os;
            headerUnwrap($h);
@@ -30973,8 +31012,9 @@ sub DMARCget_Run {
                $this->{dmarc}->{auth_results}->{dkim} = $this->{dkimresult} ;
            }
        }
-       while ($this->{header} =~ /DKIM-Signature:($HeaderValueRe)/gios) {
-           my $h = $1;
+       while ($this->{header} =~ /($HeaderNameRe):($HeaderValueRe)/gios) {
+           next if lc($1) ne 'dkim-signature';
+           my $h = $2;
            headerUnwrap($h);
            push @dkimDom , lc($1) if $h =~ /[; ]+d=([^;]+);/io;
        }
@@ -32162,7 +32202,8 @@ sub DKIMOK_Run {
 sub DKIMgen {
     my $fh = shift;
     return unless $CanUseDKIM;
-    if (($DoARC & 2) && (($Con{$fh}->{arcresult}->{result} && $Con{$fh}->{arcresult}->{trustedhost}) || $Con{$fh}->{spf_result} || $Con{$fh}->{dkimresult} || $Con{$fh}->{dmarcresult})) {
+    $Con{$fh}->{dkimresult} ||= $Con{$fh}->{dkim_arc};
+    if ($genARC && (($Con{$fh}->{arcresult}->{result} && $Con{$fh}->{arcresult}->{trustedhost}) || $Con{$fh}->{spf_result} || $Con{$fh}->{dkimresult} || $Con{$fh}->{dmarcresult})) {
         DKIMgen_Run($fh,'ARC');
         delete $Con{$fh}->{DKIMadded};
     }
@@ -32193,7 +32234,6 @@ sub DKIMgen_Run {
 
     if ($arc ne 'ARC' || $this->{relayok}) {    # use the local sender to detect the domain for DKIM and Domainkey Signatures
         while ($this->{header} =~ /($HeaderNameRe):($HeaderValueRe)/igos) {
-
             next if lc($1) ne 'from' && lc($1) ne 'sender';
             my $s = $2;
             &headerUnwrap($s);
@@ -32661,6 +32701,7 @@ sub FromStrictOK {
 sub FromStrictOK_Run {
     my $fh = shift;
     my $this = $Con{$fh};
+    $fh = 0 if $fh =~ /^\d+$/o;
     d('FromStrictOK');
 
     return 1 if $this->{FromStrictOK};
@@ -32676,20 +32717,57 @@ sub FromStrictOK_Run {
 
     my $tlit = tlit($DoNoFrom);
 
-    if ( $this->{header} =~ /(?:^|\n)from:($HeaderValueRe)/ios ) {
-        my $val = $1;
-        headerUnwrap($val);
-        return 1 if $val =~ /$EmailAdrRe\@$EmailDomainRe/oi;
-        $this->{messagereason} = 'missing address in \'From:\' header tag ( DoNoFrom )';
-    } else {
-        $this->{messagereason} = 'missing \'From:\' header tag ( DoNoFrom )';
-    }
+    my %count;
+    my %fail;
     $this->{prepend} = '[FromMissing]';
-    mlog( $fh, "$tlit ($this->{messagereason})" ) if $DoNoFrom >= 2;
-    return 1 if $DoNoFrom == 2;
-    pbAdd( $fh, $this->{ip}, 'nofromValencePB', 'From-missing' );
-    return 1 if $DoNoFrom == 3;
-    return 0;
+    for my $tag (qw(from sender)) {
+        pos($this->{header}) = 0;
+        while ( $this->{header} =~ /($HeaderNameRe):($HeaderValueRe)/ig) {
+            next if lc($1) ne $tag;
+            my $val = $2;
+            headerUnwrap($val);
+            $count{$tag}++;
+            $fail{$tag}++ if $val !~ /$EmailAdrRe\@$EmailDomainRe/oi;
+        }
+    }
+    my $error = 0;
+    if (! keys(%count)) {
+        $this->{messagereason} = 'missing \'From:\' and \'Sender:\' header tag ( DoNoFrom )';
+        mlog( $fh, "$tlit $this->{messagereason}" );
+        $error = 1;
+    } else {
+        if ($count{from} > 1) {
+            $this->{messagereason} = "multiple ($count{from}) 'From:' header tags found ( DoNoFrom )";
+            $error += ($count{from} - 1);
+            mlog( $fh, "$tlit $this->{messagereason}" );
+        }
+        if ($count{sender} > 1) {
+            $this->{messagereason} = "multiple ($count{sender}) 'Sender:' header tags found ( DoNoFrom )";
+            $error += ($count{sender} - 1);
+            mlog( $fh, "$tlit $this->{messagereason}" );
+        }
+        if ($fail{from}) {
+            $this->{messagereason} = "missing address in ($fail{from}) 'From:' header tag(s) ( DoNoFrom )";
+            $error += $fail{from};
+            mlog( $fh, "$tlit $this->{messagereason}" );
+        } elsif ($fail{sender}) {
+            $this->{messagereason} = "missing address in ($fail{sender}) 'Sender:' header tag(s) ( DoNoFrom )";
+            $error += $fail{sender};
+            mlog( $fh, "$tlit $this->{messagereason}" );
+        }
+    }
+    if ($error && $DoNoFrom >= 2) {
+        $this->{frommissingerror} = $error unless $fh;
+        for (1...$error) {
+            pbAdd( $fh, $this->{ip}, 'nofromValencePB', 'From-missing' ) if $fh && $DoNoFrom == 3;
+        }
+    }
+    $this->{prepend} = '';
+    return 1;
+#    return 1 unless $error;
+#    return 1 if $DoNoFrom == 2;
+#    return 1 if $DoNoFrom == 3;
+#    return 0;
 }
 
 sub IPinHeloOK {
@@ -32954,8 +33032,9 @@ sub LocalSenderOK_Run {
     my $tlit;
     return $this->{localSenderOK} if $this->{localsenderdone};
     $this->{localsenderdone} = $this->{localSenderOK} = 1;
-    skipCheck($this,'sb','np','ro','ispip','aa') && return 1;
+    skipCheck($this,'sb','ro','ispip','aa') && return 1;
 
+    return 1 if $this->{noprocessing} & 1;
     return 1 if ! localmail( $this->{mailfrom} );
     
     #enforce valid local mailfrom
@@ -33066,7 +33145,8 @@ sub subjectFrequencyOK_Run {
     d('subjectFrequency');
 
     return 1 unless $this->{subject3};
-    skipCheck($this,'ro','wl','np','co','nbip','ispip') && return 1;
+    skipCheck($this,'ro','wl','co','nbip','ispip') && return 1;
+    return 1 if $this->{noprocessing} & 1;
     my $mf = &batv_remove_tag(0,$this->{mailfrom},'');
     my $ip = $this->{ip};
     $ip = $this->{cip} if $this->{ispip} && $this->{cip};
@@ -33147,7 +33227,8 @@ sub DomainIPOK_Run {
     } else {
         return 1;
     }
-    if (   ! skipCheck($this,'wl','np','co','aa','nb','nd','spfok')
+    if (   ! skipCheck($this,'wl','co','aa','nb','nd','spfok')
+        && ! ($this->{noprocessing} & 1)
         && (!$maxSMTPdomainIPWL || ($maxSMTPdomainIPWL && $mfd !~ /$IPDWLDRE/))
         && ! matchIP( $myip, 'noPB',            0, 1 )
         && ! matchIP( $myip, 'noProcessingIPs', $fh, 1 )
@@ -33209,8 +33290,9 @@ sub FrequencyIPOK_Run {
     my $fh = shift;
     d('FrequencyIPOK');
     my $this = $Con{$fh};
-    skipCheck($this,'wl','np','co') && return 1;
-
+    skipCheck($this,'wl','co') && return 1;
+    return 1 if $this->{noprocessing} & 1;
+    
     my $ConIp550 = $this->{ip};
     if ($this->{ispip} && $this->{cip}) {
         $ConIp550 = $this->{cip};
@@ -34119,7 +34201,9 @@ sub BombWeight_Run {
             my $head;
             $head = $1 if $text[$_] =~ /^($HeaderRe+)/ois;
             if ($head && $head =~ s/(^|\n)$bombSkipHeaderTagReRE:$HeaderValueRe/$1/gis) {
-                $text[$_] =~ s/^($HeaderRe+)/$head/ois;
+                my $f = $_;
+                while ($head =~ s/(^|\n)$bombSkipHeaderTagReRE:$HeaderValueRe/$1/gis) {1;}
+                $text[$f] =~ s/^($HeaderRe+)/$head/ois;
                 $found = 1;
             }
         }
@@ -42588,7 +42672,7 @@ sub HMMOK_Run {
           alarm(0);
         };
     } else {
-        eval{$bd = $$msg;$ok = 1;};
+        eval{$bd = $$msg;$ok = 1;};  # configAnakyze calls 'clean' its self
         $msg = \'';
     }
     alarm(0);
@@ -42599,6 +42683,7 @@ sub HMMOK_Run {
         } else {
             mlog( $fh, "HMMOK: failed: $@", 1 );
         }
+        $@ = undef;
     }
     unless ($ok) {
         mlog($fh,"info: HMM-Process-Timeout ($BayesMaxProcessTime s) is reached - HMM Check will only be done on mail header") if ($BayesianLog && time-$stime > $BayesMaxProcessTime);
@@ -44164,14 +44249,14 @@ sub clean {
         s/(?:([^\x7B]+)\x7B.+?;(?:\s*\x7D\s*)+)+/exttag($1)/goe;
 
         s/["']\s*\/?s*>|target\s*=\s*['"]?_blank['"]?|<\s*\/|:\/\/ //go;
-        s/[\s\b\+\-\p{Currency_Symbol}][\d.,]{2,}/ randnumber /go;
+#        s/[\s\b\+\-\p{Currency_Symbol}][\d.,]{2,}/ randnumber /go;
     } # end if of HTML parsing
 
     $bodyhtml = &decHTMLent($_) if $_;
     if ($bodyplain) {
         $bodyplain =~ s/((?:ht|f)tps?\S*)/ href $1 /isgo;
         $bodyplain =~ s/(\S+\@\S+\.\w{2,5})\b/ href $1 /go;
-        $bodyplain =~ s/[\s\b\+\-\p{Currency_Symbol}][\d.,]{2,}/ randnumber /go;
+#        $bodyplain =~ s/[\s\b\+\-\p{Currency_Symbol}][\d.,]{2,}/ randnumber /go;
     }
     if ($CanUseASSP_WordStem) {
         my (%l,$retplain,$rethtml);
@@ -44210,7 +44295,7 @@ sub extract_html_text {
     s/(<\s*a[^>]*>[^<]*<\s*img)/ linkedimage $1/giso;
     s/(<\s*a\s[^>]*>)(.*?)(<\s*\/a[^>]*>)/$1 atxt $2$3/igso;
     s/(\S+\@\S+\.\w{2,5})\b/ href $1 /go;
-    s/[\s\b\+\-\p{Currency_Symbol}][\d.,]{2,}/ randnumber /go;
+#    s/[\s\b\+\-\p{Currency_Symbol}][\d.,]{2,}/ randnumber /go;
     s/<[^>]*href\s*=\s*(?:(\S+?)>|(\S+)\s[^>]*>)/ href $1$2 /isgo;
     s/ href "([^"]*)" / href $1 /go;
     s/ href '([^']*)' / href $1 /go;
@@ -50995,8 +51080,9 @@ sub ConfigAnalyze {
         my @recHeader;
         if ($header) {
             my $stop;
-            while ( $header =~ /Received:($HeaderValueRe)/giso ) {
-                my $val = $1;
+            while ( $header =~ /($HeaderNameRe):($HeaderValueRe)/giso ) {
+                next if lc($1) ne 'received';
+                my $val = $2;
                 headerSmartUnwrap($val);
                 push @recHeader, $val;
                 if ( ! $stop && $val =~ /from\s+[^\(]*\(\[($IPRe).{1,5}helo=([^\)]{0,64})\)(?:\s+by\s+($myName))?\s+with/is ) {
@@ -51333,6 +51419,31 @@ sub ConfigAnalyze {
             $fm .= $line;
         }
         %seenLine = ();
+
+        eval {
+        my $tmpfh = time;
+        $Con{$tmpfh} = {};
+        $Con{$tmpfh}->{ip} = $ip;
+        $Con{$tmpfh}->{mailfrom} = $mailfrom;
+        $Con{$tmpfh}->{header} = $completeMail;
+
+        FromStrictOK_Run($tmpfh);
+
+        my $link = linkToConfig('DoNoFrom');
+        my $mode = (! $DoNoFrom) ? 'disabled' : ($DoNoFrom == 2) ? 'monitoring' : 'scoring';
+        if ( $Con{$tmpfh}->{frommissingerror} ) {
+            my $error = $Con{$tmpfh}->{frommissingerror};
+            my $penalty = $error * $nofromValencePB[0];
+            $fm .= "<b><font color='red'>&bull;</font> $link</b>: detected ($error) faults in $mode mode - last reason: $Con{$tmpfh}->{messagereason} - penalty: $error * $nofromValencePB[0] = $penalty<br />\n";
+        } else {
+            $fm .= "<b><font color='green'>&bull;</font> $link</b>: OK - mode is $mode<br />\n";
+        }
+
+        delete $Con{$tmpfh};
+        $tmpfh = '';
+        };
+
+
 
         my $sigok;
         if ($mail =~ /Content-Type:\s*multipart\/signed\s*;|protocol\s*=\s*"?application\/((?:pgp|(?:x-)?pkcs7)-signature|pkcs7-mime)/io) {
@@ -64452,7 +64563,7 @@ sub exportExtreme {
 
         $pbp++;
         &ThreadMaintMain2() if $WorkerNumber == 10000 && $pbp % 1000 == 0;
-        next if $k =~ /\.0$/o;
+        next if $k =~ /\.0$|:0{0,4}$/o;
         next if $reason =~ /GLOBALPB/io;
 
         # skip, IP already exists in extreme file
@@ -71919,6 +72030,7 @@ EOT
 sub tlit {
     my $mode = shift;
 
+    return '[disabled]'   unless $mode;
     return '[monitoring]' if $mode == 2;
     return '[scoring]'    if $mode == 3;
     return '[testmode]'   if $mode == 4;

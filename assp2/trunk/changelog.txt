@@ -1,3 +1,83 @@
+2018-04-17
+fixed in assp 2.6.2 *Fortress* build 18107:
+
+- ASSP_AFC has left open a filehandle, which may cause an "too many open filehandles" exception
+  version 7.49 fixes this problem
+
+- the MIME header parsing in severa features for two equal MIME header tags was incomplete, if the two headers occured directly after each other
+
+- IPv6 addresses were not exported by ExportExtreme
+
+
+added:
+
+'genARC','Generate and Add Authenticated Received Chain (ARC) signatures to all messages'
+ If selected, ASSP will add "http://arc-spec.org" Authenticated Received Chain (ARC) signatures to all messages, if it finds a valid DKIM configuration in DKIMgenConfig for the sending domain.
+ This will also be done for noprocessing mails. If available, the check results for SPF, DKIM and DMARC will be provided in the generated ARC-signature.
+ This requires an installed Mail::DKIM"module in PERL.
+
+'DoARC','Validate Authenticated Received Chain (ARC) Signatures'
+  'If enabled, "http://arc-spec.org" Authenticated Received Chain (ARC) signed Mails are checked for the right signature sequence and contents.
+  ASSP will show the ARC results and will trust the provided Authenticated Results for DKIM, SPF and DMARC if the signing host/domain matches 'trustedAuthForwarders'.
+  This requires an installed Mail::DKIM::Verifier module in PERL.
+
+
+changed:
+
+- the FromStrict and the DomainIP check are moved after the SenderBase check.
+
+
+'DKIMgenConfig','The File with the DKIM and ARC configurations*',
+ The file that contains the DKIM and ARC configuration. A description how to configure DKIM, DomainKey and ARC could be found in the default file dkim/dkimconfig.txt.
+
+'DoNoSpoofing4From','Do NoSpoofing for from:'
+  'Do the NoSpoofing check also for header 'from:', 'sender:', 'reply-to:' and 'errors-to:' addresses.
+
+'DoNoFrom','Check for Existing and Valid From: and Sender: Header Tag and Address',
+  'If enabled, the MIME header is checked for valid From: and Sender: header tags.
+  This header check fails and faults are counted, if both headers (From: and Sender:) are missing - or if any of these headers contains not a valid email address - 
+  or if multiple of the same headers are found.
+  The scoring value nofromValencePB is added for each detected fault.
+
+'DoNoFromWL','Do DoNoFrom for Whitelisted'
+  'Check for existing From: or Sender: header and address for whitelisted emails.
+
+'DoNoFromNP','Do DoNoFrom for NoProcessing'
+  'Check for existing From: or Sender: header and address for noprocessing emails.
+
+'trustedAuthForwarders','X-Original-Authentication-Results and Authenticated Received Chain(ARC) Trusted Forwarder*'
+....
+ If DoARC is enabled and a host match is found for the most recent "http://arc-spec.org" Authenticated-Received-Chain(ARC)-Signature instance (highest instance number),
+ the SPF-check, the DKIM-check and the DMARC-check will fully trust the provided ARC results.
+....
+
+'RunRebuildNow','Run RebuildSpamdb now'
+....
+  An real problem may become disclaimers and privat and corporate signatues. They are always added to outgoing mails, but also to local mails and reports.
+  They can be found in most of the answers to your mails. And for example, they may be added by spammers to there spam mails - trying to fake good mails.
+  Nobody can say, how the occurrence of such a disclaimer will affect the HMM and Bayesian results. It may possible, that these results differs from day to day, or block good mails, or let spam pass.
+  The only way to prevent such results, is to remove the disclaimers, before the rebuildspamdb task builds the spamdb and HMMdb.
+  To tell assp, which are your disclaimers, open the file files/disclaimer.txt using the "disclaimer definition" button below and put the disclaimers in to this file,
+  the same way they are shown in your mail client. If you want to define multiple disclaimers, separate them by a line with a single dot.
+  Lines in this file starting with an "#" are considered a comment, empty lines are ignored. ASSP will build a regular expression to identify and remove the disclaimers.
+  
+  example:
+  
+  # a comment
+  your first disclaimers first line here
+  your first disclaimers second line here
+  .
+  # also a comment
+  your second disclaimers first line here
+  your second disclaimers second line here
+  
+  This file will only be read at the rebuild task start. The resulting regular expression is written to "files/optRE/disclaimer.txt"
+....
+
+
+
+
+
 2018-04-13
 fixed in assp 2.6.2 *Fortress* build 18103:
 
