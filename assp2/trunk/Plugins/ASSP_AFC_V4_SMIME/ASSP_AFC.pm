@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 4.79 2018/04/17 08:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 4.80 2018/04/18 09:30:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -201,7 +201,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.79 2018/04/17 08:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.80 2018/04/18 09:30:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -437,7 +437,7 @@ sub get_config {
  The domain / user part accepts full email addresses , domains and groups - wildcards are supported and must be used for domain definitions.<br />
  The domain / user part is compaired to the envelope sender - the first matching entry (in reverse generic order) will be used. Entries starting with a minus sign, explicit exclude the domain/user/group from SMIME processing.<br /><br />
  certfile - is required and specifys the full path to the certificate to use. The subject of the certificate has to include a valid email address. In normal case, this email address is specified by the cert-subject-tag "emailAddress". The "FROM:" address in the mail header will be replaced by this email address and a "Reply-To:" line with the original sender is added (or replaced) to the mail header.<br />
- If the subject of the certificate specifys the email address in another tag, define this tag (NOT the email address) after "emailaddress=".<br /><br />
+ If the subject of the certificate specifys the email address in another tag, define this tag (NOT the email address) after "emailaddress=". If no email address is specified in the certificate subject but in the Subject Alternative Name (SAN), this email address will be used. In this case no email address has to be defined here, but you can define "emailaddress=SAN".<br /><br />
  keyfile - is required and specifys the full path to the file that contains the privat key<br /><br />
  keypass - the tag is required, the value is optional - defines the password required (or not) for the privat key<br /><br />
  emailaddress - is optional - please read "certfile"<br />
@@ -462,7 +462,7 @@ sub get_config {
  Disposition-Notification-To: &lt;mark.schmitz@your.domain.com&gt;<br />
  Reply-To: &lt;mark.schmitz@your.domain.com&gt;<br />
  References: assp-corp-smime-mark.schmitz@your.domain.com<br /><br />
- The mail client of the recipient will validate the signature against the "From" address - which corresponds to the email address specified in the subject of the certificate -> VALID<br />
+ The mail client of the recipient will validate the signature against the "From" address - which corresponds to the email address specified in the subject or SAN of the certificate -> VALID<br />
  Pressing the "REPLY/ANSWER" button, the mail client will provide "mark.schmitz@your.domain.com" as recipient address (To:) for the answer, using the entry in the "Reply-To:" header.<br />
  Notice, that some bad and/or older mail clients are ignoring the "Reply-To:" header tag - in such case an answered mail will go to "central.office@your.domain.com".<br />
  ASSP will help you a bit to prevent this. In addition to the required mail header changes, assp will add or enhance the "References:" mail header tag with a value of "assp-corp-smime-EMAILADDRESS" , where EMAILADDRESS is the original sender address.<br />
@@ -573,13 +573,14 @@ sub configChangeSMIME {
             $ret .= &main::ConfigShowError(1,"$name: can't find 'keyfile' ".$e{'keyfile'}." in '$entry' - entry is ignored") if $main::WorkerNumber == 0;
             next;
         }
-        my ($fullout, $out, $nbn, $nbt, $nan, $nat, @keyusage);
+        my ($fullout, $out, $nbn, $nbt, $nan, $nat, @keyusage, %altsub);
         # get the subject of the cert and do some additionaly checks
         eval {
             my $bio = Net::SSLeay::BIO_new_file($e{'certfile'}, 'rb');
             my $x509 = Net::SSLeay::PEM_read_bio_X509($bio);
             my $subj_name = Net::SSLeay::X509_get_subject_name($x509);
             $fullout = $out = Net::SSLeay::X509_NAME_print_ex($subj_name)."\n";
+            eval{%altsub = Net::SSLeay::X509_get_subjectAltNames($x509);};
             $nbn = $nbt = Net::SSLeay::P_ASN1_TIME_get_isotime(Net::SSLeay::X509_get_notBefore($x509));
             $nan = $nat = Net::SSLeay::P_ASN1_TIME_get_isotime(Net::SSLeay::X509_get_notAfter($x509));
             $nbn =~ s/(\d{4}\-\d{2}\-\d{2})T(\d{2}\:\d{2}\:\d{2})Z/&main::timeval("$1,$2")/eo;
@@ -604,7 +605,10 @@ sub configChangeSMIME {
             next;
         }
         my %cert = split(/\/|=/o,lc $out);
-        $cert{emailaddress} ||= $cert{$e{emailaddress}};
+        if (uc $e{emailaddress} eq 'SAN' && $altsub{1}) {
+            $cert{emailaddress} = $altsub{1};
+        }
+        $cert{emailaddress} ||= $cert{$e{emailaddress}} || $altsub{1};
         delete $cert{$e{emailaddress}} if $e{emailaddress} ne 'emailaddress' && delete $e{emailaddress};
         ($cert{emailaddress}) = $cert{emailaddress} =~ /($main::EmailAdrRe\@$main::EmailDomainRe)/o;
         if ( ! $cert{emailaddress} ) {
