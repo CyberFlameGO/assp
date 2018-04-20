@@ -1,3 +1,21 @@
+2018-04-20
+fixed in assp 2.6.2 *Fortress* build 18110:
+
+- certificates that provides the email address in SAN, were not accepted by ASSP_AFC for SMIME signing
+  ASSP_AFC.pm is updated to version 4.80
+
+changed:
+
+- if ARC signing is enabled, assp will add a ARC-signature to reports and notification
+
+- improved handling of DKIMWLAddresses and DKIMNPAddresses
+
+- improved handling of Authentication Results provided by a trustedAuthForwarders host
+
+- the default DKIM configuration file dkim/dkimconfig.txt is updated to version 1.02
+
+
+
 2018-04-17
 fixed in assp 2.6.2 *Fortress* build 18107:
 

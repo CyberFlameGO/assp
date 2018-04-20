@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18107';        # 17.04.2018 TE
+$build   = '18110';        # 20.04.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -571,7 +571,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'A5EA57B4504F4B8E25E6DDC864B07E005CAA3783'; }
+sub __cs { $codeSignature = '5CB2673E6D329A3D7C2E937FA5A52E3ACB1896BA'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1789,7 +1789,8 @@ sub defConfigArray {
   For example: 145.145.145.145|145.146. ',undef,undef,'msg010110','msg010111'],
 
 ['genDKIM','Generate and Add DKIM or DomainKey <a href="http://en.wikipedia.org/wiki/DomainKeys_Identified_Mail" target=wiki><img height=12 width=12 src="' . $wikiinfo . '" alt="Network Flow" /></a> signatures to relayed messages',0,\&checkbox,'','(.*)',undef,'If selected, ASSP will add DKIM signatures to relayed messages, if it finds a valid DKIM configuration in DKIMgenConfig for the sending domain. This will also be done for noprocessing mails. This requires an installed <a href="http://search.cpan.org/search?query=Mail::DKIM" rel="external">Mail::DKIM</a> module in PERL.',undef,undef,'msg001210','msg001211'],
-['genARC','Generate and Add Authenticated Received Chain (ARC) signatures to all messages',0,\&checkbox,'','(.*)',undef,'If selected, ASSP will add <a href="http://arc-spec.org" rel="external">Authenticated Received Chain (ARC)</a> signatures to all messages, if it finds a valid DKIM configuration in DKIMgenConfig for the sending domain. This will also be done for noprocessing mails. If available, the check results for SPF, DKIM and DMARC will be provided in the generated ARC-signature. This requires an installed <a href="http://search.cpan.org/search?query=Mail::DKIM" rel="external">Mail::DKIM</a> module in PERL.',undef,undef,'msg010680','msg010681'],
+['genARC','Generate and Add Authenticated Received Chain (ARC) signatures to all messages',0,\&checkbox,'','(.*)',undef,
+'If selected, ASSP will add <a href="http://arc-spec.org" rel="external">Authenticated Received Chain (ARC)</a> signatures to all messages provided it finds a valid DKIM configuration in DKIMgenConfig for the domain of ARCSigningHost (or myName if ARCsSigningHost is blank). This will also be done for noprocessing mails. If available, the check results for SPF, DKIM and DMARC will be provided in the generated ARC-signature. This requires an installed <a href="http://search.cpan.org/search?query=Mail::DKIM" rel="external">Mail::DKIM</a> module in PERL.',undef,undef,'msg010680','msg010681'],
 ['ARCSigningHost','Host (FQHN) Name to be used for ARC Signing',40,\&textinput,'','(.*)',undef,'The full qualified host name to be used for <a href="http://arc-spec.org" rel="external">Authenticated Received Chain (ARC)</a> signing. If not defined, myName is used. The signing domain is parsed from the senders address (header From: or Sender:) in outgoing mails - and this value (or myName) in incoming mails.',undef,undef,'msg010690','msg010691'],
 ['DKIMgenConfig','The File with the DKIM and ARC configurations*',40,\&textinput,'file:dkim/dkimconfig.txt','(file:\S*)','configUpdateDKIMConf','The file that contains the DKIM and ARC configuration. A description how to configure DKIM, DomainKey and ARC could be found in the default file dkim/dkimconfig.txt.<br />
 <hr /><div class="cfgnotes">Notes On Relaying</div><input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/relaying.txt\',3);" />',undef,undef,'msg001220','msg001221'],
@@ -2534,8 +2535,8 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   For example: static or more complex (?=^.{4,253}$)(?:^(?:(?!-)[a-zA-Z0-9\-]{0,62}[a-zA-Z0-9]\.)+[a-zA-Z]{2,63}\.?$) or file:files/validptr.txt',undef,undef,'msg001850','msg001851'],
 ['PTRCacheInterval','Reversed Lookup Cache Refresh Interval',4,\&textinput,7,'(\d+\.?\d*|)','configUpdatePTRCR',
   'IP\'s in cache will be removed after this interval in days. 0 will disable the cache. <input type="button" value=" Show PTR Cache" onclick="javascript:popFileEditor(\''.$newDB.'pb/pbdb.ptr.db\',5);" />',undef,undef,'msg001860','msg001861'],
-['DoDomainCheck','Validate MX or A Record','0:disabled|1:block|2:monitor|3:score',\&listbox,3,'(.*)',undef,
-  'If activated, the sender address and each address found in the following header lines (ReturnReceipt:, Return-Receipt-To:, Disposition-Notification-To:, Return-Path:, Reply-To:, Sender:, Errors-To:, List-...:) is checked for a valid MX or A record. Scoring is done for non existing MX ( mxValencePB ) record and non existing A record ( mxaValencePB ) - a messages fails (block), if both records are not found. If only an IP-address is found for a MX, the A record check fails, if the IP has no valid PTR and DoInvalidPTR is enabled.',undef,undef,'msg001870','msg001871'],
+['DoDomainCheck','Validate MX and A Record','0:disabled|1:block|2:monitor|3:score',\&listbox,3,'(.*)',undef,
+  'If activated, the envelope sender address and each address found in the following header lines (ReturnReceipt:, Return-Receipt-To:, Disposition-Notification-To:, Return-Path:, Reply-To:, Sender:, Errors-To:, List-...:) is checked for a valid MX record and an A record for the MX. Scoring is done for non existing MX ( mxValencePB ) record and non existing A record for MX ( mxaValencePB ) - a messages fails (block), if both records are not found. If only an IP-address is found for a MX and this IP has no valid PTR and DoInvalidPTR is enabled, the A record check fails.',undef,undef,'msg001870','msg001871'],
 ['MXACacheInterval','Validate Domain MX Cache Refresh Interval',4,\&textinput,7,'(\d+\.?\d*|)','configUpdateMXACR',
   'IP\'s in cache will be removed after this interval in days. 0 will disable the cache.<input type="button" value=" Show MX Cache" onclick="javascript:popFileEditor(\''.$newDB.'pb/pbdb.mxa.db\',5);" />',undef,undef,'msg001880','msg001881'],
 ['DoNoFrom','Check for Existing and Valid From: and Sender: Header Tag and Address','0:disabled|2:monitor|3:score',\&listbox,3,'(.*)',undef,
@@ -2855,7 +2856,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['meValencePB','Max Errors Exceeded, default=10 +',10,\&textinput,10,$ValencePBRE,'ConfigChangeValencePB', 'Message/IP scoring',undef,undef,'msg002900','msg002901'],
 ['msValencePB','Message Scoring Limit Exceeded, default=10 +',10,\&textinput,10,$ValencePBRE,'ConfigChangeValencePB', 'IP scoring',undef,undef,'msg002910','msg002911'],
 ['mxValencePB','Missing MX, default=10 +',10,\&textinput,10,$ValencePBRE,'ConfigChangeValencePB', 'Message/IP scoring',undef,undef,'msg002920','msg002921'],
-['mxaValencePB','Missing MX &amp; A Record, default=15 +',10,\&textinput,15,$ValencePBRE,'ConfigChangeValencePB', 'Message/IP scoring',undef,undef,'msg002930','msg002931'],
+['mxaValencePB','Missing A Record for MX, default=15 +',10,\&textinput,15,$ValencePBRE,'ConfigChangeValencePB', 'Message/IP scoring',undef,undef,'msg002930','msg002931'],
 ['nofromValencePB','No From Score, default=50 +',10,\&textinput,50,$ValencePBRE,'ConfigChangeValencePB','For Message/IP scoring in DoNoFrom.',undef,undef,'msg002940','msg002941'],
 ['pbeValencePB','Extreme Bad IP History, TotalScore larger than PenaltyExtreme, default=25',3,\&textinput,25,'(\d+)','ConfigChangeValencePB', 'Message Scoring',undef,undef,'msg002950','msg002951'],
 ['pbValencePB','Bad IP History, TotalScore larger than PenaltyLimit, default=15',3,\&textinput,15,'(\d+)','ConfigChangeValencePB', 'Message Scoring',undef,undef,'msg002960','msg002961'],
@@ -4784,7 +4785,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
 ['RunRebuildNow','Run RebuildSpamdb now',0,\&checkbox,'','(.*)','ConfigChangeRunTaskNow',
   'If selected, RebuildSpamdb will be started immediately.<br />' .
   "<input type=button value=\"Apply Changes and Run Rebuild SpamDB Now (if checked)\" onclick=\"document.forms['ASSPconfig'].theButtonX.value='Apply Changes';document.forms['ASSPconfig'].submit();WaitDiv();return false;\" />&nbsp;<input type=button value=\"Refresh Browser\" onclick=\"document.forms['ASSPconfig'].theButtonRefresh.value='Apply Changes';document.forms['ASSPconfig'].submit();WaitDiv();return false;\" />" .
-  '<hr /><div class="cfgnotes">An real problem may become disclaimers and privat and corporate signatues. They are always added to outgoing mails, but also to local mails and reports. They can be found in most of the answers to your mails. And for example, they may be added by spammers to there spam mails - trying to fake good mails. Nobody can say, how the occurrence of such a disclaimer will affect the HMM and Bayesian results. It may possible, that these results differs from day to day, or block good mails, or let spam pass.
+  '<hr /><div class="cfgnotes">An real problem may become disclaimers and private and corporate signatures. They are always added to outgoing mails, but also to local mails and reports. They can be found in most of the answers to your mails. And for example, they may be added by spammers to there spam mails - trying to fake good mails. Nobody can say, how the occurrence of such a disclaimer will affect the HMM and Bayesian results. It may possible, that these results differs from day to day, or block good mails, or let spam pass.
   The only way to prevent such results, is to remove the disclaimers, before the rebuildspamdb task builds the spamdb and HMMdb.<br />
   To tell assp, which are your disclaimers, open the file files/disclaimer.txt using the "disclaimer definition" button below and put the disclaimers in to this file, the same way they are shown in your mail client. If you want to define multiple disclaimers, separate them by a line with a single dot. Lines in this file starting with an "#" are considered a comment, empty lines are ignored. ASSP will build a regular expression to identify and remove the disclaimers.<br /><br />
   <b>example:<br /><br />
@@ -7630,6 +7631,7 @@ our @badattachRE;        #t
 our @batv_secrets;
 our @delayGroup:shared;
 our @definedNameServers:shared;
+our @localDMARCDomains:shared;
 our @logCount:shared; # is locked
 our @logFreq:shared;
 our @lsn;
@@ -7645,6 +7647,7 @@ our @lsnRelayI:shared;
 our @msgid_secrets;
 our @mlogS;
 our @nameservers:shared ;
+our @nolocalDMARCDomains:shared;
 our @pbdbGroup:shared;
 our @rbllist;
 our @redlistGroup:shared;
@@ -14342,7 +14345,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.79;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.80;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.05;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -23185,6 +23188,20 @@ sub serverIsWhichHost {
   return 0;
 }
 
+sub orgAuthRes {
+    my $text;
+    if ($ValidateSPF || $DoDKIM || $DoDMARC) {
+        $text .= 'X-Original-Authentication-Results: '.lc($ARCSigningHost || $myName).'; ';
+        $text .= 'dkim=pass; ' if $DoDKIM;
+        $text .= 'spf=pass; ' if $ValidateSPF;
+        $text .= 'dmarc=pass; ' if $DoDMARC;
+        chop($text);
+        chop($text);
+        $text .= "\r\n";
+    }
+    return $text;
+}
+
 sub sendNotification {
     my ($from,$to,$sub,$body,$file) = @_;
     my $text;
@@ -23203,8 +23220,9 @@ sub sendNotification {
     my $date=$UseLocalTime ? localtime() : gmtime();
     my $tz=$UseLocalTime ? tzStr() : '+0000';
     $date=~s/(\w+) +(\w+) +(\d+) +(\S+) +(\d+)/$1, $3 $2 $5 $4/o;
-    $text = "Date: $date $tz\r\n";
-    $text .= "X-Assp-Notification: YES\r\n";
+    $text = "X-Assp-Notification: YES\r\n";
+    $text .= orgAuthRes();
+    $text .= "Date: $date $tz\r\n";
     $from =~ s/^\s+//o;
     $from =~ s/\s+$//o;
     if ($from !~ /\</o) {
@@ -23564,7 +23582,25 @@ sub resend_mail {
           &MSGIDsigRemove($fh);
           $message = $Con{$fh}->{header};
       }
-      
+
+      if ($islocal && $genARC) {
+          $Con{$fh} = {};
+          $Con{$fh}->{mailfrom} = $mailfrom;
+          $Con{$fh}->{rcpt} = $to;
+          $Con{$fh}->{header} = $message;
+          while ($message =~ /($HeaderNameRe):($HeaderValueRe)/igo) {
+              my ($hn,$hv) = (lc($1),lc($2));
+              last if $hn !~ /^(?:x-assp-|x-original-authentication-results)/o;
+              headerSmartUnwrap($hv);
+              $Con{$fh}->{spf_result} ||= $1 if $hv =~ /(?:[; ]SPF=|\(SPF )([a-z]+)/io;
+              $Con{$fh}->{dkimresult} ||= $1 if $hv =~ /(?:[; ]DKIM=|\(DKIM )([a-z]+)/io;
+              $Con{$fh}->{dmarcresult} ||= $1 if $hv =~ /(?:[; ]DMARC=|\(DMARC )([a-z]+)/io;
+          }
+          getARC($fh) if $DoARC;
+          DKIMgen($fh);
+          $message = $Con{$fh}->{header};
+      }
+
       delete $Con{$Con{$fh}->{friend}};
       delete $Con{$fh};
       %Con = ();
@@ -24677,7 +24713,7 @@ sub getline {
         } elsif ($this->{userauth}{authmeth} eq 'cram-md5') {  # cram-md5 single step  "USER DIGEST"
             $this->{userauth}{stepcount} = 0;
             my ($user,$cram);
-            ($user,$cram) = split(/\s+/o,base64decode($1)) if $l =~ /([^\r\n]*)\r\n/o;;
+            ($user,$cram) = split(/\s+/o,base64decode($1)) if $l =~ /([^\r\n]*)\r\n/o;
             $this->{userauth}{user} = $user if $user;
             if ($AUTHLogUser) {
                 my $tolog = "info: authentication (CRAM-MD5) realms - user:$this->{userauth}{user}";
@@ -28337,16 +28373,7 @@ sub SPFok_Run {
     $this->{myheader} .= "X-Assp-Received-$received_spf\r\n"
       if $AddSPFHeader && !$this->{spfok};
 
-    if ($this->{myheader} =~ s/X-Original-Authentication-Results:($HeaderValueRe)//ois) {
-        my $val = $1;
-        headerUnwrap($val);
-        $val =~ s/\r|\n//go;
-        $val =~ s/ spf=\S+//o;
-        $val .= " spf=$spf_result";
-        $this->{myheader} .= "X-Original-Authentication-Results:$val\r\n";
-    } else {
-        $this->{myheader} .= "X-Original-Authentication-Results: $myName; spf=$spf_result\r\n";
-    }
+    makeOrgAuthHeader(\$this->{myheader}, 'spf', $spf_result);
 
     if ($spf_fail && $strict) {
         pbAdd( $fh, $ip, 'spfValencePB', "SPF$spf_result-strict" ) if $fh;
@@ -30372,7 +30399,7 @@ EOT
                     $this->{obfuscateduri} = $obfuscated = 1 unless $obfuscated;
                     mlog($fh,"info: URIBL - obfuscated URI found $uri - org URI: $orig_uri") if ($URIBLLog >=2);
                 }
-                push @URIIPs , getRRA($uri,'') if $URIBLIPRE !~ /$neverMatchRE/o;;
+                push @URIIPs , getRRA($uri,'') if $URIBLIPRE !~ /$neverMatchRE/o;
                 if ( $uri =~ /([^\.]+$URIBLCCTLDSRE)$/ ) {
                     $uri = $1;
                     next if $SKIPURIRE->($uri);
@@ -30657,33 +30684,54 @@ sub DKIMpreCheckOK_Run {
    my $this = $Con{$fh};
    return 1 if $this->{DKIMpreCheckOK};
    $this->{DKIMpreCheckOK} = 1;
-   $this->{dkimresult} = "pass";
    my $tlit;
    my $ip = $this->{ip};
    $ip = $this->{cip} if $this->{ispip} && $this->{cip};
-   skipCheck($this,'aa','wl','ro','ib','invalidSenderDomain') && return 1;
-   return 1 if $this->{noprocessing} & 1;
-   return 1 if (&matchSL($this->{mailfrom},'noDKIMAddresses'));
-   return 1 if (&matchSL([split(/ /o,$this->{rcpt})],'noDKIMAddresses'));
-   return 1 if &matchIP($ip,'noDKIMIP',$fh,0);
-   $tlit = &tlit($DoDKIM);
    $this->{prepend}='';
    my $mf = lc $this->{mailfrom};
    my $domain; $domain = $1 if $mf=~/\@([^@]*)/o;
-   $this->{dkimresult} = "none";
+   my $orgDKIMResult = $this->{dkimresult};
+   $this->{dkimresult} ||= "none";
    return 1 if (! $domain);
+   return 1 if $this->{invalidSenderDomain};
+   $this->{dkimresult} = $orgDKIMResult;
+   $this->{dkimresult} ||= 'pass' if $this->{isDKIM};
+   my $canWLAddr = $DKIMWLAddressesRE !~ /$neverMatchRE/o;
+   my $canNPAddr = $DKIMNPAddressesRE !~ /$neverMatchRE/o;
+
+#   if (skipCheck($this,'aa','wl','ro','ib') || ($this->{noprocessing} & 1)) {}
+   if (   skipCheck($this,'aa','ro','ib','co')
+       || (   !(($this->{noprocessing} & 1) && ! $this->{whitelisted} && $canWLAddr && $this->{isDKIM})
+           && !($this->{whitelisted} && ! ($this->{noprocessing} & 1) && $canNPAddr && $this->{isDKIM})
+           && !(!$this->{noprocessing} && !$this->{whitelisted}))
+      )
+   {
+       mlog($fh,"info: DKIM-signature precheck is skipped - DKIM result is '$this->{dkimresult}'") if $ValidateSenderLog;
+       if ($this->{isDKIM} && $this->{dkimresult} eq 'pass') {
+           pbAdd($fh,$this->{ip},'dkimOkValencePB','DKIMpass', 1);
+           $this->{dkimverified} = $orgDKIMResult ? 'verified-OK by trusted host' : 'not verified';
+       }
+       makeOrgAuthHeader(\$this->{myheader}, 'dkim', $this->{dkimresult}) if $this->{dkimresult};
+       return 1;
+   }
+   $this->{dkimresult} = $orgDKIMResult;
+   return 1 if (&matchSL($this->{mailfrom},'noDKIMAddresses'));
+   return 1 if (&matchSL([split(/ /o,$this->{rcpt})],'noDKIMAddresses'));
+   return 1 if &matchIP($ip,'noDKIMIP',$fh,0);
+
+   $tlit = &tlit($DoDKIM);
 
    my $err = "554 5.7.7 DKIM domain mismatch for $this->{mailfrom}";
    $err = $SenderInvalidError if ($SenderInvalidError);
    my $testmode = $allTestMode ? $allTestMode : $dkimTestMode;
    my $foundCache = DKIMCacheFind($domain);
    
-   delete $this->{dkimresult};
    if ($foundCache) {
-       if ($this->{isDKIM}) {           # cache must be first in this line for time update
+       if ($this->{isDKIM} || $this->{dkimresult}) {           # cache must be first in this line for time update
            return DKIMOK($fh,\$this->{org_header},!defined${chr(ord(",")<< 1)}) ? 1 : 0;
        } else {
            $this->{dkimresult} = 'fail';
+           makeOrgAuthHeader(\$this->{myheader}, 'dkim', $this->{dkimresult});
            $this->{prepend}="[DKIM]";
            $this->{messagereason}="DKIM domain mismatch - $domain found in DKIMCache, but no DKIM-Signature found in mail header";
            mlog($fh,"$tlit $this->{messagereason} (Cache)") if $ValidateSenderLog;
@@ -30696,7 +30744,7 @@ sub DKIMpreCheckOK_Run {
            thisIsSpam($fh,$this->{messagereason},$DKIMLog,$err,$testmode,0,1);
            return 0;
        }
-   } elsif ($this->{isDKIM}) {
+   } elsif ($this->{isDKIM} || $this->{dkimresult}) {
        return DKIMOK($fh,\$this->{org_header},!defined${chr(ord(",")<< 1)}) ? 1 : 0;
    }
 
@@ -30776,6 +30824,7 @@ sub DKIMpreCheckOK_Run {
    }
    if ($dkimdomain && ! $this->{isDKIM}) {
        $this->{dkimresult} = 'fail';
+       makeOrgAuthHeader(\$this->{myheader}, 'dkim', $this->{dkimresult});
        $this->{prepend}="[DKIM]";
        $this->{messagereason}="DKIM domain mismatch - DKIM config found in DNS for $domain, but no DKIM-Signature found in mail header";
        mlog($fh,"$tlit $this->{messagereason}") if $ValidateSenderLog;
@@ -30801,6 +30850,7 @@ sub DMARCok {
    $this->{DMARCokDone} = 1;
    if ($this->{arcresult}->{trustedhost} && ($this->{dmarcresult} = $this->{DMARC_arc})) {
        mlog($fh,"info: using provided DMARC-ARC results: $this->{DMARC_arc}") if $SPFLog > 1;
+       makeOrgAuthHeader(\$this->{myheader}, 'dmarc', $this->{DMARC_arc});
        return 1 if $this->{DMARC_arc} eq 'pass';
        return 1 if $this->{DMARC_arc} eq 'none';
        return 0;
@@ -30808,6 +30858,7 @@ sub DMARCok {
    $this->{dmarcresult} = 'none';
    return 1 unless $this->{dmarc}->{v};
    $this->{dmarcresult} = 'pass';
+   makeOrgAuthHeader(\$this->{myheader}, 'dmarc', $this->{dmarcresult});
    skipCheck($this,'aa','ro','co') && return 1;
    my $failed;
    $failed = $this->{dmarc}->{auth_results} if $this->{dmarc}->{auth_results};
@@ -30863,6 +30914,7 @@ sub DMARCok {
    return 1 if $this->{dmarc}->{domain} ne $this->{dmarc}->{dom} && $this->{dmarc}->{sp} eq 'none';
 
    $this->{dmarcresult} = 'fail';
+   makeOrgAuthHeader(\$this->{myheader}, 'dmarc', $this->{dmarcresult});
    
    my $validate = $DoDKIM;
    $validate = 2 if $ValidateSPF == 2;
@@ -30886,6 +30938,35 @@ sub DMARCok {
    $this->{prepend} = '[DMARC]';
    thisIsSpam( $fh, "DMARC failed", $SPFFailLog, $reply, $this->{testmode}, $slok, 0 );
    return 0;
+}
+
+sub DMARCtry {
+    my $domain = shift;
+    my @domains = split(/\./o,$domain);
+    my %dmarc;
+    my $topdom;
+    mlog(0,"info: try DMARC") if $SPFLog >= 2;
+    my @lookupdomain = map {$topdom = $_ .($topdom?'.':'').$topdom;$topdom;} reverse @domains;
+
+    shift @lookupdomain; # remove the TLD
+    my $dmarc;
+    do {
+        $topdom = pop @lookupdomain;
+        my $qdmarc = '_dmarc.'. $topdom;
+        mlog(0,"info: looking for DMARC in $qdmarc") if $SPFLog >= 2;
+        my $dns = lc( getRRData($qdmarc,(defined *{'yield'}?'TXT':'A')) );
+        $dns =~ s/[ '";\\]+$//o;
+        mlog(0,"info: got RR $qdmarc - $dns") if $SPFLog >= 2;
+        $dmarc = {map {$_ =~ s/[ '"\\]//gio;$_} map{split(/=/o,$_,2)} split(/[; ]+/o,$dns)};   ## no critic
+    } while (@lookupdomain && $dmarc->{v} ne 'dmarc1');
+
+    if ($SPFLog >= 2) {
+         mlog(0,"info: domain $topdom provides a DMARC record") if $dmarc->{v} eq 'dmarc1';
+         foreach (sort keys %$dmarc) {
+             mlog(0,"info: got DMARC $_ = $dmarc->{$_}");
+         }
+    }
+    return $topdom, $dmarc;
 }
 
 sub DMARCget {
@@ -30921,29 +31002,9 @@ sub DMARCget_Run {
    return if ($address ne $this->{mailfrom} && matchSL($address,'noDMARCDomain'));
    my $ip = $this->{ip};
    $ip = $this->{cip} if $this->{ispip} && $this->{cip};
-   my @domains = split(/\./o,$domain);
-   my $topdom;
-   mlog(0,"info: try DMARC") if $SPFLog >= 2;
-   my @lookupdomain = map {$topdom = $_ .($topdom?'.':'').$topdom;$topdom;} reverse @domains;
+   my ($topdom, $dmarc) = DMARCtry($domain);
 
-   shift @lookupdomain; # remove the TLD
-   my %dmarc;
-   do {
-       $topdom = pop @lookupdomain;
-       my $qdmarc = '_dmarc.'. $topdom;
-       mlog(0,"info: looking for DMARC in $qdmarc") if $SPFLog >= 2;
-       my $dns = lc( getRRData($qdmarc,(defined *{'yield'}?'TXT':'A')) );
-       $dns =~ s/[ '";\\]+$//o;
-       mlog(0,"info: got RR $qdmarc - $dns") if $SPFLog >= 2;
-       %dmarc = {map {$_ =~ s/[ '"\\]//gio;$_} map{split(/=/o,$_,2)} split(/[; ]+/o,$dns)};   ## no critic
-   } while (@lookupdomain && $dmarc{v} ne 'dmarc1');
-
-   if ($SPFLog >= 2) {
-        foreach (sort keys %dmarc) {
-            mlog(0,"info: got DMARC $_ = $dmarc{$_}");
-        }
-   }
-   $this->{dmarc}->{$_} = $dmarc{$_} for (keys %dmarc);
+   $this->{dmarc}->{$_} = $dmarc->{$_} for (keys %$dmarc);
 
    $this->{dmarc}->{pct} ||= 100;
    if (   $this->{dmarc}->{v} ne 'dmarc1'
@@ -32036,17 +32097,34 @@ sub DKIMOK_Run {
   $retval = 2 if ($this->{isDKIM});   # this is DKIM -> do not modify
   return $retval if (! $DoStrictDKIM && $this->{dkimverified});
   return $retval if ($this->{dkimresult} && $this->{dkimresult} ne 'pass' && ! $this->{dkim_arc});
-  $this->{dkimresult} = 'none';
-  $this->{dkimverified} = "not verified";
+  my $orgDKIMResult = $this->{dkimresult};
+  $this->{dkimresult} ||= 'none';
+  $this->{dkimverified} ||= 'not verified';
   return $retval if !$CanUseDKIM;
   return $retval if $this->{invalidSenderDomain};
-  $this->{dkimresult} = 'pass' if $this->{isDKIM};
-  if (skipCheck($this,'wl','aa','ib','ro','rw','co')) {
-      mlog($fh,"info: DKIM-signature check is skipped") if $ValidateSenderLog;
+  $this->{dkimresult} = $orgDKIMResult;
+  $this->{dkimresult} ||= 'pass' if $this->{isDKIM};
+  my $canWLAddr = $DKIMWLAddressesRE !~ /$neverMatchRE/o;
+  my $canNPAddr = $DKIMNPAddressesRE !~ /$neverMatchRE/o;
+
+#  if (skipCheck($this,'wl','aa','ib','ro','rw','co') || ($this->{noprocessing} & 1) || ($doBody && $this->{noprocessing} & 2)) {}
+  if (   skipCheck($this,'aa','ib','ro','co')
+      || ($doBody && $this->{noprocessing} & 2)
+      || (   !(($this->{noprocessing} & 1) && ! $this->{whitelisted} && $canWLAddr && $this->{isDKIM})
+          && !($this->{whitelisted} && ! ($this->{noprocessing} & 1) && $canNPAddr && $this->{isDKIM})
+          && !(!$this->{noprocessing} && !$this->{whitelisted} && $this->{isDKIM}))
+     )
+  {
+      my $where = $doBody ? 'complete mail' : 'MIME-header';
+      mlog($fh,"info: DKIM-signature check is skipped for $where - DKIM-result is '$this->{dkimresult}'") if $ValidateSenderLog;
+      if ($this->{isDKIM} && $this->{dkimresult} eq 'pass') {
+          pbAdd($fh,$this->{ip},'dkimOkValencePB','DKIMpass', 1);
+          $this->{dkimverified} = "verified-OK";
+      }
+      makeOrgAuthHeader(\$this->{myheader}, 'dkim', $this->{dkimresult}) if $this->{dkimresult};
       return $retval;
   }
-  return $retval if $this->{noprocessing} & 1;
-  return $retval if $doBody && $this->{noprocessing} & 2;
+  $this->{dkimresult} = $orgDKIMResult;
   return $retval if (&matchSL($this->{mailfrom},'noDKIMAddresses'));
   return $retval if (&matchSL([split(/ /o,$this->{rcpt})],'noDKIMAddresses'));
   return $retval if &matchIP($ip,'noDKIMIP',$fh,0);
@@ -32110,17 +32188,8 @@ sub DKIMOK_Run {
        mlog($fh,"info: using provided DKIM-ARC results: $result") if $ValidateSenderLog;
   }
 
-  if ($this->{myheader} =~ s/X-Original-Authentication-Results:($HeaderValueRe)//ois) {
-      my $val = $1;
-      headerUnwrap($val);
-      $val =~ s/\r|\n//go;
-      $val =~ s/ dkim=\S+//o;
-      $val .= " dkim=$result";
-      $this->{myheader} .= "X-Original-Authentication-Results:$val\r\n";
-  } else {
-      $this->{myheader} .= "X-Original-Authentication-Results: $myName; dkim=$result\r\n";
-  }
-  
+  makeOrgAuthHeader(\$this->{myheader}, 'dkim', $result);
+
   if (($result eq "fail" || ($result eq "none" && $this->{isDKIM}) || ($result eq "invalid" && $this->{isDKIM} && $dkim->{signature_reject_reason} eq 'public key: not available')) && ! $dkimpolicy_a->testing) {
     $this->{prepend}="[DKIM]";
     mlog($fh,"$tlit DKIM signature failed - $detail - sender policy is: $dkimwhy_s - author policy is: $dkimwhy_a") if $ValidateSenderLog && $DoDKIM==3 || $DoDKIM==2;
@@ -32155,14 +32224,14 @@ sub DKIMOK_Run {
             my @flags;
             my @tocheck = ($identity);
             push(@tocheck,"$identity,$_") for (split(/\s+/o,lc $this->{rcpt}));
-            if ( matchRE(\@tocheck,'DKIMWLAddresses') ) {
+            if ( $canWLAddr && matchRE(\@tocheck,'DKIMWLAddresses') ) {
                 $this->{DKIMidentityWLmatch} = $lastREmatch if ! $fh;
                 $this->{whitelisted} = 1;
                 $lastREmatch = undef;
                 $changed = ' - state changed to: whitelisted';
                 push @flags, 'whitelisted';
             }
-            if ( matchRE(\@tocheck,'DKIMNPAddresses') ) {
+            if ( $canNPAddr && matchRE(\@tocheck,'DKIMNPAddresses') ) {
                 $this->{DKIMidentityNPmatch} = $lastREmatch if ! $fh;
                 $this->{noprocessing} = 1;
                 $lastREmatch = undef;
@@ -32235,7 +32304,7 @@ sub DKIMgen_Run {
     if ($arc ne 'ARC' || $this->{relayok}) {    # use the local sender to detect the domain for DKIM and Domainkey Signatures
         while ($this->{header} =~ /($HeaderNameRe):($HeaderValueRe)/igos) {
             next if lc($1) ne 'from' && lc($1) ne 'sender';
-            my $s = $2;
+            my $s = lc $2;
             &headerUnwrap($s);
             if ($s =~ /<($EmailAdrRe)\@($EmailDomainRe)>/io || $s =~ /($EmailAdrRe)\@($EmailDomainRe)/io) {
                 $user = $1;
@@ -32426,6 +32495,30 @@ sub DKIMgen_Run {
          if ($this->{relayok}) {
              $this->{spf_result} = 'pass' if ! $this->{spf_result};
              $this->{dkimresult} = 'pass' if ! $this->{dkimresult} && $genDKIM;
+             if (! $this->{dmarcresult} || $this->{dmarcresult} eq 'none') {    # check if DMARC is provided by a local domain
+                 my $dre = quotemeta($domain);
+                 if (grep { /^\@$dre$/i } @localDMARCDomains) {  # yes - we already resolved this before
+                     $this->{dmarcresult} = 'pass';
+                 } elsif (grep { /^\@$dre$/i } @nolocalDMARCDomains) {  # no - we already resolved this before
+                     $this->{dmarcresult} = 'none';
+                 } else {                                        # don't know - resolve the DMARC
+                     if (matchSL($domain,'noDMARCReportDomain')) {
+                         $this->{dmarcresult} = 'none';
+                         push @nolocalDMARCDomains, "\@$domain";                       # just remember
+                     } else {
+                         my ($topdom, $dmarc) = DMARCtry($domain);                     # check DMARC using DNS
+                         if ($topdom && $dmarc->{v} eq 'dmarc1' && exists $dmarc->{p}) {   # DMARC is provided
+                             $this->{dmarcresult} = 'pass';
+                             push @localDMARCDomains, "\@$domain";                     # just remember
+                             mlog(0,"info: ARC: found DNS-DMARC - registered \@$domain as local DMARC providing domain") if $DKIMlogging >= 2;
+                         } else {                                                      # DMARC is not provided
+                             $this->{dmarcresult} = 'none';
+                             push @nolocalDMARCDomains, "\@$domain";                   # just remember
+                             mlog(0,"info: ARC: NOT found DNS-DMARC - registered \@$domain as NOT local DMARC providing domain") if $DKIMlogging >= 2;
+                         }
+                     }
+                 }
+             }
          }
          my $checks;
          $checks .= " dkim=$this->{dkimresult};" if $this->{dkimresult};
@@ -32466,7 +32559,7 @@ sub DKIMgen_Run {
     $signature =~ s/\s*$/\015\012/o;
     d($signature);
     $this->{header} = $signature . $this->{header};
-    mlog($fh,"info: successful added $mode-Signature") if($DKIMlogging >= 2);
+    mlog($fh,"info: successfully added $mode-Signature") if($DKIMlogging >= 2);
     $this->{DKIMadded} = 1;
 
     if ($DKIMlogging > 2 && (my $dkim = eval{$vrfyMod->new()})) {
@@ -33887,7 +33980,7 @@ sub MXAOK_Run {
     return 1 if ($this->{noprocessing} & 1);
     return 1 if $this->{isbounce};
 #    return 1 if $this->{mailfrom} =~ /www|news|mail|noreply/io;
-    return 1 if (($this->{rwlok} % 2 && ! $this->{cip}) or ($this->{cip} && pbWhiteFind($ip)));
+    return 1 if (($this->{rwlok} % 2 && ! $this->{cip}) || ($this->{cip} && pbWhiteFind($ip)));
     return 1 if ( localmail( $this->{mailfrom} ) );
 
     my $slok = $this->{allLoveMXASpam} == 1;
@@ -34100,7 +34193,7 @@ sub MXAOK_Run {
         if ($mfd{$mfd}->{a}) {
 
             #A  found
-            my $msg = "A record found";
+            my $msg = "A record found for MX";
             $msg .= " (cache)" if $mfd{$mfd}->{ctime};
             $msg .= ": $mfd ($mfd{$mfd}->{tag}) -> ".$mfd{$mfd}->{a};
             mlog( $fh, $msg, 1, 1 )	if $ValidateSenderLog >= 2 ;
@@ -34110,7 +34203,7 @@ sub MXAOK_Run {
             #A not found
             $this->{prepend} = "[MissingMXA]";
 
-            $this->{messagereason} = "A record missing: $mfd ($mfd{$mfd}->{tag})";
+            $this->{messagereason} = "A record missing for MX: $mfd ($mfd{$mfd}->{tag})";
             $this->{messagereason} .= " (cache)" if $mfd{$mfd}->{ctime};
 
             mlog( $fh,"[$tlit] $this->{messagereason}")
@@ -34126,7 +34219,7 @@ sub MXAOK_Run {
             MXACacheAdd( $mfd, $mfd{$mfd}->{mx}, $mfd{$mfd}->{a} );
         }
         $this->{MXAres}->{$mfd} = { 'dom' => $mfd , 'mx' => $mfd{$mfd}->{mx}, 'a' => $mfd{$mfd}->{a}, 'tag' => $mfd{$mfd}->{tag} } unless $fh;
-        $failed = $mfailed && $afailed;
+        $failed ||= $mfailed && $afailed;
         $mf = $mfd if ($mfailed && $afailed);
         $apb |= $afailed;
         $mpb |= $mfailed;
@@ -36179,6 +36272,19 @@ sub attachmentExtension {
     return wantarray ? ($ext, $filename) : $ext;
 }
 
+sub makeOrgAuthHeader {
+    my ($where, $what, $result) = @_;
+    if ($$where =~ s/X-Original-Authentication-Results:($HeaderValueRe)//ois) {
+        my $val = $1;
+        headerUnwrap($val);
+        $val =~ s/\r|\n//go;
+        $val .= "; $what=$result" unless $val =~ s/ $what=[a-z]+(;?)/ $what=$result$1/i;
+        $$where .= "X-Original-Authentication-Results:$val\r\n";
+    } else {
+        $$where .= 'X-Original-Authentication-Results: '.lc($ARCSigningHost || $myName)."; $what=$result\r\n";
+    }
+}
+
 sub makeMyheader {
     my ($fh,$slok,$testmode,$reason) = @_;
     my $this = $Con{$fh};
@@ -37433,7 +37539,7 @@ sub reply {
     my $this=$Con{$fh};
     return unless $this;
     my $cli=$this->{friend};
-    return if ! $cli || ! exists $Con{$cli};;
+    return if ! $cli || ! exists $Con{$cli};
 
     my $cliIP = ITR($Con{$cli}->{ip} || $cli->peerhost());
     my $serIP = ITR($fh->peerhost());
@@ -39762,7 +39868,7 @@ sub ReturnMail {
     }
 
     my $encoding; my $charset;
-    my $lineend = "\012";;
+    my $lineend = "\012";
     if ($this->{body} =~ s/^[\s\r\n]*($HeaderRe+)//o) {
         $this->{mimehead} = $1;
         $this->{mimehead} =~ s/[\s\r\n]+$//o;
@@ -39971,18 +40077,20 @@ sub RMdata2 { my ($fh,$l)=@_;
         my $tz=$UseLocalTime ? tzStr() : '+0000';
         $date=~s/(\w+) +(\w+) +(\d+) +(\S+) +(\d+)/$1, $3 $2 $5 $4/o;
         my $this=$Con{$fh};
+        my $oa = orgAuthRes();
         $this->{subject} = encodeMimeWord($this->{subject},'Q','UTF-8') if $this->{subject} && ! is_7bit_clean(\$this->{subject});
-        sendque($fh,($this->{body}=~/^$HeaderRe/os ? $this->{body} . ($this->{body}=~/\r\n\.[\r\n]+$/o ? '' : "\r\n.\r\n") : <<EOT));
+        sendque($fh,($this->{body}=~/^$HeaderRe/os ? $this->{body} . ($this->{body}=~/\r\n\.[\r\n]+$/o ? '' : "\r\n.\r\n") : <<EOT1.$oa.<<EOT2));
+X-Assp-Report: YES\r
+EOT1
 From: $this->{from}\r
 To: $this->{to}\r
 Subject: $this->{subject}\r
-X-Assp-Report: YES\r
 Date: $date $tz\r
 $this->{mimehead}\r
 \r
 $this->{body}\r
 .\r
-EOT
+EOT2
         $Con{$fh}->{getline}=\&RMquit;
         $Con{$fh}->{getlinetxt}='RMquit';
     }
@@ -40225,7 +40333,9 @@ sub BlockReportSend {
                 $smtp->to($to);
                 $smtp->data();
                 my $blocking = $fh->blocking(0);
-                NoLoopSyswrite($fh,"date: $time $tz\r\n"
+                NoLoopSyswrite($fh,"X-ASSP-Blockreport: YES\r\n"
+                                  .orgAuthRes()
+                                  ."date: $time $tz\r\n"
                                   ."To: $to\r\n"
                                   ."From: $mailfrom\r\n"
                                   ."Subject: $subject\r\n"
@@ -40285,8 +40395,9 @@ sub BlockedMailResend {
     }
     unless ( $infile->fileno ) {
         mlog( 0, "error: can't open requested file ".de8($fname)." in any collection folder" ) if $ReportLog;
-        local $/ = "\r\n";
         $filename =~ s/^.*?\/?([^\/]*\/?[^\/]+)$/$1/o;
+        $outfile->print("X-ASSP-Resend: NO\r\n" . orgAuthRes());
+        local $/ = "\r\n";
         $outfile->print( <<EOT );
 From: $EmailFrom
 To: $this->{mailfrom}
@@ -40320,8 +40431,9 @@ EOT
     $isvirus = $viruslog && $foundDir eq $viruslog;
     if (! $skipvirus && ! $foundRecpt && $isvirus) {
         mlog( 0, "warning: resend for file $filename denied - found it in viruslog folder $viruslog" ) if $ReportLog;
-        local $/ = "\r\n";
         $filename =~ s/^.*?\/?([^\/]*\/?[^\/]+)$/$1/o;
+        $outfile->print("X-ASSP-Resend: NO\r\n" . orgAuthRes());
+        local $/ = "\r\n";
         $outfile->print( <<EOT );
 From: $EmailFrom
 To: $this->{mailfrom}
@@ -40341,6 +40453,7 @@ EOT
     $outfile->binmode;
     my $header = "X-Assp-Resend-Blocked: $myName\r\n";
     $header .= "X-Assp-ForceResend:\r\n" if $skipvirus;
+    $header .= orgAuthRes();
     while ( my $line = (<$infile>)) {
         $line =~ s/[\r\n]//og;
         $header .= "$line\r\n";
@@ -41017,7 +41130,7 @@ WHITCHWORKER
         my $start = time;
         while ( $fl = <$FLogFile> ) {
             if ($BlockMaxSearchTime && time - $start > $BlockMaxSearchTime) {
-                mlog(0,"warning: blockreport search in file $File has taken more than 3 minutes - skip the file") if $ReportLog;;
+                mlog(0,"warning: blockreport search in file $File has taken more than 3 minutes - skip the file") if $ReportLog;
                 $buser->{sum}{html} .=
 "<br />\nwarning: report is possibly incomplete, because ASSP was skipping some parts of logfile $File";
                 $buser->{sum}{text} .=
@@ -44896,7 +45009,7 @@ EOT
                 last if(! $ComWorker{$Iam}->{run});
             }
             mlog(0,"Griplist - finished removing ".nN($nd)." old records") if $MaintenanceLog;
-            &BDB_sync_hash('Griplist') if "$GriplistObj" =~ /BerkeleyDB/o;;
+            &BDB_sync_hash('Griplist') if "$GriplistObj" =~ /BerkeleyDB/o;
         }
 
         %gripdelta = ();
@@ -46079,7 +46192,7 @@ sub SaveStats {
  lock(%Stats) if (is_shared(%Stats));
  mlog(0,"info: saving Stats in file asspstats.sav") if $MaintenanceLog;
  $Stats{smtpConcurrentSessions}=$smtpConcurrentSessions;
- ScheduleMapSet('SaveStatsEvery') if $WorkerName ne 'Shutdown';;
+ ScheduleMapSet('SaveStatsEvery') if $WorkerName ne 'Shutdown';
  &StatAllStats();
  my $SS;
  if (open($SS,'>',"$base/asspstats.sav")) {
@@ -50986,7 +51099,7 @@ sub ConfigAnalyze {
     if ($maillength > length($mail)) {
         $fm .= "analyze is restricted to a maximum length of $mBytes bytes<br />\n";
         $fm .= "attachments will be fully analyzed using ASSP_AFC<br />\n" if (${'DoASSP_AFC'});
-        $fm .= "attachments will be fully scanned for viruses<br />\n" if (($UseAvClamd && $CanUseAvClamd) || ($DoFileScan && $FileScanCMD));;
+        $fm .= "attachments will be fully scanned for viruses<br />\n" if (($UseAvClamd && $CanUseAvClamd) || ($DoFileScan && $FileScanCMD));
     }
     if ($normalizeUnicode && $CanUseUnicodeNormalize) {
         $fm .= "text processing uses unicode normalization<br />\n";
@@ -54144,14 +54257,14 @@ sub ConfigAddrAction {
             }
         } elsif ($run =~ s/^\$//o && defined ${$run}) {
             $res = ${$run};
-        } elsif ($run =~ s/^\%//o && eval('defined %{$run};')) {
+        } elsif ($run =~ s/^\%//o && eval('keys %{$run};')) {
             $res .= "'$_' => '".${$run}{$_}.'\'<br />' foreach (sort keys %{$run});
-        } elsif ($run =~ s/^\@//o && eval('defined @{$run};')) {
+        } elsif ($run =~ s/^\@//o && eval('@{$run};')) {
             $res = join('<br />', @{$run});
         } elsif ($run =~ /^\d{10}$/o) {
             $res = $run;
         } else {
-            $res = "'$orun' is not defined";
+            $res = "'$orun' is not defined or empty";
         }
         $res .= ' , ' . timestring($res) if $res =~ /^\d{10}$/o;
         $s .= $ret . $res;
@@ -60970,7 +61083,7 @@ sub getSSLParms {
             if (! $ssl{SSL_reuse_ctx} && ! $ssl{skip_config_check} && ref($ssl{SSL_cert_file}) eq 'HASH') {    # check if there was any file changed in the private config call for SNI
                 mlog(0,"info: parsing SNI configuration for '$asServer'") if $ConnectionLog > 1 || $SSLDEBUG;
                 my $clearcontext;
-                my %toremove;;
+                my %toremove;
                 while ( my($k,$v) = each(%{$SSLServerContext{$asServer}})) {   # remember all current context keys
                     $toremove{$k} = 1;
                 }
