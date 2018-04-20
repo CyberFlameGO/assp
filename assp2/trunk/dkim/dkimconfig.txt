@@ -1,12 +1,12 @@
-# version 1.01
+# version 1.02
 #
 # DKIM and Domainkey configuration file - all entries are case sensitive
 #
 # To generate DKIM or Domainkey (old style not recommended) mails,
 # you have to install Mail::DKIM. This installation must be free of any errors!
 #
-# You need a privat and public key pair. If you have installed OpenSSL, ASSP will have already done this - look in to dir /certs. 
-# If so, there should also a file dkim-pub.txt that contains a string like this one:
+# You need a private and public key pair. If you have installed OpenSSL, ASSP will have already done this - look in to dir /certs. 
+# If so, there should be a file dkim-pub.txt that contains a string like this one:
 # "k=rsa; t=y; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNA...........UP8IlP5zNgDfwIDAQAB;"
 # This string contains the algorythm (k=..;), test or no test mode (t=..;) and the public key (p=..;)
 # You need to configure the nameserver(s) of the domains, for which you want ASSP to create DKIM signatures, with a TXT record
@@ -32,11 +32,11 @@
 #
 # The configuration in this file is done in a XML style. For example
 #
-# for DKIM (is also minimum configuration):
+# for DKIM and ARC (is also minimum configuration):
 #
 # <your domain>
 #  <selector name>
-#    Algorithm=rsa-sha1
+#    Algorithm=rsa-sha256
 #    Method=relaxed/relaxed
 #    Headers=Message-ID:From:Subject:To:MIME-Version:Content-Type
 #    KeyFile=c:/assp/certs/server-key.pem
