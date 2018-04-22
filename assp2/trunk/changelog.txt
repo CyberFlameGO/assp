@@ -1,3 +1,17 @@
+2018-04-22
+fixed in assp 2.6.2 *Fortress* build 18112:
+
+- this release contains a significant performance improvement for unicode character processing
+  
+- this release contains a significant performance improvement for regular expression processing
+
+
+changed:
+
+- DoNoFrom now also checks for RFC822 / RFC 1522 compliant email addresses and a check for a valid TLD is included
+
+
+
 2018-04-20
 fixed in assp 2.6.2 *Fortress* build 18110:
 

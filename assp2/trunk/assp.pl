@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18110';        # 20.04.2018 TE
+$build   = '18112';        # 22.04.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -571,7 +571,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '5CB2673E6D329A3D7C2E937FA5A52E3ACB1896BA'; }
+sub __cs { $codeSignature = '0282D38732B8D827EF6D8786CD1CBBF6E247F979'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -964,6 +964,7 @@ our @EnclosedUNI;
 our @UnicodeBlocks;
 our @UnicodeScripts;
 our $UnicodeVersion;
+our %uniSpecials;
 
 BEGIN { if ($] ge '5.012000') {
 my $charscripts = sub {
@@ -1055,7 +1056,23 @@ for my $bl (@UnicodeBlocks) {
 # set Unicode Scripts
 @UnicodeScripts = $charscripts->();
 
-}} # end BEGIN
+} # end if
+
+# first we specify, what Unicode::Normalize is not doing like we want it
+%uniSpecials = (chr(0x24FF) => 0);
+
+for (0x24F5...0x24FE) {$uniSpecials{chr($_)} = $_ - 0x24F4;}   # 1 - 10
+for (0x2776...0x277F) {$uniSpecials{chr($_)} = $_ - 0x2775;}   # 1 - 10
+for (0x2780...0x2789) {$uniSpecials{chr($_)} = $_ - 0x2779;}   # 1 - 10
+for (0x278A...0x2793) {$uniSpecials{chr($_)} = $_ - 0x2789;}   # 1 - 10
+for (0x3220...0x3229) {$uniSpecials{chr($_)} = '('.($_ - 0x321F).')';}   # (1 - 10)
+
+for (0x24EB...0x24F4) {$uniSpecials{chr($_)} = 10 + $_ - 0x24EA;} # 11 - 20
+for (0x3248...0x324F) {$uniSpecials{chr($_)} = 10 * ($_ - 0x3247);} # 10 20 30 ... 80
+
+for (0x1F150...0x1F169) {$uniSpecials{chr($_)} = chr(0x40 + $_ - 0x1F14F);} # 10 20 30 ... 80
+
+} # end BEGIN
 
 sub setSpecialRegex {
 my $w = 'a-zA-Z0-9_';
@@ -32812,6 +32829,8 @@ sub FromStrictOK_Run {
 
     my %count;
     my %fail;
+    my %seenok;
+    my %seenfail;
     $this->{prepend} = '[FromMissing]';
     for my $tag (qw(from sender)) {
         pos($this->{header}) = 0;
@@ -32820,7 +32839,52 @@ sub FromStrictOK_Run {
             my $val = $2;
             headerUnwrap($val);
             $count{$tag}++;
-            $fail{$tag}++ if $val !~ /$EmailAdrRe\@$EmailDomainRe/oi;
+            my ($addr,$domain);
+            ($addr,$domain) = (lc($1),lc($2)) if $val =~ /($EmailAdrRe\@($EmailDomainRe))/oi;
+            if (! $addr) {     # there is do emailaddress
+                $fail{$tag}++;
+                next;
+            } elsif ($seenok{$domain}) {  # the domain was OK before
+                next;
+            } elsif ($seenfail{$domain}) {  # the domain failed before
+                $fail{$tag}++;
+                next;
+            } elsif ($DoRFC822 && exists $RFC822dom{$domain}) {   # the domain was already in RFC822dom hash
+                $fail{$tag}++;
+                $seenfail{$domain}++;
+                next;
+            } elsif (! is_7bit_clean(\$addr) || $addr !~ /$RFC822RE/o ) {
+                $fail{$tag}++;
+                $seenfail{$domain}++;
+                $RFC822dom{$domain} ||= time if $DoRFC822;
+                next;
+            } elsif ($domain !~ /([^\.]+(?:$URIBLCCTLDSRE|\.$TLDSRE))$/i) {   # the domain is not valid domain
+                $fail{$tag}++;
+                $seenfail{$domain}++;
+                next;
+            } else {      # check DNS of the domain
+#                my $highdomain = $1; # $1 from the elsif before
+#                # check the domain nearest to the TLD of the host or the host if host and domain are the same
+#                my $res;
+#                my $failed = defined($res = getRRData($highdomain, 'ANY'))
+#                          && $res eq '0'
+#                          && $lastDNSerror eq 'NXDOMAIN';
+#                if ($failed && $highdomain ne $domain) {
+#                # check the complete host if the domain nearest to the TLD has been failed
+#                # and domain and host are not equal
+#                # like 'co.delaware.pa.us' where 'delaware.pa.us' is invalid
+#                    $failed =    defined($res = getRRData($domain, 'ANY'))
+#                              && $res eq '0'
+#                              && $lastDNSerror eq 'NXDOMAIN';
+#                }
+#                if ($failed) {   # there is no DNS eegistration for the domain
+#                    $fail{$tag}++;
+#                    $seenfail{$domain}++;
+#                    next;
+#                }
+                # its OK
+                $seenok{$domain}++;
+            }
         }
     }
     my $error = 0;
@@ -32840,11 +32904,11 @@ sub FromStrictOK_Run {
             mlog( $fh, "$tlit $this->{messagereason}" );
         }
         if ($fail{from}) {
-            $this->{messagereason} = "missing address in ($fail{from}) 'From:' header tag(s) ( DoNoFrom )";
+            $this->{messagereason} = "missing or invalid address in ($fail{from}) 'From:' header tag(s) ( DoNoFrom )";
             $error += $fail{from};
             mlog( $fh, "$tlit $this->{messagereason}" );
         } elsif ($fail{sender}) {
-            $this->{messagereason} = "missing address in ($fail{sender}) 'Sender:' header tag(s) ( DoNoFrom )";
+            $this->{messagereason} = "missing or invalid address in ($fail{sender}) 'Sender:' header tag(s) ( DoNoFrom )";
             $error += $fail{sender};
             mlog( $fh, "$tlit $this->{messagereason}" );
         }
@@ -34245,6 +34309,7 @@ sub BombWeight {
     mlog(0,"warning: suspect valence value '0' in 'WeightedRe' hash for '$WeightedRe{$re}' in sub BombWeight for $re") if $BombLog >= 2 && ${$WeightedRe{$re}}[0] == 0;
     return %weight unless ${$re};
     return %weight unless ${$re.'RE'};
+    return %weight if ${$re.'RE'} =~ /$neverMatchRE/o;
     return BombWeight_Run($fh,$t,$re);
 }
 sub BombWeight_Run {
@@ -34259,31 +34324,48 @@ sub BombWeight_Run {
     $maxBombSearchTime = 5 unless $maxBombSearchTime;
     $weightMatch = '';
     my $regex = ${$re.'RE'};
-    my $itime = time;
+    my $itime = Time::HiRes::time();
     $addCharsets = 1 if $re eq 'bombCharSets';
     if ($re ne 'bombSubjectRe') {
-       $rawtext =~ s/(<!--.+?)-->/$1/sgo;
-       my $mimetext = cleanMIMEBody2UTF8(\$rawtext);
-       if ($mimetext) {
-           if ($re ne 'bombDataRe') {
-               $text[0] = cleanMIMEHeader2UTF8(\$rawtext,0);
-               $mimetext =~ s/\=(?:\015?\012|\015)//go;
-               $mimetext = decHTMLent(\$mimetext);
-           }
-           $text[0] .= $mimetext;
+       my $rawmd5 = Digest::MD5::md5($rawtext);
+       if (exists $Con{$fh}->{$rawmd5}) {
+           $text[0] = $Con{$fh}->{$rawmd5}->{0};
+           $text[1] = $Con{$fh}->{$rawmd5}->{1} if exists $Con{$fh}->{$rawmd5}->{1};
        } else {
-           $text[0] = decodeMimeWords2UTF8($rawtext);
+           $rawtext =~ s/(<!--.+?)-->/$1/sgo;
+           my $mimetext = cleanMIMEBody2UTF8(\$rawtext);
+           if ($mimetext) {
+               if ($re ne 'bombDataRe') {
+                   $text[0] = cleanMIMEHeader2UTF8(\$rawtext,0);
+                   $mimetext =~ s/\=(?:\015?\012|\015)//go;
+                   $mimetext = decHTMLent(\$mimetext);
+               }
+               $text[0] .= $mimetext;
+           } else {
+               $text[0] = decodeMimeWords2UTF8($rawtext);
+           }
+           unicodeNormalize(\$text[0]);
+           $Con{$fh}->{$rawmd5}->{0} = $text[0];
+           if ($DoTransliterate && $text[0]) {
+               my $t = transliterate(\$text[0], 1);
+               if ($t) {
+                   push(@text,$t);
+                   $Con{$fh}->{$rawmd5}->{1} = $t;
+               }
+           }
+#           mlog(0,"info: BombWeight $re - ".length($text[0]).' - '.(Time::HiRes::time() - $itime));
        }
     } else {
        $text[0] = $rawtext;
+       unicodeNormalize(\$text[0]);
+       if ($DoTransliterate && $text[0]) {
+           my $t = transliterate(\$text[0], 1);
+           push(@text,$t) if $t;
+       }
     }
-    unicodeNormalize(\$text[0]);
     undef $rawtext;
     $addCharsets = 0;
-    if ($DoTransliterate && $text[0]) {
-        my $t = transliterate(\$text[0], 1);
-        push(@text,$t) if $t;
-    }
+
     mlog($fh,"info: transliterated content will be checked for '$re'") if $text[1] && $BombLog > 1;
     if (   $re =~ /^(?:bomb(?:Suspicious|Header)?|black|test)Re$/o
         && $bombSkipHeaderTagRe
@@ -34380,7 +34462,7 @@ sub BombWeight_Run {
           alarm(0);
       }
     };
-    $itime = time - $itime;
+    $itime = Time::HiRes::time() - $itime;
     if ($@) {
         alarm(0);
         if ( $@ =~ /__alarm__/o ) {
@@ -44363,6 +44445,7 @@ sub clean {
 
         s/["']\s*\/?s*>|target\s*=\s*['"]?_blank['"]?|<\s*\/|:\/\/ //go;
 #        s/[\s\b\+\-\p{Currency_Symbol}][\d.,]{2,}/ randnumber /go;
+        s/ \d{2,} / 1234 /go;
     } # end if of HTML parsing
 
     $bodyhtml = &decHTMLent($_) if $_;
@@ -44370,6 +44453,7 @@ sub clean {
         $bodyplain =~ s/((?:ht|f)tps?\S*)/ href $1 /isgo;
         $bodyplain =~ s/(\S+\@\S+\.\w{2,5})\b/ href $1 /go;
 #        $bodyplain =~ s/[\s\b\+\-\p{Currency_Symbol}][\d.,]{2,}/ randnumber /go;
+        $bodyplain =~ s/ \d{2,} / 1234 /go;
     }
     if ($CanUseASSP_WordStem) {
         my (%l,$retplain,$rethtml);
@@ -44409,6 +44493,7 @@ sub extract_html_text {
     s/(<\s*a\s[^>]*>)(.*?)(<\s*\/a[^>]*>)/$1 atxt $2$3/igso;
     s/(\S+\@\S+\.\w{2,5})\b/ href $1 /go;
 #    s/[\s\b\+\-\p{Currency_Symbol}][\d.,]{2,}/ randnumber /go;
+    s/ [\d.,]{2,} / 1234 /go;
     s/<[^>]*href\s*=\s*(?:(\S+?)>|(\S+)\s[^>]*>)/ href $1$2 /isgo;
     s/ href "([^"]*)" / href $1 /go;
     s/ href '([^']*)' / href $1 /go;
@@ -52787,6 +52872,7 @@ TRANSLITONLY:
       my $h3 = $WebIP{$ActWebSess}->{lng}->{'msg500062'} || $lngmsg{'msg500062'};
       my $h4 = $WebIP{$ActWebSess}->{lng}->{'msg500063'} || $lngmsg{'msg500063'};
 
+      delete $Con{0};
       if ($qs{return}) {
           $qs{sub} = $sub;
           return <<EOT;
@@ -53978,7 +54064,7 @@ sub unicodeNormalizeRe {
     }
     my $norm = sub {
         local $_ = my $c = shift;
-        unicodeNormalize_Run(\$c);
+        $c = Unicode::Normalize::NFKC($c) unless Unicode::Normalize::checkNFKC($c);
         return ($c eq $_) ? $_ : quotemeta($c);
     };
     $$re =~ s/([\P{Latin}]+)/$norm->($1)/goe;
@@ -54000,34 +54086,12 @@ sub unicodeNormalize {
         $$s = e8($$s);
         return;
     }
-    unicodeNormalize_Run($s);
-    $$s = e8($$s);
-}
-sub unicodeNormalize_Run {
-    my $s = shift;
-    $$s =~ s/([\P{Latin}]+)/unicodeNFKC($1)/goe;
-}
-sub unicodeNFKC {
-    my $s = shift;
-    my $c = chr(0x24FF);
-    eval {
-    # first we do, what Unicode::Normalize is not doing like we want it
-    $s =~ s/$c/0/go;
-
-    for (0x24F5...0x24FE) {$c = chr($_); $s =~ s/$c/$_ - 0x24F4/ge;}   # 1 - 10
-    for (0x2776...0x277F) {$c = chr($_); $s =~ s/$c/$_ - 0x2775/ge;}   # 1 - 10
-    for (0x2780...0x2789) {$c = chr($_); $s =~ s/$c/$_ - 0x2779/ge;}   # 1 - 10
-    for (0x278A...0x2793) {$c = chr($_); $s =~ s/$c/$_ - 0x2789/ge;}   # 1 - 10
-    for (0x3220...0x3229) {$c = chr($_); $s =~ s/$c/'('.($_ - 0x321F).')'/ge;}   # (1 - 10)
-
-    for (0x24EB...0x24F4) {$c = chr($_); $s =~ s/$c/10 + $_ - 0x24EA/ge;} # 11 - 20
-    for (0x3248...0x324F) {$c = chr($_); $s =~ s/$c/10 * ($_ - 0x3247)/ge;} # 10 20 30 ... 80
-
-    for (0x1F150...0x1F169) {$c = chr($_); $s =~ s/$c/chr(0x40 + $_ - 0x1F14F)/ge;} # 10 20 30 ... 80
-
-    return $s if Unicode::Normalize::checkNFKC($s);
-    return Unicode::Normalize::NFKC($s);
-    };
+    if (Unicode::Normalize::checkNFKC($$s)) {
+        $$s = e8($$s);
+        return;
+    }
+    $$s = e8(Unicode::Normalize::NFKC($$s));
+    return;
 }
 
 sub ConfigAddrAction {
