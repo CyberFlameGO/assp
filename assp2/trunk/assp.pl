@@ -571,7 +571,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '0282D38732B8D827EF6D8786CD1CBBF6E247F979'; }
+sub __cs { $codeSignature = '746623BC01B3AA60518334AE12BCFCD78A1511F5'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -816,6 +816,7 @@ our $ValencePB2RE;
 our $NonSymLangRE;
 our $SymLangRE;
 our $enclosedCharsRE;
+our $uniSpecialsRE;
 our $notAllowedSMTP;
 our $BIT8:shared = 'XNONOXNONOX';
 our $skipAddrListRE;
@@ -1363,6 +1364,12 @@ if ($] ge '5.012000') {
     $NonSymLangRE = qr/\S/;
     $enclosedCharsRE = qr/^(?!)/;
 }
+
+foreach (keys %uniSpecials) {
+    $uniSpecialsRE .= quotemeta($_).'|';
+}
+chop($uniSpecialsRE);
+$uniSpecialsRE = qr/$uniSpecialsRE/;
 
 # some declaration corrections
 %skipDeclare = (
@@ -54090,6 +54097,7 @@ sub unicodeNormalize {
         $$s = e8($$s);
         return;
     }
+    $$s =~ s/($uniSpecialsRE)/$uniSpecials{$1}/go;
     $$s = e8(Unicode::Normalize::NFKC($$s));
     return;
 }
