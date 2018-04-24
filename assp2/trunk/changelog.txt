@@ -1,3 +1,10 @@
+2018-04-24
+fixed in assp 2.6.2 *Fortress* build 18114:
+
+- this release contains a significant performance improvement for the Bayesian and HMM checks - and the rebuildspamdb task
+
+
+
 2018-04-22
 fixed in assp 2.6.2 *Fortress* build 18112:
 

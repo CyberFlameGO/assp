@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18112';        # 22.04.2018 TE
+$build   = '18114';        # 24.04.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -571,7 +571,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '746623BC01B3AA60518334AE12BCFCD78A1511F5'; }
+sub __cs { $codeSignature = '0E5AF0FABB6D07118D43DCAF2A60B4E404039C48'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -787,6 +787,7 @@ sub getSHAFile {
 }
 
 # some special regular expressions
+our $NOCRLF;
 our $ScheduleRe;
 our $ScheduleGUIRe;
 our $neverMatch;
@@ -1078,18 +1079,20 @@ for (0x1F150...0x1F169) {$uniSpecials{chr($_)} = chr(0x40 + $_ - 0x1F14F);} # 10
 sub setSpecialRegex {
 my $w = 'a-zA-Z0-9_';
 my $d = '0-9';
+$NOCRLF = '\x00-\x09\x0b-\x0c\x0e-\xff';
 $ScheduleRe = '(?:\S+\s+){4}\S+';
 $ScheduleGUIRe = '^('.$ScheduleRe.'(?:\|'.$ScheduleRe.")*|[$d]+|)\$";
 $neverMatch = '^(?!)';
 $neverMatchRE = quotemeta($neverMatch).'\)?\$?\)*$';
 $ExchangeBannerRe = qr/M(?:icro)?S(?:oft)?\s*(?:E?SMTPS? MAIL|Exchange)/i; # check if we connected to MS exchange
 $punyRE = 'xn--[a-zA-Z0-9\-]+';
-# ignore the first possible single quote in the user part of an address
-$EmailAdrRe=qr/[^()<>@,;:'"\[\]\000-\040\x7F-\xFF][^()<>@,;:"\[\]\000-\040\x7F-\xFF]*/o;
+# ignore the first possible single quote in the user part of an address  (x27)
+$EmailAdrRe=qr/[\x21\x23-\x26\x2a-\x2b\x2d-\x39\x3d\x3f\x41-\x5a\x5c\x5e-\x7e][\x21\x23-\x27\x2a-\x2b\x2d-\x39\x3d\x3f\x41-\x5a\x5c\x5e-\x7e]*/o;
+#$EmailAdrRe=qr/[^()<>@,;:'"\[\]\000-\040\x7F-\xFF][^()<>@,;:"\[\]\000-\040\x7F-\xFF]*/o;  # 30% slower than the above
 $EmailDomainRe=qr/(?:[$w][$w\-]*(?:\.[$w][$w\-]*)*\.(?:$punyRE|[$w][$w]+)|\[[$d][$d\.]*\.[$d]+\])/o;
 $DMARCReportSubjectRe = qr/^\s*Report\s*domain:\s*$EmailDomainRe\s+Submitter:\s*$EmailDomainRe\s+Report-?ID:.{2,}|^\s*\[BETA\] DMARC Report for/oi;
 $HeaderNameRe=qr/[\x21-\x39\x3B-\x7E]+/o; # printable ASCII except SPACE(\x20) and colon(: \x3A)
-$HeaderValueRe=qr/[ \t]*[^\r\n]*(?:\r?\n[ \t]+\S[^\r\n]*)*(?:\r?\n)?/o;
+$HeaderValueRe=qr/[ \t]*[$NOCRLF]*(?:\r?\n[ \t]+\S[$NOCRLF]*)*(?:\r?\n)?/o;
 $HeaderRe=qr/(?:$HeaderNameRe:$HeaderValueRe)/o;
 $UUENCODEDRe=qr/\bbegin\b [$d]{3} \b\S{0,72}.*?\S{61}.{0,61}\bend\b/o;
 $UTF8BOM = "\xEF\xBB\xBF";
@@ -1136,7 +1139,8 @@ $IPQuadSectRE="(?:0([0-7]+)|0x([0-9a-fA-F]+)|([$d]+))";
 $IPQuadSectDotRE='(?:'.$IPQuadSectRE.'\.)';
 $IPQuadRE=qr/$IPQuadSectDotRE?$IPQuadSectDotRE?$IPQuadSectDotRE?$IPQuadSectRE/o;
 
-$dot = '[^a-zA-Z0-9\.]?d[^a-zA-Z0-9\.]?o[^a-zA-Z0-9\.]?t[^a-zA-Z0-9\.]?|[\=\%]2[eE]|\&\#0?46\;?';      # the DOT
+#$dot = '[^a-zA-Z0-9\.]?d[^a-zA-Z0-9\.]?o[^a-zA-Z0-9\.]?t[^a-zA-Z0-9\.]?|[\=\%]2[eE]|\&\#0?46\;?';      # the DOT
+$dot = '[\x00-\x2d\x2f\x3a-\x40\x5b-\x60\x7b-\xff]?d[\x00-\x2d\x2f\x3a-\x40\x5b-\x60\x7b-\xff]?o[\x00-\x2d\x2f\x3a-\x40\x5b-\x60\x7b-\xff]?t[\x00-\x2d\x2f\x3a-\x40\x5b-\x60\x7b-\xff]?|[\=\%]2[eE]|\&\#0?46\;?';      # the DOT
 $UriDot =    '(?:(?i:(?:[\=\%]|\&\#x)2e|\&\#0?46)\;?|\.)';
 $UriCollon = '(?:(?i:(?:[\=\%]|\&\#x)3a|\&\#0?58)\;?|\:)';
 $UriAt =     '(?:(?i:(?:[\=\%]|\&\#x)40|\&\#0?64)\;?|\@)';
@@ -1353,8 +1357,11 @@ if ($] ge '5.012000') {
     # setting up unicode detection regular expressions
     $NonSymLangRE = '';
     for (@NonSymLangs) { $NonSymLangRE .= '\p{'.$_.'}'; }
-    $SymLangRE = qr/[^$NonSymLangRE]/;
     $NonSymLangRE = qr/[$NonSymLangRE]/;
+
+    $SymLangRE = '';
+    for (@SymLangs) { $SymLangRE .= '\p{'.$_.'}'; }
+    $SymLangRE = qr/[$SymLangRE]/;
 
     $enclosedCharsRE = '';
     for (@EnclosedUNI) { $enclosedCharsRE .= '\p{'.$_.'}'; }
@@ -4809,7 +4816,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
 ['RunRebuildNow','Run RebuildSpamdb now',0,\&checkbox,'','(.*)','ConfigChangeRunTaskNow',
   'If selected, RebuildSpamdb will be started immediately.<br />' .
   "<input type=button value=\"Apply Changes and Run Rebuild SpamDB Now (if checked)\" onclick=\"document.forms['ASSPconfig'].theButtonX.value='Apply Changes';document.forms['ASSPconfig'].submit();WaitDiv();return false;\" />&nbsp;<input type=button value=\"Refresh Browser\" onclick=\"document.forms['ASSPconfig'].theButtonRefresh.value='Apply Changes';document.forms['ASSPconfig'].submit();WaitDiv();return false;\" />" .
-  '<hr /><div class="cfgnotes">An real problem may become disclaimers and private and corporate signatures. They are always added to outgoing mails, but also to local mails and reports. They can be found in most of the answers to your mails. And for example, they may be added by spammers to there spam mails - trying to fake good mails. Nobody can say, how the occurrence of such a disclaimer will affect the HMM and Bayesian results. It may possible, that these results differs from day to day, or block good mails, or let spam pass.
+  '<hr /><div class="cfgnotes">Disclaimers, as well as private and corporate signatures may become a real problem, because they are always added to outgoing mails, but also to local mails and reports. They can be found in most of the answers to your mails. And for example, they may be added by spammers to there spam mails - trying to fake good mails. Nobody can say, how the occurrence of such a disclaimer will affect the HMM and Bayesian results. It may possible, that these results differs from day to day, or block good mails, or let spam pass.
   The only way to prevent such results, is to remove the disclaimers, before the rebuildspamdb task builds the spamdb and HMMdb.<br />
   To tell assp, which are your disclaimers, open the file files/disclaimer.txt using the "disclaimer definition" button below and put the disclaimers in to this file, the same way they are shown in your mail client. If you want to define multiple disclaimers, separate them by a line with a single dot. Lines in this file starting with an "#" are considered a comment, empty lines are ignored. ASSP will build a regular expression to identify and remove the disclaimers.<br /><br />
   <b>example:<br /><br />
@@ -6871,8 +6878,8 @@ if ( ! -d "$base/database") {
  }
  $DEF->close if $DEF;
 
- $asspSHA1 = uc getSHAFile($assp, qr/^[^\r\n]*\r?\n([^\x00]+?\x24version\x20*=\x20*\'\d+\.\d+\.\d+\')[^\x24]+(\x24build\x20*=\x20*\'\d{5}[\-\.\d]*\')
-                                 [^\x00]+?\x23\x23\x20\x65\x6e\x64\x20\x63\x63\x63\x20\x23\x23\s+([^\x00]+)$/sx);
+ $asspSHA1 = uc getSHAFile($assp, qr/^[$NOCRLF]*\r?\n([\x01-\xFF]+?\x24version\x20*=\x20*\'\d+\.\d+\.\d+\')[^\x24]+(\x24build\x20*=\x20*\'\d{5}[\-\.\d]*\')
+                                 [\x01-\xFF]+?\x23\x23\x20\x65\x6e\x64\x20\x63\x63\x63\x20\x23\x23\s+([\x01-\xFF]+)$/sx);
  print "$asspSHA1\n" if $^C && ${"\x30"} =~ /0-D/o;
  if ($^C && $assp =~ /download\//oi) {   # satisfy a bug in these builds (16363 ... 17004) autoupdate feature
      my $chk = $assp;
@@ -7285,7 +7292,8 @@ if ( $isWIN ) {
 our $ARINcounter:shared = 0;
 our $ActWebSess;
 our $BDBEnvLock:shared;
-our $BayesCont =  ($] lt '5.014000')  ? '\S' : '\p{Alnum}';
+#our $BayesCont =  ($] lt '5.014000')  ? '\S' : '\p{Alnum}';
+our $BayesCont =  '\S';
 our $ClearSSLContext;
 our $ConfigChanged:shared;
 our $DBOption;
@@ -7616,6 +7624,17 @@ our %nextPossibleWHOISQuery:shared;
 our %outchrset:shared ;
 our %registeredSchedules;
 our %repollFH;
+our %replaceHTMLChar = (
+0xA0 => ' ',        # decode to space (nbsp) not to \160
+0xAD => ' ',        # decode to SOFT HYPHEN - not to \173
+0xA143 => '.',      # Big5 Chinese language character set (.)
+0xA144 => '.',
+0xA14F => '.',
+0xE38082 => '.',
+0xEFBC8E => '.',
+0xEFB992 => '.',
+0xDB94 => '.'
+);
 our %runOnMaillogClose:shared;
 our %qs; keys %qs = 1024;
 our %rblweight;
@@ -9880,7 +9899,7 @@ sub rb_get {
     eval{$file->close;};
     if ($count) {
         my @keep = $message =~ /((?:X-Assp-Reported-By|X-Assp-Intended-For|X-Forwarded-For):$main::HeaderValueRe)/gois;
-        $message =~ s/X-ASSP[^:]+:$main::HeaderValueRe//gois;                   # remove all X-ASSP headers
+        $message =~ s/X-ASSP[\x00-\x39\x3b-\xff]+:$main::HeaderValueRe//gois;                   # remove all X-ASSP headers
         $message =~ s/(?:X-Google-)?(?:DKIM|DomainKey)-Signature:$main::HeaderValueRe//gios;  # remove DKIM/DomainKey signatures
         $message =~ s/ARC-(?:Seal|Message-Signature|ARC-Authentication-Results):$main::HeaderValueRe//gios;  # remove ARC signatures
         $message = join('',@keep).$message;
@@ -9963,8 +9982,8 @@ sub rb_add {
                     $curHelo = $1 if $1;
                     my $rhelo = $2;
                     $cip = &main::ipv6expand(&main::ipv6TOipv4($cip));
-                    $rhelo =~ s/\r?\n/ /go;
-                    $curHelo = $cipHelo = $1 if $rhelo =~ /.+?helo\s*=?\s*([^\s\)]+)/io;
+                    $rhelo =~ s/\r?\n/ /go;                                # [^\s\)]
+                    $curHelo = $cipHelo = $1 if $rhelo =~ /.+?helo\s*=?\s*([\x00-\x08\x0e-\x1f\x21-\x28\x2a-\x84\x86-\x9f\xa1-\xff]+)/io;
                 }
             }
             if ($cip && &main::matchIP($cip,'ispip','',1)) {
@@ -9987,8 +10006,8 @@ sub rb_add {
                     }
 
                     $cip = &main::ipv6expand(&main::ipv6TOipv4($cip));
-                    $rhelo =~ s/\r?\n/ /gos;
-                    $cipHelo = $1 if $rhelo =~ /helo\s*=?\s*([^\s\)]+)/io;
+                    $rhelo =~ s/\r?\n/ /gos;                  # [^\s\)]
+                    $cipHelo = $1 if $rhelo =~ /helo\s*=?\s*([\x00-\x08\x0e-\x1f\x21-\x28\x2a-\x84\x86-\x9f\xa1-\xff]+)/io;
                 }
             }
             if ($cip && &main::matchIP($cip,'ispip','',1)) {
@@ -10012,7 +10031,7 @@ sub rb_add {
             if ($ip !~ /$IPprivate/o) {
                 $cip = &main::ipv6expand(&main::ipv6TOipv4($ip));
                 $rhelo =~ s/\r?\n/ /gos;
-                $curHelo = $1 if $rhelo =~ /\shelo=([^\s\)]+)/io;
+                $curHelo = $1 if $rhelo =~ /\shelo=([\x00-\x08\x0e-\x1f\x21-\x28\x2a-\x84\x86-\x9f\xa1-\xff]+)/io;
                 if ($cip && &main::matchIP($cip,'ispip','',1)) {
                     $curHelo = '';
                     $cip = '';
@@ -10074,48 +10093,45 @@ sub rb_add {
     my $ret = 1;
     $i = 0;
     my $sfactor = $isspam ? $factor : 0;
-    use re 'eval';
-    local $^R;
-    while ( eval { $content =~ /([$BayesCont]{2,})(?{$1})/go } ) {
-        my @Words;
-        (@Words = &main::BayesWordClean($^R)) or next;
-        while (@Words) {
-            $CurWord = substr(shift(@Words),0,37);
-            if ( ! $PrevWord ) {            # only collect the first word
-                $PrevWord = $CurWord;
-                push(@HMMspamWords,$CurWord) if $DoHMM && $isspam;
-                push(@HMMhamWords,$CurWord) if $DoHMM && ! $isspam;
-                $i++;
-                next;
-            }
+    my @Words;
+    eval { @Words = map { &main::BayesWordClean($_); } $content =~ /([$BayesCont]{2,})/go };
+    while (@Words) {
+        $CurWord = substr(shift(@Words),0,37);
+        next unless $CurWord;
+        if ( ! $PrevWord ) {            # only collect the first word
+            $PrevWord = $CurWord;
+            push(@HMMspamWords,$CurWord) if $DoHMM && $isspam;
+            push(@HMMhamWords,$CurWord) if $DoHMM && ! $isspam;
+            $i++;
+            next;
+        }
 
-            # increment global weights, they are not really word counts
-            if   ($isspam) { $SpamWordCount += $factor; push(@HMMspamWords,$CurWord) if $DoHMM && $i < $main::HMMDBWords;}
-            else           { $HamWordCount  += $factor; push(@HMMhamWords, $CurWord) if $DoHMM && $i < $main::HMMDBWords;}
+        # increment global weights, they are not really word counts
+        if   ($isspam) { $SpamWordCount += $factor; push(@HMMspamWords,$CurWord) if $DoHMM && $i < $main::HMMDBWords;}
+        else           { $HamWordCount  += $factor; push(@HMMhamWords, $CurWord) if $DoHMM && $i < $main::HMMDBWords;}
 
-            my $tag = "$PrevWord $CurWord";
-            ( $sfac, $tfac ) = split( q{ }, $spam->{ $tag } );
+        my $tag = "$PrevWord $CurWord";
+        ( $sfac, $tfac ) = split( q{ }, $spam->{ $tag } );
+        $sfac += $sfactor;
+        $tfac += $factor;
+        $spam->{ $tag } = "$sfac $tfac";
+        if ($reportedBy) {
+            my $rtag = "$reportedBy $tag";
+            ( $sfac, $tfac ) = split( q{ }, $spam->{ $rtag } );
             $sfac += $sfactor;
             $tfac += $factor;
-            $spam->{ $tag } = "$sfac $tfac";
-            if ($reportedBy) {
-                my $rtag = "$reportedBy $tag";
-                ( $sfac, $tfac ) = split( q{ }, $spam->{ $rtag } );
-                $sfac += $sfactor;
-                $tfac += $factor;
-                $spam->{ $rtag } = "$sfac $tfac";
-            }
-            if ($domain) {
-                my $dtag = "$domain $tag";
-                ( $sfac, $tfac ) = split( q{ }, $spam->{ $dtag } );
-                $sfac += $sfactor;
-                $tfac += $factor;
-                $spam->{ $dtag } = "$sfac $tfac";
-            }
-            $PrevWord = $CurWord;
-            $i++;
+            $spam->{ $rtag } = "$sfac $tfac";
         }
-    } ## end while ( $content =~ /([$BayesCont]{2,})(?{$1})/go)
+        if ($domain) {
+            my $dtag = "$domain $tag";
+            ( $sfac, $tfac ) = split( q{ }, $spam->{ $dtag } );
+            $sfac += $sfactor;
+            $tfac += $factor;
+            $spam->{ $dtag } = "$sfac $tfac";
+        }
+        $PrevWord = $CurWord;
+        $i++;
+    }
     if ($DoHMM) {
 #        &rb_mlog( 'Rebuild: adding HMM: H = ' .scalar(@HMMhamWords).', S = '.scalar(@HMMspamWords).' words'.' P = '.$reportedBy);
         eval {
@@ -10947,7 +10963,7 @@ sub niceLink {
     my $newline;
     foreach my $word (split(/ /o,$c)) {
          my $orgword = $word;
-         $word =~ s/[^a-zA-Z0-9_]//go;
+         $word =~ s/[\x00-\x2f\x3a-\x40\x5b-\x5e\x60\x7b-\xff]//go;  #[^a-zA-Z0-9_]
          if (exists $Config{$word} && ($rootlogin || ! $AdminUsersRight{"$WebIP{$ActWebSess}->{user}.user.hidDisabled"})) {
               my $alt = $ConfigNice{$word};
               my $value = encodeHTMLEntities($ConfigListBox{$word});
@@ -14253,7 +14269,7 @@ EOT
     }
     if (! $ov) {
         my $out = runCMD('openssl version 2>&1');
-        if ($out =~ /openssl.*?(\d+\.\d+[^\s\r\n]+)/is) {
+        if ($out =~ /openssl.*?(\d+\.\d+\S+)/is) {
             $osslv = $1;
         }
         $ModuleList{'OpenSSL ' . $osslv} = $osslv . '/0.9.8';
@@ -16227,7 +16243,7 @@ sub exportConfig {
             $COL->read($value,fsize($fil));
             $COL->close;
             $value = $enc->DECRYPT($value) if $value =~ /^(?:[a-zA-Z0-9]{2}){5,}$/o;
-            my @includes = $value =~ /\s*#\s*include\s+([^\r\n]+)\r?\n/iog;
+            my @includes = $value =~ /\s*#\s*include\s+([$NOCRLF]+)\r?\n/iog;
             for my $ifile (@includes) {
                 my $inc;
                 $ifile =~ s/([^\\\/])[#;].*/$1/go;
@@ -18076,7 +18092,7 @@ sub mlog {
             if ($noipinfo < 3 && ($comment =~ /\[spam found\] /oi || $this->{prepend} eq '[MessageOK]')) {
                 my $c = $comment;
                 $c =~ s/\r//go;
-                $c =~ s/\n([^\n]+)/\n\t$1/go;
+                $c =~ s/\n([\x00-\x09\x0b-\xff]+)/\n\t$1/go;
                 $c .= "\n" if ($c !~ /\n$/o);
                 my %seen;
                 for (split(/\s+/o,$this->{rcpt})) {
@@ -18121,7 +18137,7 @@ sub mlog {
     }
 
     $m =~ s/\r//go;
-    $m =~ s/\n([^\n]+)/\n\t$1/go;
+    $m =~ s/\n([\x00-\x09\x0b-\xff]+)/\n\t$1/go;
     $m .= "\n" if ($m !~ /\n$/o);
 
     if ($debug || $ThreadDebug) {
@@ -18196,8 +18212,8 @@ sub tosyslog {
            my $msg = shift @$m;
            $msg =~ s/^\s+//o;
            my $p = $priority;
-           $p = 'warning' if $msg =~ /^\[[^\]+]\] warning:/oi;
-           $p = 'error' if $msg =~ /^\[[^\]+]\] error:/oi;
+           $p = 'warning' if $msg =~ /^\[[\x00-\x2a\x2c-\x5c\x5e-\xff]\] warning:/oi;
+           $p = 'error' if $msg =~ /^\[[\x00-\x2a\x2c-\x5c\x5e-\xff]\] error:/oi;
            my $ok;
            eval{$ok = $SysLogObj->send($msg,Priority => $p);};
            if (! $ok || $@) {
@@ -18217,8 +18233,8 @@ sub tosyslog {
            my $msg = shift @$m;
            $msg =~ s/^\s+//o;
            my $p = $priority;
-           $p = 'warning' if $msg =~ /^\[[^\]+]\] warning:/oi;
-           $p = 'error' if $msg =~ /^\[[^\]+]\] error:/oi;
+           $p = 'warning' if $msg =~ /^\[[\x00-\x2a\x2c-\x5c\x5e-\xff]\] warning:/oi;
+           $p = 'error' if $msg =~ /^\[[\x00-\x2a\x2c-\x5c\x5e-\xff]\] error:/oi;
            syslog($p, $msg);
        }
        closelog();
@@ -19252,10 +19268,10 @@ sub SMTPTraffic {
                         done($fh);
                         $Stats{preHeader}++;
                         return;
-                    }
-                    if ($s =~ /^(X-ASSP-[^(]+?)(\(\d+\))?(:$HeaderValueRe)$/io) {  # change strange X-ASSP headers
+                    }                          # (
+                    if ($s =~ /^(X-ASSP-[\x00-\x27\x29-\xFF]+?)(\(\d+\))?(:$HeaderValueRe)$/io) {  # change strange X-ASSP headers
                         my ($pre,$c,$post) = ($1,$2,$3);
-                        $c =~ s/[^\d]//go;
+                        $c =~ s/\D//go;
                         $c = 0 unless $c;
                         $s = $pre . '(' . ++$c . ')' . $post;
                         $Con{$fh}->{nodkim} = 2;     # we have modified the header and should skip the DKIM check for this reason
@@ -19969,7 +19985,7 @@ sub NoLoopSyswrite {
     if (   exists $Con{$fh}
         && $Con{$fh}->{type} eq 'C'       # is a client SMTP connection?
         && ($replyLogging == 2 or ($replyLogging == 1 && $out =~ /^[45]/o))
-        && $out =~ /^(?:[1-5]\d\d\s+[^\r\n]+\r\n)+$/o)    # is a reply?
+        && $out =~ /^(?:[1-5]\d\d\s+[$NOCRLF]+\r\n)+$/o)    # is a reply?
     {
         replaceLiterals($fh,\$out);
         my @reply = split(/(?:\r?\n)+/o,$out);
@@ -20135,8 +20151,8 @@ sub SNMPVarType {
 #    my $ipaddr = ($sid=~/^\.?2/o) ? 'ASN_OCTET_STR' : 'ASN_IPADDRESS';
 #    $$var =~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/o and return $asText ? $ipaddr : $SNMPAS{$ipaddr};
     $$var =~ /^(?:0|1)$/o and return $asText ? $boolean : $SNMPAS{$boolean};
-    $$var =~ /[^\d.]/o and return $asText ? 'ASN_OCTET_STR' : $SNMPAS{ASN_OCTET_STR};
-    $$var =~ /\.[^.]*\./o and return $asText ? 'ASN_OCTET_STR' : $SNMPAS{ASN_OCTET_STR};
+    $$var =~ /[\x00-\x2d\x2f\x3a-\xff]/o and return $asText ? 'ASN_OCTET_STR' : $SNMPAS{ASN_OCTET_STR};
+    $$var =~ /\.[\x00-\x2d\x2f-\xff]*\./o and return $asText ? 'ASN_OCTET_STR' : $SNMPAS{ASN_OCTET_STR};
 #    $$var =~ /\./o and return $asText ? 'ASN_FLOAT' : $SNMPAS{ASN_FLOAT};
     $$var =~ /^\d+$/o and return $asText ? 'ASN_COUNTER' : $SNMPAS{ASN_COUNTER};
     return $asText ? 'ASN_OCTET_STR' : $SNMPAS{ASN_OCTET_STR};
@@ -21587,7 +21603,7 @@ sub sendque {
 
     if (   $Con{$fh}->{type} eq 'C'       # is a client SMTP connection?
         && ($replyLogging == 2 or ($replyLogging == 1 && $$outmessage =~ /^[45]/o))
-        && $$outmessage =~ /^[1-5]\d\d\s+[^\r\n]+\r\n$/o)    # is a reply?
+        && $$outmessage =~ /^[1-5]\d\d\s+[$NOCRLF]+\r\n$/o)    # is a reply?
     {
         my $what = 'Reply';
         replaceLiterals($fh,$outmessage);
@@ -21861,7 +21877,7 @@ sub sendquedata {
   }
 
   if (! $friend->{addMSGIDsigDone} && $friend->{relayok} && $DoMSGIDsig) { # add the MSGID Tag
-      if ($message =~ /(Message-ID\:[\r\n\s]*\<[^\r\n]+\>)/io) {       # if not already done
+      if ($message =~ /(Message-ID\:[\r\n\s]*\<[$NOCRLF]+\>)/io) {       # if not already done
           my $msgid = $1;
           my $tag = MSGIDaddSig($this->{friend},$msgid);
           if ($msgid ne $tag ) {
@@ -22392,14 +22408,10 @@ if ((! $friend->{noprocessing} || $convertNP) && $convert && ! $friend->{signed}
 }
 
 sub is_7bit_clean {
-    my $ref = shift;
-#    return $$ref =~ /^\p{ASCII}*$/o;
+    local $@;
     my $ret;
-    eval('
-    use bytes;
-    $ret = ${$ref} !~ /[^\x20-\x7F\x0A\x0D\t]/os;
-    no bytes;');
-    return $ret;
+    eval{$ret = ${$_[0]} =~ /^[\x20-\x7F\x0A\x0D\x09]+$/os;};
+    return ($@ || ! $ret) ? 0 : 1;
 }
 
 
@@ -22444,7 +22456,7 @@ sub localvrfy2MTA_Run {
   my $canvrfy;
   my $canexpn;
 
-  $domain = $1 if $h=~/\@([^@]*)/o;
+  $domain = $1 if $h=~/\@(.*)/o;
   return 0 unless $domain;
 
   $h = &batv_remove_tag(0,lc($h),'');
@@ -22579,7 +22591,7 @@ sub localmail {
   return 0 unless $h;
 #(my $package, my $file, my $line, my $Subroutine, my $HasArgs, my $WantArray, my $EvalText, my $IsRequire) = caller(0);
 #d("localmail - $package, $file, $line, $Subroutine, $HasArgs, $WantArray, $EvalText, $IsRequire");
-  $h = $1 if $h=~/\@([^@]*)/o;
+  $h = $1 if $h=~/\@(.*)/o;
   return &localdomains($h);
 }
 
@@ -22589,13 +22601,13 @@ sub localdomains {
     d("localdomains - $h",1) if $WorkerNumber != 10001;
     return 0 unless $h;
     $h =~ tr/A-Z/a-z/;
-    my $hat; $hat = $1 if $h =~ /(\@[^@]*)/o;
-    $h = $1 if $h =~ /\@([^@]*)/o;
+    my $hat; $hat = $1 if $h =~ /(\@.*)/o;
+    $h = $1 if $h =~ /\@(.*)/o;
 
     return 1 if $h eq "assp.local";
     return 1 if $h eq "assp-nospam.org";
 
-    my ($EBRD) = $EmailBlockReportDomain =~ /^\@*([^@]*)$/o;
+    my ($EBRD) = $EmailBlockReportDomain =~ /^\@*(.*)$/o;
     return 1 if ($EBRD && lc($h) eq lc($EBRD));
 
     return 1 if $localDomains && ( ($hat && $hat =~ /$LDRE/) || ($h && $h =~ /$LDRE/) );
@@ -22619,8 +22631,8 @@ sub localdomainsreal {
     d("localdomainsreal - $h",1) if $WorkerNumber != 10001;
     return 0 unless $h;
     $h =~ tr/A-Z/a-z/;
-    my $hat; $hat = $1 if $h =~ /(\@[^@]*)/o;
-    $h = $1 if $h =~ /\@([^@]*)/o;
+    my $hat; $hat = $1 if $h =~ /(\@.*)/o;
+    $h = $1 if $h =~ /\@(.*)/o;
 
     return 1 if $localDomains && ( ($hat && $hat =~ /$LDRE/) || ($h && $h =~ /$LDRE/) );
 
@@ -23024,7 +23036,7 @@ sub LDAPcrossCheck {
     if($vl && $k !~ /^@/o) {  # do VRFY
         if ($DoVRFY && $CanUseNetSMTP) {
             mlog(0,"info: VRFY-crosscheck on $k") if $MaintenanceLog >= 2;
-            my ($domain) = $k =~ /[^@]+\@([^@]+)/o;
+            my ($domain) = $k =~ /\@(.+)/o;
             my $MTAList = &matchHashKey('DomainVRFYMTA',lc $domain);
             $MTAList = &matchHashKey('FlatVRFYMTA',lc "\@$domain") unless $MTAList;
             $expire_only = 1;
@@ -23148,7 +23160,7 @@ sub LDAPcrossCheck {
        mlog(0,"LDAP/VRFY-crosscheck: domain $k removed from LDAPlist - entry is older than $MaxLDAPlistDays days") if $MaintenanceLog;
        d("LDAP/VRFY-crosscheck: domain $k removed from LDAPlist - entry is older than $MaxLDAPlistDays days");
     } elsif ($entry_count && $expire_only != 2) {
-       if ($k =~ /(\@[^@]+)$/o) {
+       if ($k =~ /(\@.+)$/o) {
            $domains{$1} = $t;
        }
     }
@@ -23480,7 +23492,7 @@ sub resend_mail {
           $hostCFGname = 'relayHost';
       }
       my $localip;
-      if ( $islocal && $host eq $smtpDestination && $message =~ /(?:^|\n)X-Assp-Intended-For-IP: ([^\r\n]+)\r\n/o) {
+      if ( $islocal && $host eq $smtpDestination && $message =~ /(?:^|\n)X-Assp-Intended-For-IP: ([$NOCRLF]+)\r\n/o) {
           $localip = $1;
       }
       if (! $host) {
@@ -23581,7 +23593,7 @@ sub resend_mail {
           $Con{$fh}->{rcpt} = $to;
           $Con{$fh}->{header} = $message;
           if ($DoMSGIDsig) {
-              if ($message =~ /(Message-ID\:[\r\n\s]*\<[^\r\n]+\>)/io) {
+              if ($message =~ /(Message-ID\:[\r\n\s]*\<[$NOCRLF]+\>)/io) {
                   my $msgid = $1;
                   my $tag = MSGIDaddSig($fh,$msgid);
                   if ($msgid ne $tag ) {
@@ -23770,7 +23782,7 @@ sub bodyWrap {
 # wrap long headers according to RFC822/1522
 sub headerWrap {
     my $header=shift;
-    $header=~s/(?:([^\r\n]{60,75}?;)|([^\r\n]{60,75}) ) {0,5}(?=[^\r\n]{10,})/$1$2\r\n\t/go;
+    $header=~s/(?:([$NOCRLF]{60,75}?;)|([$NOCRLF]{60,75}) ) {0,5}(?=[$NOCRLF]{10,})/$1$2\r\n\t/go;
     return $header;
 }
 
@@ -23865,8 +23877,8 @@ sub stateReset {
     $this->{resetState}++;
 
     if ($enableCrashAnalyzer && !$this->{relayok} && $this->{lastcmd} =~ /mail from/io && exists $this->{msgtime}) {
-        my ($crmf) = $this->{crashbuf} =~ /([^\r\n]+\r\n)$/os;
-        my ($crhl) = $this->{crashbuf} =~ /\n((?:ehlo|helo)[^\r\n]+\r\n)/ois;
+        my ($crmf) = $this->{crashbuf} =~ /([$NOCRLF]+\r\n)$/os;
+        my ($crhl) = $this->{crashbuf} =~ /\n((?:ehlo|helo)[$NOCRLF]+\r\n)/ois;
         removeCrashFile($fh) and
         newCrashFile($fh) and
         ($this->{crashbuf} .= $crhl) and
@@ -24576,7 +24588,7 @@ sub getline {
         }
         $this->{fullhelo} = $fhelo if (lc($this->{lastcmd}) eq 'ehlo');
 
-    } elsif($l=~/^(\s*AUTH([^\r\n]*))\r?\n/io) {
+    } elsif($l=~/^(\s*AUTH([$NOCRLF]*))\r?\n/io) {
         my $ffr = $1;
         my $authmeth = $2;
 
@@ -24716,7 +24728,7 @@ sub getline {
         if ($this->{userauth}{authmeth} eq 'plain') {
             $this->{userauth}{stepcount} = 0;
             my $authstr;
-            $authstr = base64decode($1) if $l =~ /([^\r\n]*)\r\n/o;
+            $authstr = base64decode($1) if $l =~ /([$NOCRLF]*)\r\n/o;
             ($this->{userauth}{foruser},$this->{userauth}{user},$this->{userauth}{pass}) = split(/ |\0/o,$authstr);
             if ($AUTHLogUser) {
                 my $tolog = "info: authentication (PLAIN) realms - foruser:$this->{userauth}{foruser}, user:$this->{userauth}{user}";
@@ -24725,10 +24737,10 @@ sub getline {
             }
         } elsif ($this->{userauth}{stepcount} == 2) {          # login first step USER or digest-md5 after challange
             $this->{userauth}{stepcount} = 1;
-            $this->{userauth}{user} = base64decode($1) if $this->{userauth}{authmeth} eq 'login' && $l =~ /([^\r\n]*)\r\n/o;
+            $this->{userauth}{user} = base64decode($1) if $this->{userauth}{authmeth} eq 'login' && $l =~ /([$NOCRLF]*)\r\n/o;
         } elsif ($this->{userauth}{authmeth} eq 'login') {     # login second step PASS
             $this->{userauth}{stepcount} = 0;
-            $this->{userauth}{pass} = base64decode($1) if $l =~ /([^\r\n]*)\r\n/o;
+            $this->{userauth}{pass} = base64decode($1) if $l =~ /([$NOCRLF]*)\r\n/o;
             if ($AUTHLogUser) {
                 my $tolog = "info: authentication (LOGIN) realms - user:$this->{userauth}{user}";
                 $tolog .= ", pass:$this->{userauth}{pass}" if $AUTHLogPWD;
@@ -24737,7 +24749,7 @@ sub getline {
         } elsif ($this->{userauth}{authmeth} eq 'cram-md5') {  # cram-md5 single step  "USER DIGEST"
             $this->{userauth}{stepcount} = 0;
             my ($user,$cram);
-            ($user,$cram) = split(/\s+/o,base64decode($1)) if $l =~ /([^\r\n]*)\r\n/o;
+            ($user,$cram) = split(/\s+/o,base64decode($1)) if $l =~ /([$NOCRLF]*)\r\n/o;
             $this->{userauth}{user} = $user if $user;
             if ($AUTHLogUser) {
                 my $tolog = "info: authentication (CRAM-MD5) realms - user:$this->{userauth}{user}";
@@ -24773,7 +24785,7 @@ sub getline {
         sendque($server,$l) if $server;
         return;
 
-    } elsif (&syncCanSync() && $enableCFGShare && $isShareSlave && $l=~/^ *ASSPSYNCCONFIG\s*([^\r\n]+)\r\n/o ) {
+    } elsif (&syncCanSync() && $enableCFGShare && $isShareSlave && $l=~/^ *ASSPSYNCCONFIG\s*([$NOCRLF]+)\r\n/o ) {
         my $pass = $1;
         mlog(0,"info: got ASSPSYNCCONFIG request from $this->{ip}") if $ConnectionLog >=2;
         $this->{lastcmd} = 'ASSPSYNCCONFIG';
@@ -24817,7 +24829,7 @@ sub getline {
         $this->{getlinetxt} = 'syncRCVData';
         NoLoopSyswrite($fh,"250 OK start the config sync\r\n",0);
         return;
-    } elsif ($l=~/^ *ASSPSYNCCONFIG\s*([^\r\n]+)?\r\n/o ) {
+    } elsif ($l=~/^ *ASSPSYNCCONFIG\s*([$NOCRLF]+)?\r\n/o ) {
         my $pass = $1;
         mlog(0,"info: got ASSPSYNCCONFIG request from $this->{ip}") if $ConnectionLog >=2;
         $this->{lastcmd} = 'ASSPSYNCCONFIG';
@@ -24911,7 +24923,7 @@ sub getline {
 
         $this->{lastcmd} = 'MAIL FROM';
         push(@{$this->{cmdlist}},$this->{lastcmd}) if $ConnectionLog >= 2;
-        if($EnforceAuth && &matchFH($fh,@lsn2I) && ! $this->{authenticated} && ! $this->{DisableAUTH} && ($l !~ /\sAUTH=[^\r\n\s<>]+/io || $l =~ /\sAUTH=<>/io)) {
+        if($EnforceAuth && &matchFH($fh,@lsn2I) && ! $this->{authenticated} && ! $this->{DisableAUTH} && ($l !~ /\sAUTH=[^\s<>]+/io || $l =~ /\sAUTH=<>/io)) {
             NoLoopSyswrite($fh,"530 5.7.0 Authentication required before [Mail From]\r\n",0);
             mlog($fh,"$fr submited without previous or included AUTH - 'EnforceAuth' is set to 'ON' for 'listenPort2'",1);
             done($fh);
@@ -25224,8 +25236,8 @@ sub getline {
                         && $enableSPFbackground
                         && $SPFCacheInterval
                         && $SPFCacheObject
-                        && $mf
-                        && (my ($helo) = $this->{orghelo} =~ /^ *(?:helo|ehlo) [<>,;\"\'\(\)\s]*([^<>,;\"\'\(\)\s]+)/io)
+                        && $mf                                                                    # [^<>,;\"\'\(\)\s]
+                        && (my ($helo) = $this->{orghelo} =~ /^ *(?:helo|ehlo) [<>,;\"\'\(\)\s]*([\x00-\x08\x0e-\x1f\x21\x23-\x26\x2a-\x2b\x2d-\x3a\x3d\x3f-\x84\x86-\x9f\xa1-\xff]+)/io)
                         && ! &SPFCacheFind($this->{ip},$mfd)
                        )
                     {
@@ -25540,7 +25552,7 @@ sub getline {
             $text .= "(wl: $this->{rememberMessageScore}->{whitelisted})" if exists $this->{rememberMessageScore}->{whitelisted};
             mlog($fh,"info: remember MessageScore for header processing: $text - for ".($this->{relayok} ? 'outgoing/local' : 'incoming').' mail') if $SessionLog > 1;
         }
-    } elsif($l=~/^ *(VRFY|EXPN) *([^\r\n]*)/io) {
+    } elsif($l=~/^ *(VRFY|EXPN) *([$NOCRLF]*)/io) {
         $this->{lastcmd} = $1;
         my $e=$2;
         push(@{$this->{cmdlist}},$this->{lastcmd}) if $ConnectionLog >= 2;
@@ -25559,7 +25571,7 @@ sub getline {
             return;
         }
 
-        my ($str, $gen, $day, $hash, $orig_user) = ($e =~ /(prvs=(\d)(\d\d\d)(\w{6})=([^\r\n]*))/o);
+        my ($str, $gen, $day, $hash, $orig_user) = ($e =~ /(prvs=(\d)(\d\d\d)(\w{6})=([$NOCRLF]*))/o);
         $l =~ s/$str/$orig_user/ if ($orig_user);  # remove our BATV-Tag from VRFY address
 
         # recipient replacment should be done next to here !
@@ -25580,7 +25592,7 @@ sub getline {
                 }
             }
         }
-    } elsif($l=~/rcpt to: *([^\r\n]*)/io) {
+    } elsif($l=~/rcpt to: *([$NOCRLF]*)/io) {
         $this->{lastcmd} = 'RCPT TO';
         push(@{$this->{cmdlist}},$this->{lastcmd}) if $ConnectionLog >= 2;
         delete $this->{orgrcpt};
@@ -25699,8 +25711,8 @@ sub getline {
             my $rt;
             $rt = $1 if $l=~/rcpt to:\s*<*([^\r\n>]*)/io;    # get the recipient address
             if ($remindBATVTag && $this->{isbounce} && exists $BATVTag{lc($rt)}) {        # if we remind strange Tags - does the Tag exists
-                if ( my ($gen, $day, $hash, $orig_user) = ($BATVTag{lc($rt)} =~ /^prvs=(\d)(\d\d\d)(\w{6})=([^\r\n]*)/o) ) {  # get the Tag details
-                    ($orig_user) = ($BATVTag{lc($rt)} =~ /^prvs=[\da-zA-Z]+=([^\r\n]*)/o) unless $orig_user;  # get the Tag details from invalid BATV signature
+                if ( my ($gen, $day, $hash, $orig_user) = ($BATVTag{lc($rt)} =~ /^prvs=(\d)(\d\d\d)(\w{6})=([$NOCRLF]*)/o) ) {  # get the Tag details
+                    ($orig_user) = ($BATVTag{lc($rt)} =~ /^prvs=[\da-zA-Z]+=([$NOCRLF]*)/o) unless $orig_user;  # get the Tag details from invalid BATV signature
                     my $today = (time / 86400) % 1000;                   # how old is the Tag
                     my $dt = ($day - $today + 1000) % 1000;
                     if ($dt <= 7) {
@@ -25790,7 +25802,7 @@ sub getline {
                   }
                 }
             }
-            $e = batv_remove_tag(0,$1,'') if $l=~/rcpt to: *([^\r\n]*)/io;
+            $e = batv_remove_tag(0,$1,'') if $l=~/rcpt to: *([$NOCRLF]*)/io;
         }
 
         #enforce valid email address pattern - RFC822
@@ -25842,17 +25854,17 @@ sub getline {
    # someone give me one good reason why I should support bang paths! grumble...
             $u="$2\@";
             $h=$1;
-        } elsif($l=~/rcpt to:[^\r\n]*?($EmailAdrRe\@)($EmailDomainRe)/io) {
+        } elsif($l=~/rcpt to:[$NOCRLF]*?($EmailAdrRe\@)($EmailDomainRe)/io) {
             my $buh = batv_remove_tag(0,"$1$2",'');
             $buh =~ /($EmailAdrRe\@)($EmailDomainRe)/io;
             ($u,$h)=($1,$2);
-        } elsif($l=~/rcpt to:[^\r\n]*?(\"$EmailAdrRe\"\@)($EmailDomainRe)/io) {
+        } elsif($l=~/rcpt to:[$NOCRLF]*?(\"$EmailAdrRe\"\@)($EmailDomainRe)/io) {
             ($u,$h)=($1,$2);
             my $buh = batv_remove_tag(0,"$u$h",'');
             $buh =~ /($EmailAdrRe\@)($EmailDomainRe)/io;
             ($u,$h)=($1,$2);
             $u =~ s/\"//go;
-        } elsif($defaultLocalHost && $l=~/rcpt to:[^\r\n]*?<($EmailAdrRe)>/io) {
+        } elsif($defaultLocalHost && $l=~/rcpt to:[$NOCRLF]*?<($EmailAdrRe)>/io) {
             ($u,$h)=($1,$defaultLocalHost);
             $u.='@';
         } else {
@@ -26900,12 +26912,7 @@ sub normSubject {
 
     $sub = lc $sub;
     my @subWords;
-    use re 'eval';
-    local $^R;
-    while (eval {$sub =~ /([$BayesCont]{2,})(?{$1})/go}) {
-        my $word = $^R or next;
-        push @subWords,$word;
-    }
+    eval { @subWords = $sub =~ /([$BayesCont]{2,})/go };
     push @subWords,$sub unless @subWords;
     $sub = join(' ',@subWords);
     $sub =~ s/^\s+//o;
@@ -26948,7 +26955,7 @@ sub makeSubject {
     $Con{$fh}->{subject3} = $sub;
 #    $Con{$fh}->{subject3} =~ s/\\x\{\d{2,}\}/_/go;
     $Con{$fh}->{subject3} =~ s/_{2,}/_/go;
-    $sub =~ s/[^a-zA-Z0-9]/_/go;
+    $sub =~ s/[\x00-\x2f\x3a-\x40\x5b-\x60\x7b-\xff]/_/go;  # [^a-zA-Z0-9]
     $sub =~ s/_{2,}/_/go;
     $Con{$fh}->{originalsubject} = $sub;
     $Con{$fh}->{originalsubject} =~ s/_/ /go;
@@ -27236,7 +27243,7 @@ sub getheader {
         }
         d('isred auto');
         if ( ! $this->{red}
-            && $decHeader =~ /(auto-submitted\:|subject\:[^\r\n]*?auto\:)/io )
+            && $decHeader =~ /(auto-submitted\:|subject\:[$NOCRLF]*?auto\:)/io )
             # RFC 3834
         {
             mlogRe( $fh, $1, 'redRe','red-auto' );
@@ -27347,13 +27354,13 @@ sub getheader {
 	        while ( $this->{header} =~ /($HeaderNameRe):($HeaderValueRe)/gios ) {
                 next if lc($1) ne 'received';
                 my $h = $2;
-                if ( $h =~ /\s+from\s+(?:([^\s]+)\s)?(?:.+?)(?:\Q$this->{cip}\E|\Q$cip\E|\Q$cip2\E)(?::$PortRe)?\]?\)(.{1,80})by.{1,20}/gis ) {
+                if ( $h =~ /\s+from\s+(?:(\S+)\s)?(?:.+?)(?:\Q$this->{cip}\E|\Q$cip\E|\Q$cip2\E)(?::$PortRe)?\]?\)(.{1,80})by.{1,20}/gis ) {
 
                     $this->{ciphelo} = $1;
                     $this->{helo} = $1 if $1;
                     my $rhelo = $2;
                     $rhelo =~ s/\r?\n/ /go;
-                    if ($rhelo =~ /.+?helo\s*=\s*([^\s]+)/io) {
+                    if ($rhelo =~ /.+?helo\s*=\s*(\S+)/io) {
                         $this->{ciphelo} = $1;
                         $this->{helo} = $1;
                     }
@@ -27373,7 +27380,7 @@ sub getheader {
 	        while ( $this->{header} =~ /($HeaderNameRe):($HeaderValueRe)/gios ) {
                 next if lc($1) ne 'received';
                 my $h = $2;
-                if ( $h =~ /\s+from\s+(?:([^\s]+)\s)?(?:.+?)($IPRe)(.{1,80})by.{1,20}($ispHostnamesRE)/gis ) {
+                if ( $h =~ /\s+from\s+(?:(\S+)\s)?(?:.+?)($IPRe)(.{1,80})by.{1,20}($ispHostnamesRE)/gis ) {
                     my $cip = ipv6expand(ipv6TOipv4($2));
                     my $helo = $1;
                     my $rhelo = $3;
@@ -28033,7 +28040,7 @@ sub SPFok {
             my $envmfd;
             if ( $blockstrictSPFRe && $mf =~ /$blockstrictSPFReRE/ ) # ONLY if the 'from'  address is in strictSPFre
             {
-        		 $envmfd = $1 if lc $this->{mailfrom} =~ /\@([^@]*)/o;
+        		 $envmfd = $1 if lc $this->{mailfrom} =~ /\@(.*)/o;
         		 return 1 if ($mfd eq $envmfd);
         		 mlog($fh,"SPF: do now the check for the header 'from: $mf' address") if $SPFLog;
         		 delete $this->{spfok};
@@ -28117,7 +28124,7 @@ sub SPFok_Run {
 
     my $mf = lc $this->{mailfrom};
     my $mfd;
-    $mfd = $1 if $mf =~ /\@([^@]*)/o;
+    $mfd = $1 if $mf =~ /\@(.*)/o;
     if (! $mfd) {
         $mfd = $helo;
         $mf = "postmaster\@$helo" unless $mf;
@@ -28856,7 +28863,7 @@ sub MSGIDsigRemove {
     my $todo = $alltodo;
     my $found = 0;
     do {
-        if ($todo =~ /((?:[^\r\n]+\:)[\r\n\s]*)?\<$MSGIDpreTag\.(\d)(\d\d\d)(\w{6})\.([^\r\n]+)\>/) {
+        if ($todo =~ /((?:[$NOCRLF]+\:)[\r\n\s]*)?\<$MSGIDpreTag\.(\d)(\d\d\d)(\w{6})\.([$NOCRLF]+)\>/) {
             my ($line, $gen, $day, $hash, $orig_msgid) = ($1,$2,$3,$4,$5);
             $found = 1;
             my $secret;
@@ -29167,7 +29174,7 @@ sub batv_rcpt_in {
     }
     return $rcpt,-1 if ($noBackSctrRe && $this->{header} =~ /noBackSctrReRE/);
 
-    if (my ($gen, $day, $hash, $orig_user) = ($user =~ /^prvs=(\d)(\d\d\d)(\w{6})=([^\r\n]*)/o)) {
+    if (my ($gen, $day, $hash, $orig_user) = ($user =~ /^prvs=(\d)(\d\d\d)(\w{6})=([$NOCRLF]*)/o)) {
         my $secret;
         for (@batv_secrets) {
             if ($_->{gen} == $gen) {
@@ -29321,7 +29328,7 @@ sub downloadHTTP {
     } elsif ( ! $rc->is_success ) {
         #download failed-error code output to logfile
         my $code = $rc->as_string;
-        ($code) = $code =~ /^([^\r\n]+)?\r?\n/o;
+        ($code) = $code =~ /^([$NOCRLF]+)?\r?\n/o;
         mlog( 0,"AdminInfo: $list download failed: " . $code );
         $$nextload = $shortRetry;
         $time = $$nextload - $time;
@@ -30258,19 +30265,20 @@ sub URIBLok_Run {
 (?:(?:[\=\%]|\&\#x)2[fF]\;?|\&\#0?47\;?|\/){2}
 EOT
     $ProtPrefix =~ s/\r|\n|\s//go;
-    my $UriIPSectDotRe = '(?:'.$IPSectRe.$UriDot.')';
-    my $UriIPRe = $ProtPrefix.'(?:[^\@]*?'.$UriAt.')?(?:(?:'.$UriIPSectDotRe.'{3})'.$IPSectRe.'|'.$IPv6Re.')[^\.\w\@]';
+    my $UriIPSectDotRe = '(?:'.$IPSectRe.$UriDot.')';                                                                                # [^\.\w\@]
+    my $UriIPRe = $ProtPrefix.'(?:[\x00-\x3f\x41-\xff]*?'.$UriAt.')?(?:(?:'.$UriIPSectDotRe.'{3})'.$IPSectRe.'|'.$IPv6Re.')[\x00-\x2d\x2f\x3a-\x3f\x5b-\x5e\x60\x7b-\xa9\xab-\xb4\xb6-\xb9\xbb-\xbf\xd7\xf7]';
 
     my $UriObvIPRe =
-    $ProtPrefix.'(?:[^\@\/]*?'.$UriAt.')?'.   # obfuscated IP address URI starts with prot://(..@)?
+    $ProtPrefix.'(?:[\x00-\x2e\x30-\x3f\x41-\xff]*?'.$UriAt.')?'.   # obfuscated IP address URI starts with prot://(..@)?
     '(?:(?:(?:=|\%|(?:0|\&\#)[xX])[0-9a-fA-F]+|(?:\&\#|\\)?\d+);?)(?:'.$UriDot.'|'.$UriCollon.'{1,2})?)+'.  # any dec, oct, hex or html encoded representation of this
-    '[^\.\w\@\-]';
+    #  '[^\.\w\@\-]';
+    '[\x00-\x2c\x2f\x3a-\x3f\x5b-\x5e\x60\x7b-\xa9\xab-\xb4\xb6-\xb9\xbb-\xbf\xd7\xf7]';
 
     my $URISubDelimsCharRe = '['.quotemeta('[!$&\'()*+,;=%^`{}|]').']'; # relaxed to a few other characters
-    if ($URIBLcheckDOTinURI) {
-        $URIDomainRe = $UriAt.'?(?:\w(?:[\w\-]|'.$UriDot.'|'.$dot.')*(?:'.$UriDot.'|' . $dot . ')(?:'. $TLDSRE .'))[^\.\w\@]';
-    } else {
-        $URIDomainRe = $UriAt.'?(?:\w(?:\w|'.$UriDot.'|\-)*'.$UriDot.'(?:'. $TLDSRE .'))[^\.\w\@]';
+    if ($URIBLcheckDOTinURI) {                                                                                     #[^\.\w\@]
+        $URIDomainRe = $UriAt.'?(?:\w(?:[\w\-]|'.$UriDot.'|'.$dot.')*(?:'.$UriDot.'|' . $dot . ')(?:'. $TLDSRE .'))[\x00-\x2d\x2f\x3a-\x3f\x5b-\x5e\x60\x7b-\xa9\xab-\xb4\xb6-\xb9\xbb-\xbf\xd7\xf7]';
+    } else {                                                                                 #[^\.\w\@]
+        $URIDomainRe = $UriAt.'?(?:\w(?:\w|'.$UriDot.'|\-)*'.$UriDot.'(?:'. $TLDSRE .'))[\x00-\x2d\x2f\x3a-\x3f\x5b-\x5e\x60\x7b-\xa9\xab-\xb4\xb6-\xb9\xbb-\xbf\xd7\xf7]';
     }
 
     my $slok = $this->{allLoveURIBLSpam} == 1;
@@ -30310,7 +30318,8 @@ EOT
         $head =~ s/Message-ID:$HeaderValueRe//gios;
         $head =~ s/References:$HeaderValueRe//gios;
         $head =~ s/In-Reply-To:$HeaderValueRe//gios;
-        $head =~ s/X-Assp-[^:]+?:$HeaderValueRe//gios;
+                                 # : 3a
+        $head =~ s/X-Assp-[\x00-\x39\x3b-\xff]+?:$HeaderValueRe//gios;
         $head =~ s/bcc:$HeaderValueRe//gios;
         $head =~ s/cc:$HeaderValueRe//gios;
         $head =~ s/[\x0D\x0A]*$/\x0D\x0A\x0D\x0A/o;
@@ -30324,7 +30333,7 @@ EOT
     push @myNames , split(/[\|, ]+/o,$myNameAlso);
     my $myName = '(?i:'.join('|', map {my $t = quotemeta($_);$t;} @myNames).'$)';
     my $SKIPURIRE = sub {my $t = shift; my @wuri = map {"$t,$_";} @rcpt; unshift @wuri, $t; return $t =~ /$URIBLWLDRE|$NPDRE|$myName/ || matchRE(\@wuri,'whiteListedDomains',1)};
-    ($fdom,$dom) = ($1,$2) if $this->{mailfrom} && $this->{mailfrom} =~ /\@((?:[^\.\s]+\.)*?([^\.\s]+\.[^\.\s]+))$/o ;
+    ($fdom,$dom) = ($1,$2) if $this->{mailfrom} && $this->{mailfrom} =~ /\@((?:\w+\.)*?(\w+\.\w\w+))$/o ;
     if ($fdom =~ /^$EmailDomainRe$/o) {
         if ($dom && ! localdomains($dom)) {
             mlog($fh,"info: found URI $dom")
@@ -31066,7 +31075,7 @@ sub DMARCget_Run {
            next if lc($1) ne 'x-spam-report';
            my $h = lc $2;
            my $host = $h;
-           $host =~ s/^([^\r\n]+)\r?\n.*/$1/os;
+           $host =~ s/^([$NOCRLF]+)\r?\n.*/$1/os;
            headerUnwrap($h);
            next if $host !~ s/^\s*Spam Filtering performed by ($EmailDomainRe).*$/$1/oi;
            $host =~ s/\.$//o;
@@ -34334,7 +34343,7 @@ sub BombWeight_Run {
     my $itime = Time::HiRes::time();
     $addCharsets = 1 if $re eq 'bombCharSets';
     if ($re ne 'bombSubjectRe') {
-       my $rawmd5 = Digest::MD5::md5($rawtext);
+       my $rawmd5 = Digest::MD5::md5($rawtext.$addCharsets);
        if (exists $Con{$fh}->{$rawmd5}) {
            $text[0] = $Con{$fh}->{$rawmd5}->{0};
            $text[1] = $Con{$fh}->{$rawmd5}->{1} if exists $Con{$fh}->{$rawmd5}->{1};
@@ -37161,7 +37170,7 @@ sub TestMessageScore {
     my $this = $Con{$fh};
     &NewSMTPConCall();
     delete $this->{messagereason};
-    
+
     return 0 if $this->{messagescoredone};
     return 0 if ($MsgScoreOnEnd && ! $this->{TestMessageScore});
 
@@ -37725,7 +37734,7 @@ sub reply {
         ! &matchFH($cli,@lsnNoTLSI)
        ) {
            my ($text1,$text2);
-           ($text1,$text2) = ($1,$2) if $l =~ /^([^\r\n]+)\r\n(.*)$/o;
+           ($text1,$text2) = ($1,$2) if $l =~ /^([$NOCRLF]+)\r\n(.*)$/o;
            d('injected 250-STARTTLS');
            if ($l =~ /^(211|214)(-|\s+)/o) {
                if ($2 ne '-') {
@@ -37804,7 +37813,7 @@ sub reply {
              ($l=~/(211|214)(?: |-)(?:.*?)(?:$notAllowedSMTP|$BIT8)/i) ) {
         d("$1 sequence - from server: \>$l\<");
         $l =~ s/VRFY|EXPN//sigo if ($DisableVRFY && !$Con{$cli}->{relayok});
-        $l =~ s/AUTH[^\r\n]+//sigo if ($DisableAUTH && !$Con{$cli}->{relayok});
+        $l =~ s/AUTH[$NOCRLF]+//sigo if ($DisableAUTH && !$Con{$cli}->{relayok});
         $l =~ s/$notAllowedSMTP|$BIT8/NOOP/sig;
     } elsif ($l=~/250[\s\-]+AUTH[\s\=]+(.+)/io) {
         my $methodes = $1;
@@ -38583,7 +38592,7 @@ sub SpamReportExec {
 
     $bod=~s/^.*?\n[\r\n\s]+//so;
 
-    $bod=~s/X-Assp-Spam-Prob:[^\r\n]+\r?\n//gio;
+    $bod=~s/X-Assp-Spam-Prob:[$NOCRLF]+\r?\n//gio;
     if($bod=~/\nReceived: /o) {
         $bod=~s/^.*?\nReceived: /Received: /so;
     } else {
@@ -39938,7 +39947,7 @@ sub ReturnMail {
     } else {
         mlog(0,"couldn't open '$file' for mail report");
     }
-    while ($this->{body} =~ /(\s*#\s*include\s+([^\r\n]+)\r?\n)/io) {
+    while ($this->{body} =~ /(\s*#\s*include\s+([$NOCRLF]+)\r?\n)/io) {
         my $line = $1;
         my $ifile = $2;
         $ifile =~ s/([^\\\/])[#;].*/$1/go;
@@ -40025,7 +40034,7 @@ sub ReportIncludes {
     my @ret;
     while (<$F>) {
         s/^$UTF8BOMRE//o;
-        next unless /\s*#\s*include\s+([^\r\n]+)\r?\n/io;
+        next unless /\s*#\s*include\s+([$NOCRLF]+)\r?\n/io;
         my $ifile = $1;
         $ifile =~ s/([^\\\/])[#;].*/$1/go;
         $ifile =~ s/[\"\']//go;
@@ -40212,7 +40221,7 @@ sub RMabort {mlog(0,"RMabort: $_[1] - report to ". $Con{$_[0]}->{to}); done2($_[
 
 sub NullFromToData { my ($fh,$l)=@_;
     d('NullFromToData');
-    ($Con{$fh}->{lastcmd}) = $l =~ /^([^\s]+)/o;
+    ($Con{$fh}->{lastcmd}) = $l =~ /^(\S+)/o;
     push(@{$Con{$fh}->{cmdlist}},$Con{$fh}->{lastcmd}) if $ConnectionLog >= 2;
     if($l=~/^DATA/io) {
         if (! $Con{$fh}->{rcpt}) {
@@ -40287,7 +40296,7 @@ sub NullData { my ($fh,$l)=@_;
             if  ($fakeAUTHsuccessSendFake && (my $mailfrom = $Con{$fh}->{mailfrom})) {
                 my $header = $Con{$fh}->{header};
                 $header =~ s/\r\n\.[\r\n]+$//o;
-                $header =~ s/x-assp[^\r\n]+\r\n//goi;
+                $header =~ s/x-assp[$NOCRLF]+\r\n//goi;
                 RCPT:
                 for my $rcpt (split(/\s+/o,$Con{$fh}->{rcpt})) {
                     my ($domain) = $rcpt =~ /\@($EmailDomainRe)/io;
@@ -41306,7 +41315,7 @@ WHITCHWORKER
                                ) ? '%5Bdo%20not%5D%20autoadd%20sender%20to%20whitelist%20' : '';
 
             my $filename;
-            $filename = $1 if $fl =~ s/\-\>\s*([^\r\n]+\Q$maillogExt\E)//i;
+            $filename = $1 if $fl =~ s/\-\>\s*([$NOCRLF]+\Q$maillogExt\E)//i;
             $filename =~ s/\\/\//go;
 
             my $addFileHint = (   $correctednotspam
@@ -41535,8 +41544,8 @@ sub BlockReportGetFrom {
         }
         next unless $showaddr;
         my ($tag,$adr);
-        ($tag,$adr) = ($1,$2) if /^(from|sender|reply-to|errors-to|list-\w+:)[^\r\n]*?<($EmailAdrRe\@$EmailDomainRe)>/io
-                              || /^(from|sender|reply-to|errors-to|list-\w+:)[^\r\n]*?($EmailAdrRe\@$EmailDomainRe)/io;
+        ($tag,$adr) = ($1,$2) if /^(from|sender|reply-to|errors-to|list-\w+:)[$NOCRLF]*?<($EmailAdrRe\@$EmailDomainRe)>/io
+                              || /^(from|sender|reply-to|errors-to|list-\w+:)[$NOCRLF]*?($EmailAdrRe\@$EmailDomainRe)/io;
         next unless ($tag && $adr);
         next if $$fl =~ /\Q$adr\E/i;
         $tag = &encHTMLent(\$tag);
@@ -42272,7 +42281,7 @@ sub BlockReportStoreUserRequest {
     $f->close if $f;
     $from = lc($from);
     my $how;
-    if ($sub =~ /^\s*([+\-])?(?:(?:\s*|\s*=>\s*)(\d+))?(?:(?:\s+|\s*=>\s*)([^\s]+))?(?:(?:\s+|\s*=>\s*)($ScheduleRe(?:\|$ScheduleRe)*))?\s*$/o) {
+    if ($sub =~ /^\s*([+\-])?(?:(?:\s*|\s*=>\s*)(\d+))?(?:(?:\s+|\s*=>\s*)(\S+))?(?:(?:\s+|\s*=>\s*)($ScheduleRe(?:\|$ScheduleRe)*))?\s*$/o) {
         $how = $1;
         $numdays = $2 ? $2 : 5;
         $exceptRe = $3;
@@ -42959,36 +42968,34 @@ sub HMMOK_Run {
     @HmmBayWords = ();
     my %seen;
     keys %seen = 1024;
-    use re 'eval';
-    local $^R;
-    while (eval {$bd =~ /([$BayesCont]{2,})(?{$1})/go}) {
-        my @Words;
-        (@Words = BayesWordClean($^R)) or next;
-        push @HmmBayWords, @Words if $DoBayesian;
-        while (my $t = shift @Words) {
-            next if length($t) > 37;
-            push @words, $t;
-            if (@words > $HMMSequenceLength) {
-                shift @words if @words > $HMMSequenceLength + 1;
-                my $sym = join($;,@words);
-                next if (++$seen{$sym} > 2);
-                $this->{hmmQuestion}++;
-                my $res;
-                if ($privat && ($res = $HMMdb{$privat.$;.$sym})) {
-                    for (1...$BayesPrivatPrior) {push @t,$res;$this->{hmmres}++;}
-                    ${$this->{hmmValues}}{'private: '.join(' ', @words)} = $res if exists $this->{hmmValues};
-                    next;
-                }
-                if ($domain && ($res = $HMMdb{$domain.$;.$sym})) {
-                    for (1...$BayesDomainPrior) {push @t,$res;$this->{hmmres}++;}
-                    ${$this->{hmmValues}}{'domain: '.join(' ', @words)} = $res if exists $this->{hmmValues};
-                    next;
-                }
-                next unless ($res = $HMMdb{$sym});
-                push @t,$res;
-                $this->{hmmres}++;
-                ${$this->{hmmValues}}{join(' ', @words)} = $res if exists $this->{hmmValues};
+    my @Words;
+    eval { @Words = map { BayesWordClean($_); } $bd =~ /([$BayesCont]{2,})/go };
+    @HmmBayWords = @Words if $DoBayesian;
+    while (@Words) {
+        my $t = shift @Words;
+        next unless $t;
+        next if length($t) > 37;
+        push @words, $t;
+        if (@words > $HMMSequenceLength) {
+            shift @words if @words > $HMMSequenceLength + 1;
+            my $sym = join($;,@words);
+            next if (++$seen{$sym} > 2);
+            $this->{hmmQuestion}++;
+            my $res;
+            if ($privat && ($res = $HMMdb{$privat.$;.$sym})) {
+                for (1...$BayesPrivatPrior) {push @t,$res;$this->{hmmres}++;}
+                ${$this->{hmmValues}}{'private: '.join(' ', @words)} = $res if exists $this->{hmmValues};
+                next;
             }
+            if ($domain && ($res = $HMMdb{$domain.$;.$sym})) {
+                for (1...$BayesDomainPrior) {push @t,$res;$this->{hmmres}++;}
+                ${$this->{hmmValues}}{'domain: '.join(' ', @words)} = $res if exists $this->{hmmValues};
+                next;
+            }
+            next unless ($res = $HMMdb{$sym});
+            push @t,$res;
+            $this->{hmmres}++;
+            ${$this->{hmmValues}}{join(' ', @words)} = $res if exists $this->{hmmValues};
         }
     }
     # the absolute answer / query relation
@@ -43245,44 +43252,40 @@ sub BayesWords {
     $privat = (eval('defined ${chr(ord(",") << ($DoPrivatSpamdb & 1))};')) ? lc $privat : '';
     $domain =~ s/^[^\@]*\@/\@/o;
     my @t;
-    my $dummy = '';
     my (%seen, $PrevWord, $CurWord, %got, $how);
     keys %seen = 1024;
     keys %got = 1024;
     my $question = my $answer = 0;
     $how = 1 if [caller(2)]->[3] =~ /AnalyzeText/o;
     $how = 2 if (!$how && [caller(1)]->[3] =~ /ConfigAnalyze/o);
-    $text = \$dummy if @HmmBayWords;
-    use re 'eval';
-    local $^R;
-    while (@HmmBayWords || eval {$$text =~ /([$BayesCont]{2,})(?{$1})/go}) {
-        @HmmBayWords = BayesWordClean($^R) unless @HmmBayWords;
-        while (@HmmBayWords) {
-            $CurWord = substr(shift(@HmmBayWords),0,37);
-            next unless $CurWord;
-            if (! $PrevWord) {
-                $PrevWord = $CurWord;
-                next ;
-            }
-            my $j="$PrevWord $CurWord";
+    if (! @HmmBayWords) {
+        eval { @HmmBayWords = map { BayesWordClean($_); } $$text =~ /([$BayesCont]{2,})/go };
+    }
+    while (@HmmBayWords) {
+        $CurWord = substr(shift(@HmmBayWords),0,37);
+        next unless $CurWord;
+        if (! $PrevWord) {
             $PrevWord = $CurWord;
-            next if (++$seen{$j} > 2); # first two occurances are significant
-            $question++;
-            if ($privat && (my $v = $Spamdb{"$privat $j"})) {
-                $got{ "private: $j" } = $v if ($how);
-                for(1...$BayesPrivatPrior) {push(@t,$v);$answer++;}
-                next;
-            }
-            if ($domain && (my $v = $Spamdb{"$domain $j"})) {
-                $got{ "domain: $j" } = $v if ($how);
-                for(1...$BayesDomainPrior) {push(@t,$v);$answer++;}
-                next;
-            }
-            if (my $v = $Spamdb{$j}) {
-                $got{ $j } = $v if ($how);
-                push(@t,$v);
-                $answer++;
-            }
+            next ;
+        }
+        my $j="$PrevWord $CurWord";
+        $PrevWord = $CurWord;
+        next if (++$seen{$j} > 2); # first two occurances are significant
+        $question++;
+        if ($privat && (my $v = $Spamdb{"$privat $j"})) {
+            $got{ "private: $j" } = $v if ($how);
+            for(1...$BayesPrivatPrior) {push(@t,$v);$answer++;}
+            next;
+        }
+        if ($domain && (my $v = $Spamdb{"$domain $j"})) {
+            $got{ "domain: $j" } = $v if ($how);
+            for(1...$BayesDomainPrior) {push(@t,$v);$answer++;}
+            next;
+        }
+        if (my $v = $Spamdb{$j}) {
+            $got{ $j } = $v if ($how);
+            push(@t,$v);
+            $answer++;
         }
     }
 
@@ -43373,6 +43376,7 @@ sub BayesOK {
     if ($lockBayes) {
         mlog($fh,"Bayesian is not available - spamdb is still locked by a rebuild task") if $BayesianLog;
         delete $Con{$fh}->{skipBayes};
+        @HmmBayWords = ();
         return 1;
     }
     my $this=$Con{$fh};
@@ -43380,11 +43384,13 @@ sub BayesOK {
     $DoBayesian = $this->{overwritedo} if ($this->{overwritedo});   # overwrite requ by Plugin
     if ($this->{bayesdone}) {
         delete $this->{skipBayes};
+        @HmmBayWords = ();
         return 1;
     }
     $this->{bayesdone} = 1;
     if (!$DoBayesian) {
         delete $this->{skipBayes};
+        @HmmBayWords = ();
         return 1;
     }
     my $res = BayesOK_Run($fh,$msg,$ip);
@@ -43948,7 +43954,7 @@ sub parts_multipart {
     # rfc1521 7.2.1
     my ($body, $epilogue) = split /^--\Q$boundary\E--\s*$/sm, $self->body_raw, 2;
 
-    my @bits = split /^--[^\n\r]+\s*$/smo, ($body || '');
+    my @bits = split /^--[$NOCRLF]+\s*$/smo, ($body || '');
 
     $self->{body} = undef;
     $self->{body} = (\shift @bits) if ($bits[0] || '') !~ /:/o;
@@ -44167,7 +44173,7 @@ sub fixUpMIMEHeader {
 # having a valid boundary in the body - which makes multiple parts,
 # (eg.) attachments and inlines possibly undetected in Email::MIME
     if (! $email->content_type || ! $email->{ct}{attributes}{boundary}) {
-        if ($email->body_raw =~ /(?:^|\n)--([^\r\n]+)\r?\n$HeaderRe/so) {
+        if ($email->body_raw =~ /(?:^|\n)--([$NOCRLF]+)\r?\n$HeaderRe/so) {
             $email->content_type_set( 'multipart/mixed' ) if $email->content_type !~ /multipart|message/io;
             $email->boundary_set( $1 );
             delete $email->{parts};  # force reparsing the parts
@@ -44218,6 +44224,7 @@ sub cleanMIMEBody2UTF8 {
             $cs{uc $cs} = "charset=$cs" if $cs;
 #print $F '<charset>'.$cs."<charset>\n" if $cs;
 #print $F '<name>'.$name."<name>\n" if $name;
+            $@ = undef;
             eval {
                 $cs =~ s/^[^A-Za-z]+//o;
                 $cs =~ s/[^A-Za-z0-9_\-]+.*$//o;
@@ -45564,7 +45571,7 @@ sub mergeBackDNS {
         mlog(0,"info: start merging new $hashname records") if $MaintenanceLog;
         $count = 0;
         while (my $line = (<$f>)) {
-            next if $line =~ /^(?:[^\d]|127\.)/o;
+            next if $line =~ /^(?:\D|127\.)/o;
             $line =~ s/\s//go;
             next unless $line;
             $tempbackdns{$line} = $time;
@@ -45583,7 +45590,7 @@ sub mergeBackDNS {
         importDB('BackDNS','','backdns',\%tempbackdns,$count, 1/2) if($ComWorker{$WorkerNumber}->{run});
     } else {
         while (my $line = (<$f>)) {
-            next if $line =~ /^(?:[^\d]|127\.)/o;
+            next if $line =~ /^(?:\D|127\.)/o;
             $line =~ s/\s//go;
             next unless $line;
             $hash->{$line} = $time;
@@ -47128,7 +47135,7 @@ sub FSdata2 { my ($fh,$l)=@_;
     } elsif($l=~/^ *354 /o) {
         my $header;
         $header = $1 if $this->{body} =~ s/^($HeaderRe*)//os;
-        $header =~ s/X-Assp[^():]+:$HeaderValueRe//gios;
+        $header =~ s/X-Assp[\x00-\x27\x2a-\x39\x3b-\xFF]+:$HeaderValueRe//gios;
         $this->{myheader}=~s/X-Assp-Intended-For:$HeaderValueRe//giso if $AddIntendedForHeader; # clear out existing X-Assp-Intended-For headers
         $header=~s/^($HeaderRe*)/$1From: sender not supplied\r\n/o unless $header=~/^$HeaderRe*From:/io; # add From: if missing
         $header=~s/^($HeaderRe*)/$1Subject:\r\n/o unless $header=~/^$HeaderRe*Subject:/io; # add Subject: if missing
@@ -50164,7 +50171,7 @@ x-xss-protection: 0
           (\d{1,2})
           [\-\.]?
           (\d{1,2})
-          [^\d]+
+          \D+
           (\d{1,2})
           [\-\.:]?
           (\d{1,2})?
@@ -50182,7 +50189,7 @@ x-xss-protection: 0
           (\d{1,2})
           [\-\.]?
           (\d{1,2})
-          [^\d]+
+          \D+
           (\d{1,2})
           [\-\.:]?
           (\d{1,2})?
@@ -50348,7 +50355,7 @@ x-xss-protection: 0
           (\d{1,2})
           [\-\.]?
           (\d{1,2})
-          [^\d]+
+          \D+
           (\d{1,2})
           [\-\.:]?
           (\d{1,2})?
@@ -50366,7 +50373,7 @@ x-xss-protection: 0
           (\d{1,2})
           [\-\.]?
           (\d{1,2})
-          [^\d]+
+          \D+
           (\d{1,2})
           [\-\.:]?
           (\d{1,2})?
@@ -50902,36 +50909,53 @@ sub SearchBombW {
 sub SearchBomb {
     my ($name, $srch)=@_;
 
-    my $extLog = $AnalyzeLogRegex && ! $silent && [caller(1)]->[3] =~ /analyze/io;
+    my $extLog = $AnalyzeLogRegex && ! $silent && [caller(1)]->[3] =~ /analyze/io && $WorkerNumber == 0;
 
     $incFound = '';
     my @srch;
     my $fil=$Config{"$name"};
     return 0 unless $fil;
+    return 0 unless ${$name.'RE'};
+    return 0 if ${$name.'RE'} =~ /$neverMatchRE/o;
     $addCharsets = 1 if $name eq 'bombCharSets';
-    my $text;
     if ($name ne 'bombSubjectRe') {
-       my $mimetext = cleanMIMEBody2UTF8(\$srch);
-       if ($mimetext || $srch =~ /^$HeaderRe/ios) {
-           $text =  cleanMIMEHeader2UTF8(\$srch,0);
-           $mimetext =~ s/\=(?:\015?\012|\015)//go;
-           $mimetext = decHTMLent(\$mimetext);
-           $text .= $mimetext;
+       my $rawmd5 = Digest::MD5::md5($srch.$addCharsets);
+       if (exists $Con{0}->{$rawmd5}) {
+           $srch[0] = $Con{0}->{$rawmd5}->{0};
+           $srch[1] = $Con{0}->{$rawmd5}->{1} if exists $Con{0}->{$rawmd5}->{1};
        } else {
-           $text = decodeMimeWords2UTF8($srch)
+           my $mimetext = cleanMIMEBody2UTF8(\$srch);
+           if ($mimetext || $srch =~ /^$HeaderRe/ios) {
+               $srch[0] =  cleanMIMEHeader2UTF8(\$srch,0);
+               $mimetext =~ s/\=(?:\015?\012|\015)//go;
+               $mimetext = decHTMLent(\$mimetext);
+               $srch[0] .= $mimetext;
+           } else {
+               $srch[0] = decodeMimeWords2UTF8($srch);
+           }
+           unicodeNormalize(\$srch[0]);
+           $Con{0}->{$rawmd5}->{0} = $srch[0];
+           if ($DoTransliterate && $srch[0]) {
+               my $t = transliterate(\("\r\n".$srch[0]), 1);
+               if ($t) {
+                   push(@srch,$t);
+                   $Con{0}->{$rawmd5}->{1} = $t;
+               }
+           }
        }
     } else {
-       $text = $srch;
+       $srch[0] = $srch;
+       unicodeNormalize(\$srch[0]);
+       if ($DoTransliterate && $srch[0]) {
+           my $t = transliterate(\("\r\n".$srch[0]), 1);
+           push(@srch,$t) if $t;
+       }
     }
-    unicodeNormalize(\$text);
-    push @srch , $text;
-    $text = "\r\n" . $text;
-    push @srch , transliterate(\$text, 1) if $DoTransliterate;
+
     if (eval{$canUnicode && exists($uniRegex{$name}) && ! Encode::is_utf8($srch[0]) && utf8::valid($srch[0])}) {
         push @srch, $srch[0];           # there is a unicode regex defined and we can do it
         $utf8on->(\$srch[-1]);
     }
-    undef $text;
 #    mlog(0,utf8::valid($srch) ? "info: $name - valid": "info: $name - invalid");
 #    mlog(0,Encode::is_utf8($srch) ? "info: $name - isUTF8": "info: $name - isNotUTF8");
     $addCharsets = 0;
@@ -51240,7 +51264,8 @@ sub ConfigAnalyze {
         $hasheader = 1;
     }
     $fm .= "removed all local X-ASSP- header lines for analysis<br />\n"
-        if ($mail =~ s/x-assp-[^()]+?:\s*$HeaderValueRe//gios);
+                                     # ^()
+        if ($mail =~ s/x-assp-[\x00-\x27\x2a-\xFF]+?:\s*$HeaderValueRe//gios);
     my $mystatus;
     my $foundReceived = 0;
     my @t;
@@ -51307,7 +51332,7 @@ sub ConfigAnalyze {
 		$fm .= "Connecting IP: '$ip'<br />\n" if $ip;
         my $conIP = $ip;
         $ip3 = ipNetwork($ip,1);
-        if (!$helo && ! $header && $mail =~ /(?:^[\s\r\n]*|\r?\n)\s*helo\s*=\s*([^\r\n]+)/ios ) {
+        if (!$helo && ! $header && $mail =~ /(?:^[\s\r\n]*|\r?\n)\s*helo\s*=\s*([$NOCRLF]+)/ios ) {
             $helo = $1;
             $helo =~ s/\)$//o;
             $mystatus="helo";
@@ -51340,7 +51365,7 @@ sub ConfigAnalyze {
             my $ispHost;
             my @authHosts;
             for my $val ( @recHeader ) {
-                if ($ispHostnames && $val =~ /(\s*from\s+(?:([^\s]+)\s)?(?:.+?)($IPRe)(?:.{1,80})by.{1,20}($ispHostnamesRE))/gis ) {
+                if ($ispHostnames && $val =~ /(\s*from\s+(?:(\S+)\s)?(?:.+?)($IPRe)(?:.{1,80})by.{1,20}($ispHostnamesRE))/gis ) {
                     my ($r,$h,$i,$ih) = ($1,$2,$3,$4);
                     next if $i =~ /^$IPprivate$/o;
                     $helo = $h;
@@ -51350,7 +51375,7 @@ sub ConfigAnalyze {
                     $ip3 = ipNetwork($ip,1);
                     $foundReceived = 1;
                 }
-                if ($val =~ /\s*from\s+(?:([^\s]+)\s)?(?:.+?)($IPRe)(?:.{1,80})by\s+($HostRe).+?with\s+(E?SMTPS?A)/gio ) {
+                if ($val =~ /\s*from\s+(?:(\S+)\s)?(?:.+?)($IPRe)(?:.{1,80})by\s+($HostRe).+?with\s+(E?SMTPS?A)/gio ) {
                     my $auth = {};
                     $auth->{host} = $1;
                     $auth->{ip} = $2;
@@ -51386,7 +51411,7 @@ sub ConfigAnalyze {
             push @recHeader, $1, $2;
             my $who = $1;
             my $s = $2;
-            $noDKIM = 2 if $who =~ /^X-ASSP-[^(]+?\(\d+\)/io;
+            $noDKIM = 2 if $who =~ /^X-ASSP-[\x00-\x27\x29-\xFF]+?\(\d+\)/io;
             next if $who !~ /^(from|sender|reply-to|errors-to|list-\w+|ReturnReceipt|Return-Receipt-To|Disposition-Notification-To)$/io;
             $mailfrom = lc($1) if (! $mailfrom && lc($1) eq 'from');
             &headerUnwrap($s);
@@ -51625,6 +51650,8 @@ sub ConfigAnalyze {
         }
         %seenLine = ();
 
+        $Con{0} = {};
+        
         eval {
         my $tmpfh = time;
         $Con{$tmpfh} = {};
@@ -51647,8 +51674,6 @@ sub ConfigAnalyze {
         delete $Con{$tmpfh};
         $tmpfh = '';
         };
-
-
 
         my $sigok;
         if ($mail =~ /Content-Type:\s*multipart\/signed\s*;|protocol\s*=\s*"?application\/((?:pgp|(?:x-)?pkcs7)-signature|pkcs7-mime)/io) {
@@ -53061,21 +53086,14 @@ sub decHTMLent {
 
 sub decNum2Char {
     my ($s, $how) = @_;
-    $s = chr(($how eq 'hex')?hex($s):($how eq 'oct')?oct($s):$s);
+    eval{$s = chr(($how eq 'hex')?hex($s):($how eq 'oct')?oct($s):$s);} or return;
     return $s;
 }
 
 sub decHTMLentHD {
     my ($s, $how) = @_;
-    eval('
-    if (defined *{\'yield\'}) {
-    $s = chr(($how eq \'hex\')?hex($s):($how eq \'oct\')?oct($s):$s);
-    use bytes;
-    $s =~ s/^(?:\xA1[\x43\x44\x4F]|\xE3\x80\x82|\xEF(?:\xBC\x8E|\xB9\x92)|\xDB\x94)$/./go;  #Big5 Chinese language character set (.)
-    $s =~ s/^\xA0$/ /gosi;  # decode to space not to \160
-    $s =~ s/^\xAD$/-/gosi;  # decode to - not to \173
-    } no bytes;');
-    return $s;
+    eval{$s = chr(($how eq 'hex')?hex($s):($how eq 'oct')?oct($s):$s);} or return;
+    return $replaceHTMLChar{$s} || $s;
 }
 
 sub normHTML {
@@ -53269,7 +53287,7 @@ $autoJS
          $_ = niceLink($_);
          while ($_ =~ s/(\<a href.*?<\/a\>)/XXXIIIXXX/o) {
              my $link = $1;
-             $link =~ s/WIDTH=[^\d]*(\d+\%)[^ ]*/WIDTH=$1/io;
+             $link =~ s/WIDTH=\D*(\d+\%)[^ ]*/WIDTH=$1/io;
              push @links,$link;
          }
          if (&canUserDo($WebIP{$ActWebSess}->{user},'action','addraction')) {
@@ -53604,7 +53622,7 @@ LOOP
         my @ips;
         while ($_ =~ s/(\<a href.*?<\/a\>)/XXXIIIXXX/o) {
             my $link = $1;
-            $link =~ s/WIDTH=[^\d]*(\d+\%)[^ ]*/WIDTH=$1/io;
+            $link =~ s/WIDTH=\D*(\d+\%)[^ ]*/WIDTH=$1/io;
             push @links,$link;
         }
         if (&canUserDo($WebIP{$ActWebSess}->{user},'action','addraction')) {
@@ -53985,20 +54003,20 @@ sub getHashName {
 sub d8 {
     local $@;
     my $ret = eval{Encode::decode('UTF-8',$_[0]);};
-    return ($ret && defined ${chr(ord("\026") << 2)}) ? $ret : $_[0];
+    return ($ret) ? $ret : $_[0];
 }
 
 sub e8 {
     local $@;
     my $ret = eval{Encode::encode('UTF-8',$_[0]);};
-    return ($ret && defined ${chr(ord("\026") << 2)}) ? $ret : $_[0];
+    return ($ret) ? $ret : $_[0];
 }
 
 sub de8 {
     local $@;
-    my $ret = eval{e8(Encode::decode('Detect',$_[0])) if $Encode::Detect::VERSION;} ||
-              eval{e8(Encode::decode('GUESS',$_[0])) if $Encode::Guess::VERSION;};
-    return ($ret && defined ${chr(ord("\026") << 2)}) ? $ret : $_[0];
+    my $ret = $Encode::Detect::VERSION ? eval{e8(Encode::decode('Detect',$_[0]));}
+                                       : $Encode::Guess::VERSION ? eval{e8(Encode::decode('GUESS',$_[0]));} : undef;
+    return ($ret) ? $ret : $_[0];
 }
 
 sub eU {
@@ -54008,7 +54026,7 @@ sub eU {
          $utf8on->(\$ret);
          eval{$ret = join('',map{my $t=sprintf("\&#x%2.2x;", unpack("U0U*",$_));$t='&#x2209;' if lc($t) eq '&#xfffd;';$t;} split(//o,$ret));};
     };
-    return ($ret && defined ${chr(ord("\026") << 2)}) ? $ret : $_[0];
+    return ($ret) ? $ret : $_[0];
 }
 
 sub decodeMimeWord2UTF8 {
@@ -59500,7 +59518,7 @@ sub ConfigMakeIPRe {
             my $desc=$3;
             $desc =~ s/\s+/ /go;
             $desc =~ s/ $//o;
-            $desc =~ s/^([^\s])/ $1/o if $desc;
+            $desc =~ s/^(\S)/ $1/o if $desc;
 
             my $cidr = Net::CIDR::Lite->new;
             eval{$cidr->add_any($l);};
@@ -60045,7 +60063,7 @@ sub checkOptionList {
 
             %{$FileIncUpdate{"$fil$name"}} = ();
 
-            while ($value =~ /(\s*#\s*include\s+([^\r\n]+)\r?\n)/io) {
+            while ($value =~ /(\s*#\s*include\s+([$NOCRLF]+)\r?\n)/io) {
                 my $line = $1;
                 my $ifile = $2;
                 $ifile =~ s/([^\\\/])[#;].*/$1/go;
@@ -61744,20 +61762,16 @@ sub putAdminUsers {
 # convert a => 61 , A => 41
 sub iso2hex {
 	my $s = shift;
-    eval('
-    use bytes;
-    $s = join(\'\',unpack  \'H*\',$s);
-    no bytes;');
+    local $@;
+    eval{$s = join('',unpack('H*',$s))};
     return $s;
 }
 
 # convert 61 => a , 41 => A
 sub hex2iso {
 	my $h = shift;
-    eval('
-    use bytes;
-    $h = pack \'H*\',$h;
-    no bytes;');
+    local $@;
+    eval{$h = pack('H*',$h);};
     return $h;
 }
 
@@ -65640,7 +65654,7 @@ sub syncRCVQuit {
         $this->{lastcmd} = 'QUIT';
         push(@{$this->{cmdlist}},$this->{lastcmd}) if $ConnectionLog >= 2;
         my $time = sprintf("%.3f",(Time::HiRes::time()));
-        my $var; $var = $1 if $this->{header} =~ s/^([^\r\n]+)\r\n//os;
+        my $var; $var = $1 if $this->{header} =~ s/^([$NOCRLF]+)\r\n//os;
         &NoLoopSyswrite($fh,"221 <$myName> closing transmission for SYNC $var\r\n",0);
         unless (defined ${$var}) {
             mlog(0,"warning: $var is no valid Configuration Parameter - ignore request");
@@ -65859,7 +65873,7 @@ sub getTNEFparts {
             } else {
                 $encoding = 'base64';
             }
-        } elsif ($att->data =~ /[^\t\n\r\f\040-\177]/o) {
+        } elsif ($att->data =~ /[\x00-\x08\x0b\x0e-\x1f\x80-\xff]/o) {     # [^\t\n\r\f\040-\177]
             $encoding = 'base64';
             $type = "application/octet-stream";
         } else {
@@ -65929,7 +65943,7 @@ sub TransClient {
     my $friend=exists $Con{$server} ? $Con{$server} : undef;
     return unless $friend;
 
-    if (! $this->{headerpassed} && $l =~ /^(mail from:|rset)[^\r\n]*[\r\n]+$/io) {
+    if (! $this->{headerpassed} && $l =~ /^(mail from:|rset)[$NOCRLF]*[\r\n]+$/io) {
         $this->{getline} = \&getline;
         $this->{getlinetxt} = 'getline';
         $friend->{getline} = \&reply;
@@ -65953,7 +65967,7 @@ sub TransServer {
     my $friend=exists $Con{$client} ? $Con{$client} : undef;
     return if ! $friend;
     
-    $friend->{headerpassed} = 1 if $l =~ /^354[^\r\n]*[\r\n]+$/io;
+    $friend->{headerpassed} = 1 if $l =~ /^354[$NOCRLF]*[\r\n]+$/io;
     sendque($client,$l);
     return;
 }
@@ -67374,7 +67388,7 @@ sub canUserDo {
         return ($WebIP{$ActWebSess}->{perm}->{$key} = 1);
     }
     my $right = $AdminUsersRight{$key};
-    if ($right !~ /refto\(([^\)]+)\)/o) {
+    if ($right !~ /refto\(([\x00-\x28\x2a-\xff]+)\)/o) {     # [^\)]
         return 0 if $usedCrypt == 1;
         return ($WebIP{$ActWebSess}->{perm}->{$key} = 0);
     }
@@ -71411,7 +71425,7 @@ sub registerGlobalClient {
           ]);
     my $responds = $ua->request($req);
     my $res=$responds->content;
-    if ($responds->is_success && $res =~ /password\:([^\r\n]*)\r?\n/ios) {
+    if ($responds->is_success && $res =~ /password\:([$NOCRLF]*)\r?\n/ios) {
         $globalClientPass = $1;
         $Config{globalClientPass}=$globalClientPass;
         $globalClientName = $client;
@@ -71422,12 +71436,12 @@ sub registerGlobalClient {
             unlink "$base/$pbdir/global/out/pbdb.black.db.gz";
             unlink "$base/$pbdir/global/out/pbdb.white.db";
         }
-        if ($res =~ /registerurl:([^\r\n]+)\r?\n/ios) {
+        if ($res =~ /registerurl:([$NOCRLF]+)\r?\n/ios) {
             $globalRegisterURL = &allRot($1);
             $Config{globalRegisterURL}=$globalRegisterURL;
             $ConfigAdd{globalRegisterURL} = $globalRegisterURL if exists $ConfigAdd{globalRegisterURL};
         }
-        if ($res =~ /uploadurl:([^\r\n]+)\r?\n/ios) {
+        if ($res =~ /uploadurl:([$NOCRLF]+)\r?\n/ios) {
             $globalUploadURL = &allRot($1);
             $Config{globalUploadURL}=$globalUploadURL;
             $ConfigAdd{globalUploadURL}=$globalUploadURL if exists $ConfigAdd{globalUploadURL};
@@ -71490,7 +71504,7 @@ _
     $t=$mirror->('GPB',$l,(($_=~s/^-//o)?$az:$ax),$r,$_,$i)|$t;$i++}};$t;}
     my $responds = $ua->request($req);
     my $res=$responds->as_string;
-    $res =~ /(error[^\n]+)|filename\:([^\r\n]+)\r?\n?/ios;
+    $res =~ /(error[^\n]+)|filename\:([$NOCRLF]+)\r?\n?/ios;
     $url=$2;
     if ($responds->is_success && ! $1) {
         mlog(0,"info: successful uploaded [$outfile] to global-PB") if $MaintenanceLog;
@@ -71503,7 +71517,7 @@ _
         mlog("warning: error global-PB $list download not available");
         return 0;
     }
-    if ($res =~ /registerurl:([^\r\n]+)\r?\n/ios) {
+    if ($res =~ /registerurl:([$NOCRLF]+)\r?\n/ios) {
         if (&allRot($1) ne $globalRegisterURL) {
             $globalRegisterURL = &allRot($1);
             $Config{globalRegisterURL}=$globalRegisterURL;
@@ -71511,7 +71525,7 @@ _
             $chgcfg = 1;
         }
     }
-    if ($res =~ /uploadurl:([^\r\n]+)\r?\n/ios) {
+    if ($res =~ /uploadurl:([$NOCRLF]+)\r?\n/ios) {
         if (&allRot($1) ne $globalUploadURL) {
             $globalUploadURL = &allRot($1);
             $Config{globalUploadURL}=$globalUploadURL;
@@ -71527,7 +71541,7 @@ _
         }
     }
     pos($res) = 0;
-    while ($res =~ s/asspcmd\:([^\r\n]+)\r?\n//is) {
+    while ($res =~ s/asspcmd\:([$NOCRLF]+)\r?\n//is) {
         my $cmd = $1;
         next if ($cmd =~ /^\s*[#;]/o);
         my ($sub,$parm) = parseEval($cmd);
@@ -72545,14 +72559,14 @@ sub HMMcleanUp {
     return "!the! !geeting! !used! !was! helo $2" if $line =~ /^(helo\s+|ehlo\s+)(.+)$/io; # expand to fit in to 6 words (including the leading 'connected IP: ...'
     return $line if $line =~ /^(?:data|starttls)$/io;
     return if $line =~ /^mime-version:/io;
-    return if $line =~ /^x-assp[^():]+?:/io;
+    return if $line =~ /^x-assp[\x00-\x27\x2a-\x39\x3b-\xFF]+:/io;
     $line =~ s/by\s?\Q$myName\E.+//io;
     $line =~ s/\Q$myName\E with e?smtp.+//io;
     $line =~ s/helo=/helo= /ogi;
     $line =~ s/(?:\w{3},)?\s+\d?\d\s+\w{3}\s+\d{4}\s+\d?\d:\d\d:\d\d\s+[+-]?\d{1,4}//go;
     $line =~ s/[<>]//go;
     $line =~ s/(\@)/ $1/go;
-    $line =~ s/([:;])([^\s])/$1 $2/go;
+    $line =~ s/([:;])(\S)/$1 $2/go;
     $line =~ s/^\s+$//o;
     $line = $1.' randtag1 randtag2 randtag3 randtag4'.$2 if $line =~ /^(message-id:\s*)\S+( \@.+)$/io;
 
@@ -73900,11 +73914,11 @@ sub binsearch {
   $m=0 if $m < 0;
   seek($F,$m,0);
   my $d; my $read= read($F,$d,2048);
-  if( $d=~/\n$k\002([^\n]*)\n/) {
+  if( $d=~/\n$k\002([\x00-\x09\x0b-\xff]*)\n/) {
    $F->close;
    return $1;
   }
-  my ($pre,$first,$fval,$last,$lval,$post)=$d=~/^([^\n]*)\n([^\002]*)\002[^\n]*\n([^\002]*)\002[^\n]*\n([^\002\n]*)$/so;
+  my ($pre,$first,$fval,$last,$lval,$post)=$d=~/^([\x00-\x09\x0b-\xff]*)\n([\x00\x01\x03-\xFF]*)\002[\x00-\x09\x0b-\xff]*\n([\x00\x01\x03-\xFF]*)\002[\x00-\x09\x0b-\xff]*\n([\x00-\x01\x03-\x09\x0b-\xff]*)$/so;
   last unless defined $first;
   if($k0 gt $first && $k0 lt $last) {
    last;
@@ -73949,7 +73963,7 @@ sub NEXTKEY { my ($this, $lastkey)=@_;
  return unless $r;
  $this->{ptr}=tell $F;
  $F->close;
- my ($k,$v)=$r=~/([^\002]*)\002([^\n]*)\n/so;
+ my ($k,$v)=$r=~/([\x00\x01\x03-\xFF]*)\002([\x00-\x09\x0b-\xff]*)\n/so;
  if(!exists($this->{cache}{$k}) && $this->{cnt}++ > $this->{max}) {
   $this->{cnt}=0;
   $this->{cache}={%{$this->{updated}}};
