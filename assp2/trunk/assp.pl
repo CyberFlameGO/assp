@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18114';        # 24.04.2018 TE
+$build   = '18117';        # 27.04.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -571,7 +571,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '0E5AF0FABB6D07118D43DCAF2A60B4E404039C48'; }
+sub __cs { $codeSignature = 'D46A0DBA1D31B0D4ACA8B99D948D19EBDD7834D2'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -34342,16 +34342,16 @@ sub BombWeight_Run {
     my $regex = ${$re.'RE'};
     my $itime = Time::HiRes::time();
     $addCharsets = 1 if $re eq 'bombCharSets';
+    my $isbombDataRe = $re eq 'bombDataRe' ? 1 : 0;
     if ($re ne 'bombSubjectRe') {
-       my $rawmd5 = Digest::MD5::md5($rawtext.$addCharsets);
+       my $rawmd5 = Digest::MD5::md5($rawtext.$addCharsets.$isbombDataRe);
        if (exists $Con{$fh}->{$rawmd5}) {
-           $text[0] = $Con{$fh}->{$rawmd5}->{0};
-           $text[1] = $Con{$fh}->{$rawmd5}->{1} if exists $Con{$fh}->{$rawmd5}->{1};
+           @text = @{$Con{$fh}->{$rawmd5}};
        } else {
            $rawtext =~ s/(<!--.+?)-->/$1/sgo;
            my $mimetext = cleanMIMEBody2UTF8(\$rawtext);
            if ($mimetext) {
-               if ($re ne 'bombDataRe') {
+               if (! $isbombDataRe) {
                    $text[0] = cleanMIMEHeader2UTF8(\$rawtext,0);
                    $mimetext =~ s/\=(?:\015?\012|\015)//go;
                    $mimetext = decHTMLent(\$mimetext);
@@ -34361,14 +34361,11 @@ sub BombWeight_Run {
                $text[0] = decodeMimeWords2UTF8($rawtext);
            }
            unicodeNormalize(\$text[0]);
-           $Con{$fh}->{$rawmd5}->{0} = $text[0];
            if ($DoTransliterate && $text[0]) {
                my $t = transliterate(\$text[0], 1);
-               if ($t) {
-                   push(@text,$t);
-                   $Con{$fh}->{$rawmd5}->{1} = $t;
-               }
+               push(@text,$t) if ($t);
            }
+           @{$Con{$fh}->{$rawmd5}} = @text;
 #           mlog(0,"info: BombWeight $re - ".length($text[0]).' - '.(Time::HiRes::time() - $itime));
        }
     } else {
@@ -34389,6 +34386,7 @@ sub BombWeight_Run {
     {
         my $found;
         for (0,1) {
+            next unless $text[$_];
             my $head;
             $head = $1 if $text[$_] =~ /^($HeaderRe+)/ois;
             if ($head && $head =~ s/(^|\n)$bombSkipHeaderTagReRE:$HeaderValueRe/$1/gis) {
@@ -34449,7 +34447,7 @@ sub BombWeight_Run {
                   last if time - $itime >= $maxBombSearchTime;
                   my $w = &weightRe($WeightedRe{$re},$re,\$subre,$fh);
                   &sigonTry(__LINE__);
-                  next unless $w;
+                  next if ! $w && $fh;
                   $subre = substr($subre,0,$RegExLength < 5 ? 5 : $RegExLength) if $subre;
                   $subre = '[!empty string!]' unless $subre;
                   if ($subre =~ /^\s+$/o) {
@@ -34478,7 +34476,6 @@ sub BombWeight_Run {
           alarm(0);
       }
     };
-    $itime = Time::HiRes::time() - $itime;
     if ($@) {
         alarm(0);
         if ( $@ =~ /__alarm__/o ) {
@@ -34487,6 +34484,7 @@ sub BombWeight_Run {
             mlog( $fh, "BombWeight: failed in 'RE:$re': $@", 1 );
         }
     }
+    $itime = Time::HiRes::time() - $itime;
     &sigonTry(__LINE__);
     @text = (); $text = undef;
     if ($itime > $maxBombSearchTime) {
@@ -43303,7 +43301,7 @@ sub BayesWordClean {
     my $word = shift;
     return unless $word;
     no warnings;
-    $word = eval { lc($word); };  # we may die on undefined or wrong defined encodings in fatal UTF8
+    $word = eval { substr(lc($word),0,length($word)); };  # we may die on undefined or wrong defined encodings in fatal UTF8
     return unless $word;
 
 #    if (! is_7bit_clean(\$word) && ! Encode::is_utf8($word)) {
@@ -43323,43 +43321,44 @@ sub BayesWordClean {
 #        }
 #    }
 #    return unless $word;
-    eval {$word = substr($word,0,length($word));};
-    return unless $word;
     my @words;
-    my $e = $@;
-    eval{
-        if ($word =~ /^$EmailAdrRe\@$EmailDomainRe$/io) {    # email addresses are too long -> MD5 (24 Byte hex)
-            $utf8off->(\$word);
-            $word = lc substr(Digest::MD5::md5_hex($word),0,24);
-        } elsif ($word =~ /^.*?(?:ht|f)tps?:\/\/($EmailDomainRe)([\?\&\/].*)?$/io && length($1) > 1) {    # get URL's
-            $word = $1;
-            my $text = $2;
-            $utf8off->(\$word);
-            $utf8off->(\$text);
-            push(@words,$word) for (2..$HMMSequenceLength);
-            for my $w (split(/[\/#?=&]+/o,$text)) {
-                next if length($w) < 2;
-                push(@words,$w);
-                last if (scalar @words == ($HMMSequenceLength + 1));
+    my $noAlpha;
+    if ($noAlpha = $word =~ /\P{IsAlpha}/o) {
+        my $e = $@;
+        eval{
+            if ($word =~ /^$EmailAdrRe\@$EmailDomainRe$/io) {    # email addresses are too long -> MD5 (24 Byte hex)
+                $utf8off->(\$word);
+                $word = lc substr(Digest::MD5::md5_hex($word),0,24);
+            } elsif ($word =~ /^.*?(?:ht|f)tps?:\/\/($EmailDomainRe)([\?\&\/].*)?$/io && length($1) > 1) {    # get URL's
+                $word = $1;
+                my $text = $2;
+                $utf8off->(\$word);
+                $utf8off->(\$text);
+                push(@words,$word) for (2..$HMMSequenceLength);
+                for my $w (split(/[\/#?=&]+/o,$text)) {
+                    next if length($w) < 2;
+                    push(@words,$w);
+                    last if (scalar @words == ($HMMSequenceLength + 1));
+                }
+#            } else {
+#                BayesCharClean(\$word);
             }
-        } else {
-            BayesCharClean(\$word);
-        }
-        1;
-    } or do {$@ = $e; return};
+            1;
+        } or do {$@ = $e; return};
+    }
     $utf8off->(\$word);
     unshift @words, $word;
     @words = map { getUniWords($_); } @words;
-    BayesCharClean(\$_) for @words;
+    if (! $noAlpha) {BayesCharClean(\$_) for @words;}
     return @words;
 }
 
 sub BayesCharClean {
     my $word = shift;
+    $$word =~ s/^\d+$/randnumber/o;
     $$word =~ s/#(?:[a-f0-9]{2})+/randcolor/go;
-    $$word =~ s/^#\d+/randdecnum/go;
+    $$word =~ s/^#\d+/randdecnum/o;
     $$word =~ s/(?:[a-f0-9]{2}){3,}/randword/go;
-    $$word =~ s/[\d,.]{2,}/randnumber/go;
     $$word =~ s/[_\[\]\~\@\%\$\&\{\}<>#(),.'";:=!?*+\/\\\-]+$//o;
     $$word =~ s/^[_\[\]\~\@\%\$\&\{\}<>#(),.'";:=!?*+\/\\\-]+//o;
     $$word =~ s/!!!+/!!/go;
@@ -44459,7 +44458,8 @@ sub clean {
 
         s/["']\s*\/?s*>|target\s*=\s*['"]?_blank['"]?|<\s*\/|:\/\/ //go;
 #        s/[\s\b\+\-\p{Currency_Symbol}][\d.,]{2,}/ randnumber /go;
-        s/ \d{2,} / 1234 /go;
+#        s/ \d{2,} / 1234 /go;
+        s/[\d,.]{2,}/ randnumber /go;
     } # end if of HTML parsing
 
     $bodyhtml = &decHTMLent($_) if $_;
@@ -44467,7 +44467,8 @@ sub clean {
         $bodyplain =~ s/((?:ht|f)tps?\S*)/ href $1 /isgo;
         $bodyplain =~ s/(\S+\@\S+\.\w{2,5})\b/ href $1 /go;
 #        $bodyplain =~ s/[\s\b\+\-\p{Currency_Symbol}][\d.,]{2,}/ randnumber /go;
-        $bodyplain =~ s/ \d{2,} / 1234 /go;
+#        $bodyplain =~ s/ \d{2,} / 1234 /go;
+        $bodyplain =~ s/[\d,.]{2,}/ randnumber /go;
     }
     if ($CanUseASSP_WordStem) {
         my (%l,$retplain,$rethtml);
@@ -44507,7 +44508,8 @@ sub extract_html_text {
     s/(<\s*a\s[^>]*>)(.*?)(<\s*\/a[^>]*>)/$1 atxt $2$3/igso;
     s/(\S+\@\S+\.\w{2,5})\b/ href $1 /go;
 #    s/[\s\b\+\-\p{Currency_Symbol}][\d.,]{2,}/ randnumber /go;
-    s/ [\d.,]{2,} / 1234 /go;
+#    s/ [\d.,]{2,} / 1234 /go;
+    s/[\d,.]{2,}/ randnumber /go;
     s/<[^>]*href\s*=\s*(?:(\S+?)>|(\S+)\s[^>]*>)/ href $1$2 /isgo;
     s/ href "([^"]*)" / href $1 /go;
     s/ href '([^']*)' / href $1 /go;
@@ -50918,30 +50920,29 @@ sub SearchBomb {
     return 0 unless ${$name.'RE'};
     return 0 if ${$name.'RE'} =~ /$neverMatchRE/o;
     $addCharsets = 1 if $name eq 'bombCharSets';
+    my $isbombDataRe = $name eq 'bombDataRe' ? 1 : 0;
     if ($name ne 'bombSubjectRe') {
-       my $rawmd5 = Digest::MD5::md5($srch.$addCharsets);
+       my $rawmd5 = Digest::MD5::md5($srch.$addCharsets.$isbombDataRe);
        if (exists $Con{0}->{$rawmd5}) {
-           $srch[0] = $Con{0}->{$rawmd5}->{0};
-           $srch[1] = $Con{0}->{$rawmd5}->{1} if exists $Con{0}->{$rawmd5}->{1};
+           @srch[0] = @{$Con{0}->{$rawmd5}};
        } else {
            my $mimetext = cleanMIMEBody2UTF8(\$srch);
            if ($mimetext || $srch =~ /^$HeaderRe/ios) {
-               $srch[0] =  cleanMIMEHeader2UTF8(\$srch,0);
-               $mimetext =~ s/\=(?:\015?\012|\015)//go;
-               $mimetext = decHTMLent(\$mimetext);
+               if (! $isbombDataRe) {
+                   $srch[0] =  cleanMIMEHeader2UTF8(\$srch,0);
+                   $mimetext =~ s/\=(?:\015?\012|\015)//go;
+                   $mimetext = decHTMLent(\$mimetext);
+               }
                $srch[0] .= $mimetext;
            } else {
                $srch[0] = decodeMimeWords2UTF8($srch);
            }
            unicodeNormalize(\$srch[0]);
-           $Con{0}->{$rawmd5}->{0} = $srch[0];
            if ($DoTransliterate && $srch[0]) {
                my $t = transliterate(\("\r\n".$srch[0]), 1);
-               if ($t) {
-                   push(@srch,$t);
-                   $Con{0}->{$rawmd5}->{1} = $t;
-               }
+               push(@srch,$t) if ($t);
            }
+           @{$Con{0}->{$rawmd5}} = @srch;
        }
     } else {
        $srch[0] = $srch;
@@ -51290,7 +51291,7 @@ sub ConfigAnalyze {
             do {
                $fhh = rand(1000000);
             } while exists $Con{$fhh};
-            $mail = "$xorgsub\r\n".$mail if ($xorgsub && $mail !~ /(?:^|\n)subject:/o );
+            $mail = "subject: $xorgsub\r\n".$mail if ($xorgsub && $mail !~ /(?:^|\n)subject:/os );
             $Con{$fhh}->{header} = $mail;
             $Con{$fhh}->{headerpassed} = 1;
             &makeSubject($fhh);
@@ -51467,6 +51468,9 @@ sub ConfigAnalyze {
             $fm .= "<b><font color='red'>enhanced Originated IP detection is disabled</font></b><br />\n";
         }
         push @sips, $ip if $ip;
+
+        my $showsub = $sub ? eU($sub) : "<b><font color='red'>no subject found</font></b>";
+        $fm .= "<br />\n<b><font color=\"#003366\">Subject: </font></b>$showsub<br />\n";
 
         if ($reportedBy && $mailfrom && $NotSpamTag) {
             $fm .= "<br />\n<b><font color=\"#003366\">NotSpamTag:</font></b><br />";
@@ -52905,6 +52909,7 @@ TRANSLITONLY:
       my $h4 = $WebIP{$ActWebSess}->{lng}->{'msg500063'} || $lngmsg{'msg500063'};
 
       delete $Con{0};
+
       if ($qs{return}) {
           $qs{sub} = $sub;
           return <<EOT;
@@ -52919,8 +52924,8 @@ EOT
    <td class="noBorder">&nbsp;<input type="checkbox" name="translit" value="1" $checked/>&nbsp; transliterate the text to ASCII only$trena</td>
 </tr>
 EOT
-         : undef
-         ;
+         : undef;
+         
       return <<EOT;
 $headerHTTP
 $headerDTDTransitional
