@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18117';        # 27.04.2018 TE
+$build   = '18119';        # 29.04.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -571,7 +571,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'D46A0DBA1D31B0D4ACA8B99D948D19EBDD7834D2'; }
+sub __cs { $codeSignature = '8DA0013F0D9924919885F79F15B3F58B8B715051'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -3469,7 +3469,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   'If activated, each message-header is checked  against bombSenderRe, bombHeaderRe, bombSubjectRe and bombCharSets Regular Expressions. If you use sendAllSpam, be aware that only the header will be shown in the spamcopy.<br />
   The scoring value is the sum of all valences(weights) of all found bombs - bombValencePB .',undef,undef,'msg004470','msg004471'],
 ['bombSenderRe','Envelope Blocking Regular Expression **',80,\&textinput,'^\*|emailserver3\.com|\d\d\d\d\d\d\@tom\.com','(.*)','ConfigCompileRe',
-  'Part of DoBombHeaderRe: expression to identify sender (mailfrom,ip,helo).',undef,undef,'msg004480','msg004481'],
+  'Part of DoBombHeaderRe: regular expression to identify sender (mailfrom, ip and helo only). CIDR or range definitions for the IP will NOT work here!',undef,undef,'msg004480','msg004481'],
 ['bombHeaderRe','Regular Expression to Identify Spam in Header Part**',80,\&textinput,'file:files/bombheaderre.txt','(.*)','ConfigCompileRe',
   'Part of DoBombHeaderRe: header will be checked against this Regex if DoBombHeaderRe is enabled. For example<br />
   file:files/bombheaderre.txt',undef,undef,'msg004490','msg004491'],
@@ -7402,6 +7402,7 @@ our $i_bw_time = 0;
 our $i_tw_time = 0;
 our $incFound;
 our $inSIG = 0;
+our $isRunMainLoop1 = 0;
 our $isRunMainLoop2 = 0;
 our $isRunTMM2 = 0;
 our $itime;
@@ -7999,7 +8000,7 @@ if ($@) {
 sub write_rebuild_module {
 my $curr_version = shift;
 
-my $rb_version = '7.46';
+my $rb_version = '7.47';
 my $keepVersion;
 
 if (open my $ADV, '<',"$base/lib/rebuildspamdb.pm") {
@@ -8111,6 +8112,7 @@ our $doattach;
 our $CanUseUnicodeNormalize = $main::CanUseUnicodeNormalize && require Unicode::Normalize;
 our $PortRe = $main::PortRe;
 our $disclaimerRe;
+our $disclaimerCount;
 
 sub rb_run {         ## no critic
 no warnings;
@@ -9541,6 +9543,7 @@ sub rb_processfolder {
     &rb_printlog("\nignore$rem files older than ".&main::timestring($folderStartTime - $spt,'','')." in folder $flr") if $spt;
     &rb_mlog("ignore$rem files older than ".&main::timestring($folderStartTime - $spt,'','')." in folder $flr") if $spt;
     my %toolong;
+    $disclaimerCount = 0;
 
     while (@files) {
         my $file = shift @files;
@@ -9625,6 +9628,11 @@ sub rb_processfolder {
     &rb_mlog( "Imported Files for HeloBlackList:\t" . &rb_commify($pcount) );
     &rb_printlog( "\nImported Files for Bayes/HMM:\t" . &rb_commify($count) );
     &rb_mlog( "Imported Files for Bayes/HMM:\t" . &rb_commify($count) );
+    if ($disclaimerRe && ($disclaimerCount || $RebuildDebug)) {
+        &rb_printlog( "\ndisclaimer removed from\t" . &rb_commify($disclaimerCount).' files' );
+        &rb_mlog( "disclaimer removed from\t" . &rb_commify($disclaimerCount).' files' );
+    }
+    $disclaimerCount = 0;
 
     if ( $count >= $main::MaxFiles ) {
         &rb_printlog("\nFolder contents exceeded 'MaxFiles'($main::MaxFiles). ");
@@ -10058,7 +10066,10 @@ sub rb_add {
     my $OK;
     ($content,$OK) = &main::clean($content);
     return if (rb_checkRunTime($startTime,"reached $movetime s after content cleanup on $fn"));
-    eval{$content =~ s/$disclaimerRe//g} if $disclaimerRe;
+    if ($disclaimerRe && eval{$content =~ s/$disclaimerRe//g}) {
+        rb_d("disclaimer removed in file $fn");
+        $disclaimerCount++;
+    }
     my $BayesCont = $main::BayesCont;
     my @HMMhamWords;
     my @HMMspamWords;
@@ -10135,12 +10146,12 @@ sub rb_add {
     if ($DoHMM) {
 #        &rb_mlog( 'Rebuild: adding HMM: H = ' .scalar(@HMMhamWords).', S = '.scalar(@HMMspamWords).' words'.' P = '.$reportedBy);
         eval {
-            if ($reportedBy && $isspam && @HMMspamWords > $main::HMMSequenceLength) {$spamHMM->seed(symbols => \@HMMspamWords, count => $factor, privacy => $reportedBy);}
-            if ($reportedBy && !$isspam && @HMMhamWords > $main::HMMSequenceLength) {$hamHMM->seed(symbols => \@HMMhamWords, count => $factor, privacy => $reportedBy);}
-            if ($domain && $isspam && @HMMspamWords > $main::HMMSequenceLength) {$spamHMM->seed(symbols => \@HMMspamWords, count => $factor, privacy => $domain);}
-            if ($domain && !$isspam && @HMMhamWords > $main::HMMSequenceLength) {$hamHMM->seed(symbols => \@HMMhamWords, count => $factor, privacy => $domain);}
-            if ($isspam && @HMMspamWords > $main::HMMSequenceLength) {$spamHMM->seed(symbols => \@HMMspamWords, count => $factor, privacy => '');}
-            if (!$isspam && @HMMhamWords > $main::HMMSequenceLength) {$hamHMM->seed(symbols => \@HMMhamWords, count => $factor, privacy => '');}
+            my @privacy;
+            push @privacy, $domain if $domain;
+            push @privacy, $reportedBy if $reportedBy;
+            
+            if ($isspam && @HMMspamWords > $main::HMMSequenceLength) {$spamHMM->seed(symbols => \@HMMspamWords, count => $factor, privacy => \@privacy);}
+            if (!$isspam && @HMMhamWords > $main::HMMSequenceLength) {$hamHMM->seed(symbols => \@HMMhamWords, count => $factor, privacy => \@privacy);}
             1;
         } or do{$DoHMM = 0;};    # stop HMM if we get an exception while processing (possibly file too large)
     }
@@ -16988,7 +16999,7 @@ sub MainLoop {
       if ($SocketCalls{$fh}==\&WebTraffic || $SocketCalls{$fh}==\&NewWebConnection || $SocketCalls{$fh}==\&NewStatConnection || $SocketCalls{$fh}==\&StatTraffic) {
         next if exists $MainLoopInWebFH{$fh};
         $MainLoopInWebFH{$fh} = 1;
-        $SocketCalls{$fh}->($fh) if (! exists $ConDelete{$fh});
+        $SocketCalls{$fh}->($fh) if (! exists $ConDelete{$fh} && $maxwait);
         delete $MainLoopInWebFH{$fh};
       } else {
         unless ($shuttingDown || $allIdle) {
@@ -17033,6 +17044,8 @@ sub MainLoop {
   &SMTPSessionLimitCheck();
   &ThreadMonitorMainLoop('MainLoop session limit check');
   &mlogWrite(0);
+
+  return (Time::HiRes::time() - $entrytime) unless $maxwait;
 
 # database connection check is done independent from any time values
 # the complete check for all tables should never take more than 0.05 seconds if all is ok
@@ -17116,9 +17129,13 @@ sub MainLoop {
 sub MainLoop1 {
     my $wait = shift;
     return 0 if ($shuttingDown);
+    return 0 if $WorkerNumber != 0;
+    return 0 if $isRunMainLoop1;
     my $AWS = $ActWebSess;
     my %QS = %qs;
+    $isRunMainLoop1 = 1;
     $wait = &MainLoop($wait);
+    $isRunMainLoop1 = 0;
     $ActWebSess = $AWS;
     %qs = %QS;
     return $wait;
@@ -21371,6 +21388,12 @@ sub done2 {
     my $cmdlist = @{$Con{$fh}->{cmdlist}} ? "\'".join("," , @{$Con{$fh}->{cmdlist}})."\'" : "\'n/a\'";
     my $ids;
     $ids = " - processed ids @{$Con{$fh}->{allmsgtime}} " if scalar(@{$Con{$fh}->{allmsgtime}}) > 1;
+    for (keys(%{$Con{$fh}})) {
+        if ($_ =~ /^BOMB:/o) {
+            @{$Con{$fh}->{$_}} = ();
+            delete $Con{$fh}->{$_};
+        }
+    }
     @{$Con{$fh}->{allmsgtime}} = (); undef @{$Con{$fh}->{allmsgtime}};
     @{$Con{$fh}->{sip}} = (); undef @{$Con{$fh}->{sip}};
     @{$Con{$fh}->{senders}} = (); undef @{$Con{$fh}->{senders}};
@@ -23894,6 +23917,13 @@ sub stateReset {
     delete $this->{maillog};
     delete $this->{maillogparm};
     delete $this->{recreatelog};
+
+    for (keys(%{$this})) {
+        if ($_ =~ /^BOMB:/o) {
+            @{$this->{$_}} = ();
+            delete $this->{$_};
+        }
+    }
 
     $this->{acceptall} &= 1;    # remove the cip acceptall
     $this->{addMSGIDsigDone} = '';
@@ -34344,7 +34374,7 @@ sub BombWeight_Run {
     $addCharsets = 1 if $re eq 'bombCharSets';
     my $isbombDataRe = $re eq 'bombDataRe' ? 1 : 0;
     if ($re ne 'bombSubjectRe') {
-       my $rawmd5 = Digest::MD5::md5($rawtext.$addCharsets.$isbombDataRe);
+       my $rawmd5 = 'BOMB:'.Digest::MD5::md5($rawtext.$addCharsets.$isbombDataRe);
        if (exists $Con{$fh}->{$rawmd5}) {
            @text = @{$Con{$fh}->{$rawmd5}};
        } else {
@@ -50922,7 +50952,7 @@ sub SearchBomb {
     $addCharsets = 1 if $name eq 'bombCharSets';
     my $isbombDataRe = $name eq 'bombDataRe' ? 1 : 0;
     if ($name ne 'bombSubjectRe') {
-       my $rawmd5 = Digest::MD5::md5($srch.$addCharsets.$isbombDataRe);
+       my $rawmd5 = 'BOMB:'.Digest::MD5::md5($srch.$addCharsets.$isbombDataRe);
        if (exists $Con{0}->{$rawmd5}) {
            @srch[0] = @{$Con{0}->{$rawmd5}};
        } else {
@@ -51168,6 +51198,7 @@ sub linkToConfig {
 
 sub ConfigAnalyze {
     my ( $ba, $st, $fm, %fm, %to, %wl, $ip, $helo, $text, $ip3, $received , $emfd, $mailfrom, $rcptto, $hasheader, $headTo, $org_headTo);
+    &MainLoop1(0);
     @AnalyzeLog = (1);
     my $checkRegex = ! $silent && $AnalyzeLogRegex;
     my $mail = $qs{mail};
@@ -51205,6 +51236,7 @@ sub ConfigAnalyze {
         }
         $mail =~ s/^helo:\s*\r?\n(?:rcpt|ssub)?\s*\r?\n?//o;
         $mail = transliterate(\$mail,0);
+        &MainLoop1(0);
         goto TRANSLITONLY;
     }
     if ($qs{mailfrom}) {
@@ -51654,6 +51686,7 @@ sub ConfigAnalyze {
         }
         %seenLine = ();
 
+        &MainLoop1(0);
         $Con{0} = {};
         
         eval {
@@ -51722,6 +51755,7 @@ sub ConfigAnalyze {
           }
 
 
+        &MainLoop1(0);
         my $dkimok;
         my $spfok;
 
@@ -51744,7 +51778,8 @@ sub ConfigAnalyze {
         $Con{$tmpfh}->{nodkim} = $noDKIM;
 
         getARC($tmpfh);
-
+        &MainLoop1(0);
+        
         if ($Con{$tmpfh}->{arcresult}->{result} eq 'pass') {
             my $color = $Con{$tmpfh}->{arcresult}->{trustedhost} ? 'green' : 'yellow';
             my $trust = linkToConfig('trustedAuthForwarders',($Con{$tmpfh}->{arcresult}->{trustedhost} ? 'trusted' : 'untrusted'));
@@ -51787,9 +51822,11 @@ sub ConfigAnalyze {
             delete $Con{$tmpfh}->{dkimidentity};
             delete $Con{$tmpfh}->{rwlok};
             delete $Con{$tmpfh}->{nopb};
+            &MainLoop1(0);
         }
 
         DMARCget($tmpfh);
+        &MainLoop1(0);
 
         if ($ip && ($mailfrom || $helo)) {
             if ( SPFok($tmpfh)) {
@@ -51807,6 +51844,7 @@ sub ConfigAnalyze {
                     $fm .= "<b><font color='red'>&bull;</font> DMARC-check returned FAILED</b><br />\n";
                 }
             }
+            &MainLoop1(0);
         }
         delete $Con{$tmpfh};
         $tmpfh = '';
@@ -51958,7 +51996,7 @@ sub ConfigAnalyze {
             $fm .= "<b><font color='$color'>&bull;</font> <a href='./#bombSenderRe'>BombSender RE</a></b>: '$bombsrch'<br />\n";
             $fm .= "<font color='$color'>&nbsp;&bull;</font> matching bombSenderRe($incFound): '$weightMatch'<br />\n";
         }
-
+        &MainLoop1(0);
 
         my $obfuscatedip;
         my $obfuscateduri;
@@ -51995,6 +52033,7 @@ sub ConfigAnalyze {
             $maximumuniqueuri = $Con{$tmpfh}->{maximumuniqueuri};
             $maximumuri = $Con{$tmpfh}->{maximumuri};
             delete $Con{$tmpfh};
+            &MainLoop1(0);
         }
 
         {
@@ -52044,11 +52083,13 @@ sub ConfigAnalyze {
                 if ($UseAvClamd && $CanUseAvClamd) {
                     ClamScanOK($tmpfh,\$part->body);
                     $fm .= "<b><font color='red'>&bull;&nbsp;&dagger;&nbsp;&bull; $Con{$tmpfh}->{messagereason}</font></b><br />" if $Con{$tmpfh}->{messagereason};
+                    &MainLoop1(0);
                 }
                 $Con{$tmpfh} = {};
                 if ($DoFileScan && $FileScanCMD) {
                     FileScanOK($tmpfh,\$part->body);
                     $fm .= "<b><font color='red'>&bull;&nbsp;&dagger;&nbsp;&bull; $Con{$tmpfh}->{messagereason}</font></b><br />" if $Con{$tmpfh}->{messagereason};
+                    &MainLoop1(0);
                 }
 
                 my $filename =   attrHeader($part,'Content-Type','filename')
@@ -52082,7 +52123,8 @@ sub ConfigAnalyze {
                         $fm .= "<b><font color='orange'>&bull; attachment $orgname is or contains an executable - $exetype</font></b> (see $ualink)<br />";
                     }
                     delete $self->{exetype};
-
+                    &MainLoop1(0);
+                    
                     if (scalar keys %AttachZipRules) {
                         if (! $self->isZipOK( $Con{$tmpfh}, \$part->body, $orgname )) {
                             $fm .= "<b><font color='orange'>&bull; attachment : $self->{exetype}</font></b> (see $ualink)<br />";
@@ -52173,6 +52215,7 @@ sub ConfigAnalyze {
                             } else {
                                 $fm .= " <b><font color='blue'>&bull;</font></b> $Con{$tmpfh}->{mailfrom} -&gt; $rcpt =&gt; no 'good' rule found<br />";
                             }
+                            &MainLoop1(0);
                         } else {
                             $fm .= " <b><font color='blue'>&bull;</font></b> $Con{$tmpfh}->{mailfrom} -&gt; $rcpt =&gt; no $ualink rule found<br />";
                         }
@@ -52180,6 +52223,7 @@ sub ConfigAnalyze {
                         $fm .= "<b>&bull;</b> legacy attachment levels are not checked - please configure $ualink<br />";
                     }
                 }
+                &MainLoop1(0);
             }
             delete $Con{$tmpfh};
             $o_EMM_pm = $oem;
@@ -52188,7 +52232,8 @@ sub ConfigAnalyze {
         my $cOK;
         ($mail,$cOK) = &clean( substr( $mail, 0, $mBytes ) );
         $mail =~ s/^helo:\s*\r?\nrcpt\s*\r?\n//o;
-
+        &MainLoop1(0);
+        
         if ($helo) {
             my $hb = $HeloBlack{ lc $helo };
             $fm .= "<b><font color='red'>&bull;</font> HELO Blacklist</b>: '$helo'</b><br />\n"
@@ -52267,6 +52312,7 @@ sub ConfigAnalyze {
             } elsif ($auth == 1) {
                 $fm .= "<b><font color='green'>&bull;</font> AUTH would be allowed</b><br />\n";
             }
+            &MainLoop1(0);
         }
         foreach my $iip (@sips) {
             if ( pbBlackFind($iip) ) {
@@ -52303,6 +52349,7 @@ sub ConfigAnalyze {
             $fm .=
               "<b><font color='green'>&bull;</font> IP $ip is in <a href='./#noPB'>noPB IPs</a> ($ret)</b><br />\n";
           }
+        &MainLoop1(0);
         foreach my $iip (@sips) {
             my $tmpfh = time;
             $Con{$tmpfh} = {};
@@ -52335,6 +52382,7 @@ sub ConfigAnalyze {
                 while (my ($k,$v) = each %{$Con{$tmpfh}->{rblweight}}) {
                     $fm .= "&nbsp;<font color='$color'>&bull;</font> RBLScore: $k -> $v<br />\n";
                 }
+                &MainLoop1(0);
             }
             delete $Con{$tmpfh};
         }
@@ -52359,6 +52407,7 @@ sub ConfigAnalyze {
                 }
             }
             delete $Con{$tmpfh};
+            &MainLoop1(0);
         }
 
         {   # PTR check
@@ -52368,6 +52417,7 @@ sub ConfigAnalyze {
                 $dns = getRRData($ip,'PTR');
                 $status = 0;
                 $how = 'PTR record via DNS';
+                &MainLoop1(0);
             }
             if ($dns && $status == 0) {   # still not verfied against valid and invalid
                 if ($dns =~ /$validPTRReRE/) {
@@ -52422,6 +52472,7 @@ sub ConfigAnalyze {
                 $fm .= "<b><font color='$color'>&bull;</font> RWLcheck returned OK for $ip </b>: status=$status$Con{$tmpfh}->{messagereason}<br />\n";
             }
             delete $Con{$tmpfh};
+            &MainLoop1(0);
         }
 
         if ($ip && (my ( $cidr , $ct, $status, $data ) = SBCacheFind($ip)) ) {
@@ -52458,6 +52509,7 @@ sub ConfigAnalyze {
             $data =~ s/\|/, /og;
             $fm .= "<b><font color='$color'>&bull;</font> $ip SenderBase</b>: status=$status, data=[$data]<br />\n" if $data;
             delete $Con{$tmpfh};
+            &MainLoop1(0);
         }
 
         if ( $ret = matchIP( $ip, 'acceptAllMail', 0, 1 ) ) {
@@ -52533,6 +52585,7 @@ sub ConfigAnalyze {
             }
             @AnalyzeLog = (1);
         }
+        &MainLoop1(0);
 
         if (! $qs{return}) {
             $fm =~ s/($IPRe)/my$e=$1;($e!~$IPprivate)?"<a href=\"javascript:void(0);\" title=\"take an action on that IP\" onclick=\"popIPAction('$1');return false;\">$1<\/a>":$e;/goe;
@@ -52634,6 +52687,7 @@ sub ConfigAnalyze {
             }
             $fm .= '<br />Click on any block or script name or even on any character to get some more information.<br />';
             $fm .= "</div>\n" if (! $qs{return});
+            &MainLoop1(0);
         } if($] ge '5.012000');
 
         if (@AnalyzeLog > 1) {
@@ -52646,13 +52700,14 @@ sub ConfigAnalyze {
             }
             @AnalyzeLog = (1);
         }
-
+        &MainLoop1(0);
         $fm .= "<br /><hr><br />";
 
         my ($ar,$got,$relation,$question,@t);
         if (! $lockBayes) {
             ($ar,$got,$relation,$question) = BayesWords(\$mail,$bayesreportedBy);
             push(@t, @$ar);
+            &MainLoop1(0);
         } else {
             $got = {};
         }
@@ -52720,7 +52775,8 @@ sub ConfigAnalyze {
             my $bcm = $bc > $maxBayesValues ? $maxBayesValues : $bc;
             my ($p1, $p2, $c1, $SpamProb, $SpamProbConfidence) = BayesHMMProb(\@t,$relation);
             my $hmmprob; my $hmmconf; my $hmmprobd; my $hmmph; my $hmmps; my $hmmrelation; my $hmmquestion;
-
+            &MainLoop1(0);
+            
             if ($DoHMM) {
                 my $tmpfh = time;
                 $Con{$tmpfh} = {};
@@ -52763,6 +52819,7 @@ sub ConfigAnalyze {
 <td style=\"padding-left:5px; padding-right:5px; padding-top:5; padding-bottom:5; text-align:left; font-size:small; background-color:#F4F4F4\"><b>Good Prob</b></td>
 </tr>\n";
 
+                &MainLoop1(0);
                 my $bcount = 0;
                 foreach (sort { abs( ${$Con{$tmpfh}->{hmmValues}}{$main::b} - .5 ) <=> abs( ${$Con{$tmpfh}->{hmmValues}}{$main::a} - .5 ) } keys %{$Con{$tmpfh}->{hmmValues}} ) {
                     last if ++$bcount > $maxBayesValues;
@@ -52886,7 +52943,8 @@ sub ConfigAnalyze {
             }
             @AnalyzeLog = (1);
         }
-
+        &MainLoop1(0);
+        
         $st .= "</div><br />\n";
 TRANSLITONLY:
         @AnalyzeLog = ();
@@ -52908,6 +52966,12 @@ TRANSLITONLY:
       my $h3 = $WebIP{$ActWebSess}->{lng}->{'msg500062'} || $lngmsg{'msg500062'};
       my $h4 = $WebIP{$ActWebSess}->{lng}->{'msg500063'} || $lngmsg{'msg500063'};
 
+      for (keys(%{$Con{0}})) {
+          if ($_ =~ /^BOMB:/o) {
+              @{$Con{0}->{$_}} = ();
+              delete $Con{0}->{$_};
+          }
+      }
       delete $Con{0};
 
       if ($qs{return}) {
@@ -52926,6 +52990,7 @@ EOT
 EOT
          : undef;
          
+      &MainLoop1(0);
       return <<EOT;
 $headerHTTP
 $headerDTDTransitional
@@ -52958,7 +53023,7 @@ $fm$ba$st
         </tr>
         <tr>
             <td class="noBorder" align="center">$h2<br />
-            <textarea id="mail" name="mail" rows="10" cols="60" wrap="off">$mail</textarea>
+            <textarea id="mail" name="mail" rows="20" cols="100" wrap="off">$mail</textarea>
             </td>
         </tr>
         $translit
@@ -54125,6 +54190,38 @@ sub unicodeNormalize {
     return;
 }
 
+#try to unnegate RegEx character classes
+sub unnegRegEx {
+    my $re = shift;
+    local $@;
+    my $s;
+    my $e;
+    my $l;
+    my $v;
+    my $res = '[';
+    for (0x00..0xFF) {
+        $v = $_;
+        my $c = chr($v);
+        if (eval{$c =~ /$re/}) {
+            if (! defined $s) {
+                $res .= '\x'.iso2hex($c);
+                $l = $c;
+            }
+            $s = $c;
+        } elsif ($@) {
+            $e = $@;
+            last;
+        } else {
+            if (defined $s && $l ne $s ) {$res .= '-\x'.iso2hex($s);}
+            $s = undef;
+        }
+    }
+    if (defined $s && $l ne $s ) {$res .= '-\x'.iso2hex($s);}
+    $res .= ']';
+    $res = "error in regex: $e" if $e;
+    return $res;
+}
+
 sub ConfigAddrAction {
     my $addr = lc($qs{address});
     my $run = $qs{address};
@@ -54312,6 +54409,46 @@ sub ConfigAddrAction {
          if ($mfd && $DKIMNPAddresses=~/\s*file\s*:\s*.+/o && ! $local && matchRE([$addr],'DKIMNPAddresses',1) && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','DKIMNPAddresses'));
     }
 
+    if ($WebIP{$ActWebSess}->{user} eq 'root' && $run =~ s/^\s*([\$\%\&][^\n]+|\@[^\n\.]+|\d{10}|\[\^.+?\])\s*$/$1/o) {
+        $addr = $run;
+        my $orun = $run;
+        $isnameonly = undef;
+        my $ret = "<b>eval result for $run :</b><br /><br />";
+        my $res;
+        if ($run =~ /^\&/o) {
+            $wrongaddr = '<br /><span class="positive">sub call detected</span><br />';
+            my ($sub,$parm) = parseEval($run);
+            if ($sub) {
+                mlog(0,"info: executing command '$run' ");
+                if (lc($sub) eq 'runeval' or lc($sub) eq '&runeval') {
+                    $res = &RunEval($parm);
+                } else {
+                    $sub =~ s/^\&//o;
+                    $res = eval{$sub->(split(/\,/o,$parm));};
+                }
+            }
+        } elsif ($run =~ s/^\$//o && defined ${$run}) {
+            $wrongaddr = '<br /><span class="positive">scalar request detected</span><br />';
+            $res = ${$run};
+        } elsif ($run =~ s/^\%//o && eval('keys %{$run};')) {
+            $wrongaddr = '<br /><span class="positive">hash request detected</span><br />';
+            $res .= "'$_' => '".${$run}{$_}.'\'<br />' foreach (sort keys %{$run});
+        } elsif ($run =~ s/^\@//o && eval('@{$run};')) {
+            $wrongaddr = '<br /><span class="positive">array request detected</span><br />';
+            $res = join('<br />', @{$run});
+        } elsif ($run =~ /^\d{10}$/o) {
+            $wrongaddr = '<br /><span class="positive">show time request detected</span><br />';
+            $res = $run;
+        } elsif ($run =~ /^\[\^.+?\]$/o) {
+            $wrongaddr = '<br /><span class="positive">regex conversion request detected</span><br />';
+            $res = unnegRegEx($run);
+        } else {
+            $res = "'$orun' is not defined or empty";
+        }
+        $res .= ' , ' . timestring($res) if $res =~ /^\d{10}$/o;
+        $s .= $ret . $res;
+    }
+
     if ($addr && ! $wrongaddr) {
         my @ad = ($addr);
         push @ad , $mfd if $mfd && $mfd ne $addr;
@@ -54334,37 +54471,6 @@ sub ConfigAddrAction {
         }
     }
 
-    if ($WebIP{$ActWebSess}->{user} eq 'root' && $run =~ s/^\s*([\$\%\@\&][^\n]+|\d{10}$)/$1/o) {
-        $addr = $run;
-        my $ret = "eval result for $run :<br /><br />";
-        my $res;
-        my $orun = $run;
-        if ($run =~ /^\&/o) {
-            my ($sub,$parm) = parseEval($run);
-            if ($sub) {
-                mlog(0,"info: executing command '$run' ");
-                if (lc($sub) eq 'runeval' or lc($sub) eq '&runeval') {
-                    $res = &RunEval($parm);
-                } else {
-                    $sub =~ s/^\&//o;
-                    $res = eval{$sub->(split(/\,/o,$parm));};
-                }
-            }
-        } elsif ($run =~ s/^\$//o && defined ${$run}) {
-            $res = ${$run};
-        } elsif ($run =~ s/^\%//o && eval('keys %{$run};')) {
-            $res .= "'$_' => '".${$run}{$_}.'\'<br />' foreach (sort keys %{$run});
-        } elsif ($run =~ s/^\@//o && eval('@{$run};')) {
-            $res = join('<br />', @{$run});
-        } elsif ($run =~ /^\d{10}$/o) {
-            $res = $run;
-        } else {
-            $res = "'$orun' is not defined or empty";
-        }
-        $res .= ' , ' . timestring($res) if $res =~ /^\d{10}$/o;
-        $s .= $ret . $res;
-    }
-
     return <<EOT;
 $headerHTTP
 
@@ -54378,7 +54484,7 @@ $headerHTTP
 <h2>add/remove addresses from lists</h2><hr>
     <div class="content">
       <form name="edit" id="edit" action="" method="post" autocomplete="off">
-        <h3>address to work with</h3>
+        <h3>address to work with &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img style="height:20px; width:20px;" src="get?file=images/help.png">&nbsp;&nbsp;show results</h3>
         <input name="address" size="100" autocomplete="off" value="$addr" onchange="document.forms['edit'].action.value='0';document.forms['edit'].reloaded.value='reloaded';document.forms['edit'].submit();return false;"/>
         $wrongaddr$isnameonly
         <br /><hr>
@@ -54612,7 +54718,7 @@ $headerHTTP
 <h2>add/remove IP addresses from lists</h2><hr>
     <div class="content">
       <form name="edit" id="edit" action="" method="post" autocomplete="off">
-        <h3>IP-address or hostname to work with</h3>
+        <h3>IP-address or hostname to work with &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img style="height:20px; width:20px;" src="get?file=images/help.png">&nbsp;&nbsp;show results</h3>
         <input name="ip" size="20" autocomplete="off" value="$addr" onchange="document.forms['edit'].action.value='0';document.forms['edit'].reloaded.value='reloaded';document.forms['edit'].submit();return false;"/>
         $wrongaddr
         <br /><hr>
@@ -74816,15 +74922,15 @@ sub increment_seen {
     my ($sequence, $symbol, $count) = @_;
 
     $count ||= 1;
-    $self->{totals}{$self->{privacy}.$sequence} += $count;
+    $self->{totals}{$_.$sequence} += $count for @{$self->{privacy}};
     if ($self->{simple}) {
-        $self->{chains}{"$self->{privacy}$sequence$self->{seperator}$symbol"} += $count;
+        $self->{chains}{"$_$sequence$self->{seperator}$symbol"} += $count for @{$self->{privacy}};
         return;
     } else {
-        $self->{chains}{$self->{privacy}.$sequence}{$symbol} += $count;
+        $self->{chains}{$_.$sequence}{$symbol} += $count for @{$self->{privacy}};
     }
     return unless $self->{top};
-    return if $self->{privacy};
+    return if @{$self->{privacy}} > 1;
     my $length = () = $sequence =~ /($self->{seperator})/g;
     $length++;
     return if $length < $self->{longest};
@@ -74914,17 +75020,18 @@ sub seed {
     my %args = @_;
 
     my @symbols = @{ $args{symbols} };
-    return unless @symbols;
 
     my $count = $self->{count} || 1;
 
     local $; = $self->{seperator};
 
-    $self->{privacy} = $args{privacy} ? $args{privacy}.$; : '';
+    @{$self->{privacy}} = map {my $t = $_.$; ; $t;} ('',@{$args{privacy}});
+
     my $longest = $args{longest} || $self->{longest} || 4;
     $self->{longest} ||= $longest;
     my $shortest = $args{shortest} || $self->{shortest} || 1;
     $self->{shortest} ||= $shortest;
+    return if @symbols < ($self->{shortest} + 1);
 
     push @{ $self->{_start_states} }, $symbols[0] unless $self->{nostarts};
 
@@ -74933,11 +75040,13 @@ sub seed {
     }
 
     for my $length ($shortest..$longest) {
-        for (my $i = 0; (my $j = $i + $length) < @symbols; $i++) {
-            my $link = join($;, @symbols[$i..$j - 1]);
-            $self->increment_seen($link, $symbols[$j],$count);
+        my $i = $length - 1;
+        for (0..(@symbols - $i - 2)) {
+            my $link = join($;, @symbols[$_..($_+$i)]);
+            $self->increment_seen($link, $symbols[$_+$length],$count);
         }
     }
+
     delete $self->{longest_sequence};
     return unless $self->{top};
     for (0..9) {
