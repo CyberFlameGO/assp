@@ -39,7 +39,6 @@ use strict qw(vars subs);
 # $main::AUTHLogUser = 0;                    # (0/1) write the username for AUTH (PLAIN/LOGIN) to maillog.txt
 # $main::AUTHLogPWD = 0;                     # (0/1) write the userpassword for AUTH (PLAIN) to maillog.txt
 # $main::Unidecode2Console = 0;              # (0/1) use Text::Unidecode to decode NONASCII characters to ASCII - if available  - if set - 'ConsoleCharset' is ignored
-# $main::showMEM = 0;                        # (0/1) show the current memory usage in every worker
 # $main::AnalyzeLogRegex = 0;                # (0/1) enables enhanced regex analyzing (in console mode only)
 # $main::SysLogFormat = '';                  # possible values are '' , 'rfc3164' and 'rfc5424' - '' is default
 # $main::SysLogProto = 'udp';                # possible values are 'udp' , 'tcp' - 'udp' is default
@@ -70,7 +69,7 @@ use strict qw(vars subs);
 # $main::enablePermanentSSLContext = 1;      # (0/1) enable usage of permanent SSL Context - maxunused = 1 hour, max lifetime = 1 day (default = 1)
 # $main::SPF_max_dns_interactive_terms = 15; # (number > 0) max_dns_interactive_terms max number of SPF-mechanism per domain (defaults to 10)
 # $main::SPF_max_allowed_IP = 0;             # maximum allowed IP (v4 and v6) adrresses in a SPF-record - default is 0 (disabled) - 2**17 seems to be OK
-# $main::disableEarlyTalker;                 # (0/1) disable the EarlyTalker check
+# $main::disableEarlyTalker = 0;             # (0/1) disable the EarlyTalker check
 # $main::disableRFC2047 = 0;                 # (0/1) disable the RFC2047 check - undecoded subject contains non printable characters
 # $main::ignoreEarlySSLClientHelo = 1;       # (0/1) 1 - unexpected early SSLv23/TLS handshake Client-Helo-Frames are ignored , 0 - unexpected early SSLv23/TLS handshake Client-Helo-Frames are NOT ignored and the connection will be closed
 # $main::SpamCountNormCorrection = 0;        # (+/- number in percent) correct the required by X% higher
@@ -88,6 +87,7 @@ use strict qw(vars subs);
 
 # $main::CCchangeMSGDate = 0;                ## (0..31) change the 'Date:' MIME-header on CCmail (sendHamInbound), ForwardSpam (sendAllSpam) and resend mail
                                              ## MS-Exchange may require this, because duplicate mails will be removed silently, if they contain an equal 'Date:...' MIME-header
+                                             ## only the value for the seconds will be changed
                                              # bit 0 = 1 ( +1) -> set all bits (1 - 4) to 1 for backward compatibility ( same as 30 -> 2+4+8+16 )
                                              # bit 1 = 1 ( +2) -> force change at CCmail
                                              # bit 2 = 1 ( +4) -> force change at ForwardSpam
@@ -119,6 +119,8 @@ use strict qw(vars subs);
 # $main::protectASSP = 1;                    # (0/1) rmtree will only remove files and folders in base/t[e]mp...
 
 # $main::noSupportSummay = 0;                # (0/1) skips the output of a support summary in the configuration export function
+
+# $main::AllowCodeInRegex = 0;               # (0/1) allow the usage of executable perl code (?{code_to_run}) in regular expression - change this ONLY, if you really know what you do
 
 # ASSP_AFC - Plugin related
 # $ASSP_AFC::skipLockyCheck = 0;             # (0/1) skip the locky ransomeware virus detection in ASSP_AFC Plugin - default is zero - NOT RECOMMENDED to be set to 1
@@ -201,6 +203,19 @@ sub set {
 #    ...
 #    return $type;
 #}
+
+
+# if this sub exists, it is called by assp for each line written to maillog.txt
+# provided are the connection handle ($fh) and the logline ($line)
+# this example looks at the line using a regular expression and writes the connected IP to an outputfile
+#sub custom_mlog {
+#    my ($fh,$line) = @_;
+#    return unless ($line =~ /(?:your regex here for example)/io);
+#    open(my $F, '>>', $main::base.'/files/any_filename.txt') or return;
+#    print $F $main::Con{$fh}->{ip}."\n";
+#    close $F;
+#    return;
+#} 
 
 sub mlog {
     &main::mlog(@_);
