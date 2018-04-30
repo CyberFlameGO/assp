@@ -10,7 +10,7 @@ IMPORTS
     TruthValue FROM SNMPv2-TC;
 
 thockar MODULE-IDENTITY
-    LAST-UPDATED "201712210000Z"
+    LAST-UPDATED "201804300000Z"
     ORGANIZATION "www.thockar.com"
     CONTACT-INFO
 	 "postal:       Thomas Eckardt
@@ -18,13 +18,13 @@ thockar MODULE-IDENTITY
       email:    thockar@lists.sourceforge.net"
     DESCRIPTION
 	"Top-level infrastructure of thockar projects enterprise MIB tree"
-    REVISION     "201712210000Z"
+    REVISION     "201804300000Z"
     DESCRIPTION
 	"First draft"
     ::= { enterprises 37058}
 
 asspSNMP MODULE-IDENTITY
-    LAST-UPDATED "201712210000Z"
+    LAST-UPDATED "201804300000Z"
     ORGANIZATION "www.thockar.com"
     CONTACT-INFO
 	 "postal:       Thomas Eckardt
@@ -32,7 +32,7 @@ asspSNMP MODULE-IDENTITY
       email:    thockar@lists.sourceforge.net"
     DESCRIPTION
 	"Top-level infrastructure of the thockar ASSP project enterprise MIB tree"
-    REVISION     "201712200000Z"
+    REVISION     "201804290000Z"
     DESCRIPTION
 	"First draft"
     ::= { thockar 2}
@@ -2581,7 +2581,7 @@ Define any transparent TCP Port Proxy here. ASSP will proxy/forward (NOT route !
   For example: if you want incoming TCP connections on port 465 (SMTP-SSL) to be forwarded to your email server.
   Example:10.1.1.1:22=&gt;172.16.22.33:22|0.0.0.0:465=&gt;192.168.1.25:465&lt;=12.1.1.3,34.5.6.0/16,67.23.2.1-67.23.2.5|10.1.1.1:1477=&gt;192.168.1.23:1234&lt;=120.5.1.3,134.5.19.7,[allow_proxy_1234]
   Those connection are not especially SMTP related and they are not inspected by assp. Any application that uses the TCP layer, can use such a proxy (eg. SSH, RDP, VNC, POP3, HTTP, LDAP, Notes ...).
-  Proxy connections can be define in any direction: privat&lt;-&gt;privat , privat&lt;-&gt;public , public&lt;-&gt;privat and public&lt;-&gt;public
+  Proxy connections can be defined in any direction: private&lt;-&gt;private , private&lt;-&gt;public , public&lt;-&gt;private and public&lt;-&gt;public
   The syntax is: localIP:localPORT=&gt;forwardIP:forwardPORT[&lt;=AllowfromIP1,AllowfromIP2,...]|next Proxy configuration|....
   The file-option (eg. file:files/proxy_conf.txt) is supported - if used, define one proxy configuration per line.
   You have to configure the IP-address and IP-port for both - local and forward values! The optional AllowfromIP extension are comma separated values of IP-addresses (eg. 192.168.1.1), IP-networks (eg. 10.1.1.0/24) and IP-address ranges (172.16.1.3-172.16.1.10) from where connections are allowed. Groups definitions (eg. [allow_ssh_proxy]) may be used in AllowfromIP. If there is no allow value defined, all source IP addresses will be accepted!
@@ -3631,9 +3631,9 @@ genDKIM  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-If selected, ASSP will add DKIM signatures to relayed messages if it finds a valid DKIM configuration in DKIMgenConfig for the sending domain. This will also be done for noprocessing mails. This requires an installed  module in PERL.
+If selected, ASSP will add DKIM signatures to relayed messages, if it finds a valid DKIM configuration in DKIMgenConfig for the sending domain. This will also be done for noprocessing mails. This requires an installed  module in PERL.
 "
-    REFERENCE "Generate and Add DKIM  signatures to relayed messages"
+    REFERENCE "Generate and Add DKIM or DomainKey  signatures to relayed messages"
     DEFVAL { "" }
     ::= {NetworkSetupLimitsandDKIMsigningforRelayingOutgoingandLocalMail 121}
 
@@ -3674,10 +3674,10 @@ DKIMgenConfig  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-The file that contains the DKIM configuration. A description how to configure DKIM could be found in the default file dkim/dkimconfig.txt.
+The file that contains the DKIM and ARC configuration. A description how to configure DKIM, DomainKey and ARC could be found in the default file dkim/dkimconfig.txt.
 
 "
-    REFERENCE "The File with the DKIM configurations*"
+    REFERENCE "The File with the DKIM and ARC configurations*"
     DEFVAL { "file:dkim/dkimconfig.txt" }
     ::= {NetworkSetupLimitsandDKIMsigningforRelayingOutgoingandLocalMail 122}
 
@@ -4157,6 +4157,30 @@ synchronization status line from file assp_sync.cfg for RelayOnlyLocalDomains
  4 - in sync - running master mode (wait to reach state 2)
 "
     ::= {RelayOnlyLocalDomains 6}
+
+genARC  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+If selected, ASSP will add  signatures to all messages provided it finds a valid DKIM configuration in DKIMgenConfig for the domain of ARCSigningHost (or myName if ARCsSigningHost is blank). This will also be done for noprocessing mails. If available, the check results for SPF, DKIM and DMARC will be provided in the generated ARC-signature. This requires an installed  module in PERL.
+"
+    REFERENCE "Generate and Add Authenticated Received Chain (ARC) signatures to all messages"
+    DEFVAL { "" }
+    ::= {NetworkSetupLimitsandDKIMsigningforRelayingOutgoingandLocalMail 1068}
+
+ARCSigningHost  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+The full qualified host name to be used for  signing. If not defined, myName is used. The signing domain is parsed from the senders address (header From: or Sender:) in outgoing mails - and this value (or myName) in incoming mails.
+"
+    REFERENCE "Host (FQHN) Name to be used for ARC Signing"
+    DEFVAL { "" }
+    ::= {NetworkSetupLimitsandDKIMsigningforRelayingOutgoingandLocalMail 1069}
 
 SMTPSessionLimits  OBJECT IDENTIFIER ::= {asspConfig 3}
 MaxErrors  OBJECT-TYPE
@@ -8370,6 +8394,7 @@ noProcessing  OBJECT-TYPE
     DESCRIPTION
 "
 Mail solely to or from any of these addresses are proxied without processing. The envelope sender and recipients are checked. Like a more efficient version of Spam-Lovers &amp; redlist combined. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com).  Wildcards are supported (fribo*@domain.com). If you register TO addresses here, all recipients for a single mail must be marked as noprocessing to flag the mail as 'noprocessing'.
+  You should have also a look at DKIMNPAddresses , which can be a better, more secure option.
 "
     REFERENCE "No Processing Addresses*"
     DEFVAL { "Thomas.Eckardt@thockar.com" }
@@ -8456,6 +8481,7 @@ noProcessingDomains  OBJECT-TYPE
     DESCRIPTION
 "
 Domains from which you want to receive all mail and  proxy without processing. Your ISP, domain registration, mail list servers, stock broker, or other key business partners might be good candidates. Note this matches the end of the address, so if you don't want to match subdomains then include the @. Note that buy.com would also match spambuy.com but .buy.com won't match buy.com. For example: sourceforge.net|@google.com|.buy.com
+  You should have also a look at DKIMNPAddresses , which can be a better, more secure option to use.
 "
     REFERENCE "No Processing Domains*"
     DEFVAL { "sourceforge.net|thockar.com" }
@@ -8829,6 +8855,7 @@ Domains and addresses from which you want to receive all mail. Your ISP, domain 
   [sendergroup1]|[sendergroup2]|*@domain=>[recipientgroup1]|[recipientgroup2]|user@local_domain
   NOTICE - that the local email addresses and domains are not checked to be local once.
   To define special characters like '* and ?' - use their hexadecimal regex representation like '\x2A and \x3F'.
+  You should have also a look at DKIMWLAddresses , which is a better, more secure option.
 "
     REFERENCE "Whitelisted Domains and Addresses*"
     DEFVAL { "file:files/whitedomains.txt" }
@@ -11499,7 +11526,7 @@ myServerRe  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Local Domains, IP's and Hostnames are often use to fake (forge) the Helo. Include all IP addresses and hostnames for your server here, localhost is already included. Include Local Domains of your choice here, if you deactivated the automatic use of the local domain list.  For example: 11.22.33.44|mx.YourDomains.com|here.org
+Local Domains, IP's and Hostnames are often used to fake (forge) the Helo. Include all IP addresses and hostnames for your server here, 'localhost' and the values of myName and myNameAlso are already included. Include Local Domains of your choice here, if you deactivated the automatic use of the local domain list.  For example: 11.22.33.44|mx.YourDomains.com|here.org
 "
     REFERENCE "Local Domains,IP's and Hostnames*"
     DEFVAL { "" }
@@ -12873,9 +12900,9 @@ DoDomainCheck  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-If activated, the sender address and each address found in the following header lines (ReturnReceipt:, Return-Receipt-To:, Disposition-Notification-To:, Return-Path:, Reply-To:, Sender:, Errors-To:, List-...:) is checked for a valid MX or A record. Scoring is done for non existing MX ( mxValencePB ) record and non existing A record ( mxaValencePB ) - a messages fails (block), if both records are not found.
+If activated, the envelope sender address and each address found in the following header lines (ReturnReceipt:, Return-Receipt-To:, Disposition-Notification-To:, Return-Path:, Reply-To:, Sender:, Errors-To:, List-...:) is checked for a valid MX record and an A record for the MX. Scoring is done for non existing MX ( mxValencePB ) record and non existing A record for MX ( mxaValencePB ) - a messages fails (block), if both records are not found. If only an IP-address is found for a MX and this IP has no valid PTR and DoInvalidPTR is enabled, the A record check fails.
 "
-    REFERENCE "Validate MX or A Record"
+    REFERENCE "Validate MX and A Record"
     DEFVAL { "3" }
     ::= {ValidateSenderAddressesDomainsMsgIDPTRMXandDKIM 187}
 
@@ -12959,9 +12986,11 @@ DoNoFrom  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-If enabled, the MIME header is checked for a valid From: header tag. The scoring value is set with nofromValencePB.
+If enabled, the MIME header is checked for valid From: and Sender: header tags.
+  This header check fails and faults are counted, if both headers (From: and Sender:) are missing - or if any of these headers contains not a valid email address - or if multiple of the same headers are found.
+  The scoring value nofromValencePB is added for each detected fault.
 "
-    REFERENCE "Check for Existing From Header Tag and Address"
+    REFERENCE "Check for Existing and Valid From: and Sender: Header Tag and Address"
     DEFVAL { "3" }
     ::= {ValidateSenderAddressesDomainsMsgIDPTRMXandDKIM 189}
 
@@ -13002,10 +13031,10 @@ DoNoFromWL  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Check for existing From header and address for whitelisted addresses.
+Check for existing From: or Sender: header and address for whitelisted emails.
 "
     REFERENCE "Do DoNoFrom for Whitelisted"
-    DEFVAL { "1" }
+    DEFVAL { "" }
     ::= {ValidateSenderAddressesDomainsMsgIDPTRMXandDKIM 190}
 
 syncStatDoNoFromWL  OBJECT-TYPE
@@ -13045,10 +13074,10 @@ DoNoFromNP  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Check for existing From header and address for noprocessing addresses.
+Check for existing From: or Sender: header and address for noprocessing emails.
 "
     REFERENCE "Do DoNoFrom for NoProcessing"
-    DEFVAL { "1" }
+    DEFVAL { "" }
     ::= {ValidateSenderAddressesDomainsMsgIDPTRMXandDKIM 191}
 
 syncStatDoNoFromNP  OBJECT-TYPE
@@ -13261,7 +13290,8 @@ DKIMCacheInterval  OBJECT-TYPE
     DESCRIPTION
 "
 Domains's in cache will be removed after this interval in days. 0 will disable the cache.
-  If activated a DKIM-pre-check will be done. If ASSP finds a DKIM-Signature in the mail header, it checks the DNS records of the sending domain for valid DKIM configurations and writes a record in to the DKIM-pre-check-cache, if it finds such configuration.
+  If activated a DKIM-pre-check will be done. If ASSP finds a DKIM-Signature in the mail header, it checks the DNS records of the sending domain for valid DKIM configurations and writes a record in to the DKIM-pre-check-cache, if it finds such configuration. If a mail is DKIM signed, the DKIM-pre-check will check the DKIM or DomainKey identity and consistency of the received header.
+  The DKIM-pre-check will also set all states and flags for the mail, as they would be set by the full DKIM/DomainKey check.
   If ASSP does not find a DKIM-Signature in the mail header, it also checks the DNS records of the sending domain for valid DKIM configurations. If it find such a configuration, the mail is considered spam, because it should have a DKIM-Signature.
   The next mail from a domain that is found in this cache, must have a DKIM-Signature to pass the DKIM-pre-check. How ever, some DNS records are wrong or inaccurate and will cause ASSP to block mails because of this - register such domains and/or IP's in noDKIMAddresses and/or noDKIMIP .
   
@@ -13307,7 +13337,7 @@ AddDKIMHeader  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Add X-Assp-DKIM header.
+Add a X-Assp-DKIM: result header.
 "
     REFERENCE "Add X-Assp-DKIM Header"
     DEFVAL { "1" }
@@ -13486,7 +13516,7 @@ DoNoSpoofing4From  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Do the NoSpoofing check also for header 'from:' addresses.
+Do the NoSpoofing check also for header 'from:', 'sender:', 'reply-to:' and 'errors-to:' addresses.
 "
     REFERENCE "Do NoSpoofing for from:"
     DEFVAL { "" }
@@ -13632,7 +13662,7 @@ Domains and addresses which have to SMIME or PGP sign or encrypt all mail. If a 
   NOTICE - that the local email addresses and domains are not checked to be local once.
   To define special characters like '* and ?' - use their hexadecimal regex representation like '\x2A and \x3F'.
 "
-    REFERENCE "Senders need to SMIME or PGP Sign All Mail*"
+    REFERENCE "Senders need to SMIME or PGP Sign All Mail *"
     DEFVAL { "file:files/signedSenders.txt" }
     ::= {ValidateSenderAddressesDomainsMsgIDPTRMXandDKIM 1052}
 
@@ -13666,6 +13696,70 @@ synchronization status line from file assp_sync.cfg for signedSenders
  4 - in sync - running master mode (wait to reach state 2)
 "
     ::= {signedSenders 6}
+
+DKIMWLAddresses  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+If a valid DKIM or DomainKey signature is found and the signature identity (mostly the signature tag i=user@domain.tld) matches any of these addresses, the mail will be passed and saved as if it were in whiteListedDomains . The message will pass filters as Whitelisted and will be added to the corpus just like mail from a whitelisted sender would be. Unlike a true whitelisted sender, no whitelist address additions will be made.
+  Note this matches the end of the identity address, so if you don't want to match subdomains then include the @. Note that example.com would also match spamexample.com but .example.com won't match example.com. Wildcards are supported. For example: sourceforge.net|group*@google.com|.example.com
+  It is possible to make this check recipient dependend (eg: on a set of local domains and/or local users). Use wildcards (* and ?) to define receipient domains.
+  Use the following syntax to do this:
+  *@anydomain=>*@any_local_domain - for domain to domain
+  *@*.anydomain=>*@any_local_domain - for any sub-domain to domain
+  user@anydomain=>*@*.any_local_domain - for user to any sub-domain
+  It is possible to define more than one entry at the left and the right side of the definition (=&gt;), like:
+  *@anydomain|*@other_domain=>*@any_local_domain|*@other_local_domain - always separate multiple entries by pipes
+  It is also possible to use a GroupDefinition in any or both sides, like:
+  [identitygroup]=>[recipientgroup]
+  [identitygroup1]|[identitygroup2]|*@domain=>[recipientgroup1]|[recipientgroup2]|user@local_domain
+  NOTICE - that the local email addresses and domains are not checked to be local once.
+  It is NOT recommended to disable 'DKIMCacheInterval' if this feature is configured, otherwise only the Plugin Level 2 (complete mail) checks will be affected by this settings!
+  To define special characters like '* and ?' - use their hexadecimal regex representation like '\x2A and \x3F'.
+"
+    REFERENCE "Whitelist these Addresses for valid DKIM Signature *"
+    DEFVAL { "" }
+    ::= {ValidateSenderAddressesDomainsMsgIDPTRMXandDKIM 1065}
+
+DKIMNPAddresses  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+If a valid DKIM or DomainKey signature is found and the signature identity (mostly the signature tag i=user@domain.tld) matches any of these addresses, the mail will be passed and saved as if it were in noProcessingDomains or noProcessing .
+  Note this matches the end of the identity address, so if you don't want to match subdomains then include the @. Note that example.com would also match spamexample.com but .example.com won't match example.com. Wildcards are supported. For example: sourceforge.net|group*@google.com|.example.com
+  It is possible to make this check recipient dependend (eg: on a set of local domains and/or local users). Use wildcards (* and ?) to define recipient domains.
+  Use the following syntax to do this:
+  *@anydomain=>*@any_local_domain - for domain to domain
+  *@*.anydomain=>*@any_local_domain - for any sub-domain to domain
+  user@anydomain=>*@*.any_local_domain - for user to any sub-domain
+  It is possible to define more than one entry at the left and the right side of the definition (=&gt;), like:
+  *@anydomain|*@other_domain=>*@any_local_domain|*@other_local_domain - always separate multiple entries by pipes
+  It is also possible to use a GroupDefinition in any or both sides, like:
+  [identitygroup]=>[recipientgroup]
+  [identitygroup1]|[identitygroup2]|*@domain=>[recipientgroup1]|[recipientgroup2]|user@local_domain
+  NOTICE - that the local email addresses and domains are not checked to be local once.
+  It is NOT recommended to disable 'DKIMCacheInterval' if this feature is configured, otherwise only the Plugin Level 2 (complete mail) checks will be affected by this settings!
+  To define special characters like '* and ?' - use their hexadecimal regex representation like '\x2A and \x3F'.
+"
+    REFERENCE "Noprocessing these Addresses for valid DKIM Signature *"
+    DEFVAL { "" }
+    ::= {ValidateSenderAddressesDomainsMsgIDPTRMXandDKIM 1066}
+
+DoARC  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+If enabled,  signed Mails are checked for the right signature sequence and contents. ASSP will show the ARC results and will trust the provided Authenticated Results for DKIM, SPF and DMARC if the signing host/domain matches 'trustedAuthForwarders'. This requires an installed  module in PERL.
+"
+    REFERENCE "Validate Authenticated Received Chain (ARC) Signatures"
+    DEFVAL { "0" }
+    ::= {ValidateSenderAddressesDomainsMsgIDPTRMXandDKIM 1070}
 
 IPBlocking  OBJECT IDENTIFIER ::= {asspConfig 13}
 DoDenySMTP  OBJECT-TYPE
@@ -15885,7 +15979,7 @@ PenaltyError  OBJECT-TYPE
 If set SMTP reply for Penalty Deny. eg: '554 5.7.1 Error, send your mail to postmaster@LOCALDOMAIN to ensure delivery'. The literal LOCALDOMAIN will be replaced by the recipient domain. The literal LOCALUSER will be replaced by the recipient user part. For example:554 5.7.1 Mail appears to be unsolicited -- send error reports to postmaster@LOCALDOMAIN.
 "
     REFERENCE "Penalty Reply"
-    DEFVAL { "" }
+    DEFVAL { "554 5.7.1 Error, send your mail to postmaster@LOCALDOMAIN to ensure delivery" }
     ::= {PenaltyBoxMessageandIPScoring 246}
 
 syncStatPenaltyError  OBJECT-TYPE
@@ -17908,7 +18002,7 @@ mxaValencePB  OBJECT-TYPE
 "
 Message/IP scoring
 "
-    REFERENCE "Missing MX &amp; A Record, default=15 +"
+    REFERENCE "Missing A Record for MX, default=15 +"
     DEFVAL { "15" }
     ::= {PenaltyBoxMessageandIPScoring 293}
 
@@ -22426,6 +22520,22 @@ synchronization status line from file assp_sync.cfg for noDMARCDomain
 "
     ::= {noDMARCDomain 6}
 
+trustedAuthForwarders  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+
+ If an email contains a valid DKIM signature and the signature protects the 'X-Original-Authentication-Results' header line in its h= tag (RFC7601) and the host in this header line matches this regular expression, DMARC will fully trust the provided original authentication results for SPF, DKIM and DMARC.
+ If DoARC is enabled and a host match is found for the most recent  instance (highest instance number), the SPF-check, the DKIM-check and the DMARC-check will fully trust the provided ARC results.
+ For example: ^mx\d*\.domain\.com$ or ^2\.2\.2\.2$
+ An regular expression for the values of myName and myNameAlso are already added!.
+"
+    REFERENCE "X-Original-Authentication-Results and Authenticated Received Chain(ARC) Trusted Forwarder*"
+    DEFVAL { "" }
+    ::= {ValidateSPFDMARCandSRS 1067}
+
 DNSBLRBLValidation  OBJECT IDENTIFIER ::= {asspConfig 18}
 ValidateRBL  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -22433,9 +22543,10 @@ ValidateRBL  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-This requires an installed  module in PERL.
+The connected IP address will be checked for DNSBL hits. If enhancedOriginIPDetect is enabled, additionally DNSBL checks will be done for IP's on the mail routing way.
+  This requires an installed  module in PERL.
 "
-    REFERENCE "Enable DNS Blacklist Validation "
+    REFERENCE "Enable DNS Blacklist Validation For Connected IP Addresses"
     DEFVAL { "1" }
     ::= {DNSBLRBLValidation 375}
 
@@ -22562,9 +22673,9 @@ RBLWL  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Enable DNSBL for whitelisted users also
+Enable DNSBL for whitelisted IP's, domains and users also
 "
-    REFERENCE "Whitelisted DNSBL Validation"
+    REFERENCE "Whitelisted DNSBL Validation For Connected IP Addresses"
     DEFVAL { "0" }
     ::= {DNSBLRBLValidation 378}
 
@@ -24606,11 +24717,26 @@ This set of regular expression is used to identify attachments that should be al
   ~forceAllowExe => -+(?:cmd|com|cpl|exe|exe\-bin|lnk|pif)
   [IT]=>~~devRule , block-out=>~allowExe , block-in => ~forceAllowExe
   Do NOT use nested brackets like in --(?:c(?:md|om|pl)|exe(?:\-bin)?|lnk|pif) to define any exception!
+  It may possible, that you want assp to deliver mails sent from a specific domain or emailaddress any way (without an attachment check). For security reasons this behavior can be only forced, if the sender was validated by SPF and/or DKIM and/or SMIME/PGP (Sig). The check is done by assp at runtime (mail processing) only!
+  The definition described below must be done sepately for evey 'good','block' as well as 'zip' tag, for which the attachment check should be skipped.
+  The (not case sensitive) definition tag starts with NoCheckIf= , followed by at least one state of 'spf','dkim' or 'sig'. These states can be AND combined by writing them simply together like SpfDkim or SpfDkimSig in one word. To combine them in an OR logic, separate them by a dot like: Spf.Dkim . An combination for OR - AND would be: Spf.DkimSig . Whitespaces are not allowed in a NoCheckIf= definition!
+  spf - the mail passed the SPF check - Notice: to validate against IP addresses for non SPF domains, use SPFoverride 
+  dkim - the mail is DKIM signed and passed the DKIM check
+  sig - the mail contains a valid SMIME or PGP signature
+  examples:
+  ~~allowSDSSIn=>good-in=>NoCheckIf=SpfDkim.SpfSig,block-in=>NoCheckIf=SpfDkim.SpfSig
+  sender@domain.org=>~~allowSDSSIn
+  or
+  sender@domain.org=>good-in=>NoCheckIf=SpfDkim.SpfSig,block-in=>NoCheckIf=SpfDkim.SpfSig
+  which means: for sender@domain.org (sender) the good and the block check will be skipped, if the mail is SPF checked and DKIM validated - or the mail is SPF checked and has a SMIME/PGP signature.
+  *@domain.org=>good-in=>NoCheckIf=Dkim.Sig,block-in=>NoCheckIf=Dkim.Sig
+  which means: for the sending domain @domain.org the good and the block check will be skipped, if the mail is DKIM validated or has a SMIME/PGP signature.
+
   ASSP will resolve all extension regular expression templates and all rule tempates and will combine them all in to one resulting domain or user attachment rule.
   ASSP will throw a warning, if a rule template is define multipe times - like: *@domain.com=~~commonRule,~~devRule - here ~~devRule already contains ~~commonRule
   It may happen, that the resulting attachment rule contains one or more extension regular expressions multiple times - this is harmless and will be internaly corrected, but try to prevent it.
   
-  This feature replaces all of the above level definitions (BadAttachL1 ....L2 ....), if at least one valid (not zip:... from the ASSP_AFC Plugin) attachment blocking or allow rule is found for the envelope sender or the first envelope recipient of a mail!
+  This feature replaces all of the above level definitions ( BadAttachL1 , BadAttachL2 , BadAttachL3 , GoodAttach ), if at least one valid (not zip:... from the ASSP_AFC Plugin) attachment blocking or allow rule is found for the envelope sender or the first envelope recipient of a mail!
   good, good-out and good-in - and also - block, block-out and block-in - will be logical OR (pipe '|') combined from the matched rule for the first envelope recipient and the envelope sender - according to the mail flow.
   The defined blocking rules for the envelope sender and the first envelope recipient are than combined together using the same OR logic (pipe '|') at runtime.
   The attachment block rules for a specific email are looking as follows: (replace block with good to get the attachment good rules)
@@ -26087,7 +26213,7 @@ bombSenderRe  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Part of DoBombHeaderRe: expression to identify sender (mailfrom,ip,helo).
+Part of DoBombHeaderRe: regular expression to identify sender (mailfrom, ip and helo only). CIDR or range definitions for the IP will NOT work here!
 "
     REFERENCE "Envelope Blocking Regular Expression **"
     DEFVAL { "^\*|emailserver3\.com|\d\d\d\d\d\d\@tom\.com" }
@@ -27419,7 +27545,7 @@ BayesMaxProcessTime  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-The Bayesian- and HMM checks are the most memory and CPU consuming tasks that ASSP is doing on a message. If such tasks running to long on one message, other messages could run in to SMTPIdleTimeout. Define here the maximum time in seconds that ASSP should spend on Bayesian Checks for one message. Default is 60.
+The Bayesian- and HMM checks are the most memory and CPU consuming tasks that ASSP is doing on a message. If such tasks running to long on one message, other messages could run in to SMTPIdleTimeout. Define here the maximum time in seconds that ASSP should spend on Bayesian Checks for one message. Default is 15.
 "
     REFERENCE "Bayesian and HMM Check Timeout "
     DEFVAL { "15" }
@@ -28145,9 +28271,8 @@ DoMSGIDsig  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-If activated, the message-ID of each outgoing message will be signed with a unique Tag and every incoming mail will be checked against this Tag. This tagging mode is called FBMTV 'Forwarder(s) Bounce Message-ID Tag Validation' and it is worldwide unique to ASSP. This Tag is build nearly the same way, as BATVTag is build for the sender address. This Tag will be removed from any incoming email, to recover the original references in the mail header! If anything is changed on this option inside the mail, no DKIM-check will be done! Before activating DoMSGIDsig, please configure MSGIDpreTag and MSGIDsec!
-   If activated and a bounced mail from null sender or postmaster contains no valid signature the configured action is taken.
-   If activated and any other mail contains a valid signature (eg. because it is an answer/reply to a tagged mail), this mail will be flagged as noprocessing and whitelisted !
+If activated, the message-ID of each outgoing message will be signed with a unique Tag and every incoming mail will be checked against this Tag. This tagging mode is called FBMTV 'Forwarder(s) Bounce Message-ID Tag Validation' and it is worldwide unique to ASSP. This Tag is build nearly the same way, as BATVTag is build for the sender address. This Tag will be removed from any incoming email, to recover the original references in the mail header! If anything is changed on this option inside the mail, no DKIM-check will be done! Before activating DoMSGIDsig, please configure MSGIDpreTag and MSGIDsec !
+  If activated and a bounced mail from null sender or postmaster contains no valid signature the configured action is taken.
   This check requires an installed  module in Perl.
 "
     REFERENCE "Do Message-ID Tagging and Validation (FBMTV)"
@@ -28990,6 +29115,50 @@ If the contents of a mail matches these regular expressions, all BackScatter che
     REFERENCE "Regular Expression to Skip all BackScatter Checks*"
     DEFVAL { "" }
     ::= {OutgoingMessageTaggingNDRValidationandBackscatterDetection 924}
+
+MSGIDsigProc  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+How are received mails processed, if they contain a valid local MessageID-Signature/Tag (eg. because it is an answer/reply to a tagged mail).
+ The default value is 'whitelisted'. Notice that noprocessing and/or whitelisted may prevent those mails from being collected in the corpus folders - check noProcessingLog and NonSpamLog.
+"
+    REFERENCE "Process valid Message-ID Signed Mails"
+    DEFVAL { "1" }
+    ::= {OutgoingMessageTaggingNDRValidationandBackscatterDetection 1063}
+
+syncStatMSGIDsigProc  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for MSGIDsigProc
+-1 - MSGIDsigProc could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {MSGIDsigProc 5}
+
+syncStatStrMSGIDsigProc  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for MSGIDsigProc
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {MSGIDsigProc 6}
 
 TestModesandSPAMTagging  OBJECT IDENTIFIER ::= {asspConfig 25}
 spamSubject  OBJECT-TYPE
@@ -34506,7 +34675,7 @@ noProcessingLog  OBJECT-TYPE
 Where to store noprocessing OK mails.
 "
     REFERENCE "NoProcessing OK Mails"
-    DEFVAL { "0" }
+    DEFVAL { "4" }
     ::= {CollectingSPAMandHAM 624}
 
 syncStatnoProcessingLog  OBJECT-TYPE
@@ -38416,7 +38585,7 @@ DKIMlogging  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-
+DKIM and ARC signing log level. Set to diagnostic, the generated signatures will be veryfied after creation.
 "
     REFERENCE "Enable DKIM logging"
     DEFVAL { "1" }
@@ -39209,7 +39378,7 @@ LDAPLogin  OBJECT-TYPE
 "
 Most LDAP servers require a login and password before they allow queries.
  Enter the DN specification for a user with sufficient permissions here.
- For example: cn=Administrator,cn=Users,DC=yourcompany,DC=com
+ For example: CN=Administrator,CN=Users,DC=yourcompany,DC=com
 "
     REFERENCE "LDAP Login"
     DEFVAL { "" }
@@ -39340,7 +39509,7 @@ LDAPRoot  OBJECT-TYPE
 "
 The LDAP lookup will use this container and all sub-containers to match the local email address query.
  The literal DOMAIN is replaced by the domain part of SMTP recipient (eg. domain.com) during the search.
- For example: DC=yourcompany,DC=com.
+ For example: CN=Users,DC=yourcompany,DC=com or the complete domain DC=yourcompany,DC=com.
  If you use DOMAIN here, you must check 'LDAP failures return false' below or non local domains will be treated as local.
 "
     REFERENCE "LDAP Root container for Local Addresses"
@@ -39440,9 +39609,9 @@ This filter is used to query the LDAP database. This strongly depends on the LDA
  or
  (|(mail=EMAILADDRESS)(mailaddress=EMAILADDRESS))
  or
- (&amp;(objectClass=user)(objectcategory=person)(mail=EMAILADDRESS)(! msExchHideFromAddressLists=TRUE))
- or
- (&amp;(|(|(|(|(&amp;(objectclass=user)(objectcategory=person))(objectcategory=group))(objectclass=publicfolder))(!(objectclass=contact)))(objectclass=msExchDynamicDistributionList))(proxyaddresses=smtp:EMAILADDRESS))
+ (&amp;(objectClass=user)(objectcategory=person)(mail=EMAILADDRESS)(!(msExchHideFromAddressLists=TRUE)))
+ or (eg. AD/Exchange 2013/2016)
+ (&amp;(|(|(|(|(&amp;(objectclass=user)(objectcategory=person))(objectcategory=group))(objectclass=publicfolder))(!(objectclass=contact)))(objectclass=msExchDynamicDistributionList))(proxyaddresses=smtp:EMAILADDRESS)(!(msExchHideFromAddressLists=TRUE)))
 "
     REFERENCE "LDAP Filter for Local Addresses"
     DEFVAL { "" }
@@ -42247,37 +42416,6 @@ If myName was changed or you use shared folders (multiple ASSP) for the corpus f
     DEFVAL { "" }
     ::= {GeneralServerSetup 788}
 
-syncStatmyNameAlso  OBJECT-TYPE
-    SYNTAX      OCTET STRING
-    MAX-ACCESS  read-only
-    STATUS      current
-    DESCRIPTION
-"
-synchronization status for myNameAlso
--1 - myNameAlso could not be synchronized
- 0 - synchronization not configured
- 1 - out of sync - running master mode
- 2 - in sync - running  mastermode
- 3 - in sync - running slave mode
- 4 - in sync - running master mode (wait to reach state 2)
-"
-    ::= {myNameAlso 5}
-
-syncStatStrmyNameAlso  OBJECT-TYPE
-    SYNTAX      OCTET STRING
-    MAX-ACCESS  read-only
-    STATUS      current
-    DESCRIPTION
-"
-synchronization status line from file assp_sync.cfg for myNameAlso
- 0 - synchronization not configured
- 1 - out of sync - running master mode
- 2 - in sync - running  mastermode
- 3 - in sync - running slave mode
- 4 - in sync - running master mode (wait to reach state 2)
-"
-    ::= {myNameAlso 6}
-
 noModuleAutoUpdate  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-write
@@ -43729,7 +43867,7 @@ useDB4Rebuild  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-The RebuildSpamDB thread creates some internal temprary caches, which can grow to a very large number of entries. Switch this on (default), if you want this thread to use less memory and be possibly a little slower.
+The RebuildSpamDB thread creates some internal temporary caches, which can grow to a very large number of entries. Switch this on (default), if you want this thread to use less memory and to be possibly a little (~30%) slower.
  Adjust RebuildThreadCycleTime to a lower value (between 0 and 30) to speed up the RebuildSpamDB thread.
  The perl module  version 0.34 or higher and BerkeleyDB version 4.5 or higher is required to use this feature. DB_File (Berkeley V1) will be used if BerkeleyDB is not available - this is not recommended! If both BerkeleyDB and DB_File are not available, the rebuild thread will hold all temporary data in RAM - the same way, this option were set to 'OFF'.
 "
@@ -43872,7 +44010,20 @@ RunRebuildNow  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-If selected, RebuildSpamdb will be started immediately.&nbsp;
+If selected, RebuildSpamdb will be started immediately.&nbsp;<div class='cfgnotes'>Disclaimers, as well as private and corporate signatures may become a real problem, because they are always added to outgoing mails, but also to local mails and reports. They can be found in most of the answers to your mails. And for example, they may be added by spammers to there spam mails - trying to fake good mails. Nobody can say, how the occurrence of such a disclaimer will affect the HMM and Bayesian results. It may possible, that these results differs from day to day, or block good mails, or let spam pass.
+  The only way to prevent such results, is to remove the disclaimers, before the rebuildspamdb task builds the spamdb and HMMdb.
+  To tell assp, which are your disclaimers, open the file files/disclaimer.txt using the 'disclaimer definition' button below and put the disclaimers in to this file, the same way they are shown in your mail client. If you want to define multiple disclaimers, separate them by a line with a single dot. Lines in this file starting with an '#' are considered a comment, empty lines are ignored. ASSP will build a regular expression to identify and remove the disclaimers.
+  example:
+  # a comment
+  your first disclaimers first line here
+  your first disclaimers second line here
+  .
+  # also a comment
+  your second disclaimers first line here
+  your second disclaimers second line here
+  
+  This file will only be read at the rebuild task start. The resulting regular expression is written to 'files/optRE/disclaimer.txt' </div>
+  
   
   <div class='cfgnotes'>normfile - shows current:
   Corpus-Norm , Corrected-SpamFiles , Corrected-NotSpamFiles , Spamlog-Files , NotSpamlog-Files , SpamWords/File , Hamwords/File , Spamwords , Hamwords</div>
@@ -45187,7 +45338,7 @@ banFailedSSLIP  OBJECT-TYPE
     DESCRIPTION
 "
 If set (recommended is 'both'), an IP that fails to connect via SSL/TLS will be banned for 12 hour from using SSL/TLS.
-  Privat IP's and IP addresses listed in acceptAllMail will get one more try to correct the mistake.
+  Private IP's and IP addresses listed in acceptAllMail will get one more try to correct the mistake.
   This is done per default ('both'), to prevent possible DoS attacks via SSL/TLS.
   Those IP's are stored in the SSL-failed-Cache. This cache is cleaned up at startup.
   disable - disables this feature, which is highly NOT recommended
@@ -45763,7 +45914,7 @@ maxSSLRenegotiations  OBJECT-TYPE
 "
 Maximum count of allowed SSL/TLS client initiated renegotiations to prevent DoS.
   If this count is exceeded in a connection within 10 seconds, the connection is terminated, the connected IP is registered in banFailedSSLIP and new connections from this IP address are rejected for 15-30 minutes. An IP-Score of PenaltyExtreme but at least 150 is used for the IP address. Zero disables this feature - default is : 10 attempts.
-  This check is skipped for well known good IPs and senders as well as for privat IP ranges and outgoing mails.
+  This check is skipped for well known good IPs and senders as well as for private IP ranges and outgoing mails.
 "
     REFERENCE "Maximum Allowed SMTP SSL Client-Initiated-Renegotiations"
     DEFVAL { "10" }
@@ -45799,6 +45950,46 @@ synchronization status line from file assp_sync.cfg for maxSSLRenegotiations
  4 - in sync - running master mode (wait to reach state 2)
 "
     ::= {maxSSLRenegotiations 6}
+
+SSLAdvancedServerConfigFile  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+Full path to the text file containing the server's advanced SSL parameters.
+  If your SSL-server configuration requires additionally SSL-parameters according to IO::Socket::SSL and/or Net::SSLeay (for example: special Elliptic-Curve Diffie-Hellmann Key Exchange) and you don't want to use SSLWEBConfigure , SSLSTATConfigure , SSLSMTPConfigure confuration options, you may define a text file with your parameters here.
+  NOTICE: assp will not check, if your configuration settings, made in this file, are valid - they are used as defined. In doubt, use SSLDEBUG to trace their effects.
+  The settings in this file are passed as part of the IO::Socket::SSL configuration HASH to IO::Socket::SSL as they are defined
+  Any setting redefined in this file will override default internal assp settings as well as the above assp SSL configuration settings. The assp SSL settings below this tag are not affected.
+  The syntax in this this file is the same like a HASH definition in Perl:
+  - lines starting with an # are comments and are ignored
+  - empty lines are ignored
+  - each definition for a parameter has to be terminated with a comma
+  - keyword and value have to be separated with =&gt;
+  example:
+  # this is my special Elliptic-Curve Diffie-Hellmann Key Exchange for all listeners
+  SSL_dh_file =&gt; full_path_to_your_DH-File,
+  SSL_ecdh_curve =&gt; secp384r1,
+  next-key =&gt; {
+  &nbsp;&nbsp;subkey1 =&gt; subvalue1,
+  &nbsp;&nbsp;subkey2 =&gt; { key =&gt; value, },
+  &nbsp;&nbsp;subkey3 =&gt; {
+  &nbsp;&nbsp;&nbsp;&nbsp;key =&gt; value,
+  &nbsp;&nbsp;&nbsp;&nbsp;...,
+  &nbsp;&nbsp;},
+  &nbsp;&nbsp;...,
+  },
+  ...,
+  last-key =&gt;last-value,
+  The defined file is watched for changes by assp. An possible reread of this file is only shown if SSLDEBUG is set to ON.
+  This option can also be used to define a SNI configuration for a relative small set of domains, instead using SSLWEBConfigure, SSLSTATConfigure and SSLSMTPConfigure.
+  It is highly recommended to read the documentation of IO::Socket::SSL and/or Net::SSLeay!
+  Because the location of this file can be outside the assp folder, it can't be modified using assp! Please use an external file editor.
+"
+    REFERENCE "File with Advanced SSL-Server Parameters"
+    DEFVAL { "" }
+    ::= {SSLProxyandTLSsupport 1064}
 
 GlobalPenaltyBoxNetwork  OBJECT IDENTIFIER ::= {asspConfig 36}
 globalClientName  OBJECT-TYPE
@@ -48175,7 +48366,7 @@ useIOSocketSSL  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-If selected, the perl module IO::Socket::SSL will be loaded if it is installed. If not selected, ASSP will not load the perl module IO::Socket::SSL even it is installed and several features of ASSP will not be available! It is recommended to disable installed but unused modules to reduce the required memory. Requires ASSP restart!This module is possibly used for syncUsesSSL smtpDestination smtpDestinationSSL smtpAuthServer relayHost DoVRFY enableTLS4VRFY EmailReportDestination DoLDAPSSL enableWebAdminSSL enableWebStatSSL DoTLS SSL_version SSL_cipher_list SSLWEBCertVerifyCB SSLWEBConfigure POP3ConfigFile and maybe some other features.
+If selected, the perl module IO::Socket::SSL will be loaded if it is installed. If not selected, ASSP will not load the perl module IO::Socket::SSL even it is installed and several features of ASSP will not be available! It is recommended to disable installed but unused modules to reduce the required memory. Requires ASSP restart!This module is possibly used for syncUsesSSL smtpDestination smtpDestinationSSL smtpAuthServer relayHost DoVRFY enableTLS4VRFY EmailReportDestination DoLDAPSSL enableWebAdminSSL enableWebStatSSL DoTLS SSL_version SSL_cipher_list SSLAdvancedServerConfigFile SSLWEBCertVerifyCB SSLWEBConfigure POP3ConfigFile and maybe some other features.
 "
     REFERENCE "Use Module IO::Socket::SSL"
     DEFVAL { "1" }
@@ -48304,7 +48495,7 @@ useMailDKIMVerifier  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-If selected, the perl module Mail::DKIM::Verifier will be loaded if it is installed. If not selected, ASSP will not load the perl module Mail::DKIM::Verifier even it is installed and several features of ASSP will not be available! It is recommended to disable installed but unused modules to reduce the required memory. Requires ASSP restart!This module is possibly used for DoDKIM and maybe some other features.
+If selected, the perl module Mail::DKIM::Verifier will be loaded if it is installed. If not selected, ASSP will not load the perl module Mail::DKIM::Verifier even it is installed and several features of ASSP will not be available! It is recommended to disable installed but unused modules to reduce the required memory. Requires ASSP restart!This module is possibly used for DoDKIM DoARC and maybe some other features.
 "
     REFERENCE "Use Module Mail::DKIM::Verifier"
     DEFVAL { "1" }
@@ -49939,6 +50130,7 @@ If set, encrypted or password protected compressed attachments will be blocked o
  zip:user@domain.tld => good => ai|asc|bhx|dat|doc|eps|zip
  zip:*@domain.tld => good => ai|asc|bhx , good-out => eps|gif , good-in => htm|html , block => pdf|ppt , block-out => rar|rpt , block-in => xls|exe\-bin|:MSOM|crypt\-zip|encrypt
  zip:user@domain.tld => ~~commonZipRule => block => ~zipblock|:CSC
+ zip:*@domain.org=>good-in=>NoCheckIf=Dkim.Sig,block-in=>NoCheckIf=Dkim.Sig
  Those definitions (notice the leading zip:) are only used inside compressed files.
  For the usage of extension templates (~template) and rule templates (~~template) please read the GUI for UserAttach (requires at least assp 2.5.5 build 17243).
  The extension 'crypt-zip' could be used to allow or deni encrypted compressed attachments for users at any compression level.
@@ -50071,7 +50263,7 @@ An 'SMIME feature license' assigned to this host is required to use this feature
  The domain / user part accepts full email addresses , domains and groups - wildcards are supported and must be used for domain definitions.
  The domain / user part is compaired to the envelope sender - the first matching entry (in reverse generic order) will be used. Entries starting with a minus sign, explicit exclude the domain/user/group from SMIME processing.
  certfile - is required and specifys the full path to the certificate to use. The subject of the certificate has to include a valid email address. In normal case, this email address is specified by the cert-subject-tag 'emailAddress'. The 'FROM:' address in the mail header will be replaced by this email address and a 'Reply-To:' line with the original sender is added (or replaced) to the mail header.
- If the subject of the certificate specifys the email address in another tag, define this tag (NOT the email address) after 'emailaddress='.
+ If the subject of the certificate specifys the email address in another tag, define this tag (NOT the email address) after 'emailaddress='. If no email address is specified in the certificate subject but in the Subject Alternative Name (SAN), this email address will be used. In this case no email address has to be defined here, but you can define 'emailaddress=SAN'.
  keyfile - is required and specifys the full path to the file that contains the privat key
  keypass - the tag is required, the value is optional - defines the password required (or not) for the privat key
  emailaddress - is optional - please read 'certfile'
@@ -50096,7 +50288,7 @@ An 'SMIME feature license' assigned to this host is required to use this feature
  Disposition-Notification-To: &lt;mark.schmitz@your.domain.com&gt;
  Reply-To: &lt;mark.schmitz@your.domain.com&gt;
  References: assp-corp-smime-mark.schmitz@your.domain.com
- The mail client of the recipient will validate the signature against the 'From' address - which corresponds to the email address specified in the subject of the certificate -> VALID
+ The mail client of the recipient will validate the signature against the 'From' address - which corresponds to the email address specified in the subject or SAN of the certificate -> VALID
  Pressing the 'REPLY/ANSWER' button, the mail client will provide 'mark.schmitz@your.domain.com' as recipient address (To:) for the answer, using the entry in the 'Reply-To:' header.
  Notice, that some bad and/or older mail clients are ignoring the 'Reply-To:' header tag - in such case an answered mail will go to 'central.office@your.domain.com'.
  ASSP will help you a bit to prevent this. In addition to the required mail header changes, assp will add or enhance the 'References:' mail header tag with a value of 'assp-corp-smime-EMAILADDRESS' , where EMAILADDRESS is the original sender address.
@@ -54119,17 +54311,17 @@ download URL for the module
 "
     ::= {NetSNMPagent 4}
 
-OpenSSL110f  OBJECT-TYPE
+OpenSSL110h  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION
 "
-ASSP Perl module information for OpenSSL 1.1.0f;
+ASSP Perl module information for OpenSSL 1.1.0h;
 "
     ::= {asspPerlModuleInfo 45}
 
-iVOpenSSL110f  OBJECT-TYPE
+iVOpenSSL110h  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54137,9 +54329,9 @@ iVOpenSSL110f  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {OpenSSL110f 1}
+    ::= {OpenSSL110h 1}
 
-rVOpenSSL110f  OBJECT-TYPE
+rVOpenSSL110h  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54147,9 +54339,9 @@ rVOpenSSL110f  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {OpenSSL110f 2}
+    ::= {OpenSSL110h 2}
 
-iSOpenSSL110f  OBJECT-TYPE
+iSOpenSSL110h  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54157,9 +54349,9 @@ iSOpenSSL110f  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {OpenSSL110f 3}
+    ::= {OpenSSL110h 3}
 
-dUOpenSSL110f  OBJECT-TYPE
+dUOpenSSL110h  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54167,19 +54359,19 @@ dUOpenSSL110f  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {OpenSSL110f 4}
+    ::= {OpenSSL110h 4}
 
-OpenSSLlib110f25May2017  OBJECT-TYPE
+OpenSSLlib110h27Mar2018  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION
 "
-ASSP Perl module information for OpenSSL-lib 1.1.0f  25 May 2017;
+ASSP Perl module information for OpenSSL-lib 1.1.0h  27 Mar 2018;
 "
     ::= {asspPerlModuleInfo 46}
 
-iVOpenSSLlib110f25May2017  OBJECT-TYPE
+iVOpenSSLlib110h27Mar2018  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54187,9 +54379,9 @@ iVOpenSSLlib110f25May2017  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {OpenSSLlib110f25May2017 1}
+    ::= {OpenSSLlib110h27Mar2018 1}
 
-rVOpenSSLlib110f25May2017  OBJECT-TYPE
+rVOpenSSLlib110h27Mar2018  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54197,9 +54389,9 @@ rVOpenSSLlib110f25May2017  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {OpenSSLlib110f25May2017 2}
+    ::= {OpenSSLlib110h27Mar2018 2}
 
-iSOpenSSLlib110f25May2017  OBJECT-TYPE
+iSOpenSSLlib110h27Mar2018  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54207,9 +54399,9 @@ iSOpenSSLlib110f25May2017  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {OpenSSLlib110f25May2017 3}
+    ::= {OpenSSLlib110h27Mar2018 3}
 
-dUOpenSSLlib110f25May2017  OBJECT-TYPE
+dUOpenSSLlib110h27Mar2018  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54217,7 +54409,7 @@ dUOpenSSLlib110f25May2017  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {OpenSSLlib110f25May2017 4}
+    ::= {OpenSSLlib110h27Mar2018 4}
 
 PDFOCR2  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -56700,7 +56892,7 @@ Stat Connections Accepted
     ::= {cumulativeStat 25}
 
 cumulavgdamped  OBJECT-TYPE
-    SYNTAX      Counter32
+    SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION
