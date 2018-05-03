@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18119';        # 29.04.2018 TE
+$build   = '18123';        # 03.05.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -489,6 +489,15 @@ $BayesPrivatPrior ||= 1;
 our %workerSpeedUp = ( 10000 => 0,
                        10001 => 0);      # speed up some time critical task in these workers by temporary increasing the thread priority to the defined value
 
+
+#######################################################
+# see setServiceProperties                            #
+#######################################################
+our $ServiceName;                        # to separate multiple instances on one host (windows only)
+our $ServiceDisplayName;                 # the windows SC service name                (windows only)
+our $ServiceTag;                         # a short version of the install folder      (windows and nix)
+#######################################################
+
 #######################################################
 ######################  HMM4ISP #######################
 #######################################################
@@ -571,7 +580,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '8DA0013F0D9924919885F79F15B3F58B8B715051'; }
+sub __cs { $codeSignature = '306158E4D660FBF364A4D8A08B133300107FE912'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1102,7 +1111,7 @@ $NONPRINT = qr/[\x00-\x1F\x7F-\xFF]/o;
 $NONASCII = qr/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\xFF]/o;
 $complexREStart = '^(?=.*?(((?!)';
 $complexREEnd = '(?!)).*?(?!\g{-1})){';
-$notAllowedSMTP = qr/CHUNKING|PIPELINING|XEXCH50|
+$notAllowedSMTP = qr/CHUNKING|PIPELINING|XEXCH50|CHECKPOINT|TRANSID|
                      SMTPUTF8|UTF8REPLY|
                      UTF8SMTP|UTF8SMTPA|UTF8SMTPS|UTF8SMTPAS|
                      UTF8LMTP|UTF8LMTPA|UTF8LMTPS|UTF8LMTPAS|
@@ -4440,7 +4449,7 @@ For example: mysql/dbimport<br />
 ['noModuleAutoUpdate','No Automatic Perl Module update','0:no skip - update all|1:skip all|2:skip installed but not used by assp',\&listbox,'2','(.*)',undef,'If set, ASSP will skip the automatic Perl module update for the selected. Default is: skip installed but not used by assp<br />
   On NIX systems this value is ignored, if runAsUser is used! The automatic perl module upgrade is only done, if assp is running as OS user \'root\'.',undef,undef,'msg007900','msg007901'],
 ['AutoRestartCmd','OS-shell command for AutoRestart',100,\&textinput,'','(.*)',undef,'The OS level shell-command that is used to autorestart ASSP, if it runs not as a windows service! A possible value for your system is:<br />
- <font color=blue>'.$dftrestartcmd.'</font><br />
+ <font color=blue>$dftrestartcmd</font><br />
  Leave this field blank, if ASSP runs inside an external loop (inside the OS like assp.sh or assp.cmd).<br />
  If running on NIX systems and runAsUser and/or runAsGroup is used, don\'t forget to switch back to root permissions in the script!<br />
  For daemon actions in /etc/init.d ( see AsADaemon ), \'sudo -b\' in front of the command may be required in case runAsUser and/or runAsGroup is used - like:<br />
@@ -5436,6 +5445,32 @@ The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries.
  $DEF->close if $DEF;
 }
 
+sub setServiceProperties {
+    my $nocheck = shift;
+    return if ($ServiceTag && $ServiceName && $ServiceDisplayName);
+    if (! $ServiceTag) {
+        $ServiceTag = $isWIN ? lc $base : $base;
+        $ServiceTag =~ s/[ \/\\:]//go;
+        $ServiceTag =~ s/^.*?(.{1,10})$/$1/;
+    }
+    $ServiceName ||= "ASSPSMTP_$ServiceTag";
+    $ServiceDisplayName ||= "Anti-Spam Smtp Proxy ($ServiceTag)";
+    if  ($isWIN && ! $nocheck) {
+        my $out = qx("sc query $ServiceName");
+        if ($out !~ /SERVICE_NAME:\s*\Q$ServiceName\E/) {
+            $ServiceName = 'ASSPSMTP';
+            $ServiceDisplayName = 'Anti-Spam Smtp Proxy';
+        }
+    }
+    return;
+}
+
+#sub renameService {
+#    sc query
+#    sc config ASSPSMTP DisplayName= <Anzeigename>
+#    powershell Rename-Item "HKLM:\SYSTEM\CurrentControlSet\services\ASSPSMTP" -NewName ASSPSMTP_cassp
+#}
+
 sub installService {
  eval(<<'EOT') or print "error: $@\n)";
 use Win32::Daemon;
@@ -5443,11 +5478,11 @@ my $p;
 my $p2;
 
 if (lc $_[0] eq '-u') {
-    system('cmd.exe /C net stop ASSPSMTP');
+    system('cmd.exe /C net stop '.$ServiceName);
     sleep(1);
-    Win32::Daemon::DeleteService('','ASSPSMTP') ||
-      print "Failed to remove ASSP service: " . Win32::FormatMessage( Win32::Daemon::GetLastError() ) . "\n" & return;
-    print "Service ASSPSMTP successful removed\n";
+    Win32::Daemon::DeleteService('',$ServiceName) ||
+      print "Failed to remove ASSP service $ServiceName: " . Win32::FormatMessage( Win32::Daemon::GetLastError() ) . "\n" && return;
+    print "Service $ServiceName successful removed\n";
 } elsif ( lc $_[0] eq '-i') {
     unless($p=$_[1]) {
         $p=$assp;
@@ -5459,17 +5494,17 @@ if (lc $_[0] eq '-u') {
         $p2=$p; $p2=~s/[\\\/]assp\.pl//io;
     }
     my %Hash = (
-        name    =>  'ASSPSMTP',
-        display =>  'Anti-Spam Smtp Proxy',
+        name    =>  $ServiceName,
+        display =>  $ServiceDisplayName,
         path    =>  "\"$perl\"",
         user    =>  '',
         pwd     =>  '',
         parameters => "\"$p\" \"$p2\"",
       );
     if ( Win32::Daemon::CreateService( \%Hash ) ) {
-        print "ASSP service successfully added.\n";
+        print "ASSP service $ServiceName successfully added.\n";
     } else {
-        print "Failed to add ASSP service: " . Win32::FormatMessage( Win32::Daemon::GetLastError() ) . "\n";
+        print "Failed to add ASSP service $ServiceName: " . Win32::FormatMessage( Win32::Daemon::GetLastError() ) . "\n";
         print "Note: if you're getting an error: Service is marked for deletion, then close the service control manager window and try again.\n";
     }
 }
@@ -6510,7 +6545,7 @@ BEGIN {
  
  $wikiinfo = 'get?file=images/info.png';
 # load from command line if specified
-if ($ARGV[0]) {
+if ($ARGV[0] && lc($ARGV[0]) ne '-u') {
  $base=$ARGV[0];
  $base =~ s/\\/\//og;
  $base =~ s/\/+/\//og;
@@ -6751,19 +6786,6 @@ if ( ! -d "$base/database") {
   }
  }
  
- if (lc($ARGV[1]) eq '-i' && $isWIN) {
-     my $assp = $assp;
-     $assp = "$base\\$assp" if ($assp !~ /\Q$base\E/io);
-     $assp =~ s/\//\\/go;
-     my $asspbase = $base;
-     $asspbase =~ s/\\/\//go;
-     &installService('-i' , $assp, $asspbase);
-     exit 0;
- } elsif (lc($ARGV[0]) eq '-u' && $isWIN) {
-     &installService('-u');
-     exit 0;
- };
-
  -d "$base/lib" or mkdir "$base/lib", 0755;
  unshift @INC, "$base/lib" unless grep {/^\Q$base\E\/lib$/o} @INC;
  
@@ -6819,6 +6841,37 @@ if ( ! -d "$base/database") {
          print "\nwarning: unknown parameter '$k' used at command line '$_'\n";
          writeExceptionLog("warning: unknown parameter '$k' used at command line '$_'");
      }
+ }
+
+ if ($isWIN) {
+     if (lc($ARGV[1]) eq '-i') {
+         setServiceProperties(1);
+         my $assp = $assp;
+         $assp = "$base\\$assp" if ($assp !~ /\Q$base\E/io);
+         $assp =~ s/\//\\/go;
+         my $asspbase = $base;
+         $asspbase =~ s/\\/\//go;
+         &installService('-i' , $assp, $asspbase);
+         exit 0;
+     } elsif (lc($ARGV[0]) eq '-u') {
+         setServiceProperties(0);
+         &installService('-u');
+         exit 0;
+     } else {
+         setServiceProperties(0);
+     }
+ } else {
+     $ServiceTag = $base;
+ }
+
+ if ( $isWIN ) {
+     my $in = $nointchk==1 ? ' --nointchk:=1' : '';
+     my $assp = $assp;
+     $assp = $base.'/'.$assp if ($assp !~ /^\Q$base\E/io);
+     $dftrestartcmd = "cmd.exe /C start \"ASSPSMTP_$ServiceTag restarted\" \"$perl\" \"$assp\" \"$base\"$in";
+ } else {
+     my $in = $nointchk==1 ? ' --nointchk:=1' : '';
+     $dftrestartcmd = "\"$perl\" \"$assp\" \"$base\"$in \&";
  }
 
  # check if assp is still running;
@@ -6894,16 +6947,6 @@ if ( ! -d "$base/database") {
      print "ATTENTION: the original assp.pl code of version $MAINVERSION has been modified!$inHint\n";
  } else {
      print "the assp.pl code of version $MAINVERSION passed the integrity check\n";
- }
-
- if ( $isWIN ) {
-     my $in = $nointchk==1 ? ' --nointchk:=1' : '';
-     my $assp = $assp;
-     $assp = $base.'/'.$assp if ($assp !~ /^\Q$base\E/io);
-     $dftrestartcmd = "cmd.exe /C start \"ASSPSMTP restarted\" \"$perl\" \"$assp\" \"$base\"$in";
- } else {
-     my $in = $nointchk==1 ? ' --nointchk:=1' : '';
-     $dftrestartcmd = "\"$perl\" \"$assp\" \"$base\"$in \&";
  }
 
  $base =~ s/\\/\//og;
@@ -6983,7 +7026,8 @@ if ( ! -d "$base/database") {
     $dftCaFile =~ s/\\/\//go;
 
     $assp = $base.'/'.$assp if $rembase;
-    $dftrestartcmd = "\"$perl\" \"$assp\" \"$base\" \&";
+    my $in = $nointchk==1 ? ' --nointchk:=1' : '';
+    $dftrestartcmd = "\"$perl\" \"$assp\" \"$base\"$in \&";
  }
 
  %Msg = ();
@@ -7276,17 +7320,7 @@ our $AvailTextUnidecode :shared;
 our $CanUseTextUnidecode :shared;
 our $AvailCryptGhost :shared;
 our $CanUseCryptGhost :shared;
-
 #end of CanUse and Avail modules definitions
-
-if ( $isWIN ) {
-    my $perl = $perl;
-    my $assp = $assp;
-    $assp = $base.'\\'.$assp if ($assp !~ /\Q$base\E/io);
-    $dftrestartcmd = "cmd.exe /C start \"ASSPSMTP restarted\" \"$perl\" -X \"$assp\" \"$base\"";
-} else {
-    $dftrestartcmd = "\"$perl\" \"$assp\" \"$base\" \&";
-}
 
 # from here sorted by $ % @ alpha  -  #t = initialized by every thread its self
 our $ARINcounter:shared = 0;
@@ -12680,7 +12714,7 @@ sub d {
 
 sub _assp_try_restart {
     if ($AsAService) {
-        exec('cmd.exe /C net stop ASSPSMTP & net start ASSPSMTP');
+        exec('cmd.exe /C net stop '.$ServiceName.' & net start '.$ServiceName);
     } elsif ($AsADaemon == 1) {
         exit 1;
     } elsif ($AutoRestartCmd && $AsADaemon == 2) {
@@ -32747,7 +32781,7 @@ sub DKIMcfgvalid {
             next;
         }
     }
-    $ret .= ConfigShowError(1,"error: DKIM-cfg - no configuration left for any domain") if $WorkerNumber == 0 && ! scalar(keys(%dkim));
+    $ret .= ConfigShowError(1,"error: DKIM-cfg - no configuration left for any domain") if $WorkerNumber == 0 && ! scalar(keys(%dkim) && ($genDKIM || $genARC));
     return \%dkim,\@domains,\$ret;
 }
 
@@ -55640,7 +55674,7 @@ $headerHTTP
 EOT
 }
 
-sub webConfig{
+sub webConfig {
  my $r = '';
  my $tmp;
  $ConfigChanged = 0;
@@ -55747,7 +55781,7 @@ if (exists $WebIP{$ActWebSess}->{blocking}) {
    $blocking = $WebIP{$ActWebSess}->{blocking} ? ' -blocking' : ' -nonblocking';
 }
 my $networkatt = ($DisableSMTPNetworking && $allIdle >= 0) ? ' <a href="./#DisableSMTPNetworking" onmousedown="expand(0, 1);showDisp(\''.$ConfigPos{DisableSMTPNetworking}.'\');"><font color="#CC0000">SMTP networking is disabled!&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font></a>' : '';
-my $runas = $AsAService ? ($allIdle > 0 ? ' (as service - suspended)' : ' (as service)') : ($AsADaemon ? ($allIdle > 0 ? ' (as daemon - suspended)' : ' (as daemon)') : ($allIdle > 0 ? ' (console mode - suspended)' : ' (console mode)'));
+my $runas = $AsAService ? ($allIdle > 0 ? " (as service [$ServiceTag] - suspended)" : " (as service [$ServiceTag])") : ($AsADaemon ? ($allIdle > 0 ? ' (as daemon [$ServiceTag] - suspended)' : ' (as daemon [$ServiceTag])') : ($allIdle > 0 ? ' (console mode [$ServiceTag] - suspended)' : ' (console mode [$ServiceTag])'));
 my $pathhint = $isWIN ? $WebIP{$ActWebSess}->{lng}->{'msg500017'} || $lngmsg{'msg500017'} : '';
 my $mainhint = $WebIP{$ActWebSess}->{lng}->{'msg500018'} || $lngmsg{'msg500018'};
 my $killhint = $WebIP{$ActWebSess}->{lng}->{'msg500019'} || $lngmsg{'msg500019'};

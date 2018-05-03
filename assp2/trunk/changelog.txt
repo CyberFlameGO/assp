@@ -1,3 +1,12 @@
+2018-05-03
+fixed in assp 2.6.2 *Fortress* build 18123:
+
+- Running multiple assp instances on a single windows host as windows service failed, because all instances used the same service name. The GUI now shows the instance name at the top.
+
+- The error message "Error: DKIM-cfg - no configuration left for any domain" was shown at startup, even genDKIM and genARC were both not selected.
+
+
+
 2018-04-29
 fixed in assp 2.6.2 *Fortress* build 18119:
 
