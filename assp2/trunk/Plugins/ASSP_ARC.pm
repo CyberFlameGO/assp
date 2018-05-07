@@ -1,4 +1,4 @@
-# $Id: ASSP_ARC.pm,v 2.05 2014/01/19 08:00:00 TE Exp $
+# $Id: ASSP_ARC.pm,v 2.06 2018/05/07 10:30:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is an archive Plugin. Desinged for ASSP v 2.1.1(12030) and above
@@ -11,7 +11,7 @@ use vars qw($VERSION);
 use File::Copy;
 no warnings qw(uninitialized);
 
-$VERSION = $1 if('$Id: ASSP_ARC.pm,v 2.05 2014/01/19 08:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_ARC.pm,v 2.06 2018/05/07 10:30:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(12030)';
 our $MINASSPVER = '2.0.1'.$MINBUILD;
 our %Con;
@@ -248,7 +248,7 @@ sub setvars {
             $val = $v;
         }
         $val =~ s/([^\\]?)(['])/$1\\$2/g;
-        $parm .= '$Con{$fh}->{'.$p.'}=\''.$val.'\';';
+        $parm .= '$Con{$fh}->{q('.$p.')}=\''.$val.'\';';
     }
     &main::cmdToThread('ASSP_ARC::archive',\$parm);
 }
