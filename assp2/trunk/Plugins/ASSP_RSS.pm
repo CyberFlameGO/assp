@@ -1,4 +1,4 @@
-# $Id: ASSP_RSS.pm,v 1.02 2018/05/08 11:00:00 TE Exp $
+# $Id: ASSP_RSS.pm,v 1.03 2018/05/08 15:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is an RSS feed Plugin for blocked mails. Designed for ASSP v 2.6.1(18128) and above
@@ -13,7 +13,7 @@ no warnings qw(uninitialized);
 use constant RSS_XML_BASE   => "http://example.com";
 use constant RSS_VERSION    => "2.0";
 
-$VERSION = $1 if('$Id: ASSP_RSS.pm,v 1.02 2018/05/08 11:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_RSS.pm,v 1.03 2018/05/08 15:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18128)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our %Con;
@@ -289,6 +289,7 @@ sub genRSS {
     $htfile =~ s/\.\.+/./go;
      
     my $created = 0;
+    my %seen;
     for my $addr (@rss) {
         my %matches = &main::matchHashKeyAll(\%genRSS,$addr);
         for my $rssadr (keys(%matches)) {
@@ -319,6 +320,8 @@ sub genRSS {
                 $post ||= 'all';
                 my $rssfile = $path.'/'.$rssFilePre.'.'.$post.'.'.$rssFileExt;
                 $rssfile =~ s/\.\.+/./go;
+                next if $seen{$rssfile.$addr};
+                $seen{$rssfile.$addr} = 1;
                 my $RSS;
                 my $channel = $channelCB->(
                     {
