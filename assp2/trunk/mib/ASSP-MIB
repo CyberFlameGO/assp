@@ -10,7 +10,7 @@ IMPORTS
     TruthValue FROM SNMPv2-TC;
 
 thockar MODULE-IDENTITY
-    LAST-UPDATED "201804300000Z"
+    LAST-UPDATED "201805080000Z"
     ORGANIZATION "www.thockar.com"
     CONTACT-INFO
 	 "postal:       Thomas Eckardt
@@ -18,13 +18,13 @@ thockar MODULE-IDENTITY
       email:    thockar@lists.sourceforge.net"
     DESCRIPTION
 	"Top-level infrastructure of thockar projects enterprise MIB tree"
-    REVISION     "201804300000Z"
+    REVISION     "201805080000Z"
     DESCRIPTION
 	"First draft"
     ::= { enterprises 37058}
 
 asspSNMP MODULE-IDENTITY
-    LAST-UPDATED "201804300000Z"
+    LAST-UPDATED "201805080000Z"
     ORGANIZATION "www.thockar.com"
     CONTACT-INFO
 	 "postal:       Thomas Eckardt
@@ -32,7 +32,7 @@ asspSNMP MODULE-IDENTITY
       email:    thockar@lists.sourceforge.net"
     DESCRIPTION
 	"Top-level infrastructure of the thockar ASSP project enterprise MIB tree"
-    REVISION     "201804290000Z"
+    REVISION     "201805070000Z"
     DESCRIPTION
 	"First draft"
     ::= { thockar 2}
@@ -40952,7 +40952,7 @@ AutoRestartCmd  OBJECT-TYPE
     DESCRIPTION
 "
 The OS level shell-command that is used to autorestart ASSP, if it runs not as a windows service! A possible value for your system is:
- </font>
+ $dftrestartcmd</font>
  Leave this field blank, if ASSP runs inside an external loop (inside the OS like assp.sh or assp.cmd).
  If running on NIX systems and runAsUser and/or runAsGroup is used, don't forget to switch back to root permissions in the script!
  For daemon actions in /etc/init.d ( see AsADaemon ), 'sudo -b' in front of the command may be required in case runAsUser and/or runAsGroup is used - like:
@@ -50330,7 +50330,620 @@ synchronization status line from file assp_sync.cfg for ASSPAFCSMIME
 "
     ::= {ASSPAFCSMIME 6}
 
-ASSPDCCPlugin  OBJECT IDENTIFIER ::= {asspConfig 42}
+ASSPARCPlugin  OBJECT IDENTIFIER ::= {asspConfig 42}
+DoASSPARC  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+Enable or disables the archiving of mails.
+ If this plugin is installed ' StoreCompleteMail ' will be set to 'no limit'!
+ Only collected mails could be archived!
+ This Plugin is designed for- and running in call/run level 'complete mail' after the mail is collected!
+ The archive request is pushed by the SMTP-workers in to the MaintThread, which will copy the collected file in to the archive folder.
+"
+    REFERENCE "Do the ASSP_ARC Plugin"
+    DEFVAL { "0" }
+    ::= {ASSPARCPlugin 11000}
+
+syncStatDoASSPARC  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for DoASSPARC
+-1 - DoASSPARC could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {DoASSPARC 5}
+
+syncStatStrDoASSPARC  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for DoASSPARC
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {DoASSPARC 6}
+
+ASSPARCPriority  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+Sets the priority of this Plugin within the call/run-level 'complete mail'. The Plugin with the lowest priority value is processed first!
+"
+    REFERENCE "the priority of the Plugin"
+    DEFVAL { "9" }
+    ::= {ASSPARCPlugin 11001}
+
+syncStatASSPARCPriority  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPARCPriority
+-1 - ASSPARCPriority could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCPriority 5}
+
+syncStatStrASSPARCPriority  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPARCPriority
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCPriority 6}
+
+ASSPARCinPATH  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+Where to store the archived files for incoming mails. You can build a folder structure if you want. Read below to get more details.
+"
+    REFERENCE "Archive in PATH"
+    DEFVAL { "" }
+    ::= {ASSPARCPlugin 11002}
+
+syncStatASSPARCinPATH  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPARCinPATH
+-1 - ASSPARCinPATH could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCinPATH 5}
+
+syncStatStrASSPARCinPATH  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPARCinPATH
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCinPATH 6}
+
+ASSPARCoutPATH  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+Where to store the archived files for outgoing mails. You can build a folder structure if you want.
+  The following uppercase literals will be replaced by:
+  YEAR - year in format yyyy
+  MONTH - month in the format mm
+  DAY - day in the format dd
+  LOG - the folder name defined by ASSP. notspamlog is used if the mail is HAM in every other case spamlog is used
+  RCPT - the full mail address of the receipient
+  FROM - the full mail address of the sender
+  RNAME - the receipient name without @domain
+  FNAME - the sender name without @domain
+  RDOMAIN - the recipient domain without @
+  FDOMAIN - the sender domain without @
+  The filename (without folders) build by assp will be added to the end of the resulting string. Not existing folders will be created by the plugin.
+  UNC pathes are supported. For example using a share on windows : \\hostname[or IP]/share/[your path definition]. Only in this case it is allowed to use
+  backslashes in the path definition (only the two at start !!!).
+  
+"
+    REFERENCE "Archive out PATH"
+    DEFVAL { "" }
+    ::= {ASSPARCPlugin 11003}
+
+syncStatASSPARCoutPATH  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPARCoutPATH
+-1 - ASSPARCoutPATH could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCoutPATH 5}
+
+syncStatStrASSPARCoutPATH  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPARCoutPATH
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCoutPATH 6}
+
+ASSPARCLog  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+
+"
+    REFERENCE "Enable Plugin logging"
+    DEFVAL { "1" }
+    ::= {ASSPARCPlugin 11004}
+
+syncStatASSPARCLog  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPARCLog
+-1 - ASSPARCLog could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCLog 5}
+
+syncStatStrASSPARCLog  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPARCLog
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCLog 6}
+
+ASSPARCSelectCode  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+Put a code line here, to detect messages that you want to archive (or not). The code line has to return 0 or 1. A return of 1 will start archiving.
+  for example:
+  return $this->{signed} ? 1 : 0;
+  This code line will switch on archiving for all digital signed messages.
+  if ($this->{relayok} && ! $this->{isbounce}) {return 1;} else {return 0;}
+  This code line will switch on archiving for all outgoing not bounce messages.
+  if ($this->{ispip} && $this->{cip} =~ /^193\.2\.1\./) {return 1;} else {return 0;}
+  This code line will switch on archiving if the messages is from ISP and the IP of the server that was connected to the ISP begins with 193.2.1. .
+  sample detection switches are:
+  - $this->{relayok} - 1 = outgoing
+  - $this->{noprocessing} 1 = noprocessing
+  - $this->{whitelisted} 1 = whitelisted
+  - $this->{isbounce} 1 = bounced message
+  - $this->{signed} 1 = digital signed
+  - $this->{ispip} 1 = comes from an ISP
+  - $this->{spamfound} 1 = 'SPAM-found' flag is set
+  - $this->{error} 1 = blocked message
+  To use this option, you need to know the internal ASSP variables and there usage!
+"
+    REFERENCE "Run this Code to select Messages"
+    DEFVAL { "" }
+    ::= {ASSPARCPlugin 11005}
+
+syncStatASSPARCSelectCode  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPARCSelectCode
+-1 - ASSPARCSelectCode could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCSelectCode 5}
+
+syncStatStrASSPARCSelectCode  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPARCSelectCode
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCSelectCode 6}
+
+ASSPARCmyhost  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+The hostname or IP where a record is written for each archived file. The database and the tables must be already created. The type and length of each database field depends on your needs. Mappings between archive variables and database fields are done with the mapping file below! Leave this blank, if do not want to use a database.
+"
+    REFERENCE "database hostname or IP"
+    DEFVAL { "" }
+    ::= {ASSPARCPlugin 11007}
+
+syncStatASSPARCmyhost  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPARCmyhost
+-1 - ASSPARCmyhost could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCmyhost 5}
+
+syncStatStrASSPARCmyhost  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPARCmyhost
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCmyhost 6}
+
+ASSPARCDBdriver  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+The database driver used to access your database - DBD-driver. The following drivers are available on your system:
+  BerkeleyDB, ADO, CSV, DBM, ExampleP, File, Gofer, LDAP, Mem, ODBC, Oracle, Pg, PgPP, Proxy, SQLite, Sponge, Sprite, WMI, mysql
+  If you can not find the driver for your database in this list, you should install it via cpan or ppm!
+  -  or if you have installed an ODBC-driver for your database and DBD-ODBC, just create a DSN and use ODBC.
+  Usefull are ADO|DB2|Informix|ODBC|Oracle|Pg|Sybase|mysql|mysqlPP - but any other SQL compatible database should also work.
+  syntax examples: driver,option1,option2,...,...
+  ADO,[DSN=mydsn]
+  DB2
+  Informix
+  ODBC,DSN=mydsn|driver={SQL Server},Server=server_name
+  Oracle,SID=1|INSTANCE_NAME=myinstance|SERVER=myserver|SERVICE_NAME=myservice_name,[PORT=myport]
+  Pg,[PORT=myport]
+  Sybase,SERVER=myserver,[PORT=myport]
+  mysql,[PORT=myport]
+  mysqlPP,[PORT=myport]
+  The options for all drivers and there possible or required order depending on the used DBD-driver, please read the drivers documentation, if you do not know the needed option.
+  The username, password, host and databasename are always used from this configuration page.
+  Leave this blank, if do not want to use a database.
+"
+    REFERENCE "database driver name"
+    DEFVAL { "" }
+    ::= {ASSPARCPlugin 11008}
+
+syncStatASSPARCDBdriver  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPARCDBdriver
+-1 - ASSPARCDBdriver could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCDBdriver 5}
+
+syncStatStrASSPARCDBdriver  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPARCDBdriver
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCDBdriver 6}
+
+ASSPARCmydb  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+This database must exist before archiving is started.  Leave this blank, if do not want to use a database.
+"
+    REFERENCE "database name"
+    DEFVAL { "" }
+    ::= {ASSPARCPlugin 11009}
+
+syncStatASSPARCmydb  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPARCmydb
+-1 - ASSPARCmydb could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCmydb 5}
+
+syncStatStrASSPARCmydb  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPARCmydb
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCmydb 6}
+
+ASSPARCmytable  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+This table must exist before archiving is started.  Leave this blank, if do not want to use a database.
+"
+    REFERENCE "database table name"
+    DEFVAL { "" }
+    ::= {ASSPARCPlugin 11010}
+
+syncStatASSPARCmytable  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPARCmytable
+-1 - ASSPARCmytable could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCmytable 5}
+
+syncStatStrASSPARCmytable  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPARCmytable
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCmytable 6}
+
+ASSPARCmyuser  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+This user should have CREATE privilege on the database. Leave this blank, if do not want to use a database.
+"
+    REFERENCE "database username"
+    DEFVAL { "" }
+    ::= {ASSPARCPlugin 11011}
+
+syncStatASSPARCmyuser  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPARCmyuser
+-1 - ASSPARCmyuser could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCmyuser 5}
+
+syncStatStrASSPARCmyuser  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPARCmyuser
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCmyuser 6}
+
+ASSPARCmypassword  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+
+"
+    REFERENCE "database password"
+    DEFVAL { "" }
+    ::= {ASSPARCPlugin 11012}
+
+syncStatASSPARCmypassword  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPARCmypassword
+-1 - ASSPARCmypassword could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCmypassword 5}
+
+syncStatStrASSPARCmypassword  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPARCmypassword
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCmypassword 6}
+
+ASSPARCfieldMap  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+The file which contains the field mapping table DB-field => ArchiveVariable . If set, the value has to begin with   file:   ! Leave this blank, if do not want to use a database.
+"
+    REFERENCE "DB field mapping file*"
+    DEFVAL { "files/arc_default_map_file.txt" }
+    ::= {ASSPARCPlugin 11013}
+
+syncStatASSPARCfieldMap  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPARCfieldMap
+-1 - ASSPARCfieldMap could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCfieldMap 5}
+
+syncStatStrASSPARCfieldMap  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPARCfieldMap
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPARCfieldMap 6}
+
+ASSPDCCPlugin  OBJECT IDENTIFIER ::= {asspConfig 43}
 DoASSPDCC  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-write
@@ -50894,7 +51507,7 @@ synchronization status line from file assp_sync.cfg for ASSPDCCReportToDCC
 "
     ::= {ASSPDCCReportToDCC 6}
 
-ASSPFakeMXPlugin  OBJECT IDENTIFIER ::= {asspConfig 43}
+ASSPFakeMXPlugin  OBJECT IDENTIFIER ::= {asspConfig 44}
 DoASSPFakeMX  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-write
@@ -51278,7 +51891,7 @@ synchronization status line from file assp_sync.cfg for ASSPFakeMXFakeMX
 "
     ::= {ASSPFakeMXFakeMX 6}
 
-ASSPOCRPlugin  OBJECT IDENTIFIER ::= {asspConfig 44}
+ASSPOCRPlugin  OBJECT IDENTIFIER ::= {asspConfig 45}
 DoASSPOCR  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-write
@@ -51713,7 +52326,7 @@ synchronization status line from file assp_sync.cfg for ASSPOCRocrmaxprocesses
 "
     ::= {ASSPOCRocrmaxprocesses 6}
 
-ASSPRazorPlugin  OBJECT IDENTIFIER ::= {asspConfig 45}
+ASSPRazorPlugin  OBJECT IDENTIFIER ::= {asspConfig 46}
 DoASSPRazor  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-write
@@ -52060,6 +52673,372 @@ synchronization status line from file assp_sync.cfg for ASSPRazorValencePB
  4 - in sync - running master mode (wait to reach state 2)
 "
     ::= {ASSPRazorValencePB 6}
+
+ASSPRSSPlugin  OBJECT IDENTIFIER ::= {asspConfig 47}
+DoASSPRSS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+Enable or disable the RSS feed for blocked mails.
+ This Plugin is designed for- and running in call/run level 'complete mail' after the mail is collected!
+"
+    REFERENCE "Do the ASSP_RSS Plugin"
+    DEFVAL { "0" }
+    ::= {ASSPRSSPlugin 17000}
+
+syncStatDoASSPRSS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for DoASSPRSS
+-1 - DoASSPRSS could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {DoASSPRSS 5}
+
+syncStatStrDoASSPRSS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for DoASSPRSS
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {DoASSPRSS 6}
+
+ASSPRSSPriority  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+Sets the priority of this Plugin within the call/run-level 'complete mail'. The Plugin with the lowest priority value is processed first!
+ If you use the ASSP_ARC Plugin, this value must be lower than ASSP_ARCPriority.
+"
+    REFERENCE "the priority of the Plugin"
+    DEFVAL { "8" }
+    ::= {ASSPRSSPlugin 17001}
+
+syncStatASSPRSSPriority  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPRSSPriority
+-1 - ASSPRSSPriority could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPRSSPriority 5}
+
+syncStatStrASSPRSSPriority  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPRSSPriority
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPRSSPriority 6}
+
+ASSPRSSStore  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+Where to store the RSS files. Please see the ASSP_RSSConfigFile for more information. You need to define the full path.
+  Normaly this path should point to a subfolder in your webserver documents folder. for example: /usr/...../apache/htdocs/assprss
+  DO NOT use the assp internal webserver!
+"
+    REFERENCE "Write RSS Files in to Path"
+    DEFVAL { "" }
+    ::= {ASSPRSSPlugin 17002}
+
+syncStatASSPRSSStore  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPRSSStore
+-1 - ASSPRSSStore could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPRSSStore 5}
+
+syncStatStrASSPRSSStore  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPRSSStore
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPRSSStore 6}
+
+ASSPRSSSelectCode  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+Put a code line here, to detect messages that you want to be shown in the RSS feed (or not). The code line has to return 0 or 1. A return of 1 will create the RSS feed.
+  for example:
+  return $this->{signed} ? 1 : 0;
+  This code line will switch on RSS for all digital signed messages.
+  if ($this->{relayok} && ! $this->{isbounce}) {return 1;} else {return 0;}
+  This code line will switch on RSS for all outgoing not bounce messages.
+  if ($this->{ispip} && $this->{cip} =~ /^193\.2\.1\./) {return 1;} else {return 0;}
+  This code line will switch on RSS if the messages is from ISP and the IP of the server that was connected to the ISP begins with 193.2.1. .
+  sample detection switches are:
+  - $this->{relayok} - 1 = outgoing
+  - $this->{noprocessing} 1 = noprocessing
+  - $this->{whitelisted} 1 = whitelisted
+  - $this->{isbounce} 1 = bounced message
+  - $this->{signed} 1 = digital signed
+  - $this->{ispip} 1 = comes from an ISP
+  - $this->{spamfound} 1 = 'SPAM-found' flag is set
+  To use this option, you need to know the internal ASSP variables and there usage!
+"
+    REFERENCE "Run this Code to select Messages"
+    DEFVAL { "" }
+    ::= {ASSPRSSPlugin 17003}
+
+syncStatASSPRSSSelectCode  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPRSSSelectCode
+-1 - ASSPRSSSelectCode could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPRSSSelectCode 5}
+
+syncStatStrASSPRSSSelectCode  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPRSSSelectCode
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPRSSSelectCode 6}
+
+ASSPRSSConfigFile  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+The file which contains the RSS configuration . If set, the value has to begin with   file:   !
+"
+    REFERENCE "The RSS Configuration File*"
+    DEFVAL { "file:files/rss_config.txt" }
+    ::= {ASSPRSSPlugin 17004}
+
+syncStatASSPRSSConfigFile  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPRSSConfigFile
+-1 - ASSPRSSConfigFile could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPRSSConfigFile 5}
+
+syncStatStrASSPRSSConfigFile  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPRSSConfigFile
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPRSSConfigFile 6}
+
+ASSPRSSLog  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+
+"
+    REFERENCE "Enable Plugin logging"
+    DEFVAL { "1" }
+    ::= {ASSPRSSPlugin 17005}
+
+syncStatASSPRSSLog  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPRSSLog
+-1 - ASSPRSSLog could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPRSSLog 5}
+
+syncStatStrASSPRSSLog  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPRSSLog
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPRSSLog 6}
+
+ASSPRSSDefaultHtaccess  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+The template file used to create the apache .htaccess file in the users RSS folder!
+"
+    REFERENCE "The Default .htaccess File for Users on apache*"
+    DEFVAL { "file:files/rss_default_htaccess.txt" }
+    ::= {ASSPRSSPlugin 17006}
+
+syncStatASSPRSSDefaultHtaccess  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPRSSDefaultHtaccess
+-1 - ASSPRSSDefaultHtaccess could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPRSSDefaultHtaccess 5}
+
+syncStatStrASSPRSSDefaultHtaccess  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPRSSDefaultHtaccess
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPRSSDefaultHtaccess 6}
+
+ASSPRSSCreateUserHtaccess  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+If you use an apache webserver and ASSP_RSSDefaultHtaccess is defined and this option is set, assp will copy the default access file to the users RSS folder.
+  Setting this value to 'every time' will overwrite the users .htaccess file every time a RSS feed is created for the user.
+"
+    REFERENCE "Create the apache .htaccess File"
+    DEFVAL { "0" }
+    ::= {ASSPRSSPlugin 17007}
+
+syncStatASSPRSSCreateUserHtaccess  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPRSSCreateUserHtaccess
+-1 - ASSPRSSCreateUserHtaccess could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPRSSCreateUserHtaccess 5}
+
+syncStatStrASSPRSSCreateUserHtaccess  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPRSSCreateUserHtaccess
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPRSSCreateUserHtaccess 6}
 
 ASSPFC  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54561,6 +55540,56 @@ download URL for the module
 "
     ::= {PluginsASSPAFC 4}
 
+PluginsASSPARC  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+ASSP Perl module information for Plugins::ASSP_ARC;
+"
+    ::= {asspPerlModuleInfo 50}
+
+iVPluginsASSPARC  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+installed module version
+"
+    ::= {PluginsASSPARC 1}
+
+rVPluginsASSPARC  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+required/recommended module version
+"
+    ::= {PluginsASSPARC 2}
+
+iSPluginsASSPARC  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+module installation status
+"
+    ::= {PluginsASSPARC 3}
+
+dUPluginsASSPARC  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+download URL for the module
+"
+    ::= {PluginsASSPARC 4}
+
 PluginsASSPDCC  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
@@ -54569,7 +55598,7 @@ PluginsASSPDCC  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_DCC;
 "
-    ::= {asspPerlModuleInfo 50}
+    ::= {asspPerlModuleInfo 51}
 
 iVPluginsASSPDCC  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54619,7 +55648,7 @@ PluginsASSPFakeMX  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_FakeMX;
 "
-    ::= {asspPerlModuleInfo 51}
+    ::= {asspPerlModuleInfo 52}
 
 iVPluginsASSPFakeMX  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54669,7 +55698,7 @@ PluginsASSPOCR  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_OCR;
 "
-    ::= {asspPerlModuleInfo 52}
+    ::= {asspPerlModuleInfo 53}
 
 iVPluginsASSPOCR  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54711,6 +55740,56 @@ download URL for the module
 "
     ::= {PluginsASSPOCR 4}
 
+PluginsASSPRSS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+ASSP Perl module information for Plugins::ASSP_RSS;
+"
+    ::= {asspPerlModuleInfo 54}
+
+iVPluginsASSPRSS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+installed module version
+"
+    ::= {PluginsASSPRSS 1}
+
+rVPluginsASSPRSS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+required/recommended module version
+"
+    ::= {PluginsASSPRSS 2}
+
+iSPluginsASSPRSS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+module installation status
+"
+    ::= {PluginsASSPRSS 3}
+
+dUPluginsASSPRSS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+download URL for the module
+"
+    ::= {PluginsASSPRSS 4}
+
 PluginsASSPRazor  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
@@ -54719,7 +55798,7 @@ PluginsASSPRazor  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_Razor;
 "
-    ::= {asspPerlModuleInfo 53}
+    ::= {asspPerlModuleInfo 55}
 
 iVPluginsASSPRazor  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54769,7 +55848,7 @@ RegexpOptimizer  OBJECT-TYPE
 "
 ASSP Perl module information for Regexp::Optimizer;
 "
-    ::= {asspPerlModuleInfo 54}
+    ::= {asspPerlModuleInfo 56}
 
 iVRegexpOptimizer  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54819,7 +55898,7 @@ ScheduleCron  OBJECT-TYPE
 "
 ASSP Perl module information for Schedule::Cron;
 "
-    ::= {asspPerlModuleInfo 55}
+    ::= {asspPerlModuleInfo 57}
 
 iVScheduleCron  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54869,7 +55948,7 @@ SysCpuAffinity  OBJECT-TYPE
 "
 ASSP Perl module information for Sys::CpuAffinity;
 "
-    ::= {asspPerlModuleInfo 56}
+    ::= {asspPerlModuleInfo 58}
 
 iVSysCpuAffinity  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54919,7 +55998,7 @@ SysMemInfo  OBJECT-TYPE
 "
 ASSP Perl module information for Sys::MemInfo;
 "
-    ::= {asspPerlModuleInfo 57}
+    ::= {asspPerlModuleInfo 59}
 
 iVSysMemInfo  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54969,7 +56048,7 @@ SysSyslog  OBJECT-TYPE
 "
 ASSP Perl module information for Sys::Syslog;
 "
-    ::= {asspPerlModuleInfo 58}
+    ::= {asspPerlModuleInfo 60}
 
 iVSysSyslog  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55019,7 +56098,7 @@ TextUnidecode  OBJECT-TYPE
 "
 ASSP Perl module information for Text::Unidecode;
 "
-    ::= {asspPerlModuleInfo 59}
+    ::= {asspPerlModuleInfo 61}
 
 iVTextUnidecode  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55069,7 +56148,7 @@ ThreadQueue  OBJECT-TYPE
 "
 ASSP Perl module information for Thread::Queue;
 "
-    ::= {asspPerlModuleInfo 60}
+    ::= {asspPerlModuleInfo 62}
 
 iVThreadQueue  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55119,7 +56198,7 @@ ThreadSemaphore  OBJECT-TYPE
 "
 ASSP Perl module information for Thread::Semaphore;
 "
-    ::= {asspPerlModuleInfo 61}
+    ::= {asspPerlModuleInfo 63}
 
 iVThreadSemaphore  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55169,7 +56248,7 @@ ThreadState  OBJECT-TYPE
 "
 ASSP Perl module information for Thread::State;
 "
-    ::= {asspPerlModuleInfo 62}
+    ::= {asspPerlModuleInfo 64}
 
 iVThreadState  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55219,7 +56298,7 @@ TieRDBM  OBJECT-TYPE
 "
 ASSP Perl module information for Tie::RDBM;
 "
-    ::= {asspPerlModuleInfo 63}
+    ::= {asspPerlModuleInfo 65}
 
 iVTieRDBM  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55269,7 +56348,7 @@ TimeHiRes  OBJECT-TYPE
 "
 ASSP Perl module information for Time::HiRes;
 "
-    ::= {asspPerlModuleInfo 64}
+    ::= {asspPerlModuleInfo 66}
 
 iVTimeHiRes  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55319,7 +56398,7 @@ UnicodeGCString  OBJECT-TYPE
 "
 ASSP Perl module information for Unicode::GCString;
 "
-    ::= {asspPerlModuleInfo 65}
+    ::= {asspPerlModuleInfo 67}
 
 iVUnicodeGCString  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55369,7 +56448,7 @@ Win32APIOutputDebugString  OBJECT-TYPE
 "
 ASSP Perl module information for Win32::API::OutputDebugString;
 "
-    ::= {asspPerlModuleInfo 66}
+    ::= {asspPerlModuleInfo 68}
 
 iVWin32APIOutputDebugString  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55419,7 +56498,7 @@ Win32Daemon  OBJECT-TYPE
 "
 ASSP Perl module information for Win32::Daemon;
 "
-    ::= {asspPerlModuleInfo 67}
+    ::= {asspPerlModuleInfo 69}
 
 iVWin32Daemon  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55469,7 +56548,7 @@ Win32Unicode  OBJECT-TYPE
 "
 ASSP Perl module information for Win32::Unicode;
 "
-    ::= {asspPerlModuleInfo 68}
+    ::= {asspPerlModuleInfo 70}
 
 iVWin32Unicode  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55511,6 +56590,56 @@ download URL for the module
 "
     ::= {Win32Unicode 4}
 
+XMLRSS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+ASSP Perl module information for XML::RSS;
+"
+    ::= {asspPerlModuleInfo 71}
+
+iVXMLRSS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+installed module version
+"
+    ::= {XMLRSS 1}
+
+rVXMLRSS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+required/recommended module version
+"
+    ::= {XMLRSS 2}
+
+iSXMLRSS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+module installation status
+"
+    ::= {XMLRSS 3}
+
+dUXMLRSS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+download URL for the module
+"
+    ::= {XMLRSS 4}
+
 threads  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
@@ -55519,7 +56648,7 @@ threads  OBJECT-TYPE
 "
 ASSP Perl module information for threads;
 "
-    ::= {asspPerlModuleInfo 69}
+    ::= {asspPerlModuleInfo 72}
 
 iVthreads  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55569,7 +56698,7 @@ threadsshared  OBJECT-TYPE
 "
 ASSP Perl module information for threads::shared;
 "
-    ::= {asspPerlModuleInfo 70}
+    ::= {asspPerlModuleInfo 73}
 
 iVthreadsshared  OBJECT-TYPE
     SYNTAX      OCTET STRING
