@@ -1,3 +1,9 @@
+2018-05-08
+fixed in assp 2.6.1 *Fortress* build 18128:
+
+- HMM was not working in build 18120, if 'DoPrivatSpamdb' was set to NO
+
+
 2018-05-03
 fixed in assp 2.6.2 *Fortress* build 18123:
 

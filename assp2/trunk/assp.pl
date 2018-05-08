@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18123';        # 03.05.2018 TE
+$build   = '18128';        # 08.05.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -580,7 +580,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '306158E4D660FBF364A4D8A08B133300107FE912'; }
+sub __cs { $codeSignature = 'E0C1BD46225BAFF3A64056CA4F8BBD61D64CAC83'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -8034,7 +8034,7 @@ if ($@) {
 sub write_rebuild_module {
 my $curr_version = shift;
 
-my $rb_version = '7.47';
+my $rb_version = '7.48';
 my $keepVersion;
 
 if (open my $ADV, '<',"$base/lib/rebuildspamdb.pm") {
@@ -14431,9 +14431,10 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
 
   my $v;
   $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.80;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
-  $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.05;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
+  $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.06;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
+  $ModuleList{'Plugins::ASSP_RSS'}    =~ s/([0-9\.\-\_]+)$/$v=1.02;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_RSS'};
   $ModuleList{'Plugins::ASSP_Razor'}  =~ s/([0-9\.\-\_]+)$/$v=1.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_Razor'};
   $ModuleList{'Plugins::ASSP_FakeMX'} =~ s/([0-9\.\-\_]+)$/$v=1.02;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_FakeMX'};
 
@@ -24004,7 +24005,7 @@ sub stateReset {
     $this->{doneDoDomainIP} = '';
     $this->{donotdelay} = '';
     $this->{doNotTimeout} = '';
-    $this->{'errors-to'} = '';
+    $this->{q(errors-to)} = '';
     $this->{filescandone} = '';
     $this->{forgedHeloOK} = '';
     $this->{forgedhelodone} = '';
@@ -24092,7 +24093,7 @@ sub stateReset {
     $this->{redre} = '';
     %{$this->{rememberMessageScore}} = (); undef %{$this->{rememberMessageScore}};  delete $this->{rememberMessageScore};
     $this->{RFC2047} = '';    # non printable in MIME encoded
-    $this->{'reply-to'} = '';
+    $this->{q(reply-to)} = '';
     $this->{runlvl1PL} = '';
     $this->{rwlok} = 0;
     $this->{saveprepend2} = '';
@@ -25169,7 +25170,8 @@ sub getline {
             $this->{rwlok}=1        if pbWhiteFind($this->{ip});
             $this->{nohelo}=1 		if ( matchIP($this->{ip},'noHelo',$fh,0));
 
-            $this->{nodelay} ||= 1 		if matchIP($this->{ip},'noDelay',$fh,0) || matchSL($this->{mailfrom},'noDelayAddresses');
+            $this->{nodelay} ||= "$this->{ip} in noDelay" if matchIP($this->{ip},'noDelay',$fh,0);
+            $this->{nodelay} ||= "$this->{mailfrom} in noDelayAddresses" if matchSL($this->{mailfrom},'noDelayAddresses');
             $this->{acceptall} ||= 1	if matchIP($this->{ip},'acceptAllMail',$fh,0);
             $this->{noblockingips} ||= 1  if matchIP( $this->{ip}, 'noBlockingIPs', $fh ,0);
 
@@ -25693,7 +25695,8 @@ sub getline {
                     $this->{SRSnewAddress} = $tmpto;
                     $l=~s/$asrs0/$tmpto/;
                     $e=$tmpto;
-                    $this->{backsctrdone} = $this->{msgidsigdone} = $this->{nodelay} = $this->{isbounce} = 1;
+                    $this->{backsctrdone} = $this->{msgidsigdone} = $this->{isbounce} = 1;
+                    $this->{nodelay} = 'SRS bounce';
                     $this->{prepend} = '[isbounce]';
                     mlog($fh,"bounce message detected");
                     $this->{prepend} = '';
@@ -25717,7 +25720,8 @@ sub getline {
                         $this->{SRSnewAddress} = $tmpto;
                         $l=~s/$asrs1/$tmpto/;
                         $e=$tmpto;
-                        $this->{backsctrdone} = $this->{msgidsigdone} = $this->{nodelay} = $this->{isbounce} = 1;
+                        $this->{backsctrdone} = $this->{msgidsigdone} = $this->{isbounce} = 1;
+                        $this->{nodelay} = 'SRS bounce';
                         $this->{prepend} = '[isbounce]';
                         mlog($fh,"bounce message detected");
                         $this->{prepend} = '';
@@ -25734,7 +25738,8 @@ sub getline {
                             $this->{SRSnewAddress} = $asrs0;
                             $l=~s/$asrs1/$asrs0/;
                             $e=$asrs0;
-                            $this->{backsctrdone} = $this->{msgidsigdone} = $this->{nodelay} = $this->{isbounce} = 1;
+                            $this->{backsctrdone} = $this->{msgidsigdone} = $this->{isbounce} = 1;
+                            $this->{nodelay} = 'SRS bounce';
                             $this->{prepend} = '[isbounce]';
                             mlog($fh,"bounce message detected");
                             $this->{prepend} = '';
@@ -25961,7 +25966,7 @@ sub getline {
 
         my $rcptislocal = localmail($h);
 
-        $this->{nodelay} ||= 1 if ! $this->{relayok} && matchSL("$u$h",'noDelayAddresses');
+        $this->{nodelay} ||= "$u$h in noDelayAddresses" if ! $this->{relayok} && matchSL("$u$h",'noDelayAddresses');
 
         if ($rcptislocal) {
             $this->{mailfrom} = &batv_remove_tag(0,$this->{mailfrom},'') if localmail($this->{mailfrom});
@@ -27485,7 +27490,6 @@ sub getheader {
         }
 
         if ($CanUseDKIM && Mail::DKIM->VERSION >= 0.50 && $DoARC && ($DoDKIM || $DoDMARC || $ValidateSPF)) {
-          # experimental ARC processing
           # first we do a very simple and fast check
             my %h = ('seal' => 1, 'message-signature' => 2, 'authentication-results' => 4);
             my %r = (1 => 'Seal', 2 => 'Message-Signature', 4 => 'Authentication-Results');
@@ -35638,9 +35642,9 @@ sub Delayok_Run {
         return 1;
     }
     if ($this->{nodelay}) {
-
+        my $reason = $this->{nodelay} eq '1' ? 'anyhow forced' : $this->{nodelay};
        # add to our header; merge later, when client sent own headers  (per msg)
-        $this->{myheader}.="X-Assp-Delay: not delayed ($this->{ip} in noDelay ); $time $tz\r\n" if ($DelayAddHeader && $this->{myheader} !~ /not delayed \([\d\.]+ in noDelay\)/o);
+        $this->{myheader}.="X-Assp-Delay: not delayed ($reason); $time $tz\r\n" if ($DelayAddHeader && $this->{myheader} !~ /not delayed \(\Q$reason\E\)/o);
         return 1;
     }
     if ( !$DelayWL && pbWhiteFind($this->{ip})) {
@@ -40264,7 +40268,7 @@ sub RMquit { my ($fh,$l)=@_;
         $Con{$fh}->{getlinetxt}='RMdone';
         $Con{$fh}->{type} = 'C';          # start timeout watching for case 221/421 will not be send
         $Con{$fh}->{timelast} = time;
-        $Con{$fh}->{nodelay} = 1;
+        $Con{$fh}->{nodelay} = 'report';
     }
 }
 sub RMdone { my ($fh,$l)=@_;
@@ -42792,7 +42796,7 @@ sub CCfrom { my ($fh,$l)=@_;
             $Con{$fh}->{getlinetxt}='CCdone';
             $Con{$fh}->{type} = 'CC';          # start timeout watching for case 221/421 will not be send
             $Con{$fh}->{timelast} = time;
-            $Con{$fh}->{nodelay} = 1;
+            $Con{$fh}->{nodelay} = 'CC mail';
             return;
         }
         my $ext = $Con{$fh}->{CAN8BITMIME} && $Con{$fh}->{IS8BITMIME} ? ' BODY=8BITMIME' : '';
@@ -42860,7 +42864,7 @@ sub CCquit { my ($fh,$l)=@_;
         $Con{$fh}->{getlinetxt}='CCdone';
         $Con{$fh}->{type} = 'CC';          # start timeout watching for case 221/421 will not be send
         $Con{$fh}->{timelast} = time;
-        $Con{$fh}->{nodelay} = 1;
+        $Con{$fh}->{nodelay} = 'CC mail';
     }
 }
 sub CCdone { my ($fh,$l)=@_;
@@ -45887,7 +45891,7 @@ sub Perl_CPAN_upgrade_do {
         }
         my %failed;
         if ($install) {
-            Perl_upgrade_log_text('Perl module $actionName using CPAN started');
+            Perl_upgrade_log_text("Perl module $actionName using CPAN started");
             for my $idx ( 0 .. $#modules ) {
                 my $mod = $modules[$idx];
                 my ($modid, $modcpan_version, $modinst_version, $modcpan_file) = ($mod->{id}, $mod->{cpan_version}, $mod->{inst_version}, $mod->{cpan_file});
@@ -45963,7 +45967,7 @@ sub Perl_CPAN_upgrade_do {
                     }
                 }
             }
-            Perl_upgrade_log_text('Perl module $actionName using CPAN finished');
+            Perl_upgrade_log_text("Perl module $actionName using CPAN finished");
         }
     };
     eval('
@@ -46121,10 +46125,10 @@ sub Perl_PPM_upgrade_do {
     }
     Perl_upgrade_log_text('Perl module upgrade using PPM finished');
     if ($install && ! $pkg_count && $upg_package) {
-        Perl_upgrade_log_text('install additionally Perl module $upg_package using PPM');
+        Perl_upgrade_log_text("install additionally Perl module $upg_package using PPM");
         my $best = $ppm->package_best($upg_package, 0);
         $pkg_count = Perl_PPM_upgrade_install(undef, 0, $ppm , $best);
-        Perl_upgrade_log_text('Perl module installation for $upg_package using PPM finished');
+        Perl_upgrade_log_text("Perl module installation for $upg_package using PPM finished");
     }
     eval('
     no ActivePerl::PPM::Util;
@@ -46976,7 +46980,7 @@ sub MaillogClose {
                 delete $Con{$fh}->{maillogfilename};
                 $scanForVirus = undef;
             } elsif ($buf && $buf =~ /$noCollectReRE/is) {
-                if (exists $runOnMaillogClose{'ASSP_ARC::setvars'}) {
+                if (keys(%runOnMaillogClose)) {
                     $Con{$fh}->{deletemaillog} = 'content matches noCollectRe';
                 } else {
                     $unlink->($Con{$fh}->{maillogfilename});
@@ -47023,8 +47027,16 @@ sub MaillogClose {
     }
     
 # run registered routines
+    my %run;
+    delete $Con{$fh}->{q(errors-to)};
+    delete $Con{$fh}->{q(reply-to)};
     foreach my $sub (keys %runOnMaillogClose) {
-        $sub->($fh);
+        my ($mod,$s) = split(/::/o,$sub,2);
+        my $priority = ${$mod.'Priority'} || 0;
+        push(@{$run{$priority}}, $sub);
+    }
+    for my $priority (sort {$main::a <=> $main::b} keys(%run)) {
+       $_->($fh) for @{$run{$priority}};
     }
 }
 
@@ -47144,7 +47156,7 @@ sub FSfrom { my ($fh,$l)=@_;
             $Con{$fh}->{getlinetxt}='FSdone';
             $Con{$fh}->{type} = 'CC';          # start timeout watching for case 221/421 will not be send
             $Con{$fh}->{timelast} = time;
-            $Con{$fh}->{nodelay} = 1;
+            $Con{$fh}->{nodelay} = 'forwarded spam';
             return;
         }
         my $ext = $Con{$fh}->{CAN8BITMIME} && $Con{$fh}->{IS8BITMIME} ? ' BODY=8BITMIME' : '';
@@ -47273,7 +47285,7 @@ sub FSquit { my ($fh,$l)=@_;
         $Con{$fh}->{getlinetxt}='FSdone';
         $Con{$fh}->{type} = 'CC';          # start timeout watching for case 221/421 will not be send
         $Con{$fh}->{timelast} = time;
-        $Con{$fh}->{nodelay} = 1;
+        $Con{$fh}->{nodelay} = 'forwarded spam';
     }
 }
 sub FSdone { my ($fh,$l)=@_;
@@ -70063,7 +70075,7 @@ sub ThreadMaintMain {
     }
     return if(! $ComWorker{$Iam}->{run} || $wasrun);
 
-    d('idle loop (5 s)') ;
+    d('idle loop (5 s)');
     my $maxsleep = Time::HiRes::time() + 5;
     while (Time::HiRes::time() < $maxsleep && $ComWorker{$Iam}->{run} && ! $ConfigChanged && (! $ComWorker{$Iam}->{rereadconfig} || time < $ComWorker{$Iam}->{rereadconfig})) {
         if (! ($wasrun = &ThreadMaintMain2($Iam))) {
@@ -75059,7 +75071,8 @@ sub seed {
 
     local $; = $self->{seperator};
 
-    @{$self->{privacy}} = map {my $t = $_.$; ; $t;} ('',@{$args{privacy}});
+    @{$self->{privacy}} = map {my $t = $_.$; ; $t;} (@{$args{privacy}});
+    unshift(@{$self->{privacy}}, '');
 
     my $longest = $args{longest} || $self->{longest} || 4;
     $self->{longest} ||= $longest;
