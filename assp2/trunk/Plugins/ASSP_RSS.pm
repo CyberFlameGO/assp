@@ -1,8 +1,9 @@
-# $Id: ASSP_RSS.pm,v 1.03 2018/05/08 15:00:00 TE Exp $
+# $Id: ASSP_RSS.pm,v 1.04 2018/05/09 18:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is an RSS feed Plugin for blocked mails. Designed for ASSP v 2.6.1(18128) and above
 #
+# the perl module XML::RSS version 1.59 or higher is required
 
 package ASSP_RSS;
 use strict qw(vars subs);
@@ -13,29 +14,59 @@ no warnings qw(uninitialized);
 use constant RSS_XML_BASE   => "http://example.com";
 use constant RSS_VERSION    => "2.0";
 
-$VERSION = $1 if('$Id: ASSP_RSS.pm,v 1.03 2018/05/08 15:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_RSS.pm,v 1.04 2018/05/09 18:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18128)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our %Con;
-our %genRSS;                                 # the config hash
-our %ageRSS;                                 # the RSS entry max age hash
-our $rssFolderTemplate = 'EMAILADDRESS';     # literal replacement EMAILADDRESS USER DOMAIN
-our $rssFilePre = 'assprss';                 # rss file preample
-our $rssFileExt = 'rss';                     # rss file extension without the dot
-our $rssDays = 1;                            # default number of days to be shown in thr RSS - 1 = today and yesterday
-our $channelCB = sub {my ($hash,$self,$fh) = @_; return $hash;};   # callback to configure RSS channel - called once for each created RSS file
+
+##################################################################
+# some default values - if needed, change them                   #
+# using lib/CorrectASSPcfg.pm                                    #
+##################################################################
+our %genRSS;                                                       # the config hash
+our %ageRSS;                                                       # the RSS entry max age hash
+our $rssFolderTemplate = 'EMAILADDRESS';                           # literal replacement EMAILADDRESS USER DOMAIN
+our $rssFilePre = 'assprss';                                       # rss file preample
+our $rssFileExt = 'rss';                                           # rss file extension without the dot
+our $rssDays = 1;                                                  # default number of days to be shown in thr RSS - 1 = today and yesterday
+##################################################################
+
+##################################################################
+# these two callbacks can be overwritten to make your own changes#
+# e.g.abs in lib/CorrectASSPcfg.pm                               #
+# the callbacks have to return the related configuration HASH    #
+##################################################################
+our $channelCB = sub {my ($hash,$self,$fh) = @_; return $hash;};   # callback to configure RSS channel - called once for each created item before the channel is created or parsed from existing RSS file
 our $itemCB = sub {my ($hash,$self,$fh) = @_; return $hash;};      # callback to configure RSS items - called once for each created item
+##################################################################
+
 $main::ModuleList{'Plugins::ASSP_RSS'} = $VERSION.'/'.$VERSION;
 $main::PluginFiles{__PACKAGE__ . 'ConfigFile'} = 1;                # register the file watching changes
 &createDefaultConfigFile();
 &createDefaultHtaccessFile();
 
-our $CanXMLRSS = eval('use XML::RSS;1;');
+our $xmlrssVersion;
+our $CanXMLRSS = eval('use XML::RSS(); $xmlrssVersion = XML::RSS->VERSION; 1;');
 if (! $CanXMLRSS) {
     mlog(0,"warning: ASSP_RSS - the perl module XML::RSS is missing");
     print "\nwarning: ASSP_RSS - the perl module XML::RSS is missing\n";
 }
-$main::ModuleList{'XML::RSS'} = $VERSION . '/1.60';
+$main::ModuleList{'XML::RSS'} = $xmlrssVersion . '/1.59';
+
+our %months = (
+'Jan' => 1,
+'Feb' => 2,
+'Mar' => 3,
+'Apr' => 4,
+'May' => 5,
+'Jun' => 6,
+'Jul' => 7,
+'Aug' => 8,
+'Sep' => 9,
+'Oct' => 10,
+'Nov' => 11,
+'Dec' => 12,
+);
 
 sub new {
 ###################################################################
@@ -222,7 +253,7 @@ sub genRSS {
     my $fh;
     eval($parm);
     my $this = $Con{$fh};
-    if (! $this or ! $fh or ! $this->{maillogfilename}) {
+    if (! $this or ! $fh or ! $this->{maillogfilename} or ! $CanXMLRSS) {
         undef $this;
         delete $Con{$fh};
         return 1;
@@ -253,18 +284,18 @@ sub genRSS {
     $mainVarName   = 'main::'.$self->{myName}.'Log';
     eval{$self->{Log} = $$mainVarName};
 
-    my @rss; # all RSS to create
+    my $webprot = $main::enableWebAdminSSL && $main::CanUseIOSocketSSL? 'https' : 'http';
+    my $webhost = $main::BlockReportHTTPName ? $main::BlockReportHTTPName : $main::localhostname ? $main::localhostname : 'please_define_BlockReportHTTPName';
 
-    my $rcpt;
-    my $from;
+    $self->{rss} = [];
     if ($this->{relayok}) {
-        push(@rss, &main::batv_remove_tag(0,lc $this->{mailfrom},''));
-        $from = $rss[0];
-        $rcpt = [split(/ /o,lc $this->{rcpt})]->[0];
+        push(@{$self->{rss}}, &main::batv_remove_tag(0,lc $this->{mailfrom},''));
+        $self->{from} = $self->{rss}->[0];
+        $self->{rcpt} = [split(/ /o,lc $this->{rcpt})]->[0];
     } else {
-        push(@rss, map {&main::batv_remove_tag(0,$_,'')} split(/ /o,lc $this->{rcpt}));
-        $from = &main::batv_remove_tag(0,lc $this->{mailfrom},'');
-        $rcpt = $rss[0];
+        push(@{$self->{rss}}, map {&main::batv_remove_tag(0,$_,'')} split(/ /o,lc $this->{rcpt}));
+        $self->{from} = &main::batv_remove_tag(0,lc $this->{mailfrom},'');
+        $self->{rcpt} = $self->{rss}->[0];
     }
 
     if( ! haveToProcess($self,$fh)) {
@@ -280,81 +311,91 @@ sub genRSS {
     $self->{result} = '';
     $self->{tocheck} = ''; # data to be checked from ASSP
     $this->{prepend} = '[Plugin]';
-    mlog(0,"$self->{myName}: Plugin RSS successful called for runlevel $self->{runlevel}!") if ($self->{Log} == 2);
+    mlog(0,"$self->{myName}: Plugin RSS successful called for runlevel $self->{runlevel}!") if ($self->{Log} > 1);
     d("$self->{myName}: Plugin RSS successful called for runlevel $self->{runlevel}!") if $main::debug;
 
-    my $htfile = $self->{DefaultHtaccess};
-    $htfile =~ s/\s+$//o;
-    $htfile =~ s/^\s*file:\s*//o;
-    $htfile =~ s/\.\.+/./go;
-     
+    $self->{htfile} = $self->{DefaultHtaccess};
+    $self->{htfile} =~ s/\s+$//o;
+    $self->{htfile} =~ s/^\s*file:\s*//o;
+    $self->{htfile} =~ s/\.\.+/./go;
+
     my $created = 0;
     my %seen;
-    for my $addr (@rss) {
+    for my $addr (@{$self->{rss}}) {
+        $self->{addr} = $addr;
         my %matches = &main::matchHashKeyAll(\%genRSS,$addr);
         for my $rssadr (keys(%matches)) {
+            $self->{rssadr} = $rssadr;
             for my $entry (@{$matches{$rssadr}}) {
-                my $target;                                               # lookup the target from address or config hash
-                $target = $addr if $entry eq '*';                         # an entry like any=>*
-                $target = $addr if $entry eq '*@*';                       # an entry like any=>*@*
-                $target ||= $entry;                                       # an entry like any=>address@dom.tld
-                my $addPath = $rssFolderTemplate;
-                if (! $addPath) {
-                    $addPath = $target;
-                } elsif ($target =~ /^(($main::EmailAdrRe)(?:\@($main::EmailDomainRe))?)$/o) {
+                $self->{entry} = $entry;
+                $self->{target} = $addr if $entry eq '*';                         # an entry like any=>*
+                $self->{target} = $addr if $entry eq '*@*';                       # an entry like any=>*@*
+                $self->{target} ||= $entry;                                       # an entry like any=>address@dom.tld
+                $self->{addPath} = $rssFolderTemplate;
+                if (! $self->{addPath}) {
+                    $self->{addPath} = $self->{target};
+                } elsif ($self->{target} =~ /^(($main::EmailAdrRe)(?:\@($main::EmailDomainRe))?)$/o) {
                     my ($adr,$user,$dom) = ($1,$2,$3);
-                    $addPath =~ s/EMAILADDRESS/$adr/go;
-                    $addPath =~ s/USER/$user/go;
-                    $addPath =~ s/DOMAIN/$dom/go;
+                    $self->{addPath} =~ s/EMAILADDRESS/$adr/go;
+                    $self->{addPath} =~ s/USER/$user/go;
+                    $self->{addPath} =~ s/DOMAIN/$dom/go;
                 } else {
-                    $addPath = $target;
+                    $self->{addPath} = $self->{target};
                 }
-                $addPath =~ s/[\x00-\x1F\^\<\>\?\"\'\:\|\\\/\*\&]//igo;  # remove not allowed characters from folder name
-                $addPath =~ s/\.\.+/./go;
-                my $path = $self->{Store}.'/'.$addPath;
+                $self->{addPath} =~ s/[\x00-\x1F\^\<\>\?\"\'\:\|\\\/\*\&]//igo;  # remove not allowed characters from folder name
+                $self->{addPath} =~ s/\.\.+/./go;
+                my $path = $self->{Store}.'/'.$self->{addPath};
                 &makedirs($self,$path);
                 my $post = $rssadr;
                 $post = 'all@all' if $post eq '*@*';
                 $post =~ s/\?/_/go;
                 $post =~ s/\*//go;
                 $post ||= 'all';
-                my $rssfile = $path.'/'.$rssFilePre.'.'.$post.'.'.$rssFileExt;
-                $rssfile =~ s/\.\.+/./go;
-                next if $seen{$rssfile.$addr};
-                $seen{$rssfile.$addr} = 1;
-                my $RSS;
+                $self->{rssfile} = $path.'/'.$rssFilePre.'.'.$post.'.'.$rssFileExt;
+                $self->{rssfile} =~ s/\.\.+/./go;
+                next if $seen{$self->{rssfile}.$addr};
+                $seen{$self->{rssfile}.$addr} = 1;
                 my $channel = $channelCB->(
                     {
                         'title'        => "blocked emails at $main::myName",
-                        'description'  => "blocked emails at $main::myName for $post - available for $target",
+                        'description'  => "blocked emails at $main::myName for $post - available for $self->{target}",
                         'language'     => 'en-us',
                         copyright      => 'Copyright 2018 Thomas Eckardt',
                         'generator'    => "assp spam filter on $main::myName",
                     },
                     $self,$fh);
-                if (-e $rssfile) {  # the RSS files exists - maintain it - on error overwrite it
-                    $RSS = XML::RSS->new();
-                    eval{$RSS->parsefile($rssfile);};
+                if (-e $self->{rssfile}) {  # the RSS files exists - maintain it - on error overwrite it
+                    $self->{RSS} = XML::RSS->new();
+                    eval{$self->{RSS}->parsefile($self->{rssfile});};
                     if ($@) {       # create a new RSS feed file
-                        $RSS = XML::RSS->new( version => RSS_VERSION, 'xml:base' => RSS_XML_BASE );
-                        $RSS->channel(%$channel);
+                        mlog(0,"error: unable to parse RSS file $self->{rssfile} - $@");
+                        $self->{RSS} = XML::RSS->new( version => RSS_VERSION, 'xml:base' => RSS_XML_BASE );
+                        eval{$self->{RSS}->channel(%$channel);};
+                        if ($@) {
+                            mlog(0,"error: can't create new RSS channel for RSS file $self->{rssfile} - $@");
+                            next;
+                        }
                     } else {        # maintain the RSS feed file
                         my $days = $ageRSS{"$rssadr $entry"} || $rssDays;
                         my $mintime = (int(time / 86400) - $days) * 86400;
-                        while (@{$RSS->{'items'}} && &main::timeval($RSS->{'items'}[-1]->{pubDate}) < $mintime) {pop @{$RSS->{'items'}}}    # remove old items
+                        while (@{$self->{RSS}->{'items'}} && timevalue($self->{RSS}->{'items'}[-1]->{pubDate}) < $mintime) {pop @{$self->{RSS}->{'items'}}}    # remove old items
                     }
                 } else {            # create a new RSS feed file
-                    $RSS = XML::RSS->new( version => RSS_VERSION, 'xml:base' => RSS_XML_BASE );
-                    $RSS->channel(%$channel);
+                    $self->{RSS} = XML::RSS->new( version => RSS_VERSION, 'xml:base' => RSS_XML_BASE );
+                    eval{$self->{RSS}->channel(%$channel);};
+                    if ($@) {
+                        mlog(0,"error: can't create new RSS channel for new RSS file $self->{rssfile} - $@");
+                        next;
+                    }
                 }
                 my $filename = $this->{maillogfilename};
                 $filename =~ s/\\/\//go;
                 my $isadmin;
                 $isadmin = 1
-                  if (    &main::matchSL( $target, 'EmailAdmins', 1 )
-                       or &main::matchSL( $target, 'BlockReportAdmins', 1 )
-                       or lc( $target ) eq lc($main::EmailAdminReportsTo)
-                       or lc( $target ) eq lc($main::EmailBlockTo)
+                  if (    &main::matchSL( $self->{target}, 'EmailAdmins', 1 )
+                       or &main::matchSL( $self->{target}, 'BlockReportAdmins', 1 )
+                       or lc( $self->{target} ) eq lc($main::EmailAdminReportsTo)
+                       or lc( $self->{target} ) eq lc($main::EmailBlockTo)
                       );
                 my $addWhiteHint = (   ($main::autoAddResendToWhite > 1 && $isadmin)
                                     or ($main::autoAddResendToWhite && $main::autoAddResendToWhite != 2 && ! $isadmin)
@@ -376,30 +417,44 @@ sub genRSS {
                                   ) ? '%5Bno%5D%20scan%20'.$main::correctednotspam : '';
                 $addScanHint = '%2C' . $addScanHint if $addScanHint && ($addFileHint || $addWhiteHint);
 
-                my $link = 'mailto:'.$main::EmailBlockReport.$main::EmailBlockReportDomain.'?subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$main::myName.'&body=%23%23%23'.$filename.'%23%23%23'.$addWhiteHint.$addFileHint.$addScanHint.'%0D%0A';
                 $filename =~ s/^\Q$main::base\E\///o;
                 $filename = &main::normHTML($filename);
-#                my $subject = &main::eU($this->{subject3});
-                my $subject = $this->{subject3};
+                my ($showOpenMail, $showOpenLog);
+                if ($isadmin) {
+                    my $search = $this->{msgtime};
+                    $search ||= &main::timestring(&main::ftime($this->{maillogfilename}));
+                    $search = &main::normHTML($search);
+                    $showOpenMail = "<hr /><a href=\"$webprot://$webhost:$main::webAdminPort/edit?file=$filename&note=m&showlogout=1\" target=\"_blank\" title=\"open the blocked mail in the assp fileeditor\">work with this email</a>&nbsp;&nbsp;&nbsp;";
+                    $showOpenLog = ($showOpenMail ? '' : '<hr />' ) . "<a href=\"$webprot://$webhost:$main::webAdminPort/maillog?search=$search&size=1&files=files&limit=50\" target=\"_blank\" title=\"open the blocked mail in the assp fileeditor\">show the log for this email</a>";
+                }
+                my $link = 'mailto:'.$main::EmailBlockReport.$main::EmailBlockReportDomain.'?subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$main::myName.'&body=%23%23%23'.$filename.'%23%23%23'.$addWhiteHint.$addFileHint.$addScanHint.'%0D%0A';
+                my $subject = &main::eU($this->{subject3});
+                my $time = $main::UseLocalTime ? localtime(&main::ftime($this->{maillogfilename})) : gmtime(&main::ftime($this->{maillogfilename}));
+                $time =~ s/(...) (...) +(\d+) (........) (....)/$1, $3 $2 $5 $4/o;
+                my $tz = $main::UseLocalTime ? &main::tzStr() : '+0000';
+                $time = "$time $tz";
+                my $reason = &main::eU($this->{messagereason});
                 my $item = $itemCB->(
                     {
                         mode => 'insert',
-                        title       => ($this->{relayok} ? $rcpt : $from),
+                        title       => ($this->{relayok} ? $self->{rcpt} : $self->{from}),
                         'link'      => $link,
-                        description => "blocked email at $main::myName<br />".($this->{relayok} ? "to: $rcpt<br />from: $addr" : "from: $from<br />to: $addr")."<hr />subject: $subject<br />block reason: $this->{messagereason}",
-                        pubDate     => &main::timestring(&main::ftime($this->{maillogfilename}),undef,'YYYY-MM-DD hh:mm:ss'),
+                        description => ($this->{relayok} ? "from: $self->{from}<br />to: $self->{rcpt}" : "to: $addr<br />from: <a href=\"mailto:$main::EmailWhitelistAdd$main::EmailBlockReportDomain?subject=add\%20to\%20whitelist&body=$self->{from}\%0D\%0A\" title=\"add this email address to whitelist\" target=\"_blank\">$self->{from}</a>")."<hr />subject: $subject<br />block reason: $reason<br />date: $time<hr />filter host: $main::myName$showOpenMail$showOpenLog",
+                        pubDate     => $time,
                     },
                     $self,$fh);
-                $RSS->add_item(%$item);
-                eval{$RSS->save($rssfile);};
+                $self->{RSS}->add_item(%$item) unless delete $self->{skip_add_item};
+                eval{$self->{RSS}->save($self->{rssfile}) unless delete $self->{skip_save};};
                 if ($@) {
-                    mlog(0,"error: can't write RSS feed '$rssfile' - $@");
+                    mlog(0,"error: can't write RSS feed '$self->{rssfile}' - $@");
                 } else {
+                    mlog(0,"info: created RSS feed for $self->{target}") if $self->{log} > 1;
                     $created++;
                 }
-                if ($htfile && ($self->{CreateUserHtaccess} == 2 || ($self->{CreateUserHtaccess} == 1 && ! -e "$path/.htaccess"))) {
-                    copy("$main::base/$htfile" , "$path/.htaccess");
+                if ($self->{htfile} && ($self->{CreateUserHtaccess} == 2 || ($self->{CreateUserHtaccess} == 1 && ! -e "$path/.htaccess"))) {
+                    copy("$main::base/$self->{htfile}" , "$path/.htaccess");
                 }
+                delete $self->{RSS};
             }
         }
     }
@@ -413,6 +468,14 @@ sub genRSS {
     undef $self;
     delete $Con{$fh};
     return 1;
+}
+
+sub timevalue {
+    my @t = split(/[\s,:]+/,shift);
+    shift @t;   # remove the dayname
+    pop @t; # remove the timezone
+    $t[1] = $months{$t[1]};
+    return &main::timeval("$t[2],$t[1],$t[0],$t[3],$t[4],$t[5]");
 }
 
 sub makedirs {
@@ -432,9 +495,9 @@ sub makedirs {
         next unless $dir;
         $path .= $dir . '/';
         next if -d "$path";
-        mlog(0,"info: unable to find $path - try to create - $!") if $! && $self->{Log} == 2;
+        mlog(0,"info: unable to find $path - try to create - $!") if $! && $self->{Log} > 1;
         mkdir "$path",0755;
-        mlog(0,"info: unable to create $path") if (! -d "$path" && $self->{Log} == 2);
+        mlog(0,"info: unable to create $path") if (! -d "$path" && $self->{Log} > 1);
     }
 }
 
@@ -537,16 +600,16 @@ sub ConfigChangeFile {
 
         $value=~s/\r|\n//go;
         next unless $value;
-        my ($addr,$target,$days) = split(/\=\>/o,lc $value);
-        $addr =~ s/\s//go;
-        $target =~ s/\s//go;
-        $days =~ s/\s//go;
-        next unless $addr and $target;
-        next if exists $seen{"$addr $target"};
-        $seen{"$addr $target"} = 1;
+        my ($caddr,$ctarget,$cdays) = split(/\=\>/o,lc $value);
+        $caddr =~ s/\s//go;
+        $ctarget =~ s/\s//go;
+        $cdays =~ s/\s//go;
+        next unless $caddr and $ctarget;
+        next if exists $seen{"$caddr $ctarget"};
+        $seen{"$caddr $ctarget"} = 1;
         $count++;
-        push(@{$genTMP{$addr}} , $target);
-        $ageTMP{"$addr $target"} = $days || $rssDays;
+        push(@{$genTMP{$caddr}} , $ctarget);
+        $ageTMP{"$caddr $ctarget"} = $cdays || $rssDays;
     }
     %genRSS = %genTMP;
     %ageRSS = %ageTMP;
