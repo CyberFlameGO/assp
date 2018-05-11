@@ -1,3 +1,14 @@
+2018-05-11
+fixed in assp 2.6.1 *Fortress* build 18131:
+
+- the service ID was not shown correctly in the GUI on nix systems
+
+- ASSP_AFC 4.81 fixes a perl crash : Can't locate object method "name" via package "Email::MIME"
+
+- ASSP_RSS 1.05 fixes: links were not working in some RSS feed readers
+
+
+
 2018-05-08
 fixed in assp 2.6.1 *Fortress* build 18128:
 

@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18128';        # 08.05.2018 TE
+$build   = '18131';        # 11.05.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -580,7 +580,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'E0C1BD46225BAFF3A64056CA4F8BBD61D64CAC83'; }
+sub __cs { $codeSignature = '504040D41D0021C86A3A4AA4345C2BD8823105F5'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -14430,11 +14430,11 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.80;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.81;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.06;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
-  $ModuleList{'Plugins::ASSP_RSS'}    =~ s/([0-9\.\-\_]+)$/$v=1.02;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_RSS'};
+  $ModuleList{'Plugins::ASSP_RSS'}    =~ s/([0-9\.\-\_]+)$/$v=1.05;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_RSS'};
   $ModuleList{'Plugins::ASSP_Razor'}  =~ s/([0-9\.\-\_]+)$/$v=1.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_Razor'};
   $ModuleList{'Plugins::ASSP_FakeMX'} =~ s/([0-9\.\-\_]+)$/$v=1.02;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_FakeMX'};
 
@@ -55793,7 +55793,7 @@ if (exists $WebIP{$ActWebSess}->{blocking}) {
    $blocking = $WebIP{$ActWebSess}->{blocking} ? ' -blocking' : ' -nonblocking';
 }
 my $networkatt = ($DisableSMTPNetworking && $allIdle >= 0) ? ' <a href="./#DisableSMTPNetworking" onmousedown="expand(0, 1);showDisp(\''.$ConfigPos{DisableSMTPNetworking}.'\');"><font color="#CC0000">SMTP networking is disabled!&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font></a>' : '';
-my $runas = $AsAService ? ($allIdle > 0 ? " (as service [$ServiceTag] - suspended)" : " (as service [$ServiceTag])") : ($AsADaemon ? ($allIdle > 0 ? ' (as daemon [$ServiceTag] - suspended)' : ' (as daemon [$ServiceTag])') : ($allIdle > 0 ? ' (console mode [$ServiceTag] - suspended)' : ' (console mode [$ServiceTag])'));
+my $runas = $AsAService ? ($allIdle > 0 ? " (as service [$ServiceTag] - suspended)" : " (as service [$ServiceTag])") : ($AsADaemon ? ($allIdle > 0 ? " (as daemon [$ServiceTag] - suspended)" : " (as daemon [$ServiceTag])") : ($allIdle > 0 ? " (console mode [$ServiceTag] - suspended)" : " (console mode [$ServiceTag])"));
 my $pathhint = $isWIN ? $WebIP{$ActWebSess}->{lng}->{'msg500017'} || $lngmsg{'msg500017'} : '';
 my $mainhint = $WebIP{$ActWebSess}->{lng}->{'msg500018'} || $lngmsg{'msg500018'};
 my $killhint = $WebIP{$ActWebSess}->{lng}->{'msg500019'} || $lngmsg{'msg500019'};
@@ -56071,7 +56071,10 @@ EOT
                 'sh' => 'application/x-sh',
                 'gz|gzip' => 'application/x-gzip',
                 'exe' => 'application/octet-stream',
-                'js' => 'application/x-javascript'
+                'js' => 'application/x-javascript',
+                'rss' => 'application/rss+xml',
+                'rsd' => 'application/rss+xml',
+                'xml' => 'text/xml',
               );
             my $ct='text/plain'; # default content-type
             foreach my $key (keys %mimeTypes) {
