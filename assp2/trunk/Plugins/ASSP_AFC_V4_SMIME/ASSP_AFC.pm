@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 4.80 2018/04/18 09:30:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 4.81 2018/05/11 17:30:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -201,7 +201,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.80 2018/04/18 09:30:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.81 2018/05/11 17:30:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -1249,7 +1249,11 @@ sub process {
         foreach my $part (@parts) {
             if (   $part->header("Content-Disposition")=~ /attachment/io
                 && (my $len = length($part->body)) > ($this->{relayok} ? $self->{outsize} : $self->{insize})
-                && (my $filename = $part->filename || $part->name) )
+                && (my $filename = &main::attrHeader($part,'Content-Type','filename')
+                                 || &main::attrHeader($part,'Content-Disposition','filename')
+                                 || &main::attrHeader($part,'Content-Type','name')
+                                 || &main::attrHeader($part,'Content-Disposition','name'))
+                )
             {
                 my $file; my $text;
                 if (($file = store_f($filename,$this,$part)) && ($text = call_s($self,$file,$this))) {
