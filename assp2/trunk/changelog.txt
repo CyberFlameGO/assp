@@ -1,3 +1,14 @@
+2018-05-17
+fixed in assp 2.6.1 *Fortress* build 18137:
+
+- ASSP_RSSSelectCode was not encrypted
+
+- webSSLRequireClientCert was not working like expected
+
+- unexpected behavior or exception, if a schedule was configured while any scheduled task was running
+
+
+
 2018-05-11
 fixed in assp 2.6.1 *Fortress* build 18131:
 

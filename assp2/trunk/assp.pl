@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18131';        # 11.05.2018 TE
+$build   = '18137';        # 17.05.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -580,7 +580,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '504040D41D0021C86A3A4AA4345C2BD8823105F5'; }
+sub __cs { $codeSignature = '4413B2543A3AF3A06471B854FB7FA5108BE2CF55'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -934,6 +934,7 @@ our %cryptConfigVars:shared = (
     'ASSP_AFCWebScript' => 1,
     'ASSP_AFCSMIME' => 1,
     'ASSP_ARCSelectCode' => 1,
+    'ASSP_RSSSelectCode' => 1,
     'runAsUser' => 1,
     'runAsGroup' => 1,
     'runAsGroupSupplementary' => 1,
@@ -4031,7 +4032,7 @@ For example: mysql/dbimport<br />
   'If set ASSP will use addresses from DoPenaltyMakeTraps and spamtrapaddresses to collect spams.',undef,undef,'msg006020','msg006021'],
 ['noCollecting','Do Not Collect Messages from/to these Addresses*',60,\&textinput,'','(.*)','ConfigMakeSLRe','Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com).',undef,undef,'msg006030','msg006031'],
 ['noCollectRe','Do Not Collect Messages - Content Based*',60,\&textinput,'','(.*)','ConfigCompileRe','If the content of a collected file (incl. X-ASSP-... headers) matches this regular expression, it will be deleted from the collection after the mail is completely processed.<br />
-  If the ASSP_ARC plugin is used, the file will be deleted from the collection after it was archived. This is the only "no collect" option which removes an already collected file, all other options will prevent assp from creating a collection file - if set to "no collection". The check is limited to MaxBytes or at max 100000 Bytes.',undef,undef,'msg008930','msg008931'],
+  If the ASSP_ARC or ASSP_RSS plugin is used, the file will be deleted from the collection after it was archived. This is the only "no collect" option which removes an already collected file, all other options will prevent assp from creating a collection file - if set to "no collection". The check is limited to MaxBytes or at max 100000 Bytes.',undef,undef,'msg008930','msg008931'],
 ['DoNotCollectRedRe','Do Not Collect Red-Re Matching Mails',0,\&checkbox,1,'(.*)',undef,
   'Mails (Spam/Ham) matching Red Regex ( redRe ) will not be stored in the collection folders.',undef,undef,'msg006040','msg006041'],
 ['DoNotCollectRedList','Do Not Collect Redlisted Mails',0,\&checkbox,'1','(.*)',undef,
@@ -4986,16 +4987,16 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
   You can use/modify the module lib/CorrectASSPcfg.pm to implement your code. For example<br /><br />
   sub checkWebSSLCert {<br />
   &nbsp;&nbsp;&nbsp;&nbsp;my ($OpenSSLSays,$CertStackPtr,$DN,$OpenSSLError, $Cert)=@_;<br />
-  &nbsp;&nbsp;&nbsp;&nbsp;my $subject = Net::SSLeay::X509_NAME_oneline(Net::SSLeay::X509_get_subject_name($Cert));<br />
-  &nbsp;&nbsp;&nbsp;&nbsp;my $chain = Net::SSLeay::PEM_get_string_X509($Cert);<br />
+  &nbsp;&nbsp;&nbsp;&nbsp;my $Subject = Net::SSLeay::X509_NAME_oneline(Net::SSLeay::X509_get_subject_name($Cert));<br />
+  &nbsp;&nbsp;&nbsp;&nbsp;my $Chain = Net::SSLeay::PEM_get_string_X509($Cert);<br />
   &nbsp;&nbsp;&nbsp;&nbsp;...any code...;<br />
-  &nbsp;&nbsp;&nbsp;&nbsp;my $success = eval{verify($Cert);};<br />
+  &nbsp;&nbsp;&nbsp;&nbsp;my $isSuccess = eval{verify($Cert);};<br />
   &nbsp;&nbsp;&nbsp;&nbsp;return $OpenSSLSays if $@;<br />
-  &nbsp;&nbsp;&nbsp;&nbsp;my $user = eval{get_owner($Cert);};<br />
+  &nbsp;&nbsp;&nbsp;&nbsp;my $Owner = eval{get_owner($Cert);};<br />
   &nbsp;&nbsp;&nbsp;&nbsp;return $OpenSSLSays if $@;<br />
-  &nbsp;&nbsp;&nbsp;&nbsp;my $pass = get_pass($user);};<br />
-  &nbsp;&nbsp;&nbsp;&nbsp;@main::ExtWebAuth = ($user,$pass)<br />
-  &nbsp;&nbsp;&nbsp;&nbsp;return $success;<br />
+  &nbsp;&nbsp;&nbsp;&nbsp;my $userPass = get_pass($Owner);};<br />
+  &nbsp;&nbsp;&nbsp;&nbsp;@main::ExtWebAuth = ($Owner,$userPass)<br />
+  &nbsp;&nbsp;&nbsp;&nbsp;return $isSuccess;<br />
   }<br /><br />
   Now, if you set this parameter to \'CorrectASSPcfg::checkWebSSLCert\' - assp will call<br />
   CorrectASSPcfg::checkWebSSLCert->(@_);<br />
@@ -5855,6 +5856,8 @@ sub timeval {
     mlog(0,"error: incorrect date/time - $timestring - used in GUI - $@") if $@;
     return $@ ? '0000000000' : $timestring + $plus * 9999999999;
 }
+
+sub microTime { return join('',Time::HiRes::gettimeofday()); }
 
 sub ftime { threads->yield(); [$stat->($_[0])]->[9]; }
 sub fsize { threads->yield(); [$stat->($_[0])]->[7]; }
@@ -7044,6 +7047,17 @@ if ( ! -d "$base/database") {
     my $count = shift;
     return $count;
 };
+# dequeue all items from queue - no blocking
+*{'Thread::Queue::dequeue_nb_all'} = sub {
+    my $self = shift;
+    lock(%$self);
+    my $queue = $$self{'queue'};
+    my @items = @$queue;
+    @$queue = ();
+    cond_signal(%$self);  # Unblock possibly waiting threads
+    return @items;
+};
+
 # create the logging queue for all threads
 our %mlogQueue;
 our %debugQueue;
@@ -7052,7 +7066,17 @@ for (0...$Config{NumComWorkers},10000,10001) {
     $debugQueue{$_} = Thread::Queue->new();
 }
 our $cmdQueue = Thread::Queue->new();
-
+if ($cmdQueue) {
+    $cmdQueue->enqueue('TEST1');
+    $cmdQueue->enqueue('TEST2');
+    my @tqueue;
+    eval { @tqueue = $cmdQueue->dequeue_nb_all(1000); };
+    if ($@ || $tqueue[0] ne 'TEST1' || $tqueue[1] ne 'TEST2' || $cmdQueue->pending) {
+        *{'Thread::Queue::dequeue_nb_all'} = *{'Thread::Queue::dequeue_nb'};
+        @tqueue = $cmdQueue->dequeue_nb(1000);
+        print "\n*********\nincompatible perl module Thread::Queue version ". Thread::Queue->VERSION ."detected\n*********\n";
+    }
+}
 # define global vars from %Config
 print "\t\t\t[OK]\nloading configuration";
 print "\t\t\t\t\t[OK]\n". scalar(keys %Config) . ' values loaded';
@@ -12702,13 +12726,14 @@ sub d {
     threads->yield();
     return unless ($debug || $ThreadDebug);
     my $time=&timestring();
-    my $t = sprintf("%.5f",Time::HiRes::time);
+    my $mt = my $t = sprintf("%.6f",Time::HiRes::time);
+    $mt =~ s/\.//go;
     $debugprint =~ s/\n/\[LF\]\n/go;
     $debugprint =~ s/\r/\[CR\]/go;
     $debugprint .= "\n" if $debugprint !~ /\n$/os;
     $debugprint =~ s/\n$/>\n/os;
     threads->yield();
-    $debugQueue{$WorkerNumber}->enqueue("$t $t $time [$WorkerName] <$debugprint");
+    $debugQueue{$WorkerNumber}->enqueue("$mt $t $time [$WorkerName] <$debugprint");
     threads->yield();
 }
 
@@ -14305,7 +14330,7 @@ EOT
   {
     # detect the installed openssl binary version
     my $ov;
-    for (keys(%ModuleList)) {     # already detected by ASSP_ARC ?
+    for (keys(%ModuleList)) {     # already detected by ASSP_ARC and ASSP_RSS ?
         if (/^OpenSSL (.+)$/o) {
             $osslv = $1;
             $ov = $_;
@@ -16767,26 +16792,14 @@ sub newListenSSL {
         $parms{Reuse} = 1;
         if ($isWebListen) {
             $parms{SSL_startHandshake} = 1;
-            if ($webSSLRequireClientCert) {
-                $parms{SSL_verify_mode} = eval('SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT | SSL_VERIFY_CLIENT_ONCE');
-                $parms{SSL_verify_callback} = \&SSLWEBCertVerify if $SSLWEBCertVerifyCB;
-            }
             %parms = (%parms, getSSLParms('WEB',{'LocalAddr' => $parms{LocalAddr} , 'LocalPort' => $parms{LocalPort}}));
         }
         if ($isStatListen) {
             $parms{SSL_startHandshake} = 1;
-            if ($statSSLRequireClientCert) {
-                $parms{SSL_verify_mode} = eval('SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT | SSL_VERIFY_CLIENT_ONCE');
-                $parms{SSL_verify_callback} = \&SSLSTATCertVerify if $SSLSTATCertVerifyCB;
-            }
             %parms = (%parms, getSSLParms('STAT',{'LocalAddr' => $parms{LocalAddr} , 'LocalPort' => $parms{LocalPort}}));
         }
         if ($isSMTPListen) {
             $parms{SSL_startHandshake} = 0;
-            if ($smtpSSLRequireClientCert) {
-                $parms{SSL_verify_mode} = eval('SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT | SSL_VERIFY_CLIENT_ONCE');
-                $parms{SSL_verify_callback} = \&SSLSMTPCertVerify if $SSLSMTPCertVerifyCB;
-            }
             %parms = (%parms, getSSLParms('SMTP',{'LocalAddr' => $parms{LocalAddr} , 'LocalPort' => $parms{LocalPort}}));
         }
 
@@ -17899,9 +17912,9 @@ sub mlogWrite {
     for my $t (@range ? @range : 0...$NumComWorkers,10000,10001) {
         my $count;
         do {
-            my @ent = $mlogQueue{$t}->dequeue_nb(1000);
+            my @ent = $mlogQueue{$t}->dequeue_nb_all(1000);
             push @m,@ent if ($count = scalar @ent);
-        } while $count == 1000;
+        } while $count >= 1000;
     }
     threads->yield();
     my @tosyslog;
@@ -17978,9 +17991,12 @@ sub debugWrite {
         eval{$lastDebugPrint = 0; $DEBUG->close; undef $DEBUG;};
     }
     threads->yield();
-    for (0...$NumComWorkers,10000,10001) {
-        my @ent = $debugQueue{$_}->dequeue_nb(1000);
-        push @m,@ent if scalar @ent;
+    for my $t (0...$NumComWorkers,10000,10001) {
+        my $count;
+        do {
+            my @ent = $debugQueue{$t}->dequeue_nb_all(1000);
+            push @m,@ent if ($count = scalar @ent);
+        } while $count >= 1000;
     }
     threads->yield();
     return unless scalar @m;
@@ -18230,10 +18246,10 @@ sub mlog {
     threads->yield();
     if (@m) {
         push @AnalyzeLog, @m if (@AnalyzeLog);
-        $mlogQueue{$WorkerNumber}->enqueue(Time::HiRes::time.' '.$_) for (@m);
+        $mlogQueue{$WorkerNumber}->enqueue(microTime().' '.$_) for (@m);
     } else {
         push @AnalyzeLog, $m if (@AnalyzeLog);
-        $mlogQueue{$WorkerNumber}->enqueue(Time::HiRes::time.' '.$m);
+        $mlogQueue{$WorkerNumber}->enqueue(microTime().' '.$m);
     }
     threads->yield();
     $MainThreadLoopWait = 0;
@@ -61308,6 +61324,12 @@ sub getSSLParms {
 
     # there may be custom SSL/SNI configurations defined for the listener
     if ($asServer =~ /^(?:WEB|STAT|SMTP)$/o) {  # a listener is defined
+        # verify callbacks are configured ?
+        if (${lc($asServer).'SSLRequireClientCert'}) {
+            $ssl{SSL_verify_mode} = eval('IO::Socket::SSL::SSL_VERIFY_PEER | IO::Socket::SSL::SSL_VERIFY_FAIL_IF_NO_PEER_CERT | IO::Socket::SSL::SSL_VERIFY_CLIENT_ONCE');
+            $ssl{SSL_verify_callback} = \&{'SSL'.$asServer.'CertVerify'} if ${'SSL'.$asServer.'CertVerifyCB'};
+        }
+
         my $call;
         # call custom configuration routine (WEB,STAT,SMTP) if configured
         if ($call = ${'SSL'.$asServer.'Configure'}) { # a configuration sub is set for this type of listener
@@ -63776,6 +63798,7 @@ sub addSched {
             && $ScheduledTask{$_}->{Parm} eq $parm
             && $ScheduledTask{$_}->{Desc} eq $desc)
         {
+            lock $ScheduledTask{$_};
             eval{$ScheduledTask{$_}->{Nextrun} = $nextrun;};
             $ScheduledTask{$_}->{Schedule} = $sched;
             $nextrun = timestring($nextrun);
@@ -63786,6 +63809,7 @@ sub addSched {
     my $c = 1;
     while (exists $ScheduledTask{$c}) {$c++;}
     $ScheduledTask{$c} = &share({});
+    lock $ScheduledTask{$c};
     eval{$ScheduledTask{$c}->{Nextrun} = $nextrun;};
     $ScheduledTask{$c}->{Schedule} = $sched;
     $ScheduledTask{$c}->{Run} = $run;
@@ -70313,10 +70337,26 @@ sub ThreadMaintMain2 {
 
     if (! $allIdle && scalar keys %ScheduledTask) {
         foreach my $task (sort keys %ScheduledTask) {
-            next if (eval{$ScheduledTask{$task}->{Nextrun} >= time;});
+            my ($run,$parm,$nextrun);
+            {
+                lock $ScheduledTask{$task};
+                $run = $ScheduledTask{$task}->{Run};
+                $parm = $ScheduledTask{$task}->{Parm};
+                $nextrun = $ScheduledTask{$task}->{Nextrun};
+            }
+            next if ($nextrun >= time);
             $wasrun = 1;
-            $ScheduledTask{$task}->{Run}->($ScheduledTask{$task}->{Parm});
+            if ($run) {
+                eval{$run->($parm);};
+                mlog(0,"error: error executing scheduled task $ScheduledTask{$task}->{Desc} ($task) - Run ($ScheduledTask{$task}->{Run}) with parameters ($ScheduledTask{$task}->{Parm}) - $@)") if $@;
+            } else {
+                mlog(0,"error: scheduled task $ScheduledTask{$task}->{Desc} ($task) with parameters ($ScheduledTask{$task}->{Parm}) has no execution parameter (Run) - this schedule is ignored and removed");
+                delete $ScheduledTask{$task};
+                &ThreadYield();
+                next;
+            }
             &ThreadYield();
+            lock $ScheduledTask{$task};
             my $nextsched = getNextSched($ScheduledTask{$task}->{Schedule},$ScheduledTask{$task}->{Desc});
             if ($nextsched >= time) {
                 $ScheduledTask{$task}->{Nextrun} = $nextsched;
@@ -70325,6 +70365,7 @@ sub ThreadMaintMain2 {
             } else {
                 delete $ScheduledTask{$task};
                 mlog(0,"error: removed scheduled task : $ScheduledTask{$task}->{Desc} - to : $ScheduledTask{$task}->{Parm} - at : $ScheduledTask{$task}->{Schedule} - calculated schedule is in the past");
+                next;
             }
         }
         $lastd{$Iam} = $l;
