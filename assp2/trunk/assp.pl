@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18137';        # 17.05.2018 TE
+$build   = '18138';        # 18.05.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -580,7 +580,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '4413B2543A3AF3A06471B854FB7FA5108BE2CF55'; }
+sub __cs { $codeSignature = '8E7694E84C522ECCEDB836B0DACA4D9923631647'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -63798,7 +63798,7 @@ sub addSched {
             && $ScheduledTask{$_}->{Parm} eq $parm
             && $ScheduledTask{$_}->{Desc} eq $desc)
         {
-            lock $ScheduledTask{$_};
+            lock %ScheduledTask if is_shared(%ScheduledTask);
             eval{$ScheduledTask{$_}->{Nextrun} = $nextrun;};
             $ScheduledTask{$_}->{Schedule} = $sched;
             $nextrun = timestring($nextrun);
@@ -63807,9 +63807,9 @@ sub addSched {
         }
     }
     my $c = 1;
+    lock %ScheduledTask if is_shared(%ScheduledTask);
     while (exists $ScheduledTask{$c}) {$c++;}
     $ScheduledTask{$c} = &share({});
-    lock $ScheduledTask{$c};
     eval{$ScheduledTask{$c}->{Nextrun} = $nextrun;};
     $ScheduledTask{$c}->{Schedule} = $sched;
     $ScheduledTask{$c}->{Run} = $run;
@@ -70339,7 +70339,7 @@ sub ThreadMaintMain2 {
         foreach my $task (sort keys %ScheduledTask) {
             my ($run,$parm,$nextrun);
             {
-                lock $ScheduledTask{$task};
+                lock %ScheduledTask if is_shared(%ScheduledTask);
                 $run = $ScheduledTask{$task}->{Run};
                 $parm = $ScheduledTask{$task}->{Parm};
                 $nextrun = $ScheduledTask{$task}->{Nextrun};
@@ -70356,7 +70356,7 @@ sub ThreadMaintMain2 {
                 next;
             }
             &ThreadYield();
-            lock $ScheduledTask{$task};
+            lock %ScheduledTask;
             my $nextsched = getNextSched($ScheduledTask{$task}->{Schedule},$ScheduledTask{$task}->{Desc});
             if ($nextsched >= time) {
                 $ScheduledTask{$task}->{Nextrun} = $nextsched;
