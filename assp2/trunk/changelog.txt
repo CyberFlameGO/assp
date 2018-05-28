@@ -1,5 +1,35 @@
+2018-05-29
+fixed in assp 2.6.2 *Fortress* build 18148:
+
+
+changed:
+
+- admins are now able to remove global and domain based entries from whitelist using the emailinterface
+  admins are now able to delete global and domain based database records from the whitelistdb using the emailinterface
+  admins are now able to delete global and domain based database records from the whitelistdb using the webinterface (GUI)
+
+'EmailWhitelistRemove','Remove from Whitelist Address'
+  'Any mail sent by local/authenticated users to this username will be interpreted as a request to remove addresses from the whitelist. Do not put the full address here, just the user part.
+  For example: asspnotwhite
+  
+  EmailAdmins and EmailAdminReportsTo are able to force global or domain based removal and deletion requests as well as removal and deletion requests for other users - like:
+  
+  sender@domain.org,*
+  sender@domain.org,@localdomain.org
+  sender@domain.org,otheruser@localdomain.org
+  
+  Per default a removal request is processed. To delete records from whitelistdb, write "delete" (unquoted) into the subject of the report mail.
+  NOTICE: removing whitelist entries will mark the records as NOT whitelisted!
+  NOTICE: deleting whitelist entries will DELETE ALL related records! For example: an emailaddress is globaly whitelisted but markted as not whitelisted for a specific domain.
+  Now if you DELETE the domain based record, all domain related records will be deleted - but because of the global whitelisting,
+  all emailaddresses from this domain are now treated as whitelisted!
+
+
+
+
+
 2018-05-17
-fixed in assp 2.6.1 *Fortress* build 18137:
+fixed in assp 2.6.2 *Fortress* build 18137:
 
 - ASSP_RSSSelectCode was not encrypted
 
@@ -10,7 +40,7 @@ fixed in assp 2.6.1 *Fortress* build 18137:
 
 
 2018-05-11
-fixed in assp 2.6.1 *Fortress* build 18131:
+fixed in assp 2.6.2 *Fortress* build 18131:
 
 - the service ID was not shown correctly in the GUI on nix systems
 

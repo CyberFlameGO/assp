@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18138';        # 18.05.2018 TE
+$build   = '18148';        # 28.05.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -483,6 +483,8 @@ our $AllowCodeInRegex = 0;               # (0/1) allow the usage of executable p
 
 our $trustedFWSF = 'mx.sourceforge.net,lists.sourceforge.net';   # comma separed list of host1,helo1,host2,helo2,.... for an exact host match in the first line of an X-Spam-Report: spamassassin header!
 
+our $consolidateWhitelList = 1;          # (0/1) consolidate the whitelistdb - removes unneeded entries
+
 $BayesDomainPrior ||= 1;
 $BayesPrivatPrior ||= 1;
 
@@ -580,7 +582,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '8E7694E84C522ECCEDB836B0DACA4D9923631647'; }
+sub __cs { $codeSignature = '5222DC68C627BDBB94544E1F6C2655767F566AA2'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -2346,7 +2348,8 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   (0) global &amp; private - this email address is automatically whitelisted for all other local users<br />
   (1) domain &amp; private - this email address is automatically whitelisted for all other local users in the same local domain<br />
   (2) private only - this email address is only whitelisted for this single local user<br /><br />
-  (0-1) unless another user has removed this email address from his whitelist. Default is zero, which is the legacy setting.<br />
+  (0-1) unless another user has removed this email address from his whitelist.<br />
+  Default setting is zero, which is the legacy setting.<br />
   NOTICE: independent from this setting, the whitelistdb is filled with all three entries (global,domain,private), to make it possible to change this value.',undef,undef,'msg009740','msg009741'],
 ['MaxWhitelistDays','Max Whitelist/Personal Black Days',5,\&textinput,'365','(\d+)',undef,'This is the number of days an address will be kept on the whitelist and personal blacklist without any email to/from this address. Set it to 0 to keep the entries infinity.',undef,undef,'msg000960','msg000961'],
 ['WhitelistOnly','Reject All But Whitelisted Mail',0,\&checkbox,'','(.*)',undef,'Check this if you don\'t want Bayesian filtering and want to reject all mail from anyone not whitelisted. To do this related to local user addresses, use InternalAndWhiteAddresses and switch this option off.',undef,undef,'msg000970','msg000971'],
@@ -3747,7 +3750,16 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   If an address is added to whitelist, it will be removed from the Personal Blacklist of the sending user.','Basic',undef,'msg005330','msg005331'],
 ['EmailWhitelistRemove','Remove from Whitelist Address',20,\&textinput,'asspnotwhite','(.*)@?',undef,
   'Any mail sent by local/authenticated users to this username will be interpreted as a request to remove addresses from the whitelist. Do not put the full address here, just the user part. <br />
-  For example: asspnotwhite','Basic',undef,'msg005340','msg005341'],
+  For example: asspnotwhite<br /><br />
+  EmailAdmins and EmailAdminReportsTo are able to force global or domain based removal and deletion requests as well as removal and deletion requests for other users - like:<br /><br />
+  sender@domain.org,*<br />
+  sender@domain.org,@localdomain.org<br />
+  sender@domain.org,otheruser@localdomain.org<br /><br />
+  Per default a removal request is processed. To delete records from whitelistdb, write "delete" (unquoted) into the subject of the report mail.<br />
+  <b>NOTICE: removing whitelist entries will mark the records as NOT whitelisted!</b><br />
+  <p class="warning">
+  NOTICE: deleting whitelist entries will DELETE ALL related records! For example: an emailaddress is globaly whitelisted but markted as not whitelisted for a specific domain.
+  Now if you DELETE the domain based record, all domain related records will be deleted - but because of the global whitelisting, all emailaddresses from this domain are now treated as whitelisted!</p>','Basic',undef,'msg005340','msg005341'],
 ['EmailWhitelistReply','Reply to Add to/Remove from Whitelist','0:NO REPLY|1:REPLY TO SENDER|2:REPLY TO EmailWhitelistTo|3:REPLY TO BOTH',\&listbox,1,'(\d*)',undef,
   '',undef,undef,'msg005350','msg005351'],
 ['EmailWhitelistTo','Send Copy of Whitelist-Reports TO',40,\&textinput,'','('.$EmailAdrRe.'\@'.$EmailDomainRe.')?',undef,
@@ -7354,6 +7366,7 @@ our $BDBEnvLock:shared;
 our $BayesCont =  '\S';
 our $ClearSSLContext;
 our $ConfigChanged:shared;
+our $ConsolidateWhitelistSched:shared = 3; # every 3 days
 our $DBOption;
 our $DBcntOption:shared ;
 our $DBhostTag = 'host';
@@ -7423,6 +7436,7 @@ our $TransferInterrupt = 0;
 our $TransferInterruptTime = 0;
 our $TransferNoInterruptTime = 0;
 our $TriedDBFileUse;
+our $WhitelistPrivacyLevelValue:shared;
 our $addCharsets = 0;
 our $allowPOP3:shared = 0;
 our $asspCFGTime:shared;
@@ -7518,7 +7532,7 @@ our $nextMemoryUsageCheckSchedule:shared;
 our $nextNewReported = time + [split(/\s+/o,$newReportedInterval)]->[1] * 60;
 our $nextOptionCheck:shared;
 our $nextQueueSchedule:shared;
-our $nextRepairWhitelist:shared = time + 3600 * 24 * 7;
+our $nextConsolidateWhitelist:shared;
 our $nextSigCountCheck = time + 600;
 our $nextStatsUpload:shared;
 our $nextThreadMain2;
@@ -7809,22 +7823,24 @@ our $DoHeloNPw;
 our $setpro = 1;
 #
 
-$ScheduleMap{'backupDBInterval'}       = &share([]); @{$ScheduleMap{'backupDBInterval'}}       = (3600,'nextDBBackup');
-$ScheduleMap{'BlockReportSchedule'}    = &share([]); @{$ScheduleMap{'BlockReportSchedule'}}    = (24 * 3600,'nextBlockReportSchedule');
-$ScheduleMap{'CleanCacheEvery'}        = &share([]); @{$ScheduleMap{'CleanCacheEvery'}}        = (3600,'nextCleanCache');
-$ScheduleMap{'CleanDelayDBInterval'}   = &share([]); @{$ScheduleMap{'CleanDelayDBInterval'}}   = (   1,'nextCleanDelayDB');
-$ScheduleMap{'CleanPBInterval'}        = &share([]); @{$ScheduleMap{'CleanPBInterval'}}        = (3600,'nextCleanPB');
-$ScheduleMap{'exportInterval'}         = &share([]); @{$ScheduleMap{'exportInterval'}}         = (3600,'nextExport');
-$ScheduleMap{'GroupsReloadEvery'}      = &share([]); @{$ScheduleMap{'GroupsReloadEvery'}}      = (  60,'NextGroupsReload');
-$ScheduleMap{'LDAPcrossCheckInterval'} = &share([]); @{$ScheduleMap{'LDAPcrossCheckInterval'}} = (3600,'nextLDAPcrossCheck');
-$ScheduleMap{'MaxFileAgeSchedule'}     = &share([]); @{$ScheduleMap{'MaxFileAgeSchedule'}}     = (24 * 3600,'nextFileAgeSchedule');
-$ScheduleMap{'MaxLogAgeSchedule'}      = &share([]); @{$ScheduleMap{'MaxLogAgeSchedule'}}      = (24 * 3600,'nextLogAgeSchedule');
-$ScheduleMap{'POP3Interval'}           = &share([]); @{$ScheduleMap{'POP3Interval'}}           = (  60,'NextPOP3Collect');
-$ScheduleMap{'QueueSchedule'}          = &share([]); @{$ScheduleMap{'QueueSchedule'}}          = (24 * 3600,'nextQueueSchedule');
-$ScheduleMap{'ReloadOptionFiles'}      = &share([]); @{$ScheduleMap{'ReloadOptionFiles'}}      = (   1,'nextOptionCheck',1,'nextHashFileCheck');
-$ScheduleMap{'SaveStatsEvery'}         = &share([]); @{$ScheduleMap{'SaveStatsEvery'}}         = (  60,'NextSaveStats');
-$ScheduleMap{'UpdateWhitelist'}        = &share([]); @{$ScheduleMap{'UpdateWhitelist'}}        = (   1,'saveWhite');
-$ScheduleMap{'MemoryUsageCheckSchedule'} = &share([]); @{$ScheduleMap{'MemoryUsageCheckSchedule'}} = (   1,'nextMemoryUsageCheckSchedule');
+# each ScheduleMap key nedds the related gloval variable to be decleared !
+$ScheduleMap{'backupDBInterval'}          = &share([]); @{$ScheduleMap{'backupDBInterval'}}          = (3600,'nextDBBackup');
+$ScheduleMap{'BlockReportSchedule'}       = &share([]); @{$ScheduleMap{'BlockReportSchedule'}}       = (24 * 3600,'nextBlockReportSchedule');
+$ScheduleMap{'CleanCacheEvery'}           = &share([]); @{$ScheduleMap{'CleanCacheEvery'}}           = (3600,'nextCleanCache');
+$ScheduleMap{'CleanDelayDBInterval'}      = &share([]); @{$ScheduleMap{'CleanDelayDBInterval'}}      = (   1,'nextCleanDelayDB');
+$ScheduleMap{'CleanPBInterval'}           = &share([]); @{$ScheduleMap{'CleanPBInterval'}}           = (3600,'nextCleanPB');
+$ScheduleMap{'exportInterval'}            = &share([]); @{$ScheduleMap{'exportInterval'}}            = (3600,'nextExport');
+$ScheduleMap{'GroupsReloadEvery'}         = &share([]); @{$ScheduleMap{'GroupsReloadEvery'}}         = (  60,'NextGroupsReload');
+$ScheduleMap{'LDAPcrossCheckInterval'}    = &share([]); @{$ScheduleMap{'LDAPcrossCheckInterval'}}    = (3600,'nextLDAPcrossCheck');
+$ScheduleMap{'MaxFileAgeSchedule'}        = &share([]); @{$ScheduleMap{'MaxFileAgeSchedule'}}        = (24 * 3600,'nextFileAgeSchedule');
+$ScheduleMap{'MaxLogAgeSchedule'}         = &share([]); @{$ScheduleMap{'MaxLogAgeSchedule'}}         = (24 * 3600,'nextLogAgeSchedule');
+$ScheduleMap{'POP3Interval'}              = &share([]); @{$ScheduleMap{'POP3Interval'}}              = (  60,'NextPOP3Collect');
+$ScheduleMap{'QueueSchedule'}             = &share([]); @{$ScheduleMap{'QueueSchedule'}}             = (24 * 3600,'nextQueueSchedule');
+$ScheduleMap{'ReloadOptionFiles'}         = &share([]); @{$ScheduleMap{'ReloadOptionFiles'}}         = (   1,'nextOptionCheck',1,'nextHashFileCheck');
+$ScheduleMap{'SaveStatsEvery'}            = &share([]); @{$ScheduleMap{'SaveStatsEvery'}}            = (  60,'NextSaveStats');
+$ScheduleMap{'UpdateWhitelist'}           = &share([]); @{$ScheduleMap{'UpdateWhitelist'}}           = (   1,'saveWhite');
+$ScheduleMap{'MemoryUsageCheckSchedule'}  = &share([]); @{$ScheduleMap{'MemoryUsageCheckSchedule'}}  = (   1,'nextMemoryUsageCheckSchedule');
+$ScheduleMap{'ConsolidateWhitelistSched'} = &share([]); @{$ScheduleMap{'ConsolidateWhitelistSched'}} = (3600 * 24,'nextConsolidateWhitelist');
 
 %ReportFiles = (
     'EmailSpam' => 'reports/spamreport.txt',
@@ -8019,6 +8035,7 @@ $SIG{PIPE} = 'IGNORE';
 #    mlog(0,"SIG $k = $SIG{$k}");
 #}
 &niceConfigPos();
+&niceConfig();
 &changeConfigDescription();
 &renderConfigHTML();
 $lastTimeoutCheck = time;
@@ -11006,12 +11023,14 @@ sub niceConfig {
                    $ConfigDefault{$c->[0]} = $d if ( $ConfigDefault{$c->[0]} eq $v );
                    $ConfigListBox{$c->[0]} = $d if ( $value eq $v );
                    $ConfigListBoxAll{$c->[0]}{$v} = $d;
+                   $WhitelistPrivacyLevelValue = $d if $c->[0] eq 'WhitelistPrivacyLevel' && $value eq $v;
              }
          } elsif ($c->[3] == \&checkbox) {
                    $ConfigDefault{$c->[0]} = $ConfigDefault{$c->[0]} ? 'On' : 'Off';
                    $ConfigListBox{$c->[0]} = $value ? 'On' : 'Off';
          } else {
              $ConfigDefault{$c->[0]} = '&nbsp;' unless $ConfigDefault{$c->[0]};
+             $value = 'ENCRYPTED' if exists $cryptConfigVars{$c->[0]} or $c->[0] eq 'webAdminPassword' or $c->[3] == \&passnoinput or $c->[3] == \&passinput;
              $ConfigListBox{$c->[0]} = $value;
          }
     }
@@ -11198,9 +11217,13 @@ contribute to the whitelist, and who are not considered local, even if their mai
 from a local computer. For example, if someone goes on a vacation and turns on their
 email's autoresponder, put them on the redlist until they return. Then as they reply
 to every spam they receive they won't corrupt your non-spam collection or whitelist.<br />
-To add or remove global whitelist entries use emailaddress,* .<br />
-To add or remove domain whitelist entries use emailaddress,\@domain .<br />
-<b>NOTICE: removing global or domain whitelist entries will DELETE ALL related personal records!</b>
+To add global whitelist entries use emailaddress .<br />
+To remove or delete global whitelist entries use emailaddress,* .<br />
+To add, remove or delete domain whitelist entries use emailaddress,\@domain .<br /><br />
+<b>NOTICE: removing whitelist entries will mark the records as NOT whitelisted!</b><br />
+<p class="warning">
+NOTICE: deleting whitelist entries will DELETE ALL related records! For example: an emailaddress is globaly whitelisted but markted as not whitelisted for a specific domain.
+Now if you DELETE the domain based record, all domain related records will be deleted - but because of the global whitelisting, all emailaddresses from this domain are now treated as whitelisted!</p>
 EOT
 
 $lngmsg{'msg500034'} = <<EOT;
@@ -17716,26 +17739,30 @@ sub Whitelist {
     $to =~ s/^,//o;
     my $toDomain;
     $toDomain = $1 if $to =~ /(\@$EmailDomainRe)$/o;
-    $to = undef if $to =~ /^\@$EmailDomainRe$/o;
+    $to = undef if $to =~ /^\*?\@$EmailDomainRe$/o;
     $action = lc $action;
-    my $globWhite = $WhitelistPrivacyLevel&&defined${chr(ord(",")<< 1)}?($toDomain&&defined${chr(ord(",")<< 1)}?($WhitelistPrivacyLevel==2?undef:$Whitelist{"$mf,$toDomain"}):undef):$Whitelist{$mf};
-    my $persWhite = $to?$Whitelist{"$mf,$to"}:undef;
+    my $globWhite = $WhitelistPrivacyLevel ? ( $toDomain ? ( $WhitelistPrivacyLevel == 2 ? undef
+                                                                                         : $Whitelist{"$mf,$toDomain"})
+                                                         : undef )
+                                           : $Whitelist{$mf};
+    my $persWhite = $to ? $Whitelist{"$mf,$to"} : undef;
     my $time = time;
-    if (! $action) {                  # is there any Whitelist entry
+    if (! $action) {                  # is there any Whitelist entry ?
         return 0 if $persWhite > 9999999999;       # a deleted personal
-        return ($persWhite or $globWhite) ? 1 : 0;      # a personal or global
+        return 1 if $persWhite;                    # personal white
+        return 0 if $globWhite > 9999999999;       # a deleted domain or global
+        return $globWhite ? 1 : 0;                 # a domain or global or NOT
     } elsif ($action eq 'add') {
         if ($to) {$Whitelist{"$mf,$to"} = $time; push @WhitelistResult, "$mf,$to added to Whitelist<br />";};
         if ($toDomain) {$Whitelist{"$mf,$toDomain"} = $time ; push @WhitelistResult, "$mf,$toDomain added to Whitelist<br />";};
         $Whitelist{$mf} = $time;
         push @WhitelistResult, "$mf added to Whitelist<br />";
         return;
-    } elsif ($action eq 'delete') {
+    } elsif ($action eq 'delete') {     # delete the requested records from the whitelistdb
         if ($to) {
-            push @WhitelistResult, "$mf,$to removed from Whitelist<br />" if $Whitelist{"$mf,$to"} < 9999999999;
-            $Whitelist{"$mf,$to"} = $time + 9999999999;  # delete the personal
+            push @WhitelistResult, "$mf,$to deleted from Whitelist<br />" if delete $Whitelist{"$mf,$to"};
         } elsif ($toDomain) {
-            push @WhitelistResult, "$mf,$toDomain removed from Whitelist<br />" if delete $Whitelist{"$mf,$toDomain"};
+            push @WhitelistResult, "$mf,$toDomain deleted from Whitelist<br />" if delete $Whitelist{"$mf,$toDomain"};
             ThreadMonitorMainLoop("delete Whitelist $mf,\*$toDomain");
             if ($DoSQL_LIKE && "$WhitelistObject" =~ /Tie\:\:RDBM/o) {
 #                $toDomain =~ s/([_%])/:$1/go;
@@ -17749,7 +17776,7 @@ sub Whitelist {
                 my $i;
                 while (my ($k,$v) = each(%Whitelist)) {      # and not already removed personal
                     if ($k =~ /^\Q$mf\E,$EmailAdrRe\Q$toDomain\E$/) {
-                        push @WhitelistResult, "k removed from Whitelist<br />" if delete $Whitelist{$k}; # $Whitelist{$k} < 9999999999 ???
+                        push @WhitelistResult, "k deleted from Whitelist<br />" if delete $Whitelist{$k}; # $Whitelist{$k} < 9999999999 ???
                     }
                     unless (++$i % 1000) {
                         ThreadMonitorMainLoop("delete Whitelist $mf,\*$toDomain");
@@ -17758,7 +17785,7 @@ sub Whitelist {
                 }
             }
         } else {
-            push @WhitelistResult, "$mf removed from Whitelist<br />" if delete $Whitelist{$mf}; # delete the global entry;
+            push @WhitelistResult, "$mf deleted from Whitelist<br />" if delete $Whitelist{$mf}; # delete the global entry;
             ThreadMonitorMainLoop("delete Whitelist $mf,*");
             if ($DoSQL_LIKE && "$WhitelistObject" =~ /Tie\:\:RDBM/o) {
 #                $mf =~ s/([_%])/:$1/go;
@@ -17771,7 +17798,7 @@ sub Whitelist {
                 my $i;
                 while (my ($k,$v) = each(%Whitelist)) {      # and not already removed personal
                     if ($k =~ /^\Q$mf\E,/) {
-                        push @WhitelistResult, "$k removed from Whitelist<br />" if delete $Whitelist{$k}; # $Whitelist{$k} < 9999999999 ???
+                        push @WhitelistResult, "$k deleted from Whitelist<br />" if delete $Whitelist{$k}; # $Whitelist{$k} < 9999999999 ???
                     }
                     unless (++$i % 1000) {
                         ThreadMonitorMainLoop("delete Whitelist $mf,*");
@@ -17780,31 +17807,56 @@ sub Whitelist {
                 }
             }
         }
+    } elsif ($action eq 'remove') {    # set the requested records to NOT whitelisted
+        $time += 9999999999;
+        if ($to) {
+            push @WhitelistResult, "$mf,$to removed from Whitelist<br />" if $Whitelist{"$mf,$to"} < 9999999999;
+            $Whitelist{"$mf,$to"} = $time;  # remove the personal
+        } elsif ($toDomain) {
+            push @WhitelistResult, "$mf,$toDomain removed from Whitelist<br />" if $Whitelist{"$mf,$toDomain"} < 9999999999;
+            $Whitelist{"$mf,$toDomain"} = $time;  # remove the domain
+        } else {
+            push @WhitelistResult, "$mf removed from Whitelist<br />" if $Whitelist{$mf} < 9999999999; # delete the global entry;
+            $Whitelist{$mf} = $time;  # remove the global
+        }
+    } else {
+        mlog(0,"error: unknown action '$action' in sub WhiteList - please report to development");
     }
 }
 
 # remove entries from whitelistdb, if they are made only by bounce addresses
-sub RepairWhitelist {
-  d('RepairWhitelist');
+sub ConsolidateWhitelist {
+  d('ConsolidateWhitelist');
+  if (! $consolidateWhitelList) {
+      &SaveWhitelistOnly();
+      ScheduleMapSet('ConsolidateWhitelistSched');
+      return;
+  }
   my $savenoDBCache = $noDBCache; $noDBCache = 1;
   &ThreadMaintMain2() if $WorkerNumber == 10000;
-  mlog(0,"repair whitelist database ...") if $MaintenanceLog;
+  mlog(0,"consolidate whitelist database ...") if $MaintenanceLog;
   my $keys_before = my $keys_deleted = 0;
   my (%todelete, %tokeep);
   while (my ($k,$v)=each(%Whitelist)) {
       &ThreadMaintMain2() if $WorkerNumber == 10000 && ! $keys_before % 100;
       $keys_before++;
       $v = 0 unless $v;
-      next if $v < 1000000000;   # special time - is never removed
       my ($to,$from) = split(/,/o,$k);
-      next if (! $from || $from =~ /^\@$EmailDomainRe$/o);   # ignore a global or domain entry here
-      if ($from =~ /$BSRE/) {
+      if ($v < 1000000000) {
+          $tokeep{$to} = 1;
+          next;   # special time - is never removed
+      }
+      if ($from && $from !~ /^\@$EmailDomainRe$/o && $from =~ /$BSRE/) {
           $todelete{$to} = 1;     # mark address for deletion
           delete $Whitelist{$k};  # delete this entry, it is related to a bounce addresses
           $keys_deleted++;
-          mlog(0,"Admininfo: $k removed from whitelistdb - entry is related to a bounce address") if $MaintenanceLog >= 2;
+          mlog(0,"Admininfo: $k deleted from whitelistdb - entry is related to a bounce address") if $MaintenanceLog >= 2;
       } else {
-          $tokeep{$to} = 1 if $v <= 9999999999;       # keep all others they are not personal removed
+          if ($v <= 9999999999) {
+              $tokeep{$to} = 1;       # keep all others they are not personal removed
+          } else {
+              $todelete{$to} = 1;     # mark address for deletion
+          }
       }
   }
   while (my ($k,$v)=each(%tokeep)) {
@@ -17812,17 +17864,18 @@ sub RepairWhitelist {
   }
   $keys_before = 0;
   while (my ($k,$v)=each(%Whitelist)) {
-      &ThreadMaintMain2() if $WorkerNumber == 10000 && ! $keys_before % 100;
+      &ThreadMaintMain2() if $WorkerNumber == 10000 && ! $keys_before % 1000;
       $keys_before++;
       my ($to,$from) = split(/,/o,$k);
       if (exists $todelete{$to}) {  # delete remaining global and domain entries
           delete $Whitelist{$k};
           $keys_deleted++;
-          mlog(0,"Admininfo: $k removed from whitelistdb - entry was made from bounce address") if $MaintenanceLog >= 2;
+          mlog(0,"Admininfo: $k deleted from whitelistdb") if $MaintenanceLog >= 2;
       }
   }
-  mlog(0,"repair whitelist database finished: keys before=$keys_before, deleted=$keys_deleted") if $keys_before && $MaintenanceLog;
+  mlog(0,"consolidate whitelist database finished: keys before=$keys_before, deleted=$keys_deleted") if $keys_before && $MaintenanceLog;
   &SaveWhitelistOnly();
+  ScheduleMapSet('ConsolidateWhitelistSched');
   $noDBCache = $savenoDBCache;
 }
 
@@ -17831,12 +17884,12 @@ sub CleanWhitelist {
   return if $doShutdown > 0 || $doShutdownForce;
   my $savenoDBCache = $noDBCache; $noDBCache = 1;
   &ThreadMaintMain2() if $WorkerNumber == 10000;
-  mlog(0,"cleaning up whitelist database ...") if $MaintenanceLog;
   my $t=time;
   my %global;
   my $keys_before = my $keys_deleted = 0;
   my $maxtime = $MaxWhitelistDays * 3600 * 24;
   if ($MaxWhitelistDays) {
+      mlog(0,"cleaning up whitelist database ...") if $MaintenanceLog;
       while (my ($k,$v)=each(%Whitelist)) {
         &ThreadMaintMain2() if $WorkerNumber == 10000 && ! $keys_before % 100;
         last if $doShutdown > 0 || $doShutdownForce;
@@ -17869,7 +17922,7 @@ sub CleanWhitelist {
       }
       mlog(0,"cleaning whitelist database finished: keys before=$keys_before, deleted=$keys_deleted") if $keys_before && $MaintenanceLog;
   }
-  &SaveWhitelistOnly();
+  &ConsolidateWhitelist();
   $noDBCache = $savenoDBCache;
 }
 
@@ -20383,6 +20436,7 @@ sub SNMPload_1 {
     $subOID{'.1.20.31.0'} = [\&timestring,\$$nextFileAgeSchedule,'',''];
     $subOID{'.1.20.32.0'} = [\&timestring,\$nextQueueSchedule,'',''];
     $subOID{'.1.20.33.0'} = [\&timestring,\$nextMemoryUsageCheckSchedule,'',''];
+    $subOID{'.1.20.34.0'} = [\&timestring,\$nextConsolidateWhitelist,'',''];
 
     mlog(0,"info: SNMP read application OIDs .1.0 - .1.36") if $SNMPLog == 3;
     &SNMPload_1_30();
@@ -26046,7 +26100,7 @@ sub getline {
                 $this->{whitelisted} = '';
                 my $mf = batv_remove_tag(0,lc $this->{mailfrom},'');
                 if ( &Whitelist($mf,"$u$h") ) {
-            		&Whitelist($mf,"$u$h",'delete');
+            		&Whitelist($mf,"$u$h",'remove');
             		mlog( $fh, "penalty trap: whitelist deletion: $this->{mailfrom}" );
                 }
                 RWLCacheAdd( $this->{ip}, 4 );  # fake RWL none
@@ -28012,7 +28066,7 @@ sub headerAddrCheckOK_Run {
                         $this->{whitelisted} = '';
                         my $mf = batv_remove_tag(0,lc $this->{mailfrom},'');
                         if ( &Whitelist($mf,$addr) ) {
-                    		&Whitelist($mf,$addr,'delete');
+                    		&Whitelist($mf,$addr,'remove');
                     		mlog( $fh, "penalty trap: whitelist deletion: $this->{mailfrom}" );
                         }
                         RWLCacheAdd( $this->{ip}, 4 );  # fake RWL none
@@ -39080,6 +39134,8 @@ sub ListReportBody {
         fixCRLF(\$this->{header});
         $this->{header} =~ s/^(?:\x0D\x0A)+//o;
 
+        makeSubject($fh);
+
         if ($EmailForwardReportedTo && ($this->{reportaddr} eq 'EmailSpam' || $this->{reportaddr} eq 'EmailHam')) {
             if (defined${chr(ord(",")<< 1)} && &forwardHamSpamReport($fh)) {
                 stateReset($fh);
@@ -39208,7 +39264,7 @@ sub ListReportGetAddr {
         next if ($addr =~ /^\Q$this->{mailfrom}\E(?:,\*)?$/i);
         next if ($addr =~ /=>/o && $this->{reportaddr} !~ /^EmailSpamLover/o);
         $addr =~ s/=>.*$//o if $this->{reportaddr} ne 'EmailSpamLoverAdd';
-        next if ($addr =~ /\*/o && $this->{reportaddr} !~ /^EmailPersBlack/o);
+        next if ($addr =~ /\*/o && $this->{reportaddr} !~ /^(?:EmailPersBlack|EmailWhitelistRemove)/o);
         my ($u) = $addr =~ /^([^\@]+\@)/o;
 		$u = lc $u;
         next if    ! $u
@@ -39246,13 +39302,14 @@ sub ListReportExec {
     my $ea = ${$this->{reportaddr}} .'@';
 
     return unless $ad =~ s/((?:$EmailAdrRe|\*)\@)((?:\*|\*\.)?$EmailDomainRe)\s*(,(?:\*|\@$EmailDomainRe)|=>\s*\d+(?:\.\d+)?)?/$1$2/o;     #addr@dom,[*][@domain] for global removal of whitelist
-    my $global; my $globalstr; my $splw;
-    my $localmail = localmail($2);
+    my ($global, $globalstr, $splw, $whiteglobalstr);
     $globalstr = $3;
+    my $localmail = localmail($2);
     if (substr($globalstr,0,2) =~ /,[\*\@]/o) {$global = 1;};
     return if substr($globalstr,0,2) eq '=>' && $this->{reportaddr} ne 'EmailSpamLoverAdd';
     $splw = $globalstr if substr($globalstr,0,2) eq '=>' && $this->{reportaddr} eq 'EmailSpamLoverAdd';
     $splw =~ s/\s//go;
+    $whiteglobalstr = $globalstr if $this->{reportaddr} eq 'EmailWhitelistRemove';
     $globalstr = '' unless $global;
     $localmail = undef if ($this->{reportaddr} =~ /^EmailPersBlack/o && $ad =~ /^reportpersblack\@/io);
     return if ($ad =~ /\*/o && $this->{reportaddr} !~ /^EmailPersBlack/o);
@@ -39310,7 +39367,12 @@ sub ListReportExec {
         matchSL( $this->{mailfrom}, 'EmailAdmins' )
           or lc $this->{mailfrom} eq lc $EmailAdminReportsTo
     );
-    $global = 0 unless $isadmin;
+    $whiteglobalstr =~ s/^\s*,\s*//o;
+    if (! $isadmin) {
+        $this->{report} .=  "You are not allowed to remove global or domain based whitelist entries (like $whiteglobalstr) - contact your email adminstrator for support!\n\n" if $whiteglobalstr;
+        $global = 0;
+        $whiteglobalstr = '';
+    }
     
     if ( $EmailErrorsModifyWhite == 2 && ($this->{reportaddr} eq 'EmailSpam' || $this->{reportaddr} eq 'EmailHam') ) {
         ShowWhiteReport( $ad, $this );
@@ -39330,24 +39392,48 @@ sub ListReportExec {
             $ad = $this->{mailfrom} if $list eq $redlist;
         }
 
-        if ( ($list eq 'Redlist' && $list->{ lc $ad }) || ($list eq 'Whitelist' && &Whitelist($ad,$this->{mailfrom},''))) {
-
-            ($list eq 'Redlist') ? delete $list->{ lc $ad } : &Whitelist($ad,$this->{mailfrom},'delete');
+        if (   ($list eq 'Redlist' && $list->{ lc $ad })
+            || ($list eq 'Whitelist' && &Whitelist($ad,$this->{mailfrom},''))
+            || ($list eq 'Whitelist' && $whiteglobalstr eq ',*' && &Whitelist($ad))
+            || ($list eq 'Whitelist' && $whiteglobalstr && &Whitelist($ad,$whiteglobalstr,''))
+           )
+        {
+            @WhitelistResult = ();
+            my $action = 'remove';
+            $action = 'delete' if $this->{subject3} =~ /^\s*delete(?:\s+|$)/io && $isadmin;
+            if ($list eq 'Redlist') {
+                delete $list->{ lc $ad };
+            } elsif (! $whiteglobalstr) {
+                &Whitelist($ad,$this->{mailfrom},$action);
+            }
             my @wout;
             if ($list eq 'Whitelist') {
                 @wout = @WhitelistResult;
-                $globalstr =~ s/^,//o;
-                if ($globalstr) {
-                    &Whitelist($ad,$globalstr,'delete');
-                    push @wout, @WhitelistResult;
+                if ($whiteglobalstr) {     # implicit isadmin
+                    if ($whiteglobalstr eq '*') {
+                        $this->{report} .= "$ad: global whitelist $action request from $this->{mailfrom}\n\n";
+                        &Whitelist($ad,'',$action);
+                        push @wout, @WhitelistResult;
+                    } elsif ($whiteglobalstr =~ /^\*?\@$EmailDomainRe$/) {
+                        $this->{report} .= "$ad: domain whitelist $action request from $this->{mailfrom} for domain $whiteglobalstr\n\n";
+                        &Whitelist($ad,$whiteglobalstr,$action);
+                        push @wout, @WhitelistResult;
+                    } else {
+                        $this->{report} .= "$ad: whitelist $action request from $this->{mailfrom} for $ad,$whiteglobalstr\n\n";
+                        &Whitelist($ad,$whiteglobalstr,$action);
+                        push @wout, @WhitelistResult;
+                    }
                 }
-                @wout = map {my $t=$_;$t=~s/<br \/>/\n/o;$t} @wout;
-                map {
-                        if ($this->{report} !~ /\Q$_\E/) {
-                            $this->{report} .= "$_\n";
-                            mlog( 0, "email: $_" );
-                        }
-                    } @wout;
+                @wout = map {
+                            my $t = $_;
+                            $t =~ s/<br \/>/\n/o;
+                            if ($this->{report} !~ /\Q$t\E/) {
+                                $this->{report} .= "$t\n";
+                                mlog( 0, "email: $t" );
+                            }
+                            $t;
+                        } @wout;
+                $this->{report} .= "\n" if @wout;
             }
 
             if ( ($list eq 'Redlist') && $this->{report} !~ /\Q$rea\E: removed from/ )
@@ -39356,33 +39442,6 @@ sub ListReportExec {
                 mlog( 0, "email: " . lc $list . " deletion: $ad" );
             }
 
-            # we're adding to redlist
-            if (( $this->{reportaddr} eq 'EmailWhitelistAdd'
-                  || $this->{reportaddr} eq 'EmailHam'
-                  || $this->{reportaddr} eq 'EmailRedlistAdd'
-                )
-                && $EmailWhiteRemovalToRed
-              )
-            {
-                if ( $redlist->{ lc $ad } ) {
-                    $redlist->{ lc $ad } = $t;
-                    if (   $this->{report} !~ /\Q$ad\E: added to/
-                        && $this->{report} !~ /\Q$ad\E: already on/)
-                    {
-                        $this->{report} .= "$ad: already on " . lc $redlist . "\n";
-                    }
-                }
-                else {
-                    $redlist->{ lc $ad } = $t;
-                    if (   $this->{report} !~ /\Q$ad\E: added to/
-                        && $this->{report} !~ /\Q$ad\E: already on/
-                      )
-                    {
-                        $this->{report} .= "$ad: added to " . lc $redlist . "\n";
-                        mlog( 0, "email: " . lc $redlist . " addition: $ad" );
-                    }
-                }
-            }
         }
         else {
             if ( ( $this->{reportaddr} eq 'EmailSpam' ) ) {
@@ -39391,7 +39450,7 @@ sub ListReportExec {
                 if ($list eq 'Redlist' || $WhitelistPrivacyLevel == 0) {
                     if ( $this->{report} !~ /\Q$rea\E: not on/ )
                     {
-                        my $where = ($list eq 'Redlist') ? '' : ' (global)';
+                        my $where = ($list eq 'Redlist') ? '' : ' (at least your privat)';
                         $this->{report} .= "$ad: not on " . lc $list . "$where - not removed\n";
                     }
                 } else {
@@ -39457,25 +39516,12 @@ sub ListReportExec {
                 }
             }
         }
-        if ( &Whitelist($mf) ) {
-            if ( $this->{report} !~ /\Q$rea\E is on Whitelist/ )
-            {
-                $this->{report} .= "\n$mf is on Whitelist (global)\n\n";
-            }
-        }
-        if ( &Whitelist($mf,$this->{mailfrom}) ) {
-            if ( $this->{report} !~ /\Q$mf,$this->{mailfrom}\E is on Whitelist/ )
-            {
-                my $where = $WhitelistPrivacyLevel == 0 ? '(global)' : ($WhitelistPrivacyLevel == 1 ? '(domain)' : '(private)');
-                $this->{report} .= "\n$mf,$this->{mailfrom} is on Whitelist $where\n\n";
-            }
-        }
-        if ( $whiteListedDomains && matchRE([$mf,"$mf,$this->{mailfrom}"],'whiteListedDomains',1) ) {
-            if ( $this->{report} !~ /\Q$lastREmatch\E is on Whitedomain-List/ )
-            {
-                $this->{report} .= "\n$lastREmatch is on Whitedomain-List\n\n";
-            }
-        }
+
+        my $mailfrom = $this->{mailfrom};
+        $this->{mailfrom} = $whiteglobalstr if $whiteglobalstr =~ /^$EmailAdrRe\@$EmailDomainRe$/o;
+        ShowWhiteReport( $mf, $this );
+        $this->{mailfrom} = $mailfrom;
+
     }
     elsif (   $this->{reportaddr} eq 'EmailHam'
            || $this->{reportaddr} eq 'EmailWhitelistAdd'
@@ -39540,6 +39586,7 @@ sub ListReportExec {
             $this->{report} .= "$pb: deleted from the personal blacklist of $this->{mailfrom} , address $ad is now whitelisted\n";
             mlog( 0, "email: $pb: deleted from the personal blacklist of $this->{mailfrom}", 1 );
         }
+        ShowWhiteReport( $ad, $this ) if ($list eq 'Whitelist');
     }
     elsif ( $this->{reportaddr} eq 'EmailPersBlackAdd' && ! $localmail && $ad !~ /^$skipAddrListRE$/o) {  # personal black add
         if ($ad =~ /^reportpersblack\@/io) {
@@ -39559,9 +39606,10 @@ sub ListReportExec {
             $this->{report} .= "$ad: $action to the personal blacklist of $this->{mailfrom}\n";
             mlog( 0, "email: personal blacklist $action: $this->{mailfrom},$ad", 1 );
             if (&Whitelist($ad,$this->{mailfrom})) {
-                &Whitelist($ad,$this->{mailfrom},'delete');
-                $this->{report} .= "$ad,$this->{mailfrom}: deleted from Whitelist - address is now personal black\n";
-                mlog( 0, "email: Whitelist deletion: $ad,$this->{mailfrom}" );
+                &Whitelist($ad,$this->{mailfrom},'remove');
+                $this->{report} .= "$ad,$this->{mailfrom}: removed from Whitelist - address is now personal black\n";
+                mlog( 0, "email: Whitelist removal: $ad,$this->{mailfrom}" );
+                ShowWhiteReport( $ad, $this );
             }
         }
     }
@@ -39814,7 +39862,7 @@ sub ListReportExec {
 sub ShowWhiteReport {
     my ( $ad, $this ) = @_;
     d('ShowWhiteReport');
-    mlog( 0, "email: ShowWhiteReport: a: $ad ", 1 );
+#    mlog( 0, "email: ShowWhiteReport: a: $ad ", 1 );
 
     my $t = time;
 
@@ -39823,10 +39871,14 @@ sub ShowWhiteReport {
     my $mf           = lc $ad;
     my $mfd; $mfd    = $1 if $mf =~ /\@([^@]*)/o;
     my $mfdd; $mfdd  = $1 if $mf =~ /(\@[^@]*)/o;
+    my $todom;
+    $todom = $1 if $this->{mailfrom} =~ /(\@$EmailDomainRe)$/o;
+    $this->{report} .= "Whitelist summary for : $mf\n\n";
+    $this->{report} .= "The privacy level of the Whitelist is currently: '".decHTMLent($WhitelistPrivacyLevelValue)."'\n\n";
     if ( &Whitelist($mf) ) {
 
         if ( $this->{report} !~ /\Q$mf\E is on Whitelist/ ) {
-            $this->{report} .= "\n$mf is on Whitelist (global)\n\n";
+            $this->{report} .= "$mf is on Whitelist (global)\n";
         }
 
     }
@@ -39836,30 +39888,43 @@ sub ShowWhiteReport {
         }
     }
 
-    my $where = $WhitelistPrivacyLevel == 0 ? '(global)' : ($WhitelistPrivacyLevel == 1 ? '(domain)' : '(private)');
+    if ( &Whitelist( $mf, $todom ) ) {
+
+        if ( $this->{report} !~ /\Q$mf,$todom\E is on Whitelist/ ) {
+            $this->{report} .= "$mf,$todom is on Whitelist (domain)\n";
+        }
+
+    }
+    else {
+        if ( $this->{report} !~ /\Q$mf,$todom\E is not on Whitelist/ ) {
+            $this->{report} .= "$mf,$todom is not on Whitelist (domain)\n";
+        }
+    }
+
     if ( &Whitelist( $mf, $this->{mailfrom} ) ) {
 
         if ( $this->{report} !~ /\Q$mf,$this->{mailfrom}\E is on Whitelist/ ) {
-            $this->{report} .= "\n$mf,$this->{mailfrom} is on Whitelist $where\n\n";
+            $this->{report} .= "$mf,$this->{mailfrom} is on Whitelist (privat)\n";
         }
 
     }
     else {
         if ( $this->{report} !~ /\Q$mf,$this->{mailfrom}\E is not on Whitelist/ ) {
-            $this->{report} .= "$mf,$this->{mailfrom} is not on Whitelist $where\n";
+            $this->{report} .= "$mf,$this->{mailfrom} is not on Whitelist (privat)\n";
         }
     }
-
+    $this->{report} .= "\n";
+    
     if ( $Redlist{$mf} ) {
 
         if ( $this->{report} !~ /\Q$mf\E is on Redlist/ ) {
-            $this->{report} .= "\n$mf is on Redlist\n\n";
+            $this->{report} .= "\n$mf is on Redlist\n";
         }
     }
     if ( matchSL( $mf, 'noProcessing' ) ) {
 
         if ( $this->{report} !~ /\Q$mf\E is on NoProcessing-List/ ) {
-            $this->{report} .= "\n$mf is on NoProcessing-List\n\n";
+            $this->{report} .= "\n$mf is on NoProcessing-List\n";
         }
     }
 
@@ -39867,20 +39932,20 @@ sub ShowWhiteReport {
         if ( $mf =~ /$npReRE/ ) {
 
             if ( $this->{report} !~ /\Q$mf\E is on NoProcessing-Regex/ ) {
-                $this->{report} .= "\n$mf is in NoProcessing-Regex\n\n";
+                $this->{report} .= "\n$mf is in NoProcessing-Regex\n";
             }
         }
     }
     if ( $noProcessingDomains && $mf =~ /($NPDRE)/ ) {
 
         if ( $this->{report} !~ /\Q$1\E is on NoProcessingDomain-List/ ) {
-            $this->{report} .= "\n$1 is on NoProcessingDomain-List\n\n";
+            $this->{report} .= "\n$1 is on NoProcessingDomain-List\n";
         }
     }
     if ( $whiteListedDomains && matchRE([$mf,"$this->{mailfrom},$mf"],'whiteListedDomains',1) ) {
 
         if ( $this->{report} !~ /\Q$lastREmatch\E is on Whitedomain-List/ ) {
-            $this->{report} .= "\n$lastREmatch is on Whitedomain-List\n\n";
+            $this->{report} .= "\n$lastREmatch is on Whitedomain-List\n";
         }
     }
 }
@@ -50768,7 +50833,7 @@ sub ConfigLists {
                     } else {
                         $s.="<span class=\"positive\">tuplet already safelisted</span>";
                     }
-                } elsif($act eq 'r') {
+                } elsif($act eq 'r' or $act eq 'd') {
                     if (!exists $DelayWhite{$hash}) {
                         $s.="<span class=\"negative\">tuplet NOT safelisted</span>";
                     } else {
@@ -50858,34 +50923,35 @@ sub ConfigLists {
                             }
                         }
                     }
-                } elsif($act eq 'r') {
+                } elsif($act eq 'r' or $act eq 'd') {
+                    my $action = ($act eq 'd') ? 'delete' : 'remove';
                     $ap = '' if $ap eq ',*';
                     if ($list eq 'Redlist') {
                         if ($list->{$ad}) {
-                            $s.="removed from $list<br />";
+                            $s.=$action."d from $list<br />";
                             delete $list->{$ad};
-                            mlog(0,"Admininfo: $qs{list}list deletion: $ad (by $WebIP{$ActWebSess}->{user})");
+                            mlog(0,"Admininfo: $qs{list}list $action: $ad (by $WebIP{$ActWebSess}->{user})");
                         } else {
                             $s.="not $qs{list}listed";
                         }
                     } else {
                         if($ap && $ap !~ /^,\@/o && $list->{"$ad$ap"} && $list->{"$ad$ap"} < 9999999999) {
                             $s.="$ap " if $ap;
-                            $s.="removed from $list";
-                            &Whitelist($ad,$ap,'delete');
+                            $s.=$action."d from $list";
+                            &Whitelist($ad,$ap,$action);
                             $s .= '<br />' . join('',@WhitelistResult);
-                            mlog(0,"Admininfo: $qs{list}list deletion: $ad$ap (by $WebIP{$ActWebSess}->{user})");
+                            mlog(0,"Admininfo: $qs{list}list $action: $ad$ap (by $WebIP{$ActWebSess}->{user})");
                         } elsif ($ap && $ap =~ /^,\@/o && &Whitelist($ad,$ap,'')) {
                             $s.="$ap " if $ap;
-                            $s.="removed from $list";
-                            &Whitelist($ad,$ap,'delete');
+                            $s.=$action."d from $list";
+                            &Whitelist($ad,$ap,$action);
                             $s .= '<br />' . join('',@WhitelistResult);
-                            mlog(0,"Admininfo: $qs{list}list deletion: $ad$ap (by $WebIP{$ActWebSess}->{user})");
+                            mlog(0,"Admininfo: $qs{list}list $action: $ad$ap (by $WebIP{$ActWebSess}->{user})");
                         } elsif (! $ap && $list->{$ad}) {
-                            $s.="removed from $list<br />";
-                            &Whitelist($ad,'','delete');
+                            $s.=$action."d from $list<br />";
+                            &Whitelist($ad,'',$action);
                             $s .= '<br />' . join('',@WhitelistResult);
-                            mlog(0,"Admininfo: $qs{list}list deletion: $ad (by $WebIP{$ActWebSess}->{user})");
+                            mlog(0,"Admininfo: $qs{list}list $action: $ad (by $WebIP{$ActWebSess}->{user})");
                         } else {
                             $s.="not $qs{list}listed";
                         }
@@ -50941,20 +51007,22 @@ $s
             <td class="noBorder">$h1
             </td>
             <td class="noBorder">
-            <input type="radio" name="list" value="white"${\((!$qs{list} || $qs{list} eq 'white') ? ' checked="checked" ' : ' ')} /> Whitelist or<br />
-            <input type="radio" name="list" value="red"${\($qs{list} eq 'red' ? ' checked="checked" ' : ' ')} /> Redlist or<br />
+            <input type="radio" name="list" value="white"${\((!$qs{list} || $qs{list} eq 'white') ? ' checked="checked" ' : ' ')} /> Whitelist<br />
+            <input type="radio" name="list" value="red"${\($qs{list} eq 'red' ? ' checked="checked" ' : ' ')} /> Redlist<br />
             <input type="radio" name="list" value="tuplets"${\($qs{list} eq 'tuplets' ? ' checked="checked" ' : ' ')} /> Tuplets
             </td>
         </tr>
         <tr>
             <td class="noBorder">$h2 </td>
-            <td class="noBorder"><input type="radio" name="action" value="a" />add<br />
-            <input type="radio" name="action" value="r" />remove<br />
-            <input type="radio" checked="checked" name="action" value="v" />or verify</td>
+            <td class="noBorder"><input type="radio" name="action" value="a" /> add<br />
+            <input type="radio" name="action" value="r" /> remove<br />
+            <input type="radio" checked="checked" name="action" value="v" /> verify<br /><br />
+            <span class="negative">
+            <input type="radio" name="action" value="d" /> delete</span></td>
             <td class="noBorder">
                 List the addresses in this box:<br />
                 (for tuplets put: ip-address,domain-name)<br />
-                <p><textarea name="addresses" rows="5" cols="40" wrap="off">$qs{addresses}</textarea></p>
+                <p><textarea name="addresses" rows="10" cols="80" wrap="off">$qs{addresses}</textarea></p>
             </td>
         </tr>
         <tr>
@@ -50966,6 +51034,7 @@ $s
 </form>
 <div class="textBox">
 $h3
+  <br /><hr /><br />
   <form action="" method="post">
   <table style="width: 90%; margin-left: 5%;">
     <tr>
@@ -55109,6 +55178,9 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
                 %$hash = split(/\|::\||\n/o,$s1);
                 delete $$hash{''};
                 $s2='<span class="positive">list saved successfully</span>';
+                if ($hash eq 'LastSchedRun') {      # reschedule chande tasks
+                    ScheduleMapSet();
+                }
             }
         } else {
             $s2='<span class="negative">unable to save list ' .$ishash. ' - no such list</span>';
@@ -57868,7 +57940,7 @@ sub fixConfigSettings {
     &fixV1ConfigSettings() if substr($Config{asspCfgVersion},0,1) < 2;
     
     my ($oldBuild) = $Config{asspCfgVersion} =~ /\((\d+)\)/o;
-    $nextRepairWhitelist = time + 60 if $oldBuild < 16004;
+    $nextConsolidateWhitelist = time + 60 if $oldBuild < 16004;
 
     $Config{redRe}="file:files/redre.txt" if $Config{redRe}=~/file:redre.txt/io;
     $Config{noDelay}="file:files/nodelay.txt" if $Config{noDelay}=~/file:nodelay.txt/io;
@@ -59019,7 +59091,7 @@ sub ConfigMakeRe {
 
     my $oldBSRE = $BSRE;
     $MakeRE{$name}->($new,$name);
-    $nextRepairWhitelist = time if $WorkerNumber == 10000 && $name eq 'BounceSenders' && ! $init && $BSRE ne $oldBSRE;
+    $nextConsolidateWhitelist = time if $WorkerNumber == 10000 && $name eq 'BounceSenders' && ! $init && $BSRE ne $oldBSRE;
     return $ret . ConfigShowError(1,$RegexError{$name});
 }
 
@@ -70096,9 +70168,8 @@ sub ThreadMaintMain {
     }
     return if(! $ComWorker{$Iam}->{run} || $wasrun);
 
-    if (! $isRunTask && time > $nextRepairWhitelist) {
-        &RepairWhitelist();
-        $nextRepairWhitelist = time + 3600 * 24 * 7;
+    if (! $isRunTask && time > $nextConsolidateWhitelist) {
+        &ConsolidateWhitelist();
     }
     return if(! $ComWorker{$Iam}->{run} || $wasrun);
 
