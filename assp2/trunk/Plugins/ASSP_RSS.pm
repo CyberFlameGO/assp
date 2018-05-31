@@ -1,4 +1,4 @@
-# $Id: ASSP_RSS.pm,v 1.04 2018/05/09 18:00:00 TE Exp $
+# $Id: ASSP_RSS.pm,v 1.07 2018/05/30 09:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is an RSS feed Plugin for blocked mails. Designed for ASSP v 2.6.1(18128) and above
@@ -14,7 +14,7 @@ no warnings qw(uninitialized);
 use constant RSS_XML_BASE   => "http://example.com";
 use constant RSS_VERSION    => "2.0";
 
-$VERSION = $1 if('$Id: ASSP_RSS.pm,v 1.04 2018/05/09 18:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_RSS.pm,v 1.07 2018/05/30 09:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18128)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our %Con;
@@ -225,22 +225,17 @@ sub setvars {
         next if $p eq '_';
         next if $p eq 'contimeoutdebug';
         next if $p eq 'maillogbuf';
+        next if ($p eq 'header');
         next if $v =~ /^IO::Socket::/i;
         next if $v =~ /^ARRAY\(0x/i;
         next if $v =~ /^CODE\(0x/i;
         next if $v =~ /^HASH\(0x/i;
         next if $v =~ /^SCALAR\(0x/i;
         next if $v =~ /^REF\(/i;
-        if ($p eq 'header' && (my $l = $Con{$fh}->{headerlength} || &main::getheaderLength($fh))) {
-            $val = substr($v,0,$l);
-        } elsif ($p eq 'header') {
-            next;
+        if (length($v) > $len) {
+            $val = substr($v,0,$len);
         } else {
-            if (length($v) > $len) {
-                $val = substr($v,0,$len);
-            } else {
-                $val = $v;
-            }
+            $val = $v;
         }
         $val =~ s/([^\\]?)(['])/$1\\$2/g;
         $parm .= '$Con{$fh}->{q('.$p.')}=\''.$val.'\';';
@@ -286,15 +281,25 @@ sub genRSS {
 
     my $webprot = $main::enableWebAdminSSL && $main::CanUseIOSocketSSL? 'https' : 'http';
     my $webhost = $main::BlockReportHTTPName ? $main::BlockReportHTTPName : $main::localhostname ? $main::localhostname : 'please_define_BlockReportHTTPName';
+    my @webAdminPort = map {my $t = $_; $t =~ s/\s//go; $t;} split(/\s*\|\s*/o,$main::webAdminPort);
+    my $webAdminPort;
+    for my $web (@webAdminPort) {
+        if ($web =~ /^(SSL:)?(?:$main::HostPortRe\s*:\s*)?(\d+)/io) {
+            $webprot = 'https' if $1;
+            $webAdminPort = $2;
+            last;
+        }
+    }
+    $webAdminPort = $1 if !$webAdminPort && $webAdminPort[0] =~ /^(?:SSL:)?(?:$main::HostPortRe\s*:\s*)?(\d+)/oi;
 
     $self->{rss} = [];
     if ($this->{relayok}) {
-        push(@{$self->{rss}}, &main::batv_remove_tag(0,lc $this->{mailfrom},''));
+        push(@{$self->{rss}}, &main::batv_remove_tag(0,lc($this->{mailfrom} || $this->{from} || $this->{sender}),''));
         $self->{from} = $self->{rss}->[0];
         $self->{rcpt} = [split(/ /o,lc $this->{rcpt})]->[0];
     } else {
         push(@{$self->{rss}}, map {&main::batv_remove_tag(0,$_,'')} split(/ /o,lc $this->{rcpt}));
-        $self->{from} = &main::batv_remove_tag(0,lc $this->{mailfrom},'');
+        $self->{from} = &main::batv_remove_tag(0,lc($this->{mailfrom} || $this->{from} || $this->{sender}),'');
         $self->{rcpt} = $self->{rss}->[0];
     }
 
@@ -359,6 +364,7 @@ sub genRSS {
                     {
                         'title'        => "blocked emails at $main::myName",
                         'description'  => "blocked emails at $main::myName for $post - available for $self->{target}",
+                        'link'         => 'http://example.org',
                         'language'     => 'en-us',
                         copyright      => 'Copyright 2018 Thomas Eckardt',
                         'generator'    => "assp spam filter on $main::myName",
@@ -424,22 +430,24 @@ sub genRSS {
                     my $search = $this->{msgtime};
                     $search ||= &main::timestring(&main::ftime($this->{maillogfilename}));
                     $search = &main::normHTML($search);
-                    $showOpenMail = "<hr /><a href=\"$webprot://$webhost:$main::webAdminPort/edit?file=$filename&note=m&showlogout=1\" target=\"_blank\" title=\"open the blocked mail in the assp fileeditor\">work with this email</a>&nbsp;&nbsp;&nbsp;";
-                    $showOpenLog = ($showOpenMail ? '' : '<hr />' ) . "<a href=\"$webprot://$webhost:$main::webAdminPort/maillog?search=$search&size=1&files=files&limit=50\" target=\"_blank\" title=\"open the blocked mail in the assp fileeditor\">show the log for this email</a>";
+                    $showOpenMail = "<hr />\n<a href=\"$webprot://$webhost:$webAdminPort/edit?file=$filename&note=m&showlogout=1\" target=\"_blank\" title=\"open the blocked mail in the assp fileeditor\">work with this email</a>&nbsp;&nbsp;&nbsp;" unless $Con{$fh}->{deletemaillog};
+                    $showOpenLog = ($showOpenMail ? '' : "<hr />\n" ) . "<a href=\"$webprot://$webhost:$webAdminPort/maillog?search=$search&size=1&files=files&limit=50\" target=\"_blank\" title=\"show the maillog.txt for this email\">show the log for this email</a>";
                 }
-                my $link = 'mailto:'.$main::EmailBlockReport.$main::EmailBlockReportDomain.'?subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$main::myName.'&body=%23%23%23'.$filename.'%23%23%23'.$addWhiteHint.$addFileHint.$addScanHint.'%0D%0A';
-                my $subject = &main::eU($this->{subject3});
+                my $link = '<![CDATA['.'mailto:'.$main::EmailBlockReport.$main::EmailBlockReportDomain.'?subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$main::myName.'&body=%23%23%23'.$filename.'%23%23%23'.$addWhiteHint.$addFileHint.$addScanHint.'%0D%0A'.']]>';
+                my $subject = eU($this->{subject3});
                 my $time = $main::UseLocalTime ? localtime(&main::ftime($this->{maillogfilename})) : gmtime(&main::ftime($this->{maillogfilename}));
                 $time =~ s/(...) (...) +(\d+) (........) (....)/$1, $3 $2 $5 $4/o;
                 my $tz = $main::UseLocalTime ? &main::tzStr() : '+0000';
                 $time = "$time $tz";
-                my $reason = &main::eU($this->{messagereason});
+                my $reason = eU($this->{messagereason});
                 my $item = $itemCB->(
                     {
                         mode => 'insert',
                         title       => ($this->{relayok} ? $self->{rcpt} : $self->{from}),
                         'link'      => $link,
-                        description => ($this->{relayok} ? "from: $self->{from}<br />to: $self->{rcpt}" : "to: $addr<br />from: <a href=\"mailto:$main::EmailWhitelistAdd$main::EmailBlockReportDomain?subject=add\%20to\%20whitelist&body=$self->{from}\%0D\%0A\" title=\"add this email address to whitelist\" target=\"_blank\">$self->{from}</a>")."<hr />subject: $subject<br />block reason: $reason<br />date: $time<hr />filter host: $main::myName$showOpenMail$showOpenLog",
+                        isPermaLink => 'false',
+                        guid        => $this->{hasmallogname},
+                        description => '<![CDATA['.($this->{relayok} ? "from: $self->{from}<br />\nto: $self->{rcpt}" : "to: $addr<br />\nfrom: <a href=\"mailto:$main::EmailWhitelistAdd$main::EmailBlockReportDomain?subject=add\%20to\%20whitelist&body=$self->{from}\%0D\%0A\" title=\"add $self->{from} to the assp whitelist\">$self->{from}</a>")."<hr />\nsubject: $subject<br />\nblock reason: $reason<br />\ndate: $time<hr />\nfilter host: $main::myName$showOpenMail$showOpenLog".']]>',
                         pubDate     => $time,
                     },
                     $self,$fh);
@@ -458,7 +466,7 @@ sub genRSS {
             }
         }
     }
-    mlog(0,'info: created '.&main::needEs($created,'RSS feed','s')) if $self->{Log} && $created;
+    mlog(0,'info: created '.&main::needEs($created,' RSS feed','s')) if $self->{Log} && $created;
     
     if (!exists $main::runOnMaillogClose{'ASSP_ARC::setvars'} && $Con{$fh}->{deletemaillog}) {
         $main::unlink->("$this->{maillogfilename}");
@@ -468,6 +476,16 @@ sub genRSS {
     undef $self;
     delete $Con{$fh};
     return 1;
+}
+
+sub eU {
+    my $ret = $_[0];
+    local $@;
+    eval{
+         $main::utf8on->(\$ret);
+         eval{$ret = join('',map{my $t = $_; if ($t !~ /^[\x20-\x7E]$/o) {$t=sprintf("\&#x%2.2x;", unpack("U0U*",$t));$t='&#x2209;' if lc($t) eq '&#xfffd;';}$t;} split(//o,$ret));};
+    };
+    return ($ret) ? $ret : $_[0];
 }
 
 sub timevalue {
@@ -604,6 +622,7 @@ sub ConfigChangeFile {
         $caddr =~ s/\s//go;
         $ctarget =~ s/\s//go;
         $cdays =~ s/\s//go;
+        $cdays =~ s/,/./go;
         next unless $caddr and $ctarget;
         next if exists $seen{"$caddr $ctarget"};
         $seen{"$caddr $ctarget"} = 1;
