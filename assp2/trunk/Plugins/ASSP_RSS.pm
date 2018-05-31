@@ -107,7 +107,7 @@ sub new {
     $main::cryptConfigVars{$self->{myName}.'myuser'} = 1;
     $main::cryptConfigVars{$self->{myName}.'mypassword'} = 1;
 
-    return $self;  # do not change this line!
+    return $self;   # do not change this line!
 }
 
 sub get_config {
