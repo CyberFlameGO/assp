@@ -1,4 +1,4 @@
-# $Id: ASSP_RSS.pm,v 1.07 2018/05/30 09:00:00 TE Exp $
+# $Id: ASSP_RSS.pm,v 1.08 2018/06/02 07:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is an RSS feed Plugin for blocked mails. Designed for ASSP v 2.6.1(18128) and above
@@ -14,7 +14,7 @@ no warnings qw(uninitialized);
 use constant RSS_XML_BASE   => "http://example.com";
 use constant RSS_VERSION    => "2.0";
 
-$VERSION = $1 if('$Id: ASSP_RSS.pm,v 1.07 2018/05/30 09:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_RSS.pm,v 1.08 2018/06/02 07:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18128)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our %Con;
@@ -38,6 +38,7 @@ our $rssDays = 1;                                                  # default num
 ##################################################################
 our $channelCB = sub {my ($hash,$self,$fh) = @_; return $hash;};   # callback to configure RSS channel - called once for each created item before the channel is created or parsed from existing RSS file
 our $itemCB = sub {my ($hash,$self,$fh) = @_; return $hash;};      # callback to configure RSS items - called once for each created item
+our $setWeb = sub {my ($self,$fh) = @_;};                          # callback to configure the weblink parameters (webprot, webhost, webadminport) - called once for each created item
 ##################################################################
 
 $main::ModuleList{'Plugins::ASSP_RSS'} = $VERSION.'/'.$VERSION;
@@ -243,6 +244,27 @@ sub setvars {
     &main::cmdToThread('ASSP_RSS::genRSS',\$parm);
 }
 
+sub setWeb {
+    my ($self, $fh) = @_;
+    $setWeb->($self, $fh);
+    return if ($self->{webprot} && $self->{webhost} && $self->{webAdminPort});
+    my $webprot = $self->{webprot} || ($main::enableWebAdminSSL && $main::CanUseIOSocketSSL ? 'https' : 'http');
+    my $webhost = $self->{webhost} || ($main::BlockReportHTTPName ? $main::BlockReportHTTPName : $main::localhostname ? $main::localhostname : 'please_define_BlockReportHTTPName');
+    my $webAdminPort;
+    if (! $self->{webAdminPort}) {
+        my @webAdminPort = map {my $t = $_; $t =~ s/\s//go; $t;} split(/\s*\|\s*/o,$main::webAdminPort);
+        for my $web (@webAdminPort) {
+            if ($web =~ /^(SSL:)?(?:$main::HostPortRe\s*:\s*)?(\d+)/io) {
+                $webprot = 'https' if $1;
+                $webAdminPort = $2;
+                last;
+            }
+        }
+        $webAdminPort = $1 if !$webAdminPort && $webAdminPort[0] =~ /^(?:SSL:)?(?:$main::HostPortRe\s*:\s*)?(\d+)/oi;
+    }
+    ($self->{webprot}, $self->{webhost}, $self->{webAdminPort}) = ($webprot, $webhost, $webAdminPort);
+}
+
 sub genRSS {
     my $parm = shift;
     my $fh;
@@ -279,18 +301,7 @@ sub genRSS {
     $mainVarName   = 'main::'.$self->{myName}.'Log';
     eval{$self->{Log} = $$mainVarName};
 
-    my $webprot = $main::enableWebAdminSSL && $main::CanUseIOSocketSSL? 'https' : 'http';
-    my $webhost = $main::BlockReportHTTPName ? $main::BlockReportHTTPName : $main::localhostname ? $main::localhostname : 'please_define_BlockReportHTTPName';
-    my @webAdminPort = map {my $t = $_; $t =~ s/\s//go; $t;} split(/\s*\|\s*/o,$main::webAdminPort);
-    my $webAdminPort;
-    for my $web (@webAdminPort) {
-        if ($web =~ /^(SSL:)?(?:$main::HostPortRe\s*:\s*)?(\d+)/io) {
-            $webprot = 'https' if $1;
-            $webAdminPort = $2;
-            last;
-        }
-    }
-    $webAdminPort = $1 if !$webAdminPort && $webAdminPort[0] =~ /^(?:SSL:)?(?:$main::HostPortRe\s*:\s*)?(\d+)/oi;
+    setWeb($self, $fh);
 
     $self->{rss} = [];
     if ($this->{relayok}) {
@@ -430,8 +441,8 @@ sub genRSS {
                     my $search = $this->{msgtime};
                     $search ||= &main::timestring(&main::ftime($this->{maillogfilename}));
                     $search = &main::normHTML($search);
-                    $showOpenMail = "<hr />\n<a href=\"$webprot://$webhost:$webAdminPort/edit?file=$filename&note=m&showlogout=1\" target=\"_blank\" title=\"open the blocked mail in the assp fileeditor\">work with this email</a>&nbsp;&nbsp;&nbsp;" unless $Con{$fh}->{deletemaillog};
-                    $showOpenLog = ($showOpenMail ? '' : "<hr />\n" ) . "<a href=\"$webprot://$webhost:$webAdminPort/maillog?search=$search&size=1&files=files&limit=50\" target=\"_blank\" title=\"show the maillog.txt for this email\">show the log for this email</a>";
+                    $showOpenMail = "<hr />\n<a href=\"$self->{webprot}://$self->{webhost}:$self->{webAdminPort}/edit?file=$filename&note=m&showlogout=1\" target=\"_blank\" title=\"open the blocked mail in the assp fileeditor\">work with this email</a>&nbsp;&nbsp;&nbsp;" unless $Con{$fh}->{deletemaillog};
+                    $showOpenLog = ($showOpenMail ? '' : "<hr />\n" ) . "<a href=\"$self->{webprot}://$self->{webhost}:$self->{webAdminPort}/maillog?search=$search&size=1&files=files&limit=50\" target=\"_blank\" title=\"show the maillog.txt for this email\">show the log for this email</a>";
                 }
                 my $link = '<![CDATA['.'mailto:'.$main::EmailBlockReport.$main::EmailBlockReportDomain.'?subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$main::myName.'&body=%23%23%23'.$filename.'%23%23%23'.$addWhiteHint.$addFileHint.$addScanHint.'%0D%0A'.']]>';
                 my $subject = eU($this->{subject3});
