@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 4.81 2018/05/11 17:30:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 4.82 2018/06/07 16:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -33,6 +33,8 @@ our $CanRARCheck;
 our $Can7zCheck;
 our $CanLACheck;
 our $CanSMIME;
+our $CanOLE;
+our $CanEOM;
 our $CanNetSSLeay;
 our $ZIPLevel;
 our $formatsRe;
@@ -99,6 +101,9 @@ BEGIN {
   $LibArchRe .= 'TAR|TBZ|TBZ2|UDF|';
   $LibArchRe .= 'WAR|XAR|Z|ZIP';
 
+  $CanOLE = eval('use OLE::Storage_Lite();1;');
+  $CanEOM = eval('use Email::Outlook::Message();1;');
+  
   if ($CanSMIME = eval('use Crypt::SMIME();Crypt::SMIME->VERSION;')) {
       $CanNetSSLeay = eval('use Net::SSLeay();1;');
   }
@@ -201,7 +206,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.81 2018/05/11 17:30:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.82 2018/06/07 16:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -209,6 +214,13 @@ our $plScan = 0;
 $main::ModuleList{'Plugins::ASSP_AFC'} = $VERSION.'/'.$VERSION;
 $main::ModuleList{'Crypt::SMIME'} = $CanSMIME.'/0.13';
 $main::ModuleStat{'Crypt::SMIME'} = $CanSMIME ? 'enabled' : 'is not installed';
+
+$main::ModuleList{'OLE::Storage_Lite'} = $CanOLE.'/0.19';
+$main::ModuleStat{'OLE::Storage_Lite'} = $CanOLE ? 'enabled' : 'is not installed';
+
+$main::ModuleList{'Email::Outlook::Message'} = $CanEOM.'/0.919';
+$main::ModuleStat{'Email::Outlook::Message'} = $CanEOM ? 'enabled' : 'is not installed';
+
 $main::PluginFiles{__PACKAGE__ .'SMIME'} = 1;
 $main::licmap->{'100'} = 'SMIME signing';
 $main::reglic->{'100'} = {};
@@ -268,6 +280,8 @@ sub new {
     eval{$self->{insize} = $$mainVarName};
     $mainVarName   = 'main::'.$self->{myName}.'SMIME';
     eval{$self->{SMIME} = $$mainVarName};
+    $mainVarName   = 'main::'.$self->{myName}.'extractAttMail';
+    eval{$self->{extractAttMail} = $$mainVarName};
     $self->{outsize} =~ s/^\s+//o;
     $self->{outsize} =~ s/\s+$//o;
     $self->{outsize} *= 1024;
@@ -344,7 +358,7 @@ sub get_config {
  If \'exe-bin\' is defined, the Plugin will detect executable files based on there binary content. Detected will be all executables, libraries and scripts for DOS and Windows (except .com files), MS office macros(VBA), MAC-OS and linux ELF (for all processor architectures).<br />
  If you want to skip the detection for a specific executable type, specify exe-bin (which detects all executables) and then add exceptions to exclude specific types:Example:  \'exe-bin|:MSOM|:WSH\' - notice the single leading collon for the exceptions!  This example will block all detected executable files except for MS Office Macro files (:MSOM) and Windows Shell Scripts (:WSH)<br /><br />
  :WIN - windows executables<br />
- :MOS - Mach-O executables<br />
+ :MOS - Java Class Bytecode or Mach-O executables<br />
  :PEF - Classic MacOS executables<br />
  :ELF - ELF (linux) executables<br />
  :WSH - windows shell scripts<br />
@@ -355,7 +369,8 @@ sub get_config {
  :CERTPDF - certificate signed adobe PDF file<br />
  :JSPDF - adobe PDF file with JavaScript inside - notice: well known malicious JavaScript combinations will be blocked, even this option is defined<br />
  :URIPDF - adobe PDF file with URIs to download exeutables from the web or to open local files<br />
- :MSOLE - Microsoft Office Compound File Binary (OLE)<br />
+ :MSOLE - all Microsoft Office Compound File Binary (OLE) - legacy not recommended, OLE files can contain any conceivable content<br />
+ :HLMSOLE - (HarmLess) Microsoft Office Compound File Binary (OLE) - MSOLE, except it contains forbidden files (the <a href="http://search.cpan.org/search?query=OLE::Storage_Lite" rel="external">OLE::Storage_Lite</a> module in PERL is needed)<br />
  :MSOM - Microsoft Office Macros<br /><br />
  The following compression formats are supported by the common perl module Archive::Extract: tar.gz,tgz,gz,tar,zip,jar,ear,war,par,tbz,tbz2,tar.bz,tar.bz2,bz2,Z,lzma,txz,tar.xz,xz.<br />
  The detection of compressed files is done content based not filename extension based. The perl modules File::Type and MIME::Types are required in every case!<br />
@@ -371,7 +386,9 @@ sub get_config {
  ($f ? '<input type="button" value="User-Attach-File" onclick="javascript:popFileEditor(\''.$f.'\',1);" />' : '' ),undef,undef,'msg100120','msg100121'],
 [$self->{myName}.'MaxZIPLevel','Maximum Decompression Level',10,\&main::textinput,10,'([1-9]\d*)',undef,
  'The maximum decompression cycles use on a compressed attachment (eg: zip in zip in zip ...). Default value is 10 - zero is not allowed to be used!',undef,undef,'msg100130','msg100131'],
-
+[$self->{myName}.'extractAttMail','Extract Attached Emails','0:disabled|1:MIME-Mail(.eml)|2:Outlook Mail(.msg)|3:both',\&main::listbox,3,'(\d*)',undef,
+ 'If enabled, the selected attachments will be extracted and their MIME parts will be analyzed! If such a MIME part contains not allowed content and attachment replacement is enabled for the fault, the complete attachment will be replaced!<br />
+ To extract MS-Outlook .msg files, in addition an installed <a href="http://search.cpan.org/search?query=Email::Outlook::Message" rel="external">Email::Outlook::Message</a> module in PERL is needed.',undef,undef,'msg100150','msg100151'],
 [$self->{myName}.'ReplBadAttach','Replace Bad Attachments',0,\&main::checkbox,0,'(.*)',undef,
  'If set and AttachmentBlocking is set to block, the mail will not be blocked but the bad attachment will be replaced with a text!',undef,undef,'msg100030','msg100031'],
 [$self->{myName}.'ReplBadAttachText','Replace Bad Attachments Text',100,\&main::textinput,'The attached file (FILENAME) was removed from this email by ASSP for policy reasons! The file was detected as REASON .','(.*)',undef,
@@ -730,7 +747,8 @@ sub process {
     my $fh = shift;         # this is the referenz to the filehandle from ASSP
     my $data = shift;       # this is the referenz to the data to process
     $fh = $$fh if($fh);     # dereferenz the handle
-    my $this = $main::Con{$fh} if ($fh);  # this sets $this to the client-connection hash
+    my $this;
+    $this = $main::Con{$fh} if ($fh);  # this sets $this to the client-connection hash
     $self->{result} = '';     # reset the return values
     $self->{tocheck} = '';
     $self->{errstr} = '';
@@ -777,6 +795,7 @@ sub process {
     return 1 unless $self->{DoMe};
     return 1 unless $this;
 
+    $self->{this} = $this;
     $this->{prepend} = '';
     mlog($fh,"[Plugin] calling plugin $self->{myName}") if $main::AttachmentLog;
 
@@ -818,6 +837,8 @@ sub process {
     my $modified = 0;
     my $email;
     my @parts;
+    my @addparts;
+    my $addPartsParent = {};
     my $child = {};
     my $parent = {};
     my $setParts = sub {
@@ -895,13 +916,14 @@ sub process {
                push @parts,$part;
            }
         }
-        foreach my $part ( @parts ) {
+        foreach my $part ( @parts, @addparts ) {
             $this->{clamscandone}=0;
             $this->{filescandone}=0;
             $this->{attachdone}=0;
             $self->{exetype} = undef;
             $self->{skipBinEXE} = undef;
             $self->{skipZipBinEXE} = undef;
+            delete $self->{attname};
             @attre = ();
             @attZipre = ();
             $plScan = 1;
@@ -916,7 +938,7 @@ sub process {
                 $this->{signed} = 1;
             }
 
-            if ($filename && defined &main::attachmentExtension && &main::isAttachment($part) ) {
+            if ($filename && defined(&main::attachmentExtension) && &main::isAttachment($part) ) {
                 ($ext, $filename) = &main::attachmentExtension($fh, $filename, $part);
             }
             
@@ -936,6 +958,68 @@ sub process {
                 $badimage++;
                 $foundBadImage = 1;
                 mlog($fh,"info: spam attachment ($1 - $orgname) found in MIME part - spam probability is $imgprob") if $main::AttachmentLog;
+            }
+
+            if ($CanEOM && ($self->{extractAttMail} & 2) && lc($ext) eq '.msg') {      # outlook attached a complete mail - convert it to MIME and add its parts for analyzing
+                mlog(0,"info: try to convert Outlook attachment $filename to MIME ") if $main::AttachmentLog > 1;
+                my $body = $part->body;
+                open(my $eomfile, '<', \$body);
+                binmode($eomfile);
+                eval {
+                    if (my $eom = Email::Outlook::Message->new($eomfile)) {
+                        my $email = $eom->to_email_mime;
+
+                        foreach my $spart ($email->parts) {
+                           $addPartsParent->{$spart} = $part;
+                           if ($spart->parts > 1 || $spart->subparts) {
+                               eval{get_MIME_parts($spart, sub {my $p = shift;
+                                                           push @addparts, $p;
+                                                           my @sp = $p->subparts;
+                                                           return unless @sp;
+                                                           push @addparts,@sp;
+                                                           $addPartsParent->{$_} = $part for @sp;
+                                                          })};
+                               push @addparts,$spart if $@;
+                           } else {
+                               push @addparts,$spart;
+                           }
+                        }
+
+                        mlog(0,"info: Outlook attachment $filename was converted to MIME for analysing") if $main::AttachmentLog > 1;
+                    }
+                };
+                if ($@) {
+                    mlog(0,"warning: can't get the message from Outlook attachment $filename - $@") if $main::AttachmentLog;
+                }
+                $_ = undef;
+                $eomfile->close if $eomfile;
+            }
+
+            if (lc($ext) eq '.eml' && ($self->{extractAttMail} & 1)) {      # attached is a complete MIME mail - add its parts for analyzing
+                eval {
+                my $body = $part->body;
+                my $email = Email::MIME->new($body);
+                mlog(0,"info: attachment $filename will be splitted in to its MIME parts") if $main::AttachmentLog > 1;
+
+                foreach my $spart ($email->parts) {
+                   $addPartsParent->{$spart} = $part;
+                   if ($spart->parts > 1 || $spart->subparts) {
+                       eval{get_MIME_parts($spart, sub {my $p = shift;
+                                                   push @addparts, $p;
+                                                   my @sp = $p->subparts;
+                                                   return unless @sp;
+                                                   push @addparts,@sp;
+                                                   $addPartsParent->{$_} = $part for @sp;
+                                                  })};
+                       push @addparts,$spart if $@;
+                   } else {
+                       push @addparts,$spart;
+                   }
+                }
+
+                mlog(0,"info: attachment $filename is splitted in to its MIME parts") if $main::AttachmentLog > 1;
+                };
+                $_ = undef;
             }
 
             if ($main::DoBlockExes &&
@@ -1049,6 +1133,7 @@ sub process {
                         $orgname = &main::encodeMimeWord(Encode::encode('UTF-8', $orgname),'Q','UTF-8');
                         eval {
 
+                        while (exists $addPartsParent->{$part}) {$part = $addPartsParent->{$part};} # replace the parent .eml or .msg attachment
                         $part->body_set('');
                         $part->content_type_set('text/plain');
                         $part->disposition_set('attachment');
@@ -1114,6 +1199,7 @@ sub process {
                     $orgname = &main::encodeMimeWord(Encode::encode('UTF-8', $orgname),'Q','UTF-8');
                     eval {
 
+                    while (exists $addPartsParent->{$part}) {$part = $addPartsParent->{$part};} # replace the parent .eml or .msg attachment
                     $part->body_set('');
                     $part->content_type_set('text/plain');
                     $part->disposition_set('attachment');
@@ -1153,6 +1239,7 @@ sub process {
                 $modified = 2;
                 my $text = $self->{rvtext};
                 $text =~ s/FILENAME/MIME-TEXT.eml/g;
+                while (exists $addPartsParent->{$part}) {$part = $addPartsParent->{$part};} # replace the parent .eml or .msg attachment
                 eval{$part->body_set( $text );1;} or eval{$part->body_set( $self->{rvtext} );1;} or eval{$part->body_set( 'virus removed' );1;} or eval{$part->body_set( undef );1;};
                 mlog( $fh,"$this->{messagereason} - replaced virus-mail-part with simple text");
                 $badimage-- if $foundBadImage;
@@ -1520,7 +1607,7 @@ sub CheckAttachments {
 sub setSkipExe {
     my ($self,$what,$where) = @_;
     
-    for my $re (qw(WIN MOS PEF ELF WSH MMC ARC CSC MSOM MSOLE PDF CERTPDF JSPDF URIPDF)) {
+    for my $re (qw(WIN MOS PEF ELF WSH MMC ARC CSC MSOM MSOLE HLMSOLE PDF CERTPDF JSPDF URIPDF)) {
         $self->{$where} .= ":$re" if $self->{$what}->('.:'.$re);
     }
     if (ref($SkipExeTags) eq 'ARRAY') {
@@ -1584,27 +1671,27 @@ sub isAnEXE {
                 if ($size >= 0x40) { # NE header is 64 bytes
                     # check for DLL
                     my $appFlags = Get16u(\$buff, 0x0c);
-                    $type = 'Win16 ' . ($appFlags & 0x80 ? 'DLL' : 'EXE');
+                    $type = 'MS-Windows 16Bit ' . ($appFlags & 0x80 ? 'DLL' : 'EXE');
                 }
             } elsif ($1 eq 'PE') {
                 if ($size >= 24) {  # PE header is 24 bytes (plus optional header)
                     my $machine = Get16u(\$buff, 4) || '';
-                    my $winType = ($machine eq 0x0200 || $machine eq 0x8664) ? 'Win64' : 'Win32';
+                    my $winType = ($machine eq 0x0200 || $machine eq 0x8664) ? 'MS-Windows 64Bit' : 'MS-Windows 32Bit';
                     my $flags = Get16u(\$buff, 22);
                     $type = $winType . ' ' . ($flags & 0x2000 ? 'DLL' : 'EXE');
                 }
             } else {
-                $type = 'Virtual Device Driver';
+                $type = 'MS Virtual Device Driver';
             }
         } else {
-            $type = 'DOS EXE';
+            $type = 'MS-DOS EXE';
         }
 #
-# Mach-O (Mac OS X)
+# Mach-O (Mac OS X) and Java Class Files
 #
     } elsif ($sk !~ /:MOS/oi && $buff =~ /^(\xca\xfe\xba\xbe|\xfe\xed\xfa(\xce|\xcf)|(\xce|\xcf)\xfa\xed\xfe)/o && $size > 12) {
         if ($1 eq "\xca\xfe\xba\xbe") {
-            $type = 'Mach-O fat binary executable';
+            $type = 'Java Class File or Mach-O Fat Binary Executable';
         } elsif ($size >= 16) {
             $type = 'Mach-O executable';
             my $info = {
@@ -1629,12 +1716,17 @@ sub isAnEXE {
 # MS office macro
 #
     } elsif ($sk !~ /:MSOM/oi && index($$raf, "\xd0\xcf\x11\xe0") > -1 && index($$raf, "\x00\x41\x74\x74\x72\x69\x62\x75\x74\x00") > -1) {
-        $type = 'MS office macro';
+        $type = 'MS Office Macro';
 #
-# Microsoft Compound File Binary File Format, Version 3 and 4
+# Microsoft Compound File Binary File format with both OLE exceptions not set, Version 3 and 4
 #
-    } elsif ($sk !~ /:MSOLE/oi && $buff =~ /^(?:\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1|\x0e\x11\xfc\x0d\xd0\xcf\x11\x0e)/o) {
-        $type = 'MS Compound File Binary';
+    } elsif ($sk !~ /:(?:MSOLE|HLMSOLE)/oi && $buff =~ /^(?:\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1|\x0e\x11\xfc\x0d\xd0\xcf\x11\x0e)/o) {
+        $type = 'MS Compound File Binary (MSOLE)';
+#
+# Microsoft Compound File Binary File format with analyzed OLE file (:MSOLE not set, :HLMSOLE set, OLE is bad), Version 3 and 4
+#
+    } elsif ($sk !~ /:MSOLE/oi && $sk =~ /:HLMSOLE/oi && $buff =~ /^(?:\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1|\x0e\x11\xfc\x0d\xd0\xcf\x11\x0e)/o && ($type = isBadOLE($self, $raf, $sk)) ) {
+        $type = "MS Compound File Binary (MSOLE) contains $type";
 #
 # various scripts (perl, sh, java, etc...)
 #
@@ -1655,14 +1747,15 @@ sub isAnEXE {
     } elsif ($sk !~ /:CSC/oi && $buff =~ /^\s*\/[*\/].*?Mode:\s*(Java);/io) {
         $type = "$1 script";
     } elsif (! $skipLockyCheck && $$raf =~ /\bstring\.prototype\.|\bcharAt\b/io) {   # detect possibly lucky virus script
-        $type = "Java script - possibly locky (ransomware) virus";
+        $type = "Java script - possibly (ransomware) virus";
     } elsif ($sk !~ /:WSH/oi && $$raf =~ /W(?:shShell|script)\.|IWsh(?:Shell|Environment|Network)_Class/ios) {
         $type = "Windows-Scripting-Host script";
     } elsif ( $sk !~ /:CSC/oi && ($count = () = $$raf =~
                    /^\s*(
                          (?:(?:var|our|my)\s+)?[$%@]?[a-zA-Z0-9.\-_]+\s*=.+ |
-                         (?:public|privat)\s+(?:class|static)\s+ |
-                         import\s+java\.[a-zA-Z0-9.\-_]+ |
+                         (?:public|privat)\s+(?:class|static|void|final)\s+ |
+                         package\s+[a-zA-Z0-9.\-_]+ |
+                         import\s+(?:java|org|com)\.[a-zA-Z0-9.\-_]+ |
                          (?:function|dim|const|option|sub
                               |end\s+sub|select\s+case|end\s+select)
                             \s+[()a-zA-Z0-9.\-_]+
@@ -1670,16 +1763,16 @@ sub isAnEXE {
                    /xiog
               ) && $count > 9)
     {
-        $type = "not defined script language";
+        $type = "not defined script language or source code";
 #
 # .a libraries
 #
-    } elsif ($sk !~ /:ARC/oi && $buff =~ /^!<arch>\x0a/) {
-        $type = 'Static library',
+    } elsif ($sk !~ /:ARC/oi && $buff =~ /^\!<arch>\x0a/oi) {
+        $type = 'Static linux or unix library',
 #
 # Windows MMC
 #
-    } elsif ($sk !~ /:MMC/oi && $buff =~ /^\s*<\?xml version.+?<MMC_ConsoleFile/io) {
+    } elsif ($sk !~ /:MMC/oi && $buff =~ /^\s*<\?xml version.+?<MMC_ConsoleFile/oi) {
         $type = 'Windows MMC Console File',
     }
     return $type if $type;
@@ -1698,28 +1791,43 @@ sub isAnEXE {
 
         return if $sk =~ /:(?:CERT)?PDF/oi && $pdf =~ m{/CERT\s*\[\s*\(}ios;        # a certificate in the PDF (so skip all)
 
+        my $ft = qr/
+                   (?:
+                       doc[mxt]?
+                     | xls[mxt]?
+                     | ppd[mxt]?
+                     | vs[dst][xm]?
+                     | ad[pn]
+                     | laccdb
+                     | accd[bwcarte]
+                     | md[bawfe]
+                     | ma[mdqrtf]
+                     | exe                                         # the filespec links to executable or macro files in the PDF file
+                     | com
+                     | bat
+                     | cmd
+                     | dll
+                     | scr
+                     | ps\d
+                     | wsh
+                     | vba?
+                     | java
+                     | class
+                     | jar
+                   )
+                   /x;
+        
         if ( $sk !~ /:PDF/oi  # general malicious checks
              &&
              $pdf =~ m{(?:\n\x20*\d+\s+\d+\s+obj\x20*\n[^\n]*?/              # object definitons with the following content
                           (?:
                              Type/\s*Filespec/[^\n]*?\.                         # the object contains the 'type filespec' tag
-                               (?:
-                                   doc[mx]?
-                                 | xls[mx]?
-                                 | ppd[mx]?
-                                 | exe                                         # the filespec links to executable or macro files in the PDF file
-                                 | com
-                                 | bat
-                                 | cmd
-                                 | ps\d
-                                 | wsh
-                                 | vba?
-                               )
+                             $ft                                                # see above
                           )
                         )
                       |                                                        # or has the following content anywhere
                         (?:
-                            /EmbeddedFile\s*/.+?\.(?:doc|xls|ppd)[mx]?\)?/.*?\<\<\s*/JavaScript.*?/OpenAction     # or bad action
+                            /EmbeddedFile\s*/.+?\.$ft\)?/.*?\<\<\s*/JavaScript.*?/OpenAction     # or bad action
                           | /Producer\s*\(?evalString\.fromCharCod
                         )
                       }xios
@@ -1747,7 +1855,7 @@ sub isAnEXE {
         } elsif ( $sk !~ /:(?:URI)?PDF/oi  # bad URI check
                  &&
                  $pdf =~ m{(?:
-                                /Type\s*/Action\s*/S\s*/URI\s*/URI\s*\(\s*(?:ht|f)tps?://[^\n/]+/[^\n]+?\.(?:exe|bat|cmd|js|vba|wsh|ps\d)[\b\)\?\&]  # action to download an executable
+                                /Type\s*/Action\s*/S\s*/URI\s*/URI\s*\(\s*(?:ht|f)tps?://[^\n/]+/[^\n]+?\.$ft[\b\)\?\&]  # action to download an executable
                               | /Type\s*/Action\s*/S\s*/URI\s*/URI\s*\(\s*file://               # try to open a local file
                             )
                           }xios
@@ -1770,13 +1878,140 @@ sub isAnEXE {
     return $type;
 }
 
+################
+# OLE processing
+################
+
+# input self ref and data ref
+# output the executable type or undef
+sub isBadOLE {
+    my ($self, $data, $sk) = @_;
+    return unless $CanOLE;
+    return unless ref($data);
+    my $swapolehead = $$data =~ s/^\x0e\x11\xfc\x0d\xd0\xcf\x11\x0e/"\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"/o; # replace the old beta header for OLE ::Storage_Lite
+    open(my $oFH , '<' , $data) || return;
+    binmode $oFH;
+    my $oOl;
+    my $oPps;
+    eval {
+        $oOl = OLE::Storage_Lite->new($oFH);  # create the OLE object
+        $oPps = $oOl->getPpsTree(1);          # get the OLE tree with data
+    };
+    unless($oPps) {
+        $oFH->close;
+        $$data =~ s/^xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1/"\x0e\x11\xfc\x0d\xd0\xcf\x11\x0e"/o if $swapolehead;
+        return;
+    }
+    mlog($self->{this}->{self},"info: analyzing OLE file content") if $main::AttachmentLog;
+    my $type = parseOLE($self, $oPps, $sk);
+    $oFH->close;
+    $$data =~ s/^xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1/"\x0e\x11\xfc\x0d\xd0\xcf\x11\x0e"/o if $swapolehead;
+    return $type;
+}
+
+# input self ref and PPS Tree ref
+# output the executable type or undef
+sub parseOLE {
+    my ($self, $oPps, $sk) = @_;
+    my $type;
+#    my %sPpsName = (1 => 'DIR', 2 => 'FILE', 5=>'ROOT');
+    my $sName = OLE::Storage_Lite::Ucs2Asc($oPps->{Name});
+    $sName =~ s/\W/ /go;
+    $sName =~ s/^\s+//o;
+    $sName =~ s/\s+$//o;
+    $sName ||= 'unknown';
+
+    return 'MS VBA Macro' if $sk !~ /:MSOM/oi && $sName =~ /VBA_PROJECT|Macros$|^(?:VBA|PROJECT)$/io;
+
+    if($oPps->{Type}==2) {  # check the file data recursive
+        my $data;
+        if ($sName =~ /Ole10Native/io) {
+            $data = eval{ [unpack("V v Z* Z* A2 C/A A3 Z* V/A",$oPps->{Data})]->[8] };
+            mlog($self->{this}->{self},"info: Ole10Native file found in OLE") if $main::AttachmentLog > 1 && $data;
+            $data ||= $oPps->{Data};
+        } else {
+            my @ole10N = eval { unpack("V v Z* Z* A2 C/A A3 Z* V",$oPps->{Data}); }; # maybe Ole10Native is hidden
+            if (! $@) {
+                if (   $ole10N[0]
+                    && $ole10N[8]
+                    && $ole10N[0] > $ole10N[8]
+                    && (($ole10N[0] + 4) == length($oPps->{Data}))
+                   )
+                {
+                    $data = eval{ [unpack("V v Z* Z* A2 C/A A3 Z* V/A",$oPps->{Data})]->[8] } || $oPps->{Data};
+                    mlog($self->{this}->{self},"info: wrong named Ole10Native file found in OLE") if $main::AttachmentLog > 1 && $data;
+                } else {
+                    $data = $oPps->{Data};
+                }
+            }
+        }
+        if ($self->{select} != 1) {
+            if (! &main::ClamScanOK($self->{this}->{self},\$data) || ! &main::FileScanOK($self->{this}->{self},\$data)) {
+                $self->{this}->{clamscandone}=0;
+                $self->{this}->{filescandone}=0;
+                return $self->{this}->{messagereason};
+            }
+            $self->{this}->{clamscandone}=0;
+            $self->{this}->{filescandone}=0;
+        }
+        $type = isAnEXE($self, \$data);
+        return $type if $type;                                                   # found an executable
+        my $ftre = qr/\.(?:$formatsRe)$/i;                                       # is it compressed ?
+        my @ext = grep {/$ftre/} detectFileType($self, \$data);
+        return $type unless @ext;                                                # this file type is not compressed or unknown for us
+        $sName = "$sName$ext[0]";   # make a valid filename with a right extension to check the compressed file
+        if ($self->{attname}) {     # we were called from inside an compressed attachment check
+            my $typemismatch = $self->{typemismatch};                            # remember typemismatch
+            my $blockEncryptedZIP = $self->{blockEncryptedZIP};
+            my @files = analyzeZIP($self,\$data,$sName);
+            $self->{typemismatch} = $typemismatch if $typemismatch;
+            $self->{blockEncryptedZIP} = $blockEncryptedZIP;  # reset to config value
+            $self->{exetype} = $self->{typemismatch}->{text} if $self->{typemismatch};
+            return $self->{exetype} if $self->{exetype};
+
+            if ($self->{blockEncryptedZIP} && @{$self->{isEncrypt}} ) {
+                $self->{exetype} = "encrypted compressed file (OLE) '$sName'";
+                $self->{exetype} .= " - content: @files" if @files && $main::AttachmentLog > 1;
+                return $self->{exetype};
+            }
+            for my $f (@files) {
+                if ($self->{attZipRun}->($f)) {
+                    $self->{exetype} = "compressed file (OLE) '$sName' - contains forbidden file $f";
+                    return $self->{exetype};
+                }
+            }
+            if ($self->{typemismatch}) {
+                for my $f (@{$self->{fileList}->{$self->{typemismatch}->{file}}}) {
+                    return $self->{typemismatch}->{text} if ($self->{attZipRun}->($f));
+                }
+                delete $self->{typemismatch};
+            }
+            return;
+        } else {                    # this is a native attachment file check from isAnEXE
+            my $blockEncryptedZIP = $self->{blockEncryptedZIP};
+            my $ok = isZipOK($self, $self->{this},\$data,$sName);
+            $self->{blockEncryptedZIP} = $blockEncryptedZIP;  # reset to config value
+            return $type if $ok;
+            $self->{exetype} = $self->{typemismatch}->{text} if $self->{typemismatch};
+            return $self->{exetype};
+        }
+    }
+
+# check its Children
+    foreach my $iItem (@{$oPps->{Child}}) {
+  	    last if ($type = parseOLE($self, $iItem, $sk));
+    }
+    return $type;
+}
+
 # compressed file processing and encryption detection
+# content is a scalar ref
 sub isZipOK {
     my ($self, $this, $content, $file) = @_;
 
     return 1 unless $CanZIPCheck;
     $self->{attname} = $file;
-    $self->{tmpdir} = "$main::base/tmp/zip_".$main::WorkerNumber.'_'.time;
+    $self->{tmpdir} = "$main::base/tmp/zip_".$main::WorkerNumber.'_'.Time::HiRes::time();
     $self->{fileList} = {};
     @{$self->{isEncrypt}} = ();
     $self->{skipZipBinEXE} = undef;
@@ -1992,9 +2227,18 @@ sub skipunzip {
 
 sub detectFileType {
     my ($self,$file) = @_;
+    my $isFile = 1;
+    if (ref($file)) {   # if file is a ref, it contains a ref to plain data
+        $isFile = 0;
+        $file = $$file;
+    }
     my $mimetype = eval{my $ft = File::Type->new(); $ft->mime_type($file);};
-    $mimetype  ||= eval{my $ft = File::Type->new(); $ft->mime_type(&main::d8($file));};
-    $mimetype = check_type($file) if !$mimetype || $mimetype eq 'application/octet-stream';
+    if ($isFile) {
+        $mimetype  ||= eval{my $ft = File::Type->new(); $ft->mime_type(&main::d8($file));};
+        $mimetype = check_type($file) if !$mimetype || $mimetype eq 'application/octet-stream';
+    } else {
+        $mimetype = check_type_contents(\substr($file,0,512)) if !$mimetype || $mimetype eq 'application/octet-stream';
+    }
     return () if !$mimetype || $mimetype eq 'application/octet-stream';
     my $t = eval{MIME::Types->new()->type($mimetype);};
     return () unless $t;
@@ -2006,9 +2250,9 @@ sub detectFileType {
     }
     if (! @ext && $mimetype eq 'application/encrypted') {
         push(@ext,'.encrypt');
-        push(@{$self->{isEncrypt}},$file);
+        push(@{$self->{isEncrypt}},$file) unless $isFile;
     }
-    $self->{fileList}->{$file} = \@ext;
+    $self->{fileList}->{$file} = \@ext unless $isFile;
     return @ext;
 }
 
