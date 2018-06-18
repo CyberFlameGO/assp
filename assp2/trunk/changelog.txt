@@ -1,3 +1,25 @@
+2018-06-18
+fixed in assp 2.6.2 *Fortress* build 18169:
+
+- If a blockreport was requested for a 'Group' ([group@domain.org]) without specifying the recipent of the report (e.g. [group@domain.org] or [group@domain.org]=>*) - no report was generated
+
+- If a schedule was changed for a blockreport, some times a high CPU usage was caused by the MaintThread or a software exception occured
+
+- the time order of the loglines written to maillog.txt and SYSLOG was sometimes incorrect
+
+- using two different (nonssl,ssl) listeners for webAdminPort (e.g.: SSL:55556|55555 ) was not working
+
+
+changed:
+
+- ASSP_AFC 4.82 is now able to extract OLE files and to analyze their content. This option can be confured using the attachment blocking exception rule
+
+ :HLMSOLE - (HarmLess) Microsoft Office Compound File Binary (OLE) - MSOLE, except it contains forbidden files (the OLE::Storage_Lite module in PERL is needed)
+
+- the file 'notes/loaded_perl_modules.txt' is more readable
+
+
+
 2018-05-29
 fixed in assp 2.6.2 *Fortress* build 18148:
 

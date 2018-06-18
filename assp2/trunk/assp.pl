@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18148';        # 28.05.2018 TE
+$build   = '18169';        # 18.06.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -582,7 +582,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '5222DC68C627BDBB94544E1F6C2655767F566AA2'; }
+sub __cs { $codeSignature = '445A149061986E91A227693D0391A8D50ABF3C4F'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -622,11 +622,11 @@ our $tlds3_URL = 'http://george.surbl.org/three-level-tlds';
 
 our $BackDNSFileURL = 'http://wget-mirrors.uceprotect.net/rbldnsd-all/ips.backscatterer.org.gz';
 
-# set the blocking mode for HTTPS (0/1 default is 0) and HTTP (0/1 default is 0) on the GUI
-our $HTTPSblocking = 0;
+# set the blocking mode for HTTP (0/1 default is 0) and HTTPS (0/1 default is 0) on the GUI
 our $HTTPblocking = 0;
-our $HTTP_OCSP_NO_STAPLE = 1;  # disable OCSP staple
-our $HTTP_NO_VERIFY = 1;       # disable certificate verification and CRL
+our $HTTPSblocking = 0;
+our $HTTPS_OCSP_NO_STAPLE = 1;  # disable OCSP staple
+our $HTTPS_NO_VERIFY = 1;       # disable certificate verification and CRL
 
 # set the blocking mode for STATS connection (0/1) - default is 0
 our $STATSblocking = 0;
@@ -1125,7 +1125,7 @@ $notAllowedSMTP = qr/CHUNKING|PIPELINING|XEXCH50|CHECKPOINT|TRANSID|
                      X-EXPS|X-ADAT|X-DRCP|X-ERCP|EVFY|
                      BINARYMIME|BDAT|
                      AUTH\x20GSSAPI|AUTH\x20NTLM|X-LINK2STATE|
-                     NTLM|XSHADOW|XRDST|X-ANONYMOUSTLS
+                     NTLM|XSHADOW|XRDST|X-ANONYMOUSTLS|XSAVETOSENT
                   /oix;
 
 # skip these addresses from personal black processing
@@ -3269,7 +3269,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   If you\'ve installed the ASSP_AFC Plugin (at least version 2.10) and \'exe-bin\' is defined (on any level), the Plugin will detect executable files based on their binary content. Detected will be all executables, libraries and scripts for DOS and Windows (except .com files), MS office macros(VBA), MAC-OS and linux ELF (for all processor architectures).<br />
   If you want to skip the detection for a specific executable type, define any combination of the tags below like: \'exe-bin|:WSH|:MSOM|:WIN\' - notice the leading collon for the exceptions!<br /><br />
  :WIN - windows executables<br />
- :MOS - Mach-O executables<br />
+ :MOS - Java Class Bytecode or Mach-O executables<br />
  :PEF - Classic MacOS executables<br />
  :ELF - ELF (linux) executables<br />
  :WSH - windows shell scripts<br />
@@ -3280,7 +3280,8 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  :CERTPDF - certificate signed adobe PDF file<br />
  :JSPDF - adobe PDF file with JavaScript inside - notice: well known malicious JavaScript combinations will be blocked, even this option is defined<br />
  :URIPDF - adobe PDF file with URIs to download exeutables from the web or to open local files<br />
- :MSOLE - Microsoft Office Compound File Binary (OLE)<br />
+ :MSOLE - all Microsoft Office Compound File Binary (OLE) - legacy not recommended, OLE files can contain any conceivable content<br />
+ :HLMSOLE - (HarmLess) Microsoft Office Compound File Binary (OLE) - MSOLE, except it contains forbidden files (the <a href="http://search.cpan.org/search?query=OLE::Storage_Lite" rel="external">OLE::Storage_Lite</a> module in PERL is needed)<br />
  :MSOM - Microsoft Office Macros<br />',undef,undef,'msg004120','msg004121'],
 ['BadAttachL2','Level 2 rejected File Extensions',80,\&textinput,'','(.*)','updateBadAttachL2',
   'This regular expression is used to identify Level 2 attachments that should be blocked.<br />
@@ -5135,8 +5136,12 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
  user@domain=>recipient@any-domain - will send a report for user@domain to recipient@any-domain<br />
  *@domain=>recipient@any-domain - will send a report for every blocked user in this domain to recipient@any-domain<br />
  It is possible to define a group ( Groups ) in the first parameter like:<br />
- [user@domain]=>recipient@any-domain<br />
- The group name must be a lower case email address of a local domain without any wildcard. This will create a combined block report for all email addresses defined in this group - useful, if someone has multiple email addresses and wants to get a single report.<br />
+ [users@domain]<br />
+ [users@domain]=>*<br />
+ [users@domain]=>recipient@any-domain<br />
+ The group name must be a lower case email address of a local domain without any wildcard.<br />
+ The first and second example will create a block report for each group member.<br />
+ The third example will create a combined block report for all email addresses defined in this group - useful, if someone has multiple email addresses and wants to get a single report.<br />
  If the group name is equal to a real existing email address of a user, and this user requests a block report using this email address (MAIL FROM:), a combined block report for the group will be generated.<br />
  A third parameter is possible to set, which defines the number of days for which the report should be created. The default (if empty or not defined) is one day. This value is used to calculate the \'next run date\'. For example:<br />
  *@domain=>recipient@any-domain=>2 - creates a report for two days.<br />
@@ -5207,8 +5212,13 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
  user@domain=>recipient@any-domain - will send a report for user@domain to recipient@any-domain<br />
  *@domain=>recipient@any-domain - will send a report for every blocked user in this domain to recipient@any-domain<br />
  It is possible to define a group ( Groups ) in the first parameter like:<br />
- [user@domain]=>recipient@any-domain<br />
- The group name must be a lower case email address of a local domain without any wildcard. This will create a combined block report for all email addresses defined in this group - useful, if someone has multiple email addresses and want\'s to get a single report.<br />
+ [users@domain]<br />
+ [users@domain]=>*<br />
+ [users@domain]=>recipient@any-domain<br />
+ The group name must be a lower case email address of a local domain without any wildcard.<br />
+ The first and second example will create a block report for each group member.<br />
+ The third example will create a combined block report for all email addresses defined in this group - useful, if someone has multiple email addresses and wants to get a single report.<br />
+ If the group name is equal to a real existing email address of a user, and this user requests a block report using this email address (MAIL FROM:), a combined block report for the group will be generated.<br />
  An optional third parameter can define the number of days for which the report should be created. The default (if empty or not defined) is one day. This value is used to calculate the \'next run date\'. For example:<br />
  *@domain=>recipient@any-domain=>2 - creates a report for two days.<br />
  *@domain=>*=>14 - creates a report for 14 days.<br />
@@ -5236,13 +5246,13 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
  For individual filter settings, it is possible to overwrite this value in the BlockReportFile for every single line and in every request per email using the subject line ( read EmailBlockReport ).',undef,undef,'msg008520','msg008521'],
 ['DoT10Stat','Collect multiple TopTen Statistics',0,\&checkbox,'','(.*)',undef, 'enable the top ten statistic count (blocked IP\'s, blocked senders, blocked recipients) and the output in the GUI and BlockReports for admins.',undef,undef,'msg009790','msg009791'],
 ['inclResendLink','Include a Resend-Link for every resendable email','0:disabled|1:in plain text report|2:in html report|3:in both',\&listbox,3,'(\d*)',undef,
-  'Block reports will be sent as multipart/alternative MIME messages. They contains two parts, a plain text part and a html part. If a blocked email is stored in any folder, it is possible to include a link for each email in to the report. Define here what you want ASSP to do. Default is "in both". If set to not to disabled " fileLogging " will be automatically set to on.',undef,undef,'msg008530','msg008531'],
+  'Block reports will be sent as multipart/alternative MIME messages. They contains two parts, a plain text part and a html part. If a blocked email is stored in any folder (except viruslog), it is possible to include a link for each email in to the report. Define here what you want ASSP to do. Default is "in both". If set to not to disabled " fileLogging " will be automatically set to on.',undef,undef,'msg008530','msg008531'],
 ['BlockResendLink','Which Link Should be included','0:both|1:left|2:right',\&listbox,0,'(\d*)',undef,
   'If HTML is enabled in inclResendLink, two links (one on the left and one on the right site) will be included in the report email by default. Depending on the used email clients it could be possible, that one of the two links will not work for you. Try out what link is working and disable the other one, if you want.',undef,undef,'msg008540','msg008541'],
 ['BlockResendLinkLeft','User which get the Left link only*',80,\&textinput,'','(.*)','ConfigMakeSLRe',
-  'List of users and domains that will get the left link only. The setting for BlockResendLink will be ignored for this entries!',undef,undef,'msg008550','msg008551'],
+  'List of users and domains that will get the left link only. The setting for BlockResendLink will be ignored for this entries! Using groups is supported.',undef,undef,'msg008550','msg008551'],
 ['BlockResendLinkRight','User which get the right link only* ',80,\&textinput,'','(.*)','ConfigMakeSLRe',
-  'List of users and domains that will get the right link only. The setting for BlockResendLink will be ignored for this entries!',undef,undef,'msg008560','msg008561'],
+  'List of users and domains that will get the right link only. The setting for BlockResendLink will be ignored for this entries! Using groups is supported.',undef,undef,'msg008560','msg008561'],
 ['DelResendSpam','Delete Mails in Spam Folder',0,\&checkbox,'1','(.*)',undef, 'If selected, a user request to resend a blocked email will delete the file in the spamlog folder - an admin request will move the file to the correctednotspam folder.',undef,undef,'msg008570','msg008571'],
 ['autoAddResendToWhite','Automatic add Resend Senders to Whitelist','0:no|1:Users only|2:Admins only|3:Users and Admins',\&listbox,'0','(.*)',undef, 'If a BlockReport resend request is made by any of the selected users, the original sender of the resent mail will be added to whitelist, also a copy file to the resend folder will do that.
   <div class="cfgnotes">Notes On Block Reporting</div>
@@ -14478,28 +14488,31 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.81;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.82;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.06;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
-  $ModuleList{'Plugins::ASSP_RSS'}    =~ s/([0-9\.\-\_]+)$/$v=1.05;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_RSS'};
+  $ModuleList{'Plugins::ASSP_RSS'}    =~ s/([0-9\.\-\_]+)$/$v=1.08;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_RSS'};
   $ModuleList{'Plugins::ASSP_Razor'}  =~ s/([0-9\.\-\_]+)$/$v=1.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_Razor'};
   $ModuleList{'Plugins::ASSP_FakeMX'} =~ s/([0-9\.\-\_]+)$/$v=1.02;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_FakeMX'};
 
   mlog(0,'info: assp has successfully loaded '.scalar(keys(%INC)).' Perl modules in to its namespace');
+
+  my $table = [];
+
   if (open(my $f, '>', "$base/notes/loaded_perl_modules.txt")) {
       binmode $f;
       print $f 'ASSP runtime and support information at '.timestring()."\n\n";
-      print $f 'OS: '.$^O."\n";
-      print $f 'Perl: '.$]."\n";
-      print $f "ASSP: $0 - $MAINVERSION\n";
-      print $f "UUID: $UUID\n";
-      print $f "base: $base\n";
-      print $f "MD5 assp.pl: $asspCodeMD5\n";
-      print $f "code signature: $codeSignature\n";
-      print $f "code integrity: $asspSHA1\n";
-      print $f "OpenSSL binary: ".($osslv ? $osslv : 'n/a')."\n";
-      print $f "CPU: system-cores: $numcpus, assp-cpu-affinity: @currentCpuAffinity\n";
+      push @$table, ['OS:',$^O];
+      push @$table, ['Perl:',$] ];
+      push @$table, ['ASSP:', "$0 - $MAINVERSION"];
+      push @$table, ['UUID:',$UUID];
+      push @$table, ['base:', $base];
+      push @$table, ['MD5 assp.pl:', $asspCodeMD5];
+      push @$table, ['code signature:',$codeSignature];
+      push @$table, ['code integrity:', $asspSHA1];
+      push @$table, ['OpenSSL binary:',($osslv ? $osslv : 'n/a')];
+      push @$table, ['CPU:', "system-cores: $numcpus, assp-cpu-affinity: @currentCpuAffinity"];
       if ($CanUseSysMemInfo) {
           my $totalmem = "n/a";
           my $freemem = "n/a";
@@ -14509,30 +14522,69 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
           $freemem = eval{int(Sys::MemInfo::freemem() / 1048576);};
           $totalswap = eval{int(Sys::MemInfo::totalswap() / 1048576);};
           $freeswap = eval{int(Sys::MemInfo::freeswap() / 1048576);};
-          print $f "MEM(MB): total: $totalmem, free: $freemem, totalswap: $totalswap, freeswap: $freeswap\n";
+          push @$table, ['Memory in MB:', "total: $totalmem, free: $freemem, totalswap: $totalswap, freeswap: $freeswap"];
       }
+      print $f generate_table(rows => $table, header_row => 0);
+
       if ($CanUseIOSocketSSL) {
+          $table = [];
           my $ov;
           eval {
-          print $f "\n";
-          print $f 'Net-SSLeay: version ' . Net::SSLeay->VERSION ." - build information\n";
+          print $f "\n\n";
+          print $f 'Net-SSLeay: version ' . Net::SSLeay->VERSION ." - build information\n\n";
           $ov = Net::SSLeay::SSLeay_version(0);
-          print $f "  openssl : $ov\n";
-          print $f '  ' . Net::SSLeay::SSLeay_version(2)."\n";
-          print $f '  ' . Net::SSLeay::SSLeay_version(3)."\n";
-          print $f '  platform: ' . Net::SSLeay::SSLeay_version(4)."\n";
-          print $f '  SSL_read_ahead: '.($SSL_read_ahead ? 'enabled' : 'disabled')."\n";
+          push @$table, ['openssl:', $ov];
+          my @info = split(/:/o,Net::SSLeay::SSLeay_version(1),2);
+          $info[0] .= ':';
+          my @cinfo = split(/\s+/o,$info[1]);
+          my @dinfo;
+          my $i = 0;
+          my $j = 0;
+          while (@cinfo) {
+              my $v = shift(@cinfo);
+              next unless $v;
+              $dinfo[$i] .= $j == 0 ? $v : " $v";
+              if ($j++ == 10) {
+                  $j = 0;
+                  $i++;
+                  $dinfo[$i] = ' ' x (index($dinfo[0], ' ') + 1);
+              }
+          }
+          push @$table, [$info[0],shift(@dinfo)];
+          push @$table, ['',$_] for (@dinfo);
+
+          @info = split(/:/o,Net::SSLeay::SSLeay_version(2),2);
+          $info[0].=':';
+          $info[1] =~ s/^\s+//o;
+          push @$table, [@info];
+
+          @info = split(/:/o,Net::SSLeay::SSLeay_version(3),2);
+          $info[0].=':';
+          $info[1] =~ s/^\s+//o;
+          push @$table, [@info];
+
+          @info = split(/:/o,Net::SSLeay::SSLeay_version(4),2);
+          $info[0].=':';
+          $info[1] =~ s/^\s+//o;
+          push @$table, [@info];
+          push @$table, ['SSL_read_ahead:',($SSL_read_ahead ? 'enabled' : 'disabled')];
         #   0 (=SSLEAY_VERSION) - e.g. 'OpenSSL 1.0.0d 8 Feb 2011'
-        #   2 (=SSLEAY_CFLAGS)  - e.g. 'compiler: gcc -D_WINDLL -DOPENSSL_USE_APPLINK .....'
-        #   3 (=SSLEAY_BUILT_ON)- e.g. 'built on: Fri May  6 00:00:46 GMT 2011'
-        #   4 (=SSLEAY_PLATFORM)- e.g. 'platform: mingw'
+        #   1 (=SSLEAY_COMPILER - e.g. 'compiler: gcc -DZLIB -DDSO_WIN32...'
+        #   2 (=SSLEAY_BUILT_ON)- e.g. 'built on: Fri May  6 00:00:46 GMT 2011'
+        #   3 (=SSLEAY_PLATFORM)- e.g. 'platform: mingw'
+        #   4 (=SSLEAY_CFLAGS)  - e.g. 'OPENSSLDIR: "Z:/extlib/_openssl11__/ssl"'
           };
           my ($k) = $ov =~ /(\d+\.\d+\.\d+[\S]+)/o;
           $ov =~ s/OpenSSL/OpenSSL-lib/o;
           $ModuleList{$ov} = "$k/1.0.1h";
+          print $f generate_table(rows => $table, header_row => 0);
       }
-      print $f "\nassp has loaded the following Perl modules in to its namespace\n\n";
-      print $f "module name\tfile name\tmodule location\tmodule version\n\n";
+      print $f "\n\nassp has loaded the following ".(scalar(keys(%INC)))." Perl modules in to its namespace\n\n";
+
+      $table = [];
+      push @$table, ['module name','file name','module location','module version'];
+
+      my $mainmod;
       for my $mod (sort keys(%INC)) {
           my $mn = my $fn = $mod;
           $mn =~ s/\//::/go;
@@ -14542,11 +14594,18 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
           my $v;
           eval{$v = $mn->VERSION} if $ty =~ /^p[ml]$/o;
           $v ||= 'n/a';
-          print $f "$mn\t$fn\t$INC{$mod}\t$v\n";
+          my $start;
+          $start = $1 if $mn =~ /^([^:]+)/o;
+          if ($start ne $mainmod) {
+              push @$table, [] if $mainmod;
+              $mainmod = $start;
+          }
+          push @$table, [$mn,$fn,$INC{$mod},$v];
           if ($mn eq 'BerkeleyDB') {
-              print $f "BerkeleyDB-engine\t$BDBver / $BDBverStr\n";
+              push @$table, ['BerkeleyDB-engine','',$BDBverStr,$BDBver];
           }
       }
+      print $f generate_table(rows => $table, header_row => 1);
       $f->close;
   }
   if (scalar keys %ModuleError) {
@@ -17949,9 +18008,12 @@ sub mlogRe{
 sub sortMlog {
     my $m = shift;
     return unless scalar @$m;
+    my $i = 0;
     @$m = map  { $_->[1] }
-          sort { $main::a->[0] <=> $main::b->[0] }   # oldest first
-          map  { [split(/ /o,$_,2)] } @$m;           # time-high-res logline
+          sort { $main::a->[0] <=> $main::b->[0]     # oldest first
+                                ||
+                 $main::a->[2] <=> $main::b->[2] }   # keep the order on same time
+          map  { [split(/ /o,$_,2),++$i] } @$m;      # time-high-res logline
 }
 
 sub mlogWrite {
@@ -18264,9 +18326,9 @@ sub mlog {
     if ($debug || $ThreadDebug) {
         threads->yield();
         if (@m) {
-            $debugQueue{$WorkerNumber}->enqueue(Time::HiRes::time.' '.$_) for @m;
+            $debugQueue{$WorkerNumber}->enqueue(sprintf("%.6f",Time::HiRes::time).' '.$_) for @m;
         } else {
-            $debugQueue{$WorkerNumber}->enqueue(Time::HiRes::time.' '.$m);
+            $debugQueue{$WorkerNumber}->enqueue(sprintf("%.6f",Time::HiRes::time).' '.$m);
         }
         threads->yield();
     }
@@ -18374,6 +18436,82 @@ sub tosyslog {
   }
   @$m = ();
   return 1;
+}
+
+sub generate_table {
+
+    my $COLUMN_SEPARATOR = '|';
+    my $ROW_SEPARATOR = '-';
+    my $CORNER_MARKER = '+';
+    my $HEADER_ROW_SEPARATOR = '=';
+    my $HEADER_CORNER_MARKER = 'O';
+
+    my %params = @_;
+    my $rows = $params{rows} or return;
+
+    my $get_cols_and_rows = sub {
+        my $rows = shift;
+        return ( max( map { scalar @$_ } @$rows), scalar @$rows);
+    };
+
+    my $max_array_index = sub {
+        my $rows = shift;
+        return max( map { $#$_ } @$rows );
+    };
+
+    my $maxwidths = sub {
+        my $rows = shift;
+        my $max_index = $max_array_index->($rows);
+        my $widths = [];
+        for my $i (0..$max_index) {
+            my $max = max(map {defined $$_[$i] ? length($$_[$i]) : 0} @$rows);
+            push @$widths, $max;
+        }
+        return $widths;
+    };
+
+    my $get_format = sub {
+        my $widths = shift;
+        return "$COLUMN_SEPARATOR ".join(" $COLUMN_SEPARATOR ",map { "%-${_}s" } @$widths)." $COLUMN_SEPARATOR";
+    };
+
+    my $get_row_separator = sub {
+        my $widths = shift;
+        return "$CORNER_MARKER$ROW_SEPARATOR".join("$ROW_SEPARATOR$CORNER_MARKER$ROW_SEPARATOR",map { $ROW_SEPARATOR x $_ } @$widths)."$ROW_SEPARATOR$CORNER_MARKER";
+    };
+
+    my $get_header_row_separator = sub {
+        my $widths = shift;
+        return "$HEADER_CORNER_MARKER$HEADER_ROW_SEPARATOR".join("$HEADER_ROW_SEPARATOR$HEADER_CORNER_MARKER$HEADER_ROW_SEPARATOR",map { $HEADER_ROW_SEPARATOR x $_ } @$widths)."$HEADER_ROW_SEPARATOR$HEADER_CORNER_MARKER";
+    };
+
+    my $widths = $maxwidths->($rows);
+    my $max_index = $max_array_index->($rows);
+
+    my $format = $get_format->($widths);
+    my $row_sep = $get_row_separator->($widths);
+    my $head_row_sep = $get_header_row_separator->($widths);
+
+    my @table;
+    push @table, $params{header_row} ? $head_row_sep : $row_sep;
+
+    my $data_begins = 0;
+    if ( $params{header_row} ) {
+        my $header_row = $rows->[0];
+        $data_begins++;
+        push @table, sprintf($format, map{''} (0..$max_index));
+        push @table, sprintf($format,map { defined($header_row->[$_]) ? $header_row->[$_] : '' } (0..$max_index));
+        push @table, sprintf($format, map{''} (0..$max_index));
+        push @table, $head_row_sep;
+    }
+
+    foreach my $row ( @{ $rows }[$data_begins..$#$rows] ) {
+        push @table, sprintf($format,map { defined($row->[$_]) ? $row->[$_] : '' } (0..$max_index)) if "@$row" ne '';
+        push @table, $row_sep if $params{separate_rows} || "@$row" eq '';
+    }
+
+    push @table, $row_sep unless $params{separate_rows};
+    return join("\n",grep {$_} @table);
 }
 
 sub setMSGDate {
@@ -39092,7 +39230,7 @@ sub ReportBodyUnZip {
                                       body => $cont,
                                   )
                             );
-                            mlog(0,"info: Outlook attachment $name ws converted to MIME $name$maillogExt") if $ReportLog > 1;
+                            mlog(0,"info: Outlook attachment $name was converted to MIME $name$maillogExt") if $ReportLog > 1;
                         } else {
                             mlog(0,"info: Outlook attachment $name will be ignored, it contains no useful message") if $ReportLog;
                         }
@@ -40934,8 +41072,21 @@ sub BlockReportGen {
         my $mto;
         $mto = "to send it to $to" if $to;
         my $mfor = $addr;
-        $mfor = "Group $addr" if $addr =~ /\[/o;
-        mlog( 0, "info: generating block reports ($numdays) for $mfor $mto" )
+        my $groupcount;
+        if ($addr =~ /\[($EmailAdrRe\@$EmailDomainRe)/o) {
+            my $groupname = lc($1);
+            $groupcount = () = split(/\|/o,$GroupRE{$groupname});
+            if (! $groupcount) {
+                my $emptyreason = exists($GroupRE{$groupname}) ? 'empty' : 'not existing';
+                mlog(0,"error: blockreport - $emptyreason groupname $groupname used!");
+                next;
+            }
+            $mfor = "Group $groupname (with $groupcount entries)";
+        } elsif ($addr =~ /\[/o) {
+            mlog(0,"error: blockreport - invalid groupname $addr used - this must be an email address!");
+            next;
+        }
+        mlog( 0, "info: generating block reports ($numdays days) for $mfor $mto" )
           if $ReportLog >= 2;
         $Con{$fh}->{mailfrom} = $EmailAdminReportsTo;    # set to get all lines
         $Con{$fh}->{header} = "$addr=>$to=>$numdays=>$exceptRe\r\n";
@@ -40959,7 +41110,7 @@ sub BlockReportGen {
             my $rcpt = $to;
             if ( $addr !~ /\*/o || ( $addr =~ /\*/o && ! $to ) ) {
                 $rcpt = $to ? $to : $addr;
-                $rcpt = $rcpt =~ /\*/o ? $ad : $rcpt;
+                $rcpt = $ad if ($rcpt =~ /\*/o || ($isGroup && ! $to));
             }
             push( @textreasons,
                 &BlockReportText( 'text', $ad, $numdays, $number, $rcpt ) );
@@ -40977,7 +41128,7 @@ sub BlockReportGen {
 EOT
             while ( @{ $user{$ad}{text} } ) { push( @textreasons, shift @{ $user{$ad}{text} } ); }
             while ( @{ $user{$ad}{html} } ) { push( @htmlreasons, BlockReportHTMLTextWrap(shift @{ $user{$ad}{html} })); }
-            if ( ($addr !~ /\*/o && ! $isGroup) or ( $addr =~ /\*/o && ! $to ) ) {
+            if ( ( $addr !~ /\*/o && ! $isGroup ) or ( $addr !~ /\*/o && $isGroup && ! $to ) or ( $addr =~ /\*/o && ! $to ) ) {
                 push( @textreasons, $user{sum}{text} );
                 push( @htmlreasons, $user{sum}{html} );
                 @textreasons = () if ( $BlockReportFormat == 2 );
@@ -41093,11 +41244,18 @@ sub BlockReasonsGet {
     my $toRe;
     my $fromRe;
     my %exceptRe;
-    my $webAdminPort = [split(/\s*\|\s*/o,$webAdminPort)]->[0];
-    $webAdminPort =~ s/\s//go;
-    $webAdminPort = $1 if $webAdminPort =~ /^$HostPortRe\s*:\s*(\d+)/o;
     my $prot =  $enableWebAdminSSL && $CanUseIOSocketSSL? 'https' : 'http';
     my $host = $BlockReportHTTPName ? $BlockReportHTTPName : $localhostname ? $localhostname : 'please_define_BlockReportHTTPName';
+    my @webAdminPort = map {my $t = $_; $t =~ s/\s//go; $t;} split(/\s*\|\s*/o,$webAdminPort);
+    my $webAdminPort;
+    for my $web (@webAdminPort) {
+        if ($web =~ /^(SSL:)?(?:$HostPortRe\s*:\s*)?(\d+)/io) {
+            $prot = 'https' if $1;
+            $webAdminPort = $2;
+            last;
+        }
+    }
+    $webAdminPort = $1 if !$webAdminPort && $webAdminPort[0] =~ /^(?:SSL:)?(?:$HostPortRe\s*:\s*)?(\d+)/oi;
     my $BRF = ($BlockReportFilter) ? $BlockReportFilterRE : '';
     $exceptRe =~ s/\$BRF/$BRF/ig;
     $exceptRe =~ s/BRF/$BRF/g;
@@ -41550,9 +41708,9 @@ s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockRep
                     my $leftbut = '<a href="mailto:'.$EmailBlockReport.$EmailBlockReportDomain.'?subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$myName.'&body=%23%23%23'.$filename.'%23%23%23'.$addWhiteHint.$addFileHint.$addScanHint.'%0D%0A" class="reqlink" target="_blank" title="request ASSP on '.$myName.' to resend this blocked email"><img src=cid:1000 alt="request ASSP on '.$myName.' to resend this blocked email" /> Resend </a>';
                     my $rightbut = '<a href="mailto:'.$ofilename.$EmailBlockReportDomain.'?&subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$myName.'" class="reqlink" target="_blank" title="request ASSP on '.$myName.' to resend this blocked email"><img src=cid:1000 alt="request ASSP on '.$myName.' to resend this blocked email" /> Resend </a>';
                     $rightbut = '<img src=cid:1000 style="display: none;" />' if (&matchSL(\@to,'BlockResendLinkLeft') or
-                                             ($BlockResendLink == 1 && ! matchSL(\@to,'BlockResendLinkRight')));
+                                             (($BlockResendLink & 1) && ! matchSL(\@to,'BlockResendLinkRight')));
                     $leftbut = '<img src=cid:1000 style="display: none;" />' if (&matchSL(\@to,'BlockResendLinkRight') or
-                                             ($BlockResendLink == 2 && ! matchSL(\@to,'BlockResendLinkLeft')));
+                                             (($BlockResendLink & 2) && ! matchSL(\@to,'BlockResendLinkLeft')));
                     $line =~ s/^(.+\)\s*)(\Q$subjectStart\E.+?\Q$subjectEnd\E.*)$/$1<br\/><strong>$2<\/strong>/ unless $faddress;
                     $line =~ s/(.*)/\n<tr$bgcolor>\n<td class="leftlink">$leftbut\n<\/td>\n<td class="inner">$1\n<\/td>\n<td class="rightlink">$rightbut\n<\/td>\n<\/tr>/o;
                     push( @{ $buser->{ lc($address) }{html} }, $line);
@@ -61308,13 +61466,13 @@ sub ssldebug {
 sub getLWPparms {
     my %lwp_opts;
     local $@;
-    if ($HTTP_OCSP_NO_STAPLE) {
+    if ($HTTPS_OCSP_NO_STAPLE) {
         my $staple = eval('IO::Socket::SSL::SSL_OCSP_NO_STAPLE');
         if (! $@) {
             $lwp_opts{ssl_opts}->{SSL_ocsp_mode} = $staple;
         }
     }
-    if ($HTTP_NO_VERIFY) {
+    if ($HTTPS_NO_VERIFY) {
         $lwp_opts{ssl_opts}->{SSL_verify_mode} = eval('IO::Socket::SSL::SSL_VERIFY_NONE') || 0x00;
         $lwp_opts{ssl_opts}->{SSL_check_crl} = 0x00;
     }
@@ -63884,7 +64042,7 @@ sub addSched {
     $ScheduledTask{$c} = &share({});
     eval{$ScheduledTask{$c}->{Nextrun} = $nextrun;};
     $ScheduledTask{$c}->{Schedule} = $sched;
-    $ScheduledTask{$c}->{Run} = $run;
+    eval{$ScheduledTask{$c}->{Run} = $run;};
     $ScheduledTask{$c}->{Parm} = $parm;
     $ScheduledTask{$c}->{Desc} = $desc;
     $nextrun = timestring($nextrun);
@@ -63893,26 +64051,20 @@ sub addSched {
 
 sub getNextSched {
     my ($sched,$desc,$time) = @_;
-    return unless $CanUseSchedCron;
-    return unless $sched;
-    return unless $desc;
+    return 0 unless $CanUseSchedCron;
+    return 0 unless $sched;
+    return 0 unless $desc;
     $time ||= time;
-    my $cron;
     my @schedule;
     for ( split(/\|/o,$sched) ) {
         s/^s+//o;
         s/s+$//o;
-        eval{
-            $cron = Schedule::Cron->get_next_execution_time($_,$time);
-            if ($cron =~ /^\d+$/io) {
-                push @schedule, $cron;
-            } else {
-                mlog(0,"error: Schedule entry '$_' for $desc is not valid");
-            }
-            1;
-        } or do {
-            mlog(0,"error: Schedule entry '$_' for $desc is not valid - $@");
-            next;
+        my $cron;
+        eval{$cron = Schedule::Cron->get_next_execution_time($_,$time);};
+        if ($cron =~ /^\d+$/io) {
+            push @schedule, $cron;
+        } else {
+            mlog(0,"error: Schedule entry '$_' for $desc is not valid");
         }
     }
     return 0 unless scalar @schedule;
@@ -70411,9 +70563,9 @@ sub ThreadMaintMain2 {
             my ($run,$parm,$nextrun);
             {
                 lock %ScheduledTask if is_shared(%ScheduledTask);
-                $run = $ScheduledTask{$task}->{Run};
+                eval{$run = $ScheduledTask{$task}->{Run};};
                 $parm = $ScheduledTask{$task}->{Parm};
-                $nextrun = $ScheduledTask{$task}->{Nextrun};
+                eval{$nextrun = $ScheduledTask{$task}->{Nextrun};};
             }
             next if ($nextrun >= time);
             $wasrun = 1;
