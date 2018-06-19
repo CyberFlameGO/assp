@@ -101,8 +101,8 @@ BEGIN {
   $LibArchRe .= 'TAR|TBZ|TBZ2|UDF|';
   $LibArchRe .= 'WAR|XAR|Z|ZIP';
 
-  $CanOLE = eval('use OLE::Storage_Lite();1;');
-  $CanEOM = eval('use Email::Outlook::Message();1;');
+  $CanOLE = eval('use OLE::Storage_Lite();OLE::Storage_Lite->VERSION;');
+  $CanEOM = eval('use Email::Outlook::Message();Email::Outlook::Message->VERSION;');
   
   if ($CanSMIME = eval('use Crypt::SMIME();Crypt::SMIME->VERSION;')) {
       $CanNetSSLeay = eval('use Net::SSLeay();1;');
