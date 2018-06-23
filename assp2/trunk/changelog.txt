@@ -1,3 +1,12 @@
+2018-06-23
+fixed in assp 2.6.2 *Fortress* build 18174:
+
+- the file defined in 'blockReportFile' was unexpected rewritten at blockreport creation
+
+- changes to regular expression populated by the GlobalPenaltyBox-Server were some times not included in to the local files
+
+
+
 2018-06-18
 fixed in assp 2.6.2 *Fortress* build 18169:
 

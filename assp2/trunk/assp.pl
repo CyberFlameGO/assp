@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18169';        # 18.06.2018 TE
+$build   = '18174';        # 23.06.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -582,7 +582,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '445A149061986E91A227693D0391A8D50ABF3C4F'; }
+sub __cs { $codeSignature = '395B99A16DD6AE8FD443BF8BAEF54AF011E1738B'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -40945,6 +40945,7 @@ EOT
 sub BlockReportGen {
     my ( $now, $brfile ) = @_;
     my $fh = int( rand(time) );    # a dummy $fh for a dummy $Con{$fh}
+    my $brfileMD5 = Digest::MD5->new;
     my $filename;
     my $number;
     my @lines;
@@ -40971,6 +40972,7 @@ sub BlockReportGen {
             mlog(0,"error: BlockReport: unable to find or open the file $filename");
             return;
         }
+        binmode($brfile);
     }
    # mlog( 0, "info: generating block reports from $filename" );
 
@@ -40986,7 +40988,9 @@ sub BlockReportGen {
     while (<$brfile>) {
         s/\r|\n//go;
         my $cline = $_;
-        my $comment; $comment = $1 if s/\s*#(.*)//go;
+        $brfileMD5->add($cline);
+        my $comment;
+        $comment = $1 if s/\s*#(.*)//go;
 
         if ( !$_ ) {
             push( @lines, $cline );
@@ -41211,9 +41215,7 @@ EOT
                 );
             }
         }
-        mlog( 0,
-            "info: finished generating block reports ($numdays) for $addr $mto"
-        ) if $ReportLog >= 2;
+        mlog(0,"info: finished generating block reports ($numdays) for $addr $mto") if $ReportLog >= 2;
 
         @textreasons = ();
         @htmlreasons = ();
@@ -41222,14 +41224,16 @@ EOT
     }
     $brfile->close;
     delete $Con{$fh};
-    $filename="$base/$filename" if $filename!~/^\Q$base\E/io;
-    if ( !$now && (open $brfile,'>' ,"$filename")) {
-        binmode $brfile;
-        print $brfile join("\n",@lines);
-        print $brfile "\n";
-        $brfile->close;
-    } elsif (! $now && $!) {
-        mlog(0,"warning: error writing file $base/$filename - $!");
+    if (! $now && eval{ $brfileMD5->digest ne Digest::MD5->new->add(@lines)->digest }) { # the file was changed
+        $filename="$base/$filename" if $filename!~/^\Q$base\E/io;
+        if ( open($brfile,'>' ,"$filename") ) {
+            binmode $brfile;
+            print $brfile join("\n",@lines)."\n";
+            $brfile->close;
+            mlog( 0,"info: wrote changed file $base/$filename") if $ReportLog >= 2;
+        } elsif ($!) {
+            mlog(0,"warning: error writing file $base/$filename - $!");
+        }
     }
     unloadNameSpace('BlockReport::modify');
 }
@@ -70415,6 +70419,7 @@ sub ThreadChangeVar {
 sub RunEval {
     my $cmd = shift;
     eval($cmd);
+    mlog(0,"error: code evaluation failed: $@") if ($@);
 }
 
 sub runCMD {
@@ -70568,8 +70573,8 @@ sub ThreadMaintMain2 {
                 eval{$nextrun = $ScheduledTask{$task}->{Nextrun};};
             }
             next if ($nextrun >= time);
-            $wasrun = 1;
             if ($run) {
+                $wasrun = 1;
                 eval{$run->($parm);};
                 mlog(0,"error: error executing scheduled task $ScheduledTask{$task}->{Desc} ($task) - Run ($ScheduledTask{$task}->{Run}) with parameters ($ScheduledTask{$task}->{Parm}) - $@)") if $@;
             } else {
@@ -70579,14 +70584,23 @@ sub ThreadMaintMain2 {
                 next;
             }
             &ThreadYield();
-            lock %ScheduledTask;
-            my $nextsched = getNextSched($ScheduledTask{$task}->{Schedule},$ScheduledTask{$task}->{Desc});
+            my $nextsched;
+            {
+                lock %ScheduledTask if is_shared(%ScheduledTask);
+                $nextsched = getNextSched($ScheduledTask{$task}->{Schedule},$ScheduledTask{$task}->{Desc});
+            }
             if ($nextsched >= time) {
-                $ScheduledTask{$task}->{Nextrun} = $nextsched;
-                $nextsched = timestring($nextsched);
+                {
+                    lock %ScheduledTask if is_shared(%ScheduledTask);
+                    eval{$ScheduledTask{$task}->{Nextrun} = $nextsched;};
+                    $nextsched = timestring($nextsched);
+                }
                 mlog(0,"info: rescheduled task : $ScheduledTask{$task}->{Desc} - to : $ScheduledTask{$task}->{Parm} - at : $ScheduledTask{$task}->{Schedule} - next run is at : $nextsched") if $MaintenanceLog > 1;
             } else {
-                delete $ScheduledTask{$task};
+                {
+                    lock %ScheduledTask if is_shared(%ScheduledTask);
+                    delete $ScheduledTask{$task};
+                }
                 mlog(0,"error: removed scheduled task : $ScheduledTask{$task}->{Desc} - to : $ScheduledTask{$task}->{Parm} - at : $ScheduledTask{$task}->{Schedule} - calculated schedule is in the past");
                 next;
             }
@@ -71888,6 +71902,7 @@ sub registerGlobalClient {
 
 sub sendGlobalFile {
     my ($list,$outfile,$infile) = @_;
+    use re 'eval';
     our $mirror = $GPBDownloadLists;
 
     my $url = allRot($globalUploadURL);
@@ -72168,6 +72183,7 @@ sub uploadGlobalPB {
 sub GPBSetup {
     $GPBmodTestList = sub {my ($how,$parm,$whattodo,$text,$value,$skipbackup)=@_;
     d("GPBmodTestList - $parm - $whattodo");
+    # mlog(0,"info: $how,$parm,$whattodo,$text,$value,$skipbackup");
     my $file;
     my $GPBFILE;
     my @cont;
@@ -72180,6 +72196,7 @@ sub GPBSetup {
         return 0;
     }
     $file="$base/$file" if $file!~/^(([a-z]:)?[\/\\]|\Q$base\E)/io;
+    # mlog(0,"info: $how $file case: $case");
     return if ( !-e "$file");
     (open ($GPBFILE, '<',$file)) or (mlog(0,"error: unable to read from file $file for '$parm' to '$whattodo' entry") and return 0);
     @cont = <$GPBFILE>;
