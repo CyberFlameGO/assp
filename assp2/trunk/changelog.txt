@@ -1,3 +1,24 @@
+2018-06-30
+fixed in assp 2.6.2 *Fortress* build 18181:
+
+- the group-edit and group-show button were not available, if a group was defined in 'blockReportFile' 
+
+- 'BlockResendLinkLeft' and 'BlockResendLinkRight' were not working for groups used in 'blockReportFile'
+
+- defined include file loops caused stucking MainThread and endless assp restarts
+
+- in some cases the timeline of debug output lines was broken
+
+
+changed:
+
+- a warning is shown in the maillog.txt if a defined regular expression matches an empty string
+
+- a warning is shown in the maillog.txt if a defined regular expression matches any string
+
+
+
+
 2018-06-23
 fixed in assp 2.6.2 *Fortress* build 18174:
 

@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18174';        # 23.06.2018 TE
+$build   = '18181';        # 30.06.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -351,6 +351,7 @@ our $DNSCheckInterval:shared = 60;
 our $DNSErrorCheckInterval:shared = 5;
 our %SSLServerContext;
 our %SSLServerContextList;
+our $mlogtime;
 #our %startupMem:shared;
 
 
@@ -479,6 +480,8 @@ our $protectASSP = 1;                    # (0/1) the internal 'rmtree' function 
 our $noSupportSummay = 0;                # (0/1) skips the output of a support summary in the configuration export function
 
 our $AllowCodeInRegex = 0;               # (0/1) allow the usage of executable perl code (?{code_to_run}) in regular expression - change this ONLY, if you really know what you do
+
+our $maxSameFileIncludes = 100;          # number of times the same include file can occure in a configuration file
 # *********************************************************************************************************************************************
 
 our $trustedFWSF = 'mx.sourceforge.net,lists.sourceforge.net';   # comma separed list of host1,helo1,host2,helo2,.... for an exact host match in the first line of an X-Spam-Report: spamassassin header!
@@ -582,7 +585,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '395B99A16DD6AE8FD443BF8BAEF54AF011E1738B'; }
+sub __cs { $codeSignature = '1977EEC343D903D839C888ED299AFAD1EDB59A0A'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -3497,7 +3500,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   If the number of hits is greater or equal Maximum Hits, the email is flagged <b>Failed</b> (possibly blocked and/or scored).<br />
   If the number of hits is greater 0 and less Maximum Hits, the email is flagged <b>Neutral</b> (possibly scored)',undef,undef,'msg004520','msg004521'],
 ['DoBombRe','Use Bomb Regular Expressions','0:disabled|1:block|2:monitor|3:score',\&listbox,1,'(\d*)',undef,
-  'If activated, each message is checked  against bombRe and BombData Regular Expressions.<br />
+  'If activated, each message is checked  against bombRe and bombDataRe Regular Expressions.<br />
   The scoring value is the sum of all valences(weights) of all found bombs - bombValencePB .',undef,undef,'msg004530','msg004531'],
 ['bombRe','Regular Expression for Header and Data Part**',80,\&textinput,'file:files/bombre.txt','(.*)','ConfigCompileRe','Header and Data will be checked against this Regular Expression if DoBombRe is enabled.  For example:<br />
  IMG [^&gt;]*src=[\'&quot;]cid|&lt;BODY[^&gt;]*&gt;(&lt;[^&gt;]+&gt;|\n|\r)*&lt;IMG[^&gt;]+&gt;(&lt;[^&gt;]+&gt;|\n|\r)*&lt;/BODY&gt;<br />
@@ -5879,7 +5882,12 @@ sub timeval {
     return $@ ? '0000000000' : $timestring + $plus * 9999999999;
 }
 
-sub microTime { return join('',Time::HiRes::gettimeofday()); }
+sub microTime {
+    my $t = join('',Time::HiRes::gettimeofday());
+    $t = $mlogtime + 1 if $t <= $mlogtime;
+    $mlogtime = "$t";
+    return $mlogtime;
+}
 
 sub ftime { threads->yield(); [$stat->($_[0])]->[9]; }
 sub fsize { threads->yield(); [$stat->($_[0])]->[7]; }
@@ -12743,13 +12751,14 @@ sub d_S {
     threads->yield();
     return unless ($debug || $ThreadDebug);
     my $Stime=&timestring();
-    my $t = sprintf("%.5f",Time::HiRes::time);
+    my $mt = my $t = sprintf("%.6f",Time::HiRes::time);
+    $mt =~ s/\.//go;
     $Sdebugprint =~ s/\n/\[LF\]\n/go;
     $Sdebugprint =~ s/\r/\[CR\]/go;
     $Sdebugprint .= "\n" if $Sdebugprint !~ /\n$/os;
     $Sdebugprint =~ s/\n$/>\n/os;
     threads->yield();
-    $debugQueue{$WorkerNumber}->enqueue("$t $t $Stime [$WorkerName] <$Sdebugprint");
+    $debugQueue{$WorkerNumber}->enqueue("$mt $t $Stime [$WorkerName] <$Sdebugprint");
     threads->yield();
 }
 
@@ -20105,7 +20114,7 @@ sub SetRE {
  }
  if ($@) {
      $RegexError{$name} = 'error in regular expression';
-     mlog(0,"regular expression error in '$r' for '$name <$desc>': $@") unless $noerror;
+     mlog(0,"error: regular expression error in '$r' for '$name <$desc>': $@") unless $noerror;
      $r = $neverMatch; # regexp that never matches
      $$var=qr/(?$f:$r)/;
      return 0;
@@ -20113,6 +20122,8 @@ sub SetRE {
      delete $RegexError{$name};
      exportOptRE($var,$name) if ($WorkerNumber == 0);
  }
+ mlog(0,"warning: regular expression for $name matches an empty string - ignore this warning if this match is expected, otherwise correct the regular expression") if $WorkerNumber == 0 && '' =~ /$$var/;
+ mlog(0,"warning: regular expression for $name seems to match every string - ignore this warning if this match is expected, otherwise correct the regular expression") if $WorkerNumber == 0 && '' =~ /$$var/ && "\r\n$UTF8BOM\r\n" =~ /$$var/;
  return 1;
 }
 
@@ -41020,16 +41031,16 @@ sub BlockReportGen {
             }
         }
         $to = '' if ( $to =~ /\s*\*\s*/o );
-        if ( $to && $to !~ /\s*($EmailAdrRe\@$EmailDomainRe)\s*/go ) {
+        if ( $to && $to !~ /\s*($EmailAdrRe\@$EmailDomainRe)\s*/o ) {
             mlog( 0,"error: syntax error in send to address in $filename in entry $_" )
              if $ReportLog;
             push( @lines, $cline );
             next;
         }
-        $to = $1 if $to =~ /\s*($EmailAdrRe\@$EmailDomainRe)\s*/go;
+        $to = $1 if $to =~ /\s*($EmailAdrRe\@$EmailDomainRe)\s*/o;
         ($numdays) = $numdays =~ /\s*(\d+)\s*/o;
         $numdays = 1 unless $numdays;
-        if ( $addr !~ /.*?(\[?$EmailAdrRe|\*)\@($EmailDomainRe\]?|\*)/go ) {
+        if ( $addr !~ /.*?(\[?$EmailAdrRe|\*)\@($EmailDomainRe\]?|\*)/o ) {
             mlog( 0,"error: syntax error in report address in $filename in entry $_")
              if $ReportLog;
             push( @lines, $cline );
@@ -41097,7 +41108,7 @@ sub BlockReportGen {
         my $isGroup = $addr =~ s/\[(.+)\]/$1/o;
 
         my %user;
-        &BlockReasonsGet( $fh, $numdays , \%user, $exceptRe);
+        &BlockReasonsGet( $fh, $numdays , \%user, $exceptRe, $to);
         my @textreasons;
         my @htmlreasons;
         my $count;
@@ -41239,9 +41250,9 @@ EOT
 }
 
 sub BlockReasonsGet {
-    my ( $fh, $numdays , $buser, $exceptRe) = @_;
+    my ( $fh, $numdays , $buser, $exceptRe, $receipient) = @_;
     my $this = $Con{$fh};
-    d("BlockReasonsGet - numdays: $numdays - exceptRe: $exceptRe",1);
+    d("BlockReasonsGet - numdays: $numdays - exceptRe: $exceptRe recipient: $receipient",1);
     my $isadmin = 0;
     my @to;
     my @from;
@@ -41504,8 +41515,8 @@ WHITCHWORKER
     my $bytes;
     my %ignoreAddr;
     my $runtime = time;
-    &matchSL(\@to,'BlockResendLinkLeft',1);
-    &matchSL(\@to,'BlockResendLinkRight',1);
+    &matchSL([@to,$receipient],'BlockResendLinkLeft',! $ReportLog);
+    &matchSL([@to,$receipient],'BlockResendLinkRight',! $ReportLog);
     
     if ($ReportLog > 2) {
         mlog(0,"info: BlockReport global filter: $exceptRe");
@@ -41711,10 +41722,11 @@ s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockRep
                     $line =~ s/($SpamTagRE|\[(?:TLS-(?:in|out)|SSL-(?:in|out)|PersonalBlack)\])/<span name="tohid">$1<\/span>/gio;
                     my $leftbut = '<a href="mailto:'.$EmailBlockReport.$EmailBlockReportDomain.'?subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$myName.'&body=%23%23%23'.$filename.'%23%23%23'.$addWhiteHint.$addFileHint.$addScanHint.'%0D%0A" class="reqlink" target="_blank" title="request ASSP on '.$myName.' to resend this blocked email"><img src=cid:1000 alt="request ASSP on '.$myName.' to resend this blocked email" /> Resend </a>';
                     my $rightbut = '<a href="mailto:'.$ofilename.$EmailBlockReportDomain.'?&subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$myName.'" class="reqlink" target="_blank" title="request ASSP on '.$myName.' to resend this blocked email"><img src=cid:1000 alt="request ASSP on '.$myName.' to resend this blocked email" /> Resend </a>';
-                    $rightbut = '<img src=cid:1000 style="display: none;" />' if (&matchSL(\@to,'BlockResendLinkLeft') or
-                                             (($BlockResendLink & 1) && ! matchSL(\@to,'BlockResendLinkRight')));
-                    $leftbut = '<img src=cid:1000 style="display: none;" />' if (&matchSL(\@to,'BlockResendLinkRight') or
-                                             (($BlockResendLink & 2) && ! matchSL(\@to,'BlockResendLinkLeft')));
+                    my $checkaddress = $receipient ? $receipient : $address;
+                    $rightbut = '<img src=cid:1000 style="display: none;" />' if (&matchSL([@to,$checkaddress],'BlockResendLinkLeft',($ReportLog < 2)) or
+                                             (($BlockResendLink & 1) && ! matchSL([@to,$checkaddress],'BlockResendLinkRight',($ReportLog < 2))));
+                    $leftbut = '<img src=cid:1000 style="display: none;" />' if (&matchSL([@to,$checkaddress],'BlockResendLinkRight',($ReportLog < 2)) or
+                                             (($BlockResendLink & 2) && ! matchSL([@to,$checkaddress],'BlockResendLinkLeft',($ReportLog < 2))));
                     $line =~ s/^(.+\)\s*)(\Q$subjectStart\E.+?\Q$subjectEnd\E.*)$/$1<br\/><strong>$2<\/strong>/ unless $faddress;
                     $line =~ s/(.*)/\n<tr$bgcolor>\n<td class="leftlink">$leftbut\n<\/td>\n<td class="inner">$1\n<\/td>\n<td class="rightlink">$rightbut\n<\/td>\n<\/tr>/o;
                     push( @{ $buser->{ lc($address) }{html} }, $line);
@@ -42444,7 +42456,7 @@ sub BlockReportBody {
             }
             $numdays = 5 unless $numdays;
             my %user;
-            &BlockReasonsGet( $fh, $numdays , \%user, $exceptRe);
+            &BlockReasonsGet( $fh, $numdays , \%user, $exceptRe, $this->{mailfrom});
             my @textreasons;
             my @htmlreasons;
 
@@ -58961,7 +58973,7 @@ sub ConfigRegisterGroupWatch {
         delete $GroupWatch{$group}->{$name};
         delete $GroupWatch{$group} unless (scalar keys %{$GroupWatch{$group}});
     }
-    my $re = '\[\s*([A-Za-z0-9.\-_]+)\s*\]';
+    my $re = $name eq 'BlockReportFile' ? '\[\s*([A-Za-z0-9.\-_\@]+)\s*\]' : '\[\s*([A-Za-z0-9.\-_]+)\s*\]';  # groups in BlockReportFile are email addresses (special case)
     $re .= '([^\|]*)' if $action;
     while (${$new} =~ s/$re/&GroupReplace($GroupRE{$1},$2)/e) {
         d("RegisterGroup: found group '$1' in '$name' with extension '$2' (action is $action) - replaced with '$GroupRE{$1}'") if $WorkerNumber == 0;
@@ -58992,7 +59004,7 @@ sub ConfigMakeGroupRe {
         }
         return;
     }
-    ${$name} = $new unless $WorkerNumber;
+    ${$name} = $Config{$name} = $new;
     if ($init && $fil && !-e $fil) {
         &downloadHTTP($GroupsFileURL,
             $fil,
@@ -59041,6 +59053,7 @@ sub ConfigMakeGroupRe {
             $ldapcnt = 0;
             $execcnt = 0;
             $group = $grp;
+            mlog(0,"info: now loading group $group") if $group && $MaintenanceLog;
             next;
         }
         next unless $group;
@@ -59210,7 +59223,7 @@ sub ConfigMakeGroupRe {
     }
     $count = 'NO' unless $count;
     my $s = ($count eq 'NO' or $count > 1) ? 's' : '';
-    mlog(0,"info: group $group loaded with $count record$s") if $group && $MaintenanceLog > 1;
+    mlog(0,"info: group $group loaded with $count record$s") if $group && $MaintenanceLog;
     -d "$base/files/groups_export" or mkdirOP("$base/files/groups_export" ,'0755');
     while ( ($group,my $re) = each %GroupRE) {
         unlink "$base/files/groups_export/$group.txt";
@@ -60435,6 +60448,7 @@ sub checkOptionList {
     my ($value,$name,$init,$keepcomments)=@_;
     my $fromfile=0;
     my $fil;
+    $maxSameFileIncludes = 100 if $maxSameFileIncludes < 1;
     if ($value=~/^ *file: *(.+)/io) {
 
         # the option list is actually saved in a file.
@@ -60473,7 +60487,8 @@ sub checkOptionList {
 
             %{$FileIncUpdate{"$fil$name"}} = ();
 
-            while ($value =~ /(\s*#\s*include\s+([$NOCRLF]+)\r?\n)/io) {
+            my %seen;
+            while ($value =~ /(\s*#\s*include\s+([$NOCRLF]+)(?:\r?\n|$))/io) {
                 my $line = $1;
                 my $ifile = $2;
                 $ifile =~ s/([^\\\/])[#;].*/$1/go;
@@ -60518,6 +60533,12 @@ sub checkOptionList {
                 $value =~ s/$line/$inc/;
                 $FileIncUpdate{"$fil$name"}{$ifile} = ftime($ifile);
                 mlog(0,"AdminInfo: option list include file '$ifile' processed for ($name)") if (!$init && ! $calledfromThread);
+                $ifile = lc $ifile if $isWIN;
+                if (++$seen{$ifile} > $maxSameFileIncludes) {
+                    $value =~ s/(\s*#\s*include\s+([$NOCRLF]+)(?:\r?\n|$))//iog;
+                    mlog(0,"error: maximum includes ($maxSameFileIncludes) reached for file '$ifile' in config $name - possible recursion - icludes are stopped now for $name");
+                    last;
+                }
             }
 
             # clean off comments
@@ -63986,14 +64007,26 @@ sub isSched {
 
 sub initMaintScheduler {
     my ($name, $old, $new, $init, $desc) = @_;
+    my $ret;
     if ($name eq 'BlockReportFile') {
-        ${$name}=$Config{$name};
-        my $fil;
+        ${$name} = $Config{$name} = $new;
+        my $groups;
         if (${$name} =~ /^ *file: *(.+)/io) {
-            $fil = $1;
+            my $fil = $1;
             $fil = "$base/$fil" if $fil!~/^\Q$base\E/io;
             $FileUpdate{"$fil$name"} = $FileUpdate{$fil} = ftime($fil);
+            if ($open->(my $COL,'<',$fil)) {
+                my $value;
+                $COL->binmode;
+                $COL->read($value,fsize($fil));
+                $COL->close;
+                for my $line (split(/\r?\n/o,$value)) {
+                    next if $line !~ /^\s*(\[\s*$EmailAdrRe\@$EmailDomainRe\s*\])/o;
+                    $groups .= $1;
+                }
+            }
         }
+        $ret = &ConfigRegisterGroupWatch(\$groups,$name,$desc);
 #        $fil = "$base/files/UserBlockReportQueue.txt";
 #        $FileUpdate{$fil} = ftime($fil);
     }
@@ -64002,7 +64035,7 @@ sub initMaintScheduler {
     BlockReportGenSched();
     for (keys %registeredSchedules) { addSched(@{$registeredSchedules{$_}}); }
     $ScheduleIsChanged = 0;
-    return '';
+    return $ret;
 }
 
 sub ConfigRegisterSchedule {
