@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18181';        # 30.06.2018 TE
+$build   = '18200';        # 19.07.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -585,7 +585,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '1977EEC343D903D839C888ED299AFAD1EDB59A0A'; }
+sub __cs { $codeSignature = '1B99CA1C4A922F8FA1575C3A5120C392ECB29670'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1609,7 +1609,7 @@ sub assp_socket_blocking {
 }
 
 sub defConfigArray {
- # last used msg number 010701
+ # last used msg number 010721
 
  # still unused msg numbers
  #
@@ -2166,7 +2166,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['ccSpamAlways','Copy Spam to these Recipients always*',40,\&textinput,'','(.*)','ConfigMakeSLRe',
  'Copy Spam to these recipients regardless of collection mode. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com).  Wildcards are supported (fribo*@domain.com).',undef,undef,'msg000350','msg000351'],
 ['ccSpamNeverRe','Do Not Copy Spam Regex*',40,\&textinput,'','(.*)','ConfigCompileRe',
- 'Never Copy Spam regardless of collection mode. Put anything here to identify messages which should not be copied.',undef,undef,'msg000360','msg000361'],
+ 'Never Copy Spam regardless of collection mode. Put anything here to identify messages in their MIME header, any headerline added by assp and any scoring reason - which should not be copied.',undef,undef,'msg000360','msg000361'],
 ['ccMaxScore','Do Not Copy Messages Above This MessageTotal score',3,\&textinput,'','(\d*)',undef,
  'Messages whose score exceeds this threshold will not be copied.  For example: 75',undef,undef,'msg000370','msg000371'],
 ['ccMaxBytes','Restrict Copy Spam to MaxBytes',0,\&checkbox,'','(.*)',undef,
@@ -5159,7 +5159,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
  Only Admins are able to request blockreports for non local email addresses. For example:<br />
  user@non_local_domain=>recipient@any-domain=>4<br />
  *@non_local_domain=>recipient@any-domain=>4<br />
- This will result in an extended blockreport for the non local address(es). Replace \'non_local_domain\' with the domain name you want to query for.<br />
+ This will result in an extended blockreport for the non local address(es). Replace \'non_local_domain\' with the domain name you want to query for. Defining the report receipient \'=>recipient@any-domain\' is mandatory in this case!<br />
  It is possible to change the complete design of the BlockReports to your needs,  using a html-css file. A default css-file \'blockreport.css\' is in the image folder as is a default icon file \'blockreporticon.gif\' and a default header-image-file \'blockreport.gif\'.  These are optional files - If assp can not find these files in its
  image folder, it will use the default hardcoded css and icon. If the file \'blockreport.gif\' is not found \'logo.gif\' will be used.<br />
  To change any content, use the Blockreport::modify module in the lib folder. You\'ll need some Perl skills to do that.<br />
@@ -5252,10 +5252,14 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
   'Block reports will be sent as multipart/alternative MIME messages. They contains two parts, a plain text part and a html part. If a blocked email is stored in any folder (except viruslog), it is possible to include a link for each email in to the report. Define here what you want ASSP to do. Default is "in both". If set to not to disabled " fileLogging " will be automatically set to on.',undef,undef,'msg008530','msg008531'],
 ['BlockResendLink','Which Link Should be included','0:both|1:left|2:right',\&listbox,0,'(\d*)',undef,
   'If HTML is enabled in inclResendLink, two links (one on the left and one on the right site) will be included in the report email by default. Depending on the used email clients it could be possible, that one of the two links will not work for you. Try out what link is working and disable the other one, if you want.',undef,undef,'msg008540','msg008541'],
-['BlockResendLinkLeft','User which get the Left link only*',80,\&textinput,'','(.*)','ConfigMakeSLRe',
-  'List of users and domains that will get the left link only. The setting for BlockResendLink will be ignored for this entries! Using groups is supported.',undef,undef,'msg008550','msg008551'],
-['BlockResendLinkRight','User which get the right link only* ',80,\&textinput,'','(.*)','ConfigMakeSLRe',
-  'List of users and domains that will get the right link only. The setting for BlockResendLink will be ignored for this entries! Using groups is supported.',undef,undef,'msg008560','msg008561'],
+['BlockResendLinkOnly','User which get a ResendLink only *',80,\&textinput,'','(.*)','ConfigMakeSLRe',
+  'List of users and domains that will get a ResendLink. If defined, only users listed here will get a ResendLink! Using Groups is supported.',undef,undef,'msg010710','msg010711'],
+['BlockResendLinkNo','User which not get any ResendLink *',80,\&textinput,'','(.*)','ConfigMakeSLRe',
+  'List of users and domains that will not get any ResendLink. If defined, users listed here will not get a ResendLink! Using Groups is supported.',undef,undef,'msg010720','msg010721'],
+['BlockResendLinkLeft','User which get the Left link only *',80,\&textinput,'','(.*)','ConfigMakeSLRe',
+  'List of users and domains that will get the left link only. The setting for BlockResendLink will be ignored for these entries! Using Groups is supported.',undef,undef,'msg008550','msg008551'],
+['BlockResendLinkRight','User which get the right link only *',80,\&textinput,'','(.*)','ConfigMakeSLRe',
+  'List of users and domains that will get the right link only. The setting for BlockResendLink will be ignored for these entries! Using Groups is supported.',undef,undef,'msg008560','msg008561'],
 ['DelResendSpam','Delete Mails in Spam Folder',0,\&checkbox,'1','(.*)',undef, 'If selected, a user request to resend a blocked email will delete the file in the spamlog folder - an admin request will move the file to the correctednotspam folder.',undef,undef,'msg008570','msg008571'],
 ['autoAddResendToWhite','Automatic add Resend Senders to Whitelist','0:no|1:Users only|2:Admins only|3:Users and Admins',\&listbox,'0','(.*)',undef, 'If a BlockReport resend request is made by any of the selected users, the original sender of the resent mail will be added to whitelist, also a copy file to the resend folder will do that.
   <div class="cfgnotes">Notes On Block Reporting</div>
@@ -5419,7 +5423,7 @@ The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries.
   <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/pop3collect.txt\',3);" />',undef,undef,'msg009090','msg009091']
 );
 
- # last used msg number 010701
+ # last used msg number 010721
 
  &loadModuleVars;
  -d "$base/language" or mkdirOP("$base/language",'0755');
@@ -6103,6 +6107,8 @@ sub setMakeREVars {
     'noDKIMAddresses'      => 'NDKIMRE',
     'BlockResendLinkLeft'  => 'BRLL',
     'BlockResendLinkRight' => 'BRLR',
+    'BlockResendLinkOnly'  => 'BRLO',
+    'BlockResendLinkNo'    => 'BRLN',
     'BlockReportAdmins'    => 'BRADM',
     'noDelayAddresses'     => 'NDARE',
     'LocalFrequencyOnly'   => 'LFRO',
@@ -31552,9 +31558,11 @@ sub DMARCgenReport {
     my @deletePol;
     while (my($k,$v) = each %DMARCpol) {
         my $re = quotemeta($k);
+        my ($domain,$toDomain) = split(/ /o,$k);
+        my $mailFrom = $DMARCReportFrom;
         my ($st,$ri,$to,$size);
         ($st,$ri,$to,$size) = ($1,$2,$3,$4) if $v =~ s/^(\d+) (\d+) (\S+) (\d+) //o;
-        if (! $st || ! $ri || ! $to) {
+        if (! $mailFrom || ! $st || ! $ri || ! $to) {
             push @deletePol, $k;
             my @deleteRec;
             while (my ($r,$c) = each %DMARCrec) {
@@ -31567,8 +31575,6 @@ sub DMARCgenReport {
             next;
         }
         next if (time < $ri && ! $force);
-        my ($domain,$toDomain) = split(/ /o,$k);
-        my $mailFrom = $DMARCReportFrom;
         $mailFrom .= "\@$toDomain" if $mailFrom !~ /\@/o;
         my $report_id = Time::HiRes::time;
         my $begin = $st + TimeZoneDiff();
@@ -37028,7 +37034,10 @@ sub pbAdd {
         $sr =~ s/\s*:.*$//os;
         $sr =~ s/^\s+//o;
 #        lock(%ScoreStats) if is_shared(%ScoreStats);
-        $ScoreStats{$sr}++ if $sr;
+        if ($sr) {
+            $ScoreStats{$sr}++;
+            $this->{scores}->{$sr} += $score[1];
+        }
     }
 
     return if $this->{relayok};
@@ -41407,7 +41416,7 @@ WHITCHWORKER
                             push( @from , lc($addr) ) unless $hfrom{ lc($addr) };
                             $hfrom{ lc($addr) } = 1;
                         } else {
-                            mlog( 0,"warning: ignoring entry: '$_' for report - no local domain found in ($addr) and no explicit recipient defined")
+                            mlog( 0,"warning: ignoring entry: '$_' for report - no local domain found in ($addr) and no explicit report recipient defined")
                               if $ReportLog;
                         }
                     } else {
@@ -41515,8 +41524,12 @@ WHITCHWORKER
     my $bytes;
     my %ignoreAddr;
     my $runtime = time;
-    &matchSL([@to,$receipient],'BlockResendLinkLeft',! $ReportLog);
-    &matchSL([@to,$receipient],'BlockResendLinkRight',! $ReportLog);
+    if ($ReportLog) {
+        $BlockResendLinkLeft && &matchSL([@to,$receipient],'BlockResendLinkLeft', 0);
+        $BlockResendLinkRight && &matchSL([@to,$receipient],'BlockResendLinkRight', 0);
+        $BlockResendLinkOnly && &matchSL([@to,$receipient],'BlockResendLinkOnly', 0);
+        $BlockResendLinkNo && &matchSL([@to,$receipient],'BlockResendLinkNo', 0);
+    }
     
     if ($ReportLog > 2) {
         mlog(0,"info: BlockReport global filter: $exceptRe");
@@ -41723,10 +41736,15 @@ s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockRep
                     my $leftbut = '<a href="mailto:'.$EmailBlockReport.$EmailBlockReportDomain.'?subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$myName.'&body=%23%23%23'.$filename.'%23%23%23'.$addWhiteHint.$addFileHint.$addScanHint.'%0D%0A" class="reqlink" target="_blank" title="request ASSP on '.$myName.' to resend this blocked email"><img src=cid:1000 alt="request ASSP on '.$myName.' to resend this blocked email" /> Resend </a>';
                     my $rightbut = '<a href="mailto:'.$ofilename.$EmailBlockReportDomain.'?&subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$myName.'" class="reqlink" target="_blank" title="request ASSP on '.$myName.' to resend this blocked email"><img src=cid:1000 alt="request ASSP on '.$myName.' to resend this blocked email" /> Resend </a>';
                     my $checkaddress = $receipient ? $receipient : $address;
-                    $rightbut = '<img src=cid:1000 style="display: none;" />' if (&matchSL([@to,$checkaddress],'BlockResendLinkLeft',($ReportLog < 2)) or
-                                             (($BlockResendLink & 1) && ! matchSL([@to,$checkaddress],'BlockResendLinkRight',($ReportLog < 2))));
-                    $leftbut = '<img src=cid:1000 style="display: none;" />' if (&matchSL([@to,$checkaddress],'BlockResendLinkRight',($ReportLog < 2)) or
-                                             (($BlockResendLink & 2) && ! matchSL([@to,$checkaddress],'BlockResendLinkLeft',($ReportLog < 2))));
+
+                    # which resendlink should be removed - all or left or right
+                    my $nolink =    ($BlockResendLinkOnly && ! matchSL([@to,$checkaddress],'BlockResendLinkOnly',($ReportLog < 2)))
+                                 || ($BlockResendLinkNo && matchSL([@to,$checkaddress],'BlockResendLinkNo',($ReportLog < 2)));
+                    my $matchleft  = $BlockResendLinkLeft && &matchSL([@to,$checkaddress],'BlockResendLinkLeft',($ReportLog < 2));
+                    my $matchright = $BlockResendLinkRight && &matchSL([@to,$checkaddress],'BlockResendLinkRight',($ReportLog < 2));
+                    $rightbut = '<img src=cid:1000 style="display: none;" />' if ($nolink || $matchleft  || (($BlockResendLink & 1) && ! $matchright));
+                    $leftbut  = '<img src=cid:1000 style="display: none;" />' if ($nolink || $matchright || (($BlockResendLink & 2) && ! $matchleft));
+
                     $line =~ s/^(.+\)\s*)(\Q$subjectStart\E.+?\Q$subjectEnd\E.*)$/$1<br\/><strong>$2<\/strong>/ unless $faddress;
                     $line =~ s/(.*)/\n<tr$bgcolor>\n<td class="leftlink">$leftbut\n<\/td>\n<td class="inner">$1\n<\/td>\n<td class="rightlink">$rightbut\n<\/td>\n<\/tr>/o;
                     push( @{ $buser->{ lc($address) }{html} }, $line);
@@ -46890,6 +46908,22 @@ sub Maillog {
 
     $isnotcc ||= 1 if ($ccMaxScore && ($parm == $p->{spamcc} || $parm == $p->{discc}) && $Con{$fh}->{messagescore} > $ccMaxScore );
 
+    if (! $isnotcc && $ccSpamNeverRe && ($parm == $p->{spamcc} || $parm == $p->{discc})) {
+        if ($Con{$fh}->{scores}) {
+            for my $reason (keys(%{$Con{$fh}->{scores}})) {
+                if ($reason =~ /($ccSpamNeverReRE)/) {
+                    mlogRe($fh,($1||$2),'ccSpamNeverRe','CCnever');
+                    $isnotcc = 1;
+                    last;
+                }
+            }
+        }
+        if (! $isnotcc && $Con{$fh}->{myheader} =~ /:.*?($ccSpamNeverReRE)/) {
+            mlogRe($fh,($1||$2),'ccSpamNeverRe','CCnever');
+            $isnotcc = 1;
+        }
+    }
+
     return if ( $parm == $p->{ham} || $parm == $p->{ok} ) && $Con{$fh}->{redre} && $DoNotCollectRedRe;
     return if ( $parm == $p->{ham} || $parm == $p->{ok} ) && $Con{$fh}->{red} && $DoNotCollectRedList;
     return if $Con{$fh}->{noprocessing} && ( $parm == $p->{ham} || $parm == $p->{ok} ) && ! $noProcessingLog && ! $Con{$fh}->{msgidsigok};
@@ -47652,6 +47686,12 @@ sub haveToFileScan {
     return 1;
 }
 
+sub FileScanCheckFile {
+    my ($file,$written) = @_;
+    my $SF;
+    return (open($SF,'<' ,"$file") && $SF->sysread(my $buff,$written) > 0 && $SF->close);
+}
+
 sub FileScanOK {
     my ($fh,$bd)=@_;
     return 1 unless $FileScanCMD;
@@ -47685,6 +47725,10 @@ sub FileScanOK_Run {
     my $file = $FileScanDir . "/a.$WorkerNumber." . int(rand(100000)) . "$maillogExt";
     d("FileScan - scan file - $file");
     mlog($fh,"diagnostic: FileScan will scan file - $file") if $ScanLog == 3;
+    if (! $dF->($FileScanDir)) {
+        mlog(0,"error: FileScan - can't find FileScanDir '$FileScanDir' - skip FileScan") if $ScanLog;
+        return 1;
+    }
     my $SF;
     my $written;
 
@@ -47693,7 +47737,7 @@ sub FileScanOK_Run {
         alarm(2);
         eval {
             d("FileScan - try to open $file");
-            open($SF,'>' ,"$file");
+            open($SF,'>' ,"$file") or die "can't open $file for writing\n";
             $SF->binmode;
             $SF->blocking(0);
             flock($SF,6);
@@ -47714,9 +47758,17 @@ sub FileScanOK_Run {
         $wait = $1 || 0;
         mlog(0,"info: FileScan will now wait $wait ms for the online filesystem virus scanner analysis of file $file") if $ScanLog > 1;
     }
-    $ThreadIdleTime{$WorkerNumber} += (Time::HiRes::sleep($wait / 1000)) / 1000 if $wait;
+    if ($wait && $written) {
+        $wait = min( 10000, max( $wait, int(1000*$lb/5242880) ) );   # 0.2 second per 1 MB but max 10 seconds
+        my $starttime = Time::HiRes::time();
+        my $endtime = $starttime + ($wait / 1000);
+        my $step = min(200,int($wait/3));                            # check every 0.2 seconds (min) or max every 3.33 seconds
+        while (! FileScanCheckFile($file,$written) && Time::HiRes::time() < $endtime) {
+            $ThreadIdleTime{$WorkerNumber} += (Time::HiRes::sleep($step / 1000)) / 1000;
+        }
+    }
     d("FileScan - read check of file $file");
-    if ($written && open($SF,'<' ,"$file") && $SF->sysread(my $buff,$written) > 0 && $SF->close) {
+    if ($written && FileScanCheckFile($file,$written)) {
         if ($FileScanCMD !~ /^\s*NORUN/io) {
             my $runfile = $file;
             my $rundir = $FileScanDir;
@@ -47859,7 +47911,7 @@ sub FileScanOK_Run {
         $Stats{viridetected}++ if $fh && ! $this->{scanfile};
         delayWhiteExpire($fh);
         $this->{messagereason}="virus detected: 'FileScan' - $res";
-        pbAdd($fh,$this->{ip},'vdValencePB','virus-FileScan:$res');
+        pbAdd($fh,$this->{ip},'vdValencePB',"virus-FileScan:$res");
 
         return 0;
     } else {
@@ -51948,6 +52000,7 @@ sub ConfigAnalyze {
               if matchSL( $mf, 'noURIBL' );
 
             while (my ($k,$v) = each %GroupRE) {
+                next if $k =~ /\@/o;       # skip blockreport groups
                 my $cfglist;
                 foreach my $config (keys %{$GroupWatch{$k}}) {
                     $cfglist .= $cfglist ? ', ' : "- $k is used in: ";
@@ -51969,6 +52022,7 @@ sub ConfigAnalyze {
 
         foreach my $t (sort keys %to) {
             while (my ($k,$v) = each %GroupRE) {
+                next if $k =~ /\@/o;       # skip blockreport groups
                 my $cfglist;
                 foreach my $config (keys %{$GroupWatch{$k}}) {
                     $cfglist .= $cfglist ? ', ' : "- $k is used in: ";
@@ -68366,8 +68420,9 @@ sub downASSP {
     return if $doShutdownForce;
     $doShutdownForce = 1;
     $SIG{TERM} = \&EXITASSP;
+    $SIG{KILL} = \&EXITASSP;
     foreach (keys %SIG) {
-       next if /TERM/io;
+       next if /TERM|KILL/io;
        $SIG{$_} = 'IGNORE';
     }
     my $sequenceOK = 1;
@@ -68470,10 +68525,14 @@ sub openLogs {
 sub closeAllSMTPListeners {
         mlog(0,"info: removing all SMTP and Proxy listeners");
         foreach my $lsn (@lsn,@lsn2,@lsnSSL,@lsnRelay) {
+            unpoll($lsn,$readable);
+            unpoll($lsn,$writable);
             sockclose($lsn) if $lsn;
         }
 
         while (my ($k,$v) = each(%Proxy)) {
+            unpoll($ProxySocket{$k},$readable);
+            unpoll($ProxySocket{$k},$writable);
             sockclose($ProxySocket{$k});
         }
         return 1;
@@ -68482,6 +68541,8 @@ sub closeAllSMTPListeners {
 sub closeAllWEBListeners {
         mlog(0,"info: removing all WEB listeners");
         foreach my $lsn (@StatSocket,@WebSocket) {
+            unpoll($lsn,$readable);
+            unpoll($lsn,$writable);
             sockclose($lsn) if $lsn;
         }
         return 1;

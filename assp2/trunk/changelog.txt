@@ -1,3 +1,34 @@
+2018-07-19
+fixed in assp 2.6.2 *Fortress* build 18200:
+
+- if DMARC records were stored and 'DMARCReportFrom' was unset after that, wrong DMARC reports were created
+
+- mail were blocked by the FileScan virus check, if the 'FileScanDir' was not available - in this case the check is skipped now
+
+- if the 'NORUN' directive is defined for 'FileScanCmd', assp will wait some more time (max 10 seconds) for the scan process to be finished, if
+  the content to scan is very large ( >5 MB ). 
+
+
+changed:
+
+- 'ccSpamNeverRe - Do Not Copy Spam Regex' now also belongs to scoring- and blocking reasons, as well as all headers added by assp (X-ASSP-..:)
+
+
+added:
+
+'BlockResendLinkOnly','User which get a ResendLink only *'
+ List of users and domains that will get a ResendLink. If defined, only users listed here will get a ResendLink! 
+ Using Groups is supported.'
+
+
+'BlockResendLinkNo','User which not get any ResendLink *'
+  'List of users and domains that will not get any ResendLink. If defined, users listed here will not get a ResendLink!
+  Using Groups is supported.'
+
+
+
+
+
 2018-06-30
 fixed in assp 2.6.2 *Fortress* build 18181:
 
