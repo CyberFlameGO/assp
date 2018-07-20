@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18200';        # 19.07.2018 TE
+$build   = '18201';        # 20.07.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -484,6 +484,8 @@ our $AllowCodeInRegex = 0;               # (0/1) allow the usage of executable p
 our $maxSameFileIncludes = 100;          # number of times the same include file can occure in a configuration file
 # *********************************************************************************************************************************************
 
+our $downASSPFixRe = qr/2008\s*r2/;      # w2k8r2 KB4338818,KB4339093,KB4340556  fix for stucking shutdown
+
 our $trustedFWSF = 'mx.sourceforge.net,lists.sourceforge.net';   # comma separed list of host1,helo1,host2,helo2,.... for an exact host match in the first line of an X-Spam-Report: spamassassin header!
 
 our $consolidateWhitelList = 1;          # (0/1) consolidate the whitelistdb - removes unneeded entries
@@ -585,7 +587,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '1B99CA1C4A922F8FA1575C3A5120C392ECB29670'; }
+sub __cs { $codeSignature = '4944214F7A9A155E06B4DDD4C0A3839C7CB169E7'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -13464,6 +13466,7 @@ sub init {
  eval($L);
  $WorkerName = 'init';
   if ( $isWIN ) {
+       eval('use Win32();');
        eval{
            mlog(0,'info: analysing windows system environment');
            my @msvcrt;
@@ -14518,7 +14521,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   if (open(my $f, '>', "$base/notes/loaded_perl_modules.txt")) {
       binmode $f;
       print $f 'ASSP runtime and support information at '.timestring()."\n\n";
-      push @$table, ['OS:',$^O];
+      push @$table, ['OS:',$^O . ($isWIN ? (' '.Win32::GetOSDisplayName()) : '')];
       push @$table, ['Perl:',$] ];
       push @$table, ['ASSP:', "$0 - $MAINVERSION"];
       push @$table, ['UUID:',$UUID];
@@ -68412,6 +68415,7 @@ sub checkReplyRecom {
 ###################################
 
 sub EXITASSP {
+    &RemovePid;
     exit 1;
 }
 
@@ -68421,15 +68425,17 @@ sub downASSP {
     $doShutdownForce = 1;
     $SIG{TERM} = \&EXITASSP;
     $SIG{KILL} = \&EXITASSP;
+    $SIG{SEGV} = \&EXITASSP;
+    $SIG{INT} = \&EXITASSP;
     foreach (keys %SIG) {
-       next if /TERM|KILL/io;
+       next if /TERM|KILL|SEGV|INT/io;
        $SIG{$_} = 'IGNORE';
     }
     my $sequenceOK = 1;
     mlog(0,'initializing shutdown sequence');
     mlogWrite();
     $WorkerName = 'Shutdown';
-    $sequenceOK &&= &closeAllSMTPListeners;
+    if ($isNoWIN || ($isNoWIN && Win32::GetOSName =~ /$downASSPFixRe/i)) {$sequenceOK &&= &closeAllSMTPListeners;}   # w2k8r2 KB4338818,KB4339093,KB4340556
     mlogWrite();
     $sequenceOK &&= &stopSMTPThreads;
     mlogWrite();
@@ -68450,7 +68456,7 @@ sub downASSP {
     mlogWrite();
     &clearDBCon();
     mlogWrite();
-    &closeAllWEBListeners;
+    if ($isNoWIN || ($isNoWIN && Win32::GetOSName =~ /$downASSPFixRe/i)) {&closeAllWEBListeners;}   # w2k8r2 KB4338818,KB4339093,KB4340556
     mlogWrite();
     &syncWriteConfig() if $enableCFGShare;
     &removeLeftCrashFile();
