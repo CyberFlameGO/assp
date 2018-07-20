@@ -484,7 +484,7 @@ our $AllowCodeInRegex = 0;               # (0/1) allow the usage of executable p
 our $maxSameFileIncludes = 100;          # number of times the same include file can occure in a configuration file
 # *********************************************************************************************************************************************
 
-our $downASSPFixRe = qr/2008\s*r2/;      # w2k8r2 KB4338818,KB4339093,KB4340556  fix for stucking shutdown
+our $downASSPFixRe = '2008\s*R2|Windows\s*7.+?64-bit';           # w2k8r2 KB4338818,KB4339093,KB4340556  fix for stucking shutdown
 
 our $trustedFWSF = 'mx.sourceforge.net,lists.sourceforge.net';   # comma separed list of host1,helo1,host2,helo2,.... for an exact host match in the first line of an X-Spam-Report: spamassassin header!
 
@@ -587,7 +587,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'CA4F5FCE6D824C294BBD4DCCD2EA219EBBBE7E9E'; }
+sub __cs { $codeSignature = '306378586C64C04A8E493386AF1A0B718B79E192'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -68435,7 +68435,7 @@ sub downASSP {
     mlog(0,'initializing shutdown sequence');
     mlogWrite();
     $WorkerName = 'Shutdown';
-    if ($isNoWIN || ($isWIN && Win32::GetOSName !~ /$downASSPFixRe/i)) {$sequenceOK &&= &closeAllSMTPListeners;}   # w2k8r2 KB4338818,KB4339093,KB4340556
+    if ($isNoWIN || ($isWIN && Win32::GetOSDisplayName() !~ /$downASSPFixRe/i)) {$sequenceOK &&= &closeAllSMTPListeners;}   # w2k8r2 KB4338818,KB4339093,KB4340556
     mlogWrite();
     $sequenceOK &&= &stopSMTPThreads;
     mlogWrite();
@@ -68456,7 +68456,7 @@ sub downASSP {
     mlogWrite();
     &clearDBCon();
     mlogWrite();
-    if ($isNoWIN || ($isWIN && Win32::GetOSName !~ /$downASSPFixRe/i)) {&closeAllWEBListeners;}   # w2k8r2 KB4338818,KB4339093,KB4340556
+    if ($isNoWIN || ($isWIN && Win32::GetOSDisplayName() !~ /$downASSPFixRe/i)) {&closeAllWEBListeners;}   # w2k8r2 KB4338818,KB4339093,KB4340556
     mlogWrite();
     &syncWriteConfig() if $enableCFGShare;
     &removeLeftCrashFile();
