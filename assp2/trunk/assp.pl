@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18201';        # 20.07.2018 TE
+$build   = '18204';        # 23.07.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -587,7 +587,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '306378586C64C04A8E493386AF1A0B718B79E192'; }
+sub __cs { $codeSignature = '3D1E0DB459B5B1E50A48A1126B8911B5F897794F'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -4011,7 +4011,8 @@ For example: mysql/dbimport<br />
  <span class=\"negative\">NOTICE: both encrypted tables/hashes, AdminUsersRight and AdminUsers, will be exported unencrypted (eg. in plain text), the same applies to the exported configuration file and the exported option files!</span><br />
  If possible, assp will compress the config files, option files and the AdminUsersRight and AdminUsers to the file \'config.zip\' in the  \"exportDBDir\" directory.<br />
  If possible, assp will encrypt the config.zip to config.zip.aes using openssl or Crypt::CBC. To decrypt this file, use the OS commandline:<br /><br />
- <b>openssl enc -d -aes-256-cbc -in config.zip.aes -out config.zip -pass pass:PASSWORD</b><br /><br />
+ <b>openssl enc -d -aes-256-cbc [-md md5|sha256] -in config.zip.aes -out config.zip -pass pass:PASSWORD</b><br /><br />
+ Notice: The default hash used by openssl enc for password-based key derivation changed in version 1.1.0 to SHA256 versus MD5 in lower versions. ASSP uses the default hash algorythm of the currently installed OpenSSL version. It may possible, that you need to define '-md md5' or '-md sha256' to decrypt exports made by other OpenSSL versions!<br />
  The created file config.zip[.aes] will also contain an assp support summary with important files, folders, history-, runtime- and schedule- information. This file may requested by the assp support stuff - but it can also be used as a full configuration backup. <span class=\"negative\">Keep in mind, that certificate information (certs and keys) will be never exported!</span> Keep them safe outside assp.<br /><br />
  <span class=\"negative\">NOTICE: The password / key, used for the export encryption function, may change at the next assp start or if the assp.cfg gets an external update! Record the password after each export!</span><br /><br />
  <input type=button value=\"Apply Changes and Run the Export NOW (if checked)\" onclick=\"document.forms['ASSPconfig'].theButtonX.value='Apply Changes';document.forms['ASSPconfig'].submit();WaitDiv();return false;\" />&nbsp;<input type=button value=\"Refresh Browser\" onclick=\"document.forms['ASSPconfig'].theButtonRefresh.value='Apply Changes';document.forms['ASSPconfig'].submit();WaitDiv();return false;\" />&nbsp;<input type=button value=\"show the decryption password\" onclick=\"remember('".$dftExpSec."');return false;\" />",'Basic',undef,'msg005910','msg005911'],
@@ -14506,7 +14507,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.82;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.83;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.06;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -16452,11 +16453,13 @@ sub exportConfig {
         my $support = 'support/assp';
         if (! $noSupportSummay) {
             $dF->("$base/assp.mod/install") && $zip->addTree( "$base/assp.mod/install", "$support/assp.mod/install" );
+            $dF->("$base/database")         && $zip->addTree( "$base/database", "$support/database" );
             $dF->("$base/dkim")             && $zip->addTree( "$base/dkim", "$support/dkim" );
             $dF->("$base/files")            && $zip->addTree( "$base/files", "$support/files" );
             $dF->("$base/lib")              && $zip->addTree( "$base/lib", "$support/lib" );
             $dF->("$base/license")          && $zip->addTree( "$base/license", "$support/license" );
             $dF->("$base/notes")            && $zip->addTree( "$base/notes", "$support/notes" );
+            $dF->("$base/pb")               && $zip->addTree( "$base/pb", "$support/pb" );
             $dF->("$base/reports")          && $zip->addTree( "$base/reports", "$support/reports" );
             $dF->("$base/tmpDB/files")      && $zip->addTree( "$base/tmpDB/files", "$support/tmpDB/files" );
 # add files
@@ -52439,6 +52442,21 @@ sub ConfigAnalyze {
             }
             my $tmpfh = time;
             my $direction = $reportedBy ? 'incoming' : 'outgoing';
+
+            mlog(0,"info: analyzing MIME header in $direction email for virus");
+            $Con{$tmpfh} = {};
+            if ($UseAvClamd && $CanUseAvClamd) {
+                ClamScanOK($tmpfh,\$textheader);
+                $fm .= "<b><font color='red'>&bull;&nbsp;&dagger;&nbsp;&bull; (MIME header) $Con{$tmpfh}->{messagereason}</font></b><br />" if $Con{$tmpfh}->{messagereason};
+                &MainLoop1(0);
+            }
+            $Con{$tmpfh} = {};
+            if ($DoFileScan && $FileScanCMD) {
+                FileScanOK($tmpfh,\$textheader);
+                $fm .= "<b><font color='red'>&bull;&nbsp;&dagger;&nbsp;&bull; (MIME header) $Con{$tmpfh}->{messagereason}</font></b><br />" if $Con{$tmpfh}->{messagereason};
+                &MainLoop1(0);
+            }
+
             mlog(0,"info: analyzing attachments in $direction email");
             foreach my $part ( @parts ) {
                 $Con{$tmpfh} = {};
