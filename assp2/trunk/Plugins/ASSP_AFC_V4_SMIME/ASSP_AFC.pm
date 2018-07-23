@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 4.82 2018/06/07 16:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 4.83 2018/07/22 13:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -206,7 +206,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.82 2018/06/07 16:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.83 2018/07/22 13:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -887,6 +887,41 @@ sub process {
     $privat = ($main::DoPrivatSpamdb & 1) ? lc $privat : '';
     $domain =~ s/^[^\@]*\@/\@/o;
 
+    # check the header of the email for virus
+    my $emailRawHeader = substr($this->{header},0,&main::getheaderLength($fh));
+    if ($emailRawHeader && $self->{select} != 1 && !(&main::ClamScanOK($fh,\$emailRawHeader) && &main::FileScanOK($fh,\$emailRawHeader))) {
+        if ($self->{rv}) {     # replace the complete mail, because the haeder is NOT OK
+            $modified = 2;
+            my $text = $self->{rvtext};
+            $text =~ s/FILENAME/MIME-TEXT.eml/g;
+            $Email::MIME::ContentType::STRICT_PARAMS=0;      # no output about invalid CT
+            $this->{header} =~ s/\.[\r\n]+$//o;
+            $email = Email::MIME->new($this->{header});
+            $email->parts_set([
+                Email::MIME->create(
+                    attributes => {
+                        content_type => 'text/plain',
+                        encoding     => 'quoted-printable',
+                        charset      => 'UTF-8',
+                    },
+                    body_str => $text,
+                )
+            ]);
+            mlog( $fh,"$this->{messagereason} - replaced virus-mail with simple text");
+            goto HeaderIsNotOK;   # jump to finish processing - skip any other check
+        } else {
+            $this->{clamscandone}=1;
+            $this->{filescandone}=1;
+            $self->{errstr} = $this->{averror};
+            $self->{result} = "VIRUS-found";
+            $plScan = 0;
+            $self->{logto} = $main::plLogTo = $virilog;
+            $main::pltest = $viriTestMode;
+            correctHeader($this);
+            return 0;             # return NOTOK
+        }
+    }
+
     my $badimage = 0;
     local $SIG{ALRM} = sub { die "__alarm__\n"; };
     alarm($maxProcessTime);
@@ -898,6 +933,7 @@ sub process {
             mlog($fh,"info: digital signed email found") if $main::AttachmentLog == 2;
             $this->{signed} = 1;
         }
+
         foreach my $part ($email->parts) {
            $parent->{$part} = $email;             # remember the parent MIME part
            push @{$child->{$email}} , $part;      # remember the subparts of a MIME part
@@ -1297,6 +1333,7 @@ sub process {
         correctHeader($this);
         return 0;
     }
+HeaderIsNotOK:
     $this->{clamscandone}=1;
     $this->{filescandone}=1;
     $this->{attachdone}=1;
