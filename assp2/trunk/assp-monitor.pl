@@ -1,6 +1,6 @@
 #!/usr/local/bin/perl
 ###############################################################################################################################
-# assp-monitor 1.11
+# assp-monitor 1.12
 # --------------
 # can be used instead of a syslog-server to have a local or remote monitor of assp
 # 1. configure the syslog option in assp
@@ -31,13 +31,16 @@
  use IO::Poll;
  use IO::Select;
 
- our $VERSION = '1.11';
+ our $VERSION = '1.12';
  
  my $sep = ($^O ne 'MSWin32') ? "'" : '"';
  my $killcmd = "$^X -e $sep kill 9, ASSPPID $sep";
- my $startcmd = 'cmd.exe /C net start ASSPSMTP';
  my $startwait = 120;
  my $hangtime = 180; # expected hardbeat time
+ my $startcmd;       # something like 'cmd.exe /C net start SERVICENAME'
+ my $ServiceTag;
+ my $ServiceName;
+ my $ServiceDisplayName;
 
  my $msg;
  my $port;  # default = 514
@@ -84,6 +87,15 @@
  }
 # binmode STDOUT, ":encoding($codepage)" if $codepage;
  binmode STDOUT;
+
+ $ServiceTag = $base;
+ $ServiceTag =~ s/[ \/\\:]//go;
+ $ServiceName = "ASSPSMTP_$ServiceTag";
+ my $out = qx("sc query $ServiceName");
+ if ($out !~ /SERVICE_NAME:\s*\Q$ServiceName\E/) {
+     $ServiceName = 'ASSPSMTP';
+ }
+ $startcmd ||= 'cmd.exe /C net start '.$ServiceName;
 
  $pidfile = "$base/$pidfile";
  open(my $F, '<', $pidfile);
