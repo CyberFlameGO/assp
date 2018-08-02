@@ -1,3 +1,26 @@
+2018-08-02
+fixed in assp 2.6.2 *Fortress* build 18214:
+
+- GUI links to external webpages were not opened in a new browser window
+
+- ASSP_AFC.pm version 4.84 is released
+  If a text attachment was found which had no .txt extension (eg. no extenson, .csv, .json) and the found extension was not allowed (the attachment was blocked or replaced),
+  the blocking reason was missing in the replaced attachment.
+
+
+
+changed:
+
+- all links to http://search.cpan.org in the GUI are changed to http://metacpan.org
+
+- the fix in build 18204 to solve a shutdown problem on windows 2008R2 and windows 7 64-bit after installing KB4338818,KB4339093,KB4340556 (July 2018) is removed
+  the issue was caused by the running DNS-server, which has opened 5000+ UDP ports at startup (this can be fixed using the command: dnscmd /Config /SocketPoolSize 500) - and
+  the system socket handler which was unable to terminate 'close wait' connections
+  setting HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters DWORD32 TcpTimedWaitDelay=60 (seconds decimal - 240 is default) may help
+
+
+
+
 2018-07-23
 fixed in assp 2.6.2 *Fortress* build 18204:
 

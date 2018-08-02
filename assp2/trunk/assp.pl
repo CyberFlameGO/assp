@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18204';        # 23.07.2018 TE
+$build   = '18214';        # 02.08.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -484,8 +484,6 @@ our $AllowCodeInRegex = 0;               # (0/1) allow the usage of executable p
 our $maxSameFileIncludes = 100;          # number of times the same include file can occure in a configuration file
 # *********************************************************************************************************************************************
 
-our $downASSPFixRe = '2008\s*R2|Windows\s*7.+?64-bit';           # w2k8r2 KB4338818,KB4339093,KB4340556  fix for stucking shutdown
-
 our $trustedFWSF = 'mx.sourceforge.net,lists.sourceforge.net';   # comma separed list of host1,helo1,host2,helo2,.... for an exact host match in the first line of an X-Spam-Report: spamassassin header!
 
 our $consolidateWhitelList = 1;          # (0/1) consolidate the whitelistdb - removes unneeded entries
@@ -587,7 +585,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '3D1E0DB459B5B1E50A48A1126B8911B5F897794F'; }
+sub __cs { $codeSignature = '5B4F351DB40D24FD13D0132CBAEB4A118445FA79'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1647,7 +1645,7 @@ sub defConfigArray {
   For the initial synchronization, configure only one ASSP installation as master (all others as slave). If the initial synchronization has finished, which will take up to one hour, you can configure all or some assp as master and slave. On the initial master simply switch on isShareSlave. On the inital slaves, switch on isShareMaster and change all values in the sync config file that should be bidirectional shared from 3 to 1. As last action enable enableCFGShare on the SyncSlaves first and then on the SyncMaster.<br />
   After such an initial setup, any changes of the peers (syncServer) will have no effect to the configuration file (syncConfigFile)! To add or remove a sync peer after an initial setup, you have to configure syncServer and you have to edit the sync config file manually.<br /><br />
   This option can only be enabled, if isShareMaster and/or isShareSlave and syncServer and syncConfigFile and syncCFGPass are configured!<br />
-  <b>Because the synchronization is done using a special SMTP protocol (without "mail from" and "rcpt to"), this option requires an installed <a href="http://search.cpan.org/search?query=Net::SMTP" rel="external">Net::SMTP</a> module in PERL. If you want the sync feature to use a secured connection (using STARTTLS) , DoTLS has to be set to "do TLS". This special SMTP protocol is not usable to for any MTA for security reasons, so the "sync mails" could not be forwarded via any MTA.<br />
+  <b>Because the synchronization is done using a special SMTP protocol (without "mail from" and "rcpt to"), this option requires an installed <a href="http://metacpan.org/search?q=Net::SMTP" rel="external">Net::SMTP</a> module in PERL. If you want the sync feature to use a secured connection (using STARTTLS) , DoTLS has to be set to "do TLS". This special SMTP protocol is not usable to for any MTA for security reasons, so the "sync mails" could not be forwarded via any MTA.<br />
   For this reason all sync peers must have a direct or routed TCP connection to each other peer.</b><br /><br />
   If you build a sync topology with more than two ASSP, please notice, that it is not allowed to build any ring-synchronization. Only a chain-, tree- or star- topology is supported. It is also not allowed to build a sync ring inside any of the three allowed topologies!<br />
   <input type="button" value="show sync status" onclick="javascript:popFileEditor(\'files/sync_failed.txt\',8);" />',undef,undef,'msg009170','msg009171'],
@@ -1687,7 +1685,7 @@ sub defConfigArray {
 ['DisableSMTPNetworking',"Disable all new SMTP and Proxy Network Connections",0,\&checkbox,0,'(.*)','configUpdateSMTPNet',
   'If selected, ASSP will not answer to new SMTP and Proxy connections on \'listenPort , listenPort2 , listenPortSSL , relayPort and ProxyConf\'. Currently existing SMTP and Proxy connections are not affected! Web and Stat connection are also not affected.',undef,undef,'msg000010','msg000011'],
 
-['enableINET6','Enable IPv6 support',0,\&checkbox,'','(.*)','ConfigChangeIPv6','For IPv6 network support to be enabled, check this box. Default is disabled. IO::Socket::INET6 is able to handle both IPv4 and IPv6. NOTE: This option requires an installed <a href="http://search.cpan.org/search?query=IO::Socket::INET6" rel="external">IO::Socket::INET6</a> module in PERL and your system should support IPv6 sockets to give enabling this option a sense!<br />
+['enableINET6','Enable IPv6 support',0,\&checkbox,'','(.*)','ConfigChangeIPv6','For IPv6 network support to be enabled, check this box. Default is disabled. IO::Socket::INET6 is able to handle both IPv4 and IPv6. NOTE: This option requires an installed <a href="http://metacpan.org/search?q=IO::Socket::INET6" rel="external">IO::Socket::INET6</a> module in PERL and your system should support IPv6 sockets to give enabling this option a sense!<br />
   It is recommended to leave this option OFF as long as you don\'t want to use IPv6 addresses for a listener or a destination (SMTP,DNS-server,LDAP-server etc.).<br />
   Before you enable or disable IPv6, please check every IP listener and destination definition in assp and correct the settings. <b>After changing this option a restart of assp is recommended.</b> IPv4 addresses are defined for example 192.168.0.1 or 192.168.0.1:25 - IPv6 addresses are defined like [FE80:1:0:0:0:0:0:1]:25 or [FE80:1::1]:25 ! If an IPv4 address is defined for a listener, assp will listen only on the IPv4 socket. If an IPv6 address is defined for a listener, assp will listen only on the IPv6 socket. If only a port is defined for a listener, assp will listen on both IPv4 and IPv6 sockets.<br />
   For the definition of destination IP\'s applies the same. You are free to define hostnames instead of IP addresses like myhost.mydomain.com:25 - how ever, because of the needed IP address resolving, this will possibly slow down assp.',undef,undef,'msg009480','msg009481'],
@@ -1697,7 +1695,7 @@ sub defConfigArray {
   <p><small><i>Examples:</i> 25, 127.0.0.1:25, 127.0.0.1:25|127.0.0.2:25|SSL:[FE80:1::1]:25 </small></p>','Basic',undef,'msg000020','msg000021'],
 ['smtpDestination','SMTP Destination',80,\&textinput,'125',$GUIHostPort,undef,
   'The IP <b>number!</b> and port number of your primary SMTP <a href=http://en.wikipedia.org/wiki/Mail_transfer_agent>mail transfer agent</a> (MTA). If multiple servers are listed and the first listed MTA does not respond, each additional MTA will be tried. If only a port number is entered, or the dynamic keyword <b>INBOUND</b> is used with a port number, then the connection will be established to the local IP address on which the connection was received. This is useful when you have several IP addresses with different domains or profiles in your MTA. If INBOUND:PORT is used, ReportingReplies (Analyze,Help,etc and CopyMail will go to 127.0.0.1:PORT or [::1]:PORT. If your needs are different, use smtpReportServer (SMTP Reporting Destination) and sendAllDestination (Copy Spam SMTP Destination). Separate multiple entries by "|".<br />
-  If you need to connect to the SMTP destination host using native SSL, write \'SSL:\' in front of the IP/host definition. In this case the Perl module <a href="http://search.cpan.org/search?query=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> must be installed and enabled ( useIOSocketSSL ).<br />
+  If you need to connect to the SMTP destination host using native SSL, write \'SSL:\' in front of the IP/host definition. In this case the Perl module <a href="http://metacpan.org/search?q=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> must be installed and enabled ( useIOSocketSSL ).<br />
   <small><i>Examples:</i> 125, 127.0.0.1:125, 127.0.0.1:125|127.0.0.5:125|SSL:127.0.0.1:465, INBOUND:125</small>','Basic',undef,'msg000030','msg000031'],
 ['smtpDestinationRT','SMTP Destination Routing Table*',80,\&textinput,'','^((?:(?:\s*'.$HostRe.'\s*=>\s*'.$HostPortRe.'\s*)(?:\|\s*'.$HostRe.'\s*=>\s*'.$HostPortRe.'\s*)*)|\s*file\s*:\s*.+|)$','configChangeRT',
   'If INBOUND is used in the SMTP Destination field, the rules specified here are used to route the inbound IP address to a different outbound IP address. You must specify a port number with the outbound IP address. <p><small><i>Example:</i>141.120.110.1=>141.120.110.129:25|141.120.110.2=>141.120.110.130:125|141.120.110.3=>SSL:141.120.110.130:125</small></p>',undef,undef,'msg000040','msg000041'],
@@ -1721,7 +1719,7 @@ sub defConfigArray {
   'The port number on which ASSP will listen for incoming secure (SSL only) SMTP connections (normally 465). You can specify both an IP address and port number to limit connections to a specific interface. Separate multiple entries by "|" and do NOT write SSL: in front of definition.<p><small><i>Examples:</i> 465, 127.0.0.1:465, 127.0.0.1:465|127.0.0.2:465 </small></p>. More configuration options are smtpSSLRequireClientCert, SSLSMTPCertVerifyCB and SSLSMTPConfigure .',undef,undef,'msg000050','msg000051'],
 ['smtpDestinationSSL','SSL Destination',80,\&textinput,'',$GUIHostPort,undef,
   'The IP <b>address!</b> and port number to connect to when mail is received on the SSL listen port. If the field is blank, the primary SMTP destination will be used.<br />
-  If you need to connect to the SSL destination host using native SSL, write \'SSL:\' in front of the IP/host definition. In this case the Perl module <a href="http://search.cpan.org/search?query=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> must be installed and enabled ( useIOSocketSSL ).<br />
+  If you need to connect to the SSL destination host using native SSL, write \'SSL:\' in front of the IP/host definition. In this case the Perl module <a href="http://metacpan.org/search?q=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> must be installed and enabled ( useIOSocketSSL ).<br />
   <p><small><i>Examples:</i>127.0.0.1:565, 565</small></p>',undef,undef,'msg000060','msg000061'],
 ['listenPort2','Second SMTP Listen Port',80,\&textinput,'',$GUIHostPort,'ConfigChangeMailPort2',
   'A secondary port number on which ASSP can accept SMTP connections. This is useful as a dedicated port for VPN clients or for those who cannot directly send mail to a mail server outside of their ISP\'s network because the ISP is blocking port 25. You may also specify an IP address to limit connections to a specific interface. Separate multiple entries by "|".<br />
@@ -1729,7 +1727,7 @@ sub defConfigArray {
   <p><small><i>Examples:</i> 2525, 127.0.0.1:2525, SSL:192.168.0.100:25000</small></p>',undef,undef,'msg000070','msg000071'],
 ['smtpAuthServer','Second SMTP Destination',80,\&textinput,'',$GUIHostPort,undef,
   'The IP address and port number to connect to when mail is received on the second SMTP listen port. If the field is blank, the primary SMTP destination will be used. The purpose of this setting is to allow remote users to make authenticated connections and transmit their email without encountering SPF failures.
-  If you need to connect to the second SMTP destination host using native SSL, write \'SSL:\' in front of the IP/host definition. In this case the Perl module <a href="http://search.cpan.org/search?query=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> must be installed and enabled ( useIOSocketSSL ).<br />
+  If you need to connect to the second SMTP destination host using native SSL, write \'SSL:\' in front of the IP/host definition. In this case the Perl module <a href="http://metacpan.org/search?q=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> must be installed and enabled ( useIOSocketSSL ).<br />
   <p><small><i>Examples:</i> 587, 127.0.0.1:587, SSL:127.0.0.1:465</small></p>',undef,undef,'msg000080','msg000081'],
 ['ProxyConf','Transparent TCP Proxy Table*',80,\&textinput,'','(\S*)','configChangeProxy',
  'Define any transparent TCP Port Proxy here. ASSP will proxy/forward (NOT route !) incoming TCP packets to a specific destination.<br />
@@ -1770,7 +1768,7 @@ sub defConfigArray {
 ['nolocalDomains','Skip Local Domain Check',0,\&checkbox,'','(.*)',undef,'Do not check relaying based on localDomains. Let the mailserver do it. <b>NOT RECOMMENDED</b>.',undef,undef,'msg001070','msg001071'],
 ['ldLDAP','Do LDAP lookup for local domains',0,\&checkbox,'','(.*)',undef,'Check local domains against an LDAP database.<br />
  Note: Checking this requires filling in LDAP DomainFilter ( ldLDAPFilter ) in the LDAP section.<br />
- This requires an installed <a href="http://search.cpan.org/~gbarr/perl-ldap-0.31/lib/Net/LDAP.pod" rel="external">NET::LDAP</a> module in Perl.',undef,undef,'msg001080','msg001081'],
+ This requires an installed <a href="http://metacpan.org/search?q=Net::LDAP" rel="external">NET::LDAP</a> module in Perl.',undef,undef,'msg001080','msg001081'],
 ['ispip','ISP/Secondary MX Servers*',80,\&textinput,'','(\S*)','ConfigMakeIPRe','Enter any addresses that are your ISP or backup MX servers, separated by pipes (|). <br />
  These addresses will (necessarily) bypass Griplist, IP Limiting, Delaying, Penalty Box, SPF, DNSBL &amp; SRS checks unless the IP can be determined by (ispHostnames) ISP/Secondary Hostnames. For example: 127.0.0.1|172.16..','Basic','7','msg001090','msg001091'],
 ['contentOnlyRe', 'Regular Expression to Identify Forwarded Messages*',80,\&textinput,'','(.*)','ConfigCompileRe',
@@ -1795,9 +1793,9 @@ sub defConfigArray {
 ['relayHost','Relay Host',80,\&textinput,'',$GUIHostPort,undef,
  'Your isp\'s mail relayhost (smarthost). For example: mail.isp.com:25<br />
  If you run Exchange/Notes and you want assp to update the nonspam database and the whitelist, then enter your isp\'s smtp relay host here. Blank means no relayhost and the smtpDestination will be used. Separate multiple entries by "|".<br />
-  If you need to connect to the relay host using native SSL, write \'SSL:\' in front of the IP/host definition. In this case the Perl module <a href="http://search.cpan.org/search?query=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> must be installed and enabled ( useIOSocketSSL ).<br />
+  If you need to connect to the relay host using native SSL, write \'SSL:\' in front of the IP/host definition. In this case the Perl module <a href="http://metacpan.org/search?q=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> must be installed and enabled ( useIOSocketSSL ).<br />
   Examples: your_ISP_Server:25, 149.1.1.1:25, SSL:149.1.1.2:465|any_other_host:25 !','Basic',undef,'msg001170','msg001171'],
-['relayAuthUser','User to Authenticate to Relay Host',80,\&passinput,'','(.*)',undef,'The username used for SMTP AUTH authentication to the relayhost  - for example, if your ISP need authentication on the SMTP port! Supported authentication methods are PLAIN, LOGIN, CRAM-MD5 and DIGEST-MD5 . If the relayhost offers multiple methods, the one with highest security option will be used. The Perl module <a href="http://search.cpan.org/search?query=Authen::SASL" rel="external">Authen::SASL</a> must be installed to use this feature! The usage of this feature will be skipped, if the sending MTA uses the AUTH command. Leave this blank, if you do not want use this feature.','Basic',undef,'msg009040','msg009041'],
+['relayAuthUser','User to Authenticate to Relay Host',80,\&passinput,'','(.*)',undef,'The username used for SMTP AUTH authentication to the relayhost  - for example, if your ISP need authentication on the SMTP port! Supported authentication methods are PLAIN, LOGIN, CRAM-MD5 and DIGEST-MD5 . If the relayhost offers multiple methods, the one with highest security option will be used. The Perl module <a href="http://metacpan.org/search?q=Authen::SASL" rel="external">Authen::SASL</a> must be installed to use this feature! The usage of this feature will be skipped, if the sending MTA uses the AUTH command. Leave this blank, if you do not want use this feature.','Basic',undef,'msg009040','msg009041'],
 ['relayAuthPass','Password to Authenticate to Relay Host',80,\&passinput,'','(.*)',undef,'The password used for SMTP AUTH authentication to the relayhost ! Leave this blank, if you do not want use this feature.','Basic',undef,'msg009050','msg009051'],
 ['relayPort','Relay Port',80,\&textinput,'',$GUIHostPort,'ConfigChangeRelayPort','Tell your mail server to connect to this IP/port as its smarthost / relayhost. For example: 225<br />
  Note that you\'ll want to keep the relayPort protected from external access by your firewall. To restrict access to the relayPort per IP address or network, use allowRelayCon .<br />
@@ -1805,7 +1803,7 @@ sub defConfigArray {
  To define a SSL listener, write \'SSL:\' in front of the host:port - e.g. SSL:host:port.<br />
  Separate multiple entries by "|".<p><small><i>Examples:</i> 225, 225|SSL:325, 127.0.0.1:225, 192.168.1.1:225|192.168.2.1:225|SSL:192.168.1:325 !</small></p>',undef,undef,'msg001180','msg001181'],
 ['allowRelayCon','Allow Relay Connection from these IP\'s*',80,\&textinput,'','(\S*)','ConfigMakeIPRe','Enter any addresses that are allowed to use the relayPort , separated by pipes (|). If empty, any ip address is allowed to connect to the relayPort. If this option is defined, keep in mind : Addresses defined in acceptAllMail are <b>NOT</b> automatically included and have to be also defined here, if them should allow to use the relayPort. For example: 127.0.0.1|172.16..<br />
- If you use MS Office 365, you should define the <a href="http://technet.microsoft.com/en-us/library/dn163583(v=exchg.150).aspx" target="_blank">EOP IP addresses</a> here and you should configure your firewall to redirect connection from the hosted Exchange server to the relayPort .','Basic','7','msg008830','msg008831'],
+ If you use MS Office 365, you should define the <a href="http://technet.microsoft.com/en-us/library/dn163583(v=exchg.150).aspx" rel="external">EOP IP addresses</a> here and you should configure your firewall to redirect connection from the hosted Exchange server to the relayPort .','Basic','7','msg008830','msg008831'],
 ['RelayOnlyLocalSender','Allow Relaying Only for Local Sender',0,\&checkbox,'','(.*)',undef,'If set, the envelope sender (MAIL FROM:) is immediately checked after the DATA command is received (to be valid). If the sender address could not be validated, the connection is dropped.<br />
   This setting is ignored for BounceSenders, which can relay at any time. <br />
   The connection will be dropped regardless any other assp setting ( except EmailSenderOK ).<br />
@@ -1836,9 +1834,9 @@ sub defConfigArray {
  'A list of local IP-addresses, for which the \'local frequency check\' should not be done.<br />
   For example: 145.145.145.145|145.146. ',undef,undef,'msg010110','msg010111'],
 
-['genDKIM','Generate and Add DKIM or DomainKey <a href="http://en.wikipedia.org/wiki/DomainKeys_Identified_Mail" target=wiki><img height=12 width=12 src="' . $wikiinfo . '" alt="Network Flow" /></a> signatures to relayed messages',0,\&checkbox,'','(.*)',undef,'If selected, ASSP will add DKIM signatures to relayed messages, if it finds a valid DKIM configuration in DKIMgenConfig for the sending domain. This will also be done for noprocessing mails. This requires an installed <a href="http://search.cpan.org/search?query=Mail::DKIM" rel="external">Mail::DKIM</a> module in PERL.',undef,undef,'msg001210','msg001211'],
+['genDKIM','Generate and Add DKIM or DomainKey <a href="http://en.wikipedia.org/wiki/DomainKeys_Identified_Mail" target=wiki><img height=12 width=12 src="' . $wikiinfo . '" alt="Network Flow" /></a> signatures to relayed messages',0,\&checkbox,'','(.*)',undef,'If selected, ASSP will add DKIM signatures to relayed messages, if it finds a valid DKIM configuration in DKIMgenConfig for the sending domain. This will also be done for noprocessing mails. This requires an installed <a href="http://metacpan.org/search?q=Mail::DKIM" rel="external">Mail::DKIM</a> module in PERL.',undef,undef,'msg001210','msg001211'],
 ['genARC','Generate and Add Authenticated Received Chain (ARC) signatures to all messages',0,\&checkbox,'','(.*)',undef,
-'If selected, ASSP will add <a href="http://arc-spec.org" rel="external">Authenticated Received Chain (ARC)</a> signatures to all messages provided it finds a valid DKIM configuration in DKIMgenConfig for the domain of ARCSigningHost (or myName if ARCsSigningHost is blank). This will also be done for noprocessing mails. If available, the check results for SPF, DKIM and DMARC will be provided in the generated ARC-signature. This requires an installed <a href="http://search.cpan.org/search?query=Mail::DKIM" rel="external">Mail::DKIM</a> module in PERL.',undef,undef,'msg010680','msg010681'],
+'If selected, ASSP will add <a href="http://arc-spec.org" rel="external">Authenticated Received Chain (ARC)</a> signatures to all messages provided it finds a valid DKIM configuration in DKIMgenConfig for the domain of ARCSigningHost (or myName if ARCsSigningHost is blank). This will also be done for noprocessing mails. If available, the check results for SPF, DKIM and DMARC will be provided in the generated ARC-signature. This requires an installed <a href="http://metacpan.org/search?q=Mail::DKIM" rel="external">Mail::DKIM</a> module in PERL.',undef,undef,'msg010680','msg010681'],
 ['ARCSigningHost','Host (FQHN) Name to be used for ARC Signing',40,\&textinput,'','(.*)',undef,'The full qualified host name to be used for <a href="http://arc-spec.org" rel="external">Authenticated Received Chain (ARC)</a> signing. If not defined, myName is used. The signing domain is parsed from the senders address (header From: or Sender:) in outgoing mails - and this value (or myName) in incoming mails.',undef,undef,'msg010690','msg010691'],
 ['DKIMgenConfig','The File with the DKIM and ARC configurations*',40,\&textinput,'file:dkim/dkimconfig.txt','(file:\S*)','configUpdateDKIMConf','The file that contains the DKIM and ARC configuration. A description how to configure DKIM, DomainKey and ARC could be found in the default file dkim/dkimconfig.txt.<br />
 <hr /><div class="cfgnotes">Notes On Relaying</div><input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/relaying.txt\',3);" />',undef,undef,'msg001220','msg001221'],
@@ -2307,7 +2305,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   To define special characters like \'* and ?\' - use their hexadecimal regex representation like \'\\x2A and \\x3F\'.<br />
   You should have also a look at DKIMWLAddresses , which is a better, more secure option.',undef,undef,'msg000850','msg000851'],
 ['ValidateRWL','Enable Realtime Whitelist Validation',0,\&checkbox,'','(.*)','configUpdateRWL','RWL: Real-time white list. These are lists of IP addresses that have
- somehow been verified to be from a known good host. Senders that pass RWL validation will pass IP-based filters. This requires an installed <a href="http://search.cpan.org/search?query=Net::DNS" rel="external">Net::DNS</a> module in PERL. ',undef,undef,'msg000870','msg000871'],
+ somehow been verified to be from a known good host. Senders that pass RWL validation will pass IP-based filters. This requires an installed <a href="http://metacpan.org/search?q=Net::DNS" rel="external">Net::DNS</a> module in PERL. ',undef,undef,'msg000870','msg000871'],
 ['RWLwhitelisting','Whitelist all RWL Validated Addresses',0,\&checkbox,'','(.*)',undef,'If set, the message will also pass Bayesian Filter and URIBL.',undef,undef,'msg000880','msg000881'],
 ['RWLServiceProvider','RWL Service Providers*',80,\&textinput,'file:files/dnsrws.txt','(.*)','configUpdateRWLSP','Host Names of RWLs to use separated by "|".<br />
  Examples are:<br />
@@ -2425,7 +2423,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  For example: *mydomain.com|*.mydomain.com|here.org <br />
  Use the syntax: *mydomain.com=>smtp.mydomain.com|other.com=>SSL:mx.other.com:port|other2.com=>mx.other.com:port,mx2.other.com:port to verify the recipient addresses with the SMTP-VRFY (if VRFY is not supported \'MAIL FROM:\' and \'RCPT TO:\' will be used) command on other SMTP servers.<br />
  The entry behind => must be the hostname:port or ip-address:port of the MTA which is used to verify \'RCPT TO\' addresses with a VRFY command! If :port is not defined, port :25 or :465 (in case SSL: is defined) will be used.<br />
- You can use an entry like ALL=>vrfyhost:port to define a VRFY host for all local domain entries that don\'t have a MTA defined ( better use Groups ). Separate multiple VRFY hosts for failover by comma ",". You have to enable the SMTP \'VRFY\' command on your MTA - the \'EXPN\' command should be enabled! This requires an installed <a href="http://search.cpan.org/search?query=Net::SMTP" rel="external">Net::SMTP</a> module in PERL. <br />
+ You can use an entry like ALL=>vrfyhost:port to define a VRFY host for all local domain entries that don\'t have a MTA defined ( better use Groups ). Separate multiple VRFY hosts for failover by comma ",". You have to enable the SMTP \'VRFY\' command on your MTA - the \'EXPN\' command should be enabled! This requires an installed <a href="http://metacpan.org/search?q=Net::SMTP" rel="external">Net::SMTP</a> module in PERL. <br />
  If the port :465 is defined for VRFY-MTA, or "SSL:" is prepended to the VRFY-MTA, a SSL connection will be used ( read DoVRFY ).<br />
  If you have configured LDAP and enabled DoLDAP and ASSP finds a VRFY entry for a domain, LDAP search will be done first and if this fails, the VRFY will be used. So VRFY could be used for LDAP backup/fallback/failover!<br />
  It is recommended to configure \'ldaplistdb\' in the \'File Paths and Database\' section when using this verify extension - so ASSP will store all verified recipients addresses there to minimize the queries on MTA\'s. There is no need to configure LDAP, but both VRFY and LDAP are using ldaplistdb. Please go to the \'LDAP setup\' section to configure MaxLDAPlistDays and LDAPcrossCheckInterval or start a crosscheck now with forceLDAPcrossCheck. This three parameters belong also to VRFY.<br />
@@ -2442,7 +2440,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['DisableVRFY','Disable VRFY and EXPN for External Clients',0,\&checkbox,'','(.*)',undef,'If you have enabled VRFY and/or EXPN on your MTA to make assp able to verify addresses and you do not want external clients to use VRFY and EXPN - select this option.',undef,undef,'msg008600','msg008601'],
 ['DoLDAP','Do LDAP lookup for valid local addresses',0,\&checkbox,'','(.*)',undef,'Check local addresses against an LDAP database before accepting the message.<br />
  Note: Checking this requires filling in the other LDAP parameters below.<br />
- This requires an installed <a href="http://search.cpan.org/~gbarr/perl-ldap-0.31/lib/Net/LDAP.pod" rel="external">Net::LDAP</a> module in PERL.',undef,undef,'msg001360','msg001361'],
+ This requires an installed <a href="http://metacpan.org/search?q=Net::LDAP" rel="external">Net::LDAP</a> module in PERL.',undef,undef,'msg001360','msg001361'],
 ['LocalAddressesNP','Do Not  Validate Local Addresses if in NoProcessing List',0,\&checkbox,'','(.*)',undef,'If a recipient is found in NoProcessing, the user validation is skipped. ',undef,undef,'msg001370','msg001371'],
 ['CatchAll','Catchall per Domain*',40,\&textinput,'','(.*)','configUpdateCA','ASSP will send to this addresses/domain if no valid user is found in LocalAddresses_Flat/LDAP. <br />
  For example: catchall@domain1.com|catchall@domain2.com',undef,undef,'msg001390','msg001391'],
@@ -2567,7 +2565,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['DoNoSpoofing4From','Do NoSpoofing for from:',0,\&checkbox,'','(.*)',undef,
   'Do the NoSpoofing check also for header \'from:\', \'sender:\', \'reply-to:\' and \'errors-to:\' addresses.',undef,undef,'msg009850','msg009851'],
 ['DoReversed','Reversed Lookup','0:disabled|1:block|2:monitor|3:score',\&listbox,3,'(.*)',undef,
-  'If activated, each sender IP is checked for the existence of a PTR record. Having no PTR record is a fault. Scoring is done using ptmValencePB . This requires an installed <a href="http://search.cpan.org/search?query=Net::DNS" rel="external">Net::DNS</a> module in PERL.',undef,undef,'msg001800','msg001801'],
+  'If activated, each sender IP is checked for the existence of a PTR record. Having no PTR record is a fault. Scoring is done using ptmValencePB . This requires an installed <a href="http://metacpan.org/search?q=Net::DNS" rel="external">Net::DNS</a> module in PERL.',undef,undef,'msg001800','msg001801'],
 ['DoReversedWL','Do Reversed Lookup for Whitelisted',0,\&checkbox,'1','(.*)',undef,
   'Do reversed lookup for whitelisted addresses.',undef,undef,'msg001810','msg001811'],
 ['DoReversedNP','Do Reversed Lookup for Noprocessing',0,\&checkbox,'1','(.*)',undef,
@@ -2575,7 +2573,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['DoReversedSPFOK','Do Reversed Lookup for SPF passed Mails',0,\&checkbox,'','(.*)',undef,
   'Do reversed lookup also for mails that have passed the SPF check. Default is unchecked. Which means, that the PTR check will be skipped, if the mail has passed the SPF check',undef,undef,'msg007150','msg007151'],
 ['DoInvalidPTR','Reversed Lookup FQDN','0:disabled|1:block|2:monitor|3:score',\&listbox,3,'(.*)',undef,
-  'If activated - and Reversed Lookup is activated -, the PTR-FQDN record is checked against the Regex in invalidPTRRe and validPTRRe ( scoring uses ptiValencePB ). This requires an installed <a href="http://search.cpan.org/search?query=Net::DNS" rel="external">Net::DNS</a> module in PERL.',undef,undef,'msg001830','msg001831'],
+  'If activated - and Reversed Lookup is activated -, the PTR-FQDN record is checked against the Regex in invalidPTRRe and validPTRRe ( scoring uses ptiValencePB ). This requires an installed <a href="http://metacpan.org/search?q=Net::DNS" rel="external">Net::DNS</a> module in PERL.',undef,undef,'msg001830','msg001831'],
 ['invalidPTRRe','Regular Expression to Invalidate Format of PTR**',80,\&textinput,'file:files/invalidptr.txt','(.*)','ConfigCompileRe',
   'Validate Format PTR will check PTR records for this ( scoring uses ptiValencePB ).<br />
   For example:  ^\d+\.\d+\.\d+\.\d+$|^[^\.]+\.?$ or file:files/invalidptr.txt',undef,undef,'msg001840','msg001841'],
@@ -2604,7 +2602,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   or any other possible combination. Notice: do NOT define the trailing ":"!<br />
   Define this to prevent unwanted whitelisting of spammers that request a Disposition Notification. Another way to prevent autowhitelisting because of an autoresponder is to use redRe .',undef,undef,'msg008970','msg008971'],
 ['DoDKIM','Validate DomainKeys Identified Mail <a href="http://en.wikipedia.org/wiki/DomainKeys" target=wiki><img height=12 width=12 src="' . $wikiinfo . '" alt="DKIM" /></a>','0:disabled|1:block|2:monitor|3:score',\&listbox,3,'(.*)',undef,
-  'If activated, DomainKeys Identified Mails are checked for the right signature and contents. All DKIM parameters belongs also to the old DomainKey specification. This requires an installed <a href="http://search.cpan.org/search?query=Mail::DKIM::Verifier" rel="external">Mail::DKIM::Verifier</a> module in PERL. In addition DKIM is used to process Domain-based Message Authentication, Reporting &amp; Conformance - described in <a href="http://www.dmarc.org/" rel="external">DMARC</a> (DMARC requires also ValidateSPF to be enabled).',undef,undef,'msg001920','msg001921'],
+  'If activated, DomainKeys Identified Mails are checked for the right signature and contents. All DKIM parameters belongs also to the old DomainKey specification. This requires an installed <a href="http://metacpan.org/search?q=Mail::DKIM::Verifier" rel="external">Mail::DKIM::Verifier</a> module in PERL. In addition DKIM is used to process Domain-based Message Authentication, Reporting &amp; Conformance - described in <a href="http://www.dmarc.org/" rel="external">DMARC</a> (DMARC requires also ValidateSPF to be enabled).',undef,undef,'msg001920','msg001921'],
 ['DoStrictDKIM','Validate DomainKeys Identified Mail strictly',0,\&checkbox,0,'(.*)',undef,
   'The DKIM test will fail, if the mail was modified by a mailhop. In this case the from address, the from domain, the to domain, the DKIM-signature by itself and the prefix of the digest-verification are valid, only the lower digest value differs! This may happen, if a mailhop has modified any other headerfield like X-...! If unchecked a mail will only pass, if the author policy and sender policy are accept or neutral!',undef,undef,'msg001930','msg001931'],
 ['noDKIMAddresses','Do not any DKIM Check for these Addresses *',80,\&textinput,'','(.*)','ConfigMakeSLRe',
@@ -2653,7 +2651,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   'Add a X-Assp-DKIM: result header.',undef,undef,'msg001970','msg001971'],
 
 ['DoARC','Validate Authenticated Received Chain (ARC) Signatures','0:disabled|1:enabled',\&listbox,0,'(.*)',undef,
-  'If enabled, <a href="http://arc-spec.org" rel="external">Authenticated Received Chain (ARC)</a> signed Mails are checked for the right signature sequence and contents. ASSP will show the ARC results and will trust the provided Authenticated Results for DKIM, SPF and DMARC if the signing host/domain matches \'trustedAuthForwarders\'. This requires an installed <a href="http://search.cpan.org/search?query=Mail::DKIM::Verifier" rel="external">Mail::DKIM::Verifier</a> module in PERL.',undef,undef,'msg010700','msg010701'],
+  'If enabled, <a href="http://arc-spec.org" rel="external">Authenticated Received Chain (ARC)</a> signed Mails are checked for the right signature sequence and contents. ASSP will show the ARC results and will trust the provided Authenticated Results for DKIM, SPF and DMARC if the signing host/domain matches \'trustedAuthForwarders\'. This requires an installed <a href="http://metacpan.org/search?q=Mail::DKIM::Verifier" rel="external">Mail::DKIM::Verifier</a> module in PERL.',undef,undef,'msg010700','msg010701'],
 
 ['signedSenders','Senders need to SMIME or PGP Sign All Mail *',80,\&textinput,'file:files/signedSenders.txt','(.*)','ConfigMakePrivatRe',
   'Domains and addresses which have to SMIME or PGP sign or encrypt all mail. If a match is found for a sender and the email is not signed or encryped, the mail will be rejected!<br />
@@ -2972,7 +2970,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['DelayWithMyName','Add myName to Triplets',0,\&checkbox,0,'(.*)',undef,
   'If set, myName is added to every delay triplet (not to tuplets). This is useful and recommended, if you are using more than one ASSP host with shared databases for delaydb. This option makes the triplets unique to every ASSP host, because it is allowed for SMTP-hosts, to request a backup MX immediately after the primary MX, without waiting 5 minutes (DelayEmbargoTime) between the two requests.',undef,undef,'msg003380','msg003381'],
 ['DelayMD5','Use MD5 for DelayDB',0,\&checkbox,'1','(.*)',undef,
-  'Message-Digest algorithm 5 is a cryptographic hash function and adds some level of security to the delay database. Must be set to off if you want to list the database with DelayShowDB/DelayShowDBwhite. This requires an installed <a href="http://search.cpan.org/search?query=Digest::MD5" rel="external">Digest::MD5</a> module in PERL.',undef,undef,'msg003390','msg003391'],
+  'Message-Digest algorithm 5 is a cryptographic hash function and adds some level of security to the delay database. Must be set to off if you want to list the database with DelayShowDB/DelayShowDBwhite. This requires an installed <a href="http://metacpan.org/search?q=Digest::MD5" rel="external">Digest::MD5</a> module in PERL.',undef,undef,'msg003390','msg003391'],
 ['DelayShowDB','Show Delay/Greylisting Database',40,\&textinput,'file:delaydb','(\S*)',undef,'The directory/file with the delay database file. If you change the filename in section Filepath ( delaydb ) you must change it here too.',undef,'8','msg003400','msg003401'],
 ['DelayShowDBwhite','Show Delay/Greylisting Save Database',40,\&textinput,'file:delaydb.white','(\S*)',undef,'The directory/file with the save delay database file. If you change the filename in section Filepath ( delaydb )  you must change it here too.',undef,'8','msg003410','msg003411'],
 ['DelayExpireOnSpam','Expire Spamming Safelisted Tuplets',0,\&checkbox,1,'(.*)',undef,
@@ -3007,7 +3005,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   This requires an installed <a href="http://www.openspf.org/Implementations" rel="external">Mail::SPF</a> module in PERL. Testmode is set with spfTestMode, scoring is set with spfValencePB. If you need more information about the syntax of SPF records, visit <a href="http://www.openspf.org/SPF_Record_Syntax" rel="external">SPF_Record_Syntax</a>.',undef,undef,'msg003460','msg003461'],
 ['SPF2','Do SPF Version 2 Validation',0,\&checkbox,'1','(.*)',undef,
   'Enable Sender Policy Framework Validation Version 2. Default is ON.<br />
-  This requires an installed <a href="http://search.cpan.org/dist/Mail-SPF/" rel="external">Mail::SPF</a> object-oriented Perl module that supersedes the old Mail::SPF::Query module.<br />
+  This requires an installed <a href="http://metacpan.org/search?q=Mail::SPF" rel="external">Mail::SPF</a> object-oriented Perl module that supersedes the old Mail::SPF::Query module.<br />
   It is highly recommended to disable the load of Mail::SPF::Query by turning OFF useMailSPFQuery , if this option is set to ON.',undef,undef,'msg003470','msg003471'],
 ['SPFWL','Whitelisted SPF Validation',0,\&checkbox,'','(.*)',undef,
   'Enable Sender Policy Framework Validation for whitelisted users also.',undef,undef,'msg003480','msg003481'],
@@ -3027,11 +3025,11 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['SPFoverride','Override Domains*',80,\&textinput,'','(.*)','configUpdateSPFOF',
  'Set override to define SPF records for domains that do publish (or not) but which you want to override anyway. If you specify only domains the Local SPF Record ( SPFlocalRecord ) below will be used as default. Wildcards are supported. For example: abc.com=>v=spf1 a/24 mx/24 ptr -all|cello.ch=>v=spf1 ip4:213.46.243.0/26  ~all|abc.com|*.def.com . <br />
  To generate a SPF record for a domain:<br />
- - go to <a href="http://www.senderbase.org/" target="_blank">http://www.senderbase.org</a><br />
+ - go to <a href="http://www.senderbase.org/" rel="external">http://www.senderbase.org</a><br />
  - lookup the domain information in "Look up your network"<br />
  - right beside "Addresses in domain used to send email" click on export, and export the list in to plain text<br />
  - copy and past the list in to an editor and generate a comma separated IP list<br />
- - go to an online SPF record generator - for example: <a href="http://www.royhochstenbach.com/projects/spfgenerator/" target="_blank">http://www.royhochstenbach.com/projects/spfgenerator</a> and generate the SPF record<br />
+ - go to an online SPF record generator - for example: <a href="http://www.royhochstenbach.com/projects/spfgenerator/" rel="external">http://www.royhochstenbach.com/projects/spfgenerator</a> and generate the SPF record<br />
  - put "domain=>SPF-record" in any of SPFoverride or SPFfallback<br />
  - define the policy as strict as possible',undef,undef,'msg003540','msg003541'],
 ['SPFfallback','Fallback Domains*',80,\&textinput,'','(.*)','configUpdateSPFOF',
@@ -3124,7 +3122,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 [0,0,0,'heading','DNSBL - RBL Validation <a href="http://sourceforge.net/p/assp/wiki/DNSBL" target=wiki><img height=12 width=12 src="' . $wikiinfo . '" alt="DNSBL" /></a>'],
 ['ValidateRBL','Enable DNS Blacklist Validation For Connected IP Addresses','0:disabled|1:block|2:monitor|3:score',\&listbox,1,'(.*)','configUpdateRBL',
   'The connected IP address will be checked for DNSBL hits. If enhancedOriginIPDetect is enabled, additionally DNSBL checks will be done for IP\'s on the mail routing way.<br />
-  This requires an installed <a href="http://search.cpan.org/search?query=Net::DNS" rel="external">Net::DNS</a> module in PERL.',undef,undef,'msg003750','msg003751'],
+  This requires an installed <a href="http://metacpan.org/search?q=Net::DNS" rel="external">Net::DNS</a> module in PERL.',undef,undef,'msg003750','msg003751'],
 ['ForceRBLCache','Early DNSBL Cache Blocking',0,\&checkbox,'','(.*)',undef,
   'If set, ASSP will use cached DNSBL hits to block messages before other tests. <b>testmode</b> will override this. <b>spamlover settings</b> will be ignored.',undef,undef,'msg003760','msg003761'],
 ['noRBL','Don\'t do DNSBL for these IPs*',80,\&textinput,'','(\S*)','ConfigMakeIPRe',
@@ -3180,7 +3178,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 
 [0,0,0,'heading','URIBL and URI-IP Obfuscation Detection'],
  ['ValidateURIBL','Enable URI Blocklist Validation <a href="http://www.uribl.com/about.shtml" target="ASSPHELP"><img src="' . $wikiinfo . '" alt="about" /></a>','0:disabled|1:block|2:monitor|3:score',\&listbox,'1','(.*)','configUpdateURIBL',
-  'Enable URI Blocklist. Messages that fail URIBL validation will receive URIBLError SMTP error code. This requires an installed <a href="http://search.cpan.org/search?query=Net::DNS" rel="external">Net::DNS</a> module and an installed <a href="http://search.cpan.org/search?query=Email::MIME" rel="external">Email::MIME</a> module in PERL. <a href="http://sourceforge.net/p/assp/wiki/" target="ASSPHELP"><img src="' . $wikiinfo . '" alt="wiki" /></a><br />
+  'Enable URI Blocklist. Messages that fail URIBL validation will receive URIBLError SMTP error code. This requires an installed <a href="http://metacpan.org/search?q=Net::DNS" rel="external">Net::DNS</a> module and an installed <a href="http://metacpan.org/search?q=Email::MIME" rel="external">Email::MIME</a> module in PERL. <a href="http://sourceforge.net/p/assp/wiki/" target="ASSPHELP"><img src="' . $wikiinfo . '" alt="wiki" /></a><br />
   <span class="negative"> 0 = disabled, 1 = block, 2 = monitor, 3 =  messagescore .</span>',undef,undef,'msg003880','msg003881'],
  ['URIBLWL','Do URI Blocklist Validation for Whitelisted',0,\&checkbox,'','(.*)',undef,'URIBL check is done ignoring all spamlovers and testmodes!',undef,undef,'msg003890','msg003891'],
  ['URIBLNP','Do URI Blocklist Validation for NoProcessing',0,\&checkbox,'','(.*)',undef,'URIBL check is done ignoring all spamlovers and testmodes!',undef,undef,'msg003900','msg003901'],
@@ -3259,7 +3257,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/uribl.txt\',3);" />',undef,undef,'msg004070','msg004071'],
 
 [0,0,0,'heading','Attachment Validation and Protection'],
-['DoBlockExes','External Attachment Blocking ','0:disabled|1:block|2:monitor|3:score',\&listbox,0,'([\s0123]?)',undef,'This requires an installed <a href="http://search.cpan.org/search?query=Email::MIME" rel="external">Email::MIME</a> module in PERL.',undef,undef,'msg004080','msg004081'],
+['DoBlockExes','External Attachment Blocking ','0:disabled|1:block|2:monitor|3:score',\&listbox,0,'([\s0123]?)',undef,'This requires an installed <a href="http://metacpan.org/search?q=Email::MIME" rel="external">Email::MIME</a> module in PERL.',undef,undef,'msg004080','msg004081'],
 ['BlockExes','External Attachment Blocking Level','0:no check|1:Level 1|2:Level 2|3:Level 3|4:Level 4',\&listbox,0,'([\s01234]?)',undef,
   'Set the level of Attachment Blocking to 1-3 for attachments that should be blocked, set level to 4  for attachments that should be allowed. Choose 0 for no attachment blocking.',undef,undef,'msg004090','msg004091'],
 ['BlockWLExes','Whitelisted &amp; Local Attachment Blocking','0:no check|1:Level 1|2:Level 2|3:Level 3|4:Level 4',\&listbox,0,'([\s01234]?)',undef,
@@ -3286,7 +3284,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  :JSPDF - adobe PDF file with JavaScript inside - notice: well known malicious JavaScript combinations will be blocked, even this option is defined<br />
  :URIPDF - adobe PDF file with URIs to download exeutables from the web or to open local files<br />
  :MSOLE - all Microsoft Office Compound File Binary (OLE) - legacy not recommended, OLE files can contain any conceivable content<br />
- :HLMSOLE - (HarmLess) Microsoft Office Compound File Binary (OLE) - MSOLE, except it contains forbidden files (the <a href="http://search.cpan.org/search?query=OLE::Storage_Lite" rel="external">OLE::Storage_Lite</a> module in PERL is needed)<br />
+ :HLMSOLE - (HarmLess) Microsoft Office Compound File Binary (OLE) - MSOLE, except it contains forbidden files (the <a href="http://metacpan.org/search?q=OLE::Storage_Lite" rel="external">OLE::Storage_Lite</a> module in PERL is needed)<br />
  :MSOM - Microsoft Office Macros<br />',undef,undef,'msg004120','msg004121'],
 ['BadAttachL2','Level 2 rejected File Extensions',80,\&textinput,'','(.*)','updateBadAttachL2',
   'This regular expression is used to identify Level 2 attachments that should be blocked.<br />
@@ -3483,7 +3481,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 'If enabled, ASSP tries to transliterate non-Roman characters in an email it to Roman characters. These transliterations are than additionally used in the bomb checks.<br />
  For example - the (character) sequence \'&#24180;&#20809;&#36890;&#20449;&#20135;&#19994;&#20250;&#22238;&#24402;&#39640;&#22686;&#38271;&#36712;&#36947;\' will be transliterated to \'Nian Guang Tong Xin Chan Ye Hui Hui Gui Gao Zeng Chang Gui Dao\' .<br />
  To transliterate something, use the \'Mail Analyzer\'.<br />
- To make this feature working, the Perl module <a href="http://search.cpan.org/search?query=Text::Unidecode" rel="external">Text::Unidecode</a> must be installed.',undef,undef,'msg00009990','msg009991'],
+ To make this feature working, the Perl module <a href="http://metacpan.org/search?q=Text::Unidecode" rel="external">Text::Unidecode</a> must be installed.',undef,undef,'msg00009990','msg009991'],
 ['DoBombHeaderRe','Use BombHeader Regular Expressions on Header Part','0:disabled|1:block|2:monitor|3:score|4:testmode',\&listbox,1,'(\d*)',undef,
   'If activated, each message-header is checked  against bombSenderRe, bombHeaderRe, bombSubjectRe and bombCharSets Regular Expressions. If you use sendAllSpam, be aware that only the header will be shown in the spamcopy.<br />
   The scoring value is the sum of all valences(weights) of all found bombs - bombValencePB .',undef,undef,'msg004470','msg004471'],
@@ -3560,10 +3558,10 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 [0,0,0,'heading','Hidden Markov Model and Bayesian Options <a href="http://sourceforge.net/p/assp/wiki/ASSP_Bayesian_Filter" target=wiki><img height=12 width=12 src="' . $wikiinfo . '" alt="Theory of Operation" /></a>'],
 ['DoBayesian','Bayesian Check <a href="http://sourceforge.net/p/assp/wiki/General_ASSP_Questions" target=wiki><img height=12 width=12 src="' . $wikiinfo . '" alt="Theory of Operation" /></a>','0:disabled|1:block|2:monitor|3:score',\&listbox,0,'(.*)',undef,
   'If activated, the message is checked based on Bayesian factors in spamdb for global and private entries. Private spamdb entries have a five times higher weight than global entries. This needs a fully functional spamdb built by rebuildspamdb. For starters it is best practice to put this inactive and build the spamdb collection with the help of DNSBL ,URIBL and spamaddresses. Scoring is done with baysValencePB for external mails, bayslocalValencePB is used for outgoing and internal mails - both values are multiplied with the detected baysProbability . It is possible to score (in and out) with a bonus for HAM with bayshamValencePB ( bayshamValencePB * ( 1 - baysProbability )).<br />
-  Both, the Bayesian-check and the Hidden-Markov-Model-check (below), are using Perl version depending (Perl 5.12 and higher) <a href=\"http://unicode.org/charts/\" rel=\"external\">Unicode</a> features to recognize any possible character. How ever, some east asian languages (and some others) have graphemes, that contains multiple <a href=\"http://en.wikipedia.org/wiki/Unicode\" rel=\"external\">unicode code points</a>. If you need (or want) assp to process all text as a sequence of <a href=\"http://unicode.org/reports/tr29/\" rel=\"external\">UAX #29 Grapheme Clusters</a>, the Perl module <a href=\"http://search.cpan.org/dist/Unicode::LineBreak/\" rel=\"external\">Unicode::LineBreak</a> is required.',undef,undef,'msg004710','msg004711'],
+  Both, the Bayesian-check and the Hidden-Markov-Model-check (below), are using Perl version depending (Perl 5.12 and higher) <a href=\"http://unicode.org/charts/\" rel=\"external\">Unicode</a> features to recognize any possible character. How ever, some east asian languages (and some others) have graphemes, that contains multiple <a href=\"http://en.wikipedia.org/wiki/Unicode\" rel=\"external\">unicode code points</a>. If you need (or want) assp to process all text as a sequence of <a href=\"http://unicode.org/reports/tr29/\" rel=\"external\">UAX #29 Grapheme Clusters</a>, the Perl module <a href=\"http://metacpan.org/search?q=Unicode::LineBreak/\" rel=\"external\">Unicode::LineBreak</a> is required.',undef,undef,'msg004710','msg004711'],
 ['DoHMM','Hidden Markov Model Check <a href="http://sourceforge.net/p/assp/wiki/General_ASSP_Questions/#Theory_of_Operation" target=wiki><img height=12 width=12 src="' . $wikiinfo . '" alt="Theory of Operation" /></a>','0:disabled|1:block|2:monitor|3:score',\&listbox,0,'(.*)',undef,
   "If activated, the message is checked based on a <a href=\"http://en.wikipedia.org/wiki/Hidden_Markov_model\">Hidden Markov Model</a>  for global and private entries.  Private HMM entries have a five times higher weight than global entries. This needs a fully functional HMMdb database built by rebuildspamdb. For starters it is best practice to put this in monitoring mode and build the HMM collection with the help of DNSBL ,URIBL and spamaddresses. Scoring is done with HMMValencePB for external mails, HMMlocalValencePB is used for outgoing and internal mails - both values are multiplied with the detected hmmProbability. It is possible to score (in and out) with a bonus for HAM with HMMhamValencePB ( HMMhamValencePB * ( 1 - baysProbability )).<br />
-  The perl module <a href=\"http://search.cpan.org/dist/BerkeleyDB/\" rel=\"external\">BerkeleyDB</a> version 0.34 or higher and BerkeleyDB version 4.5 or higher is required (to store temporary data) to use this feature and 'useBerkeleyDB' must be set to ON.<br />
+  The perl module <a href=\"http://metacpan.org/search?q=BerkeleyDB/\" rel=\"external\">BerkeleyDB</a> version 0.34 or higher and BerkeleyDB version 4.5 or higher is required (to store temporary data) to use this feature and 'useBerkeleyDB' must be set to ON.<br />
   If this option is disabled, the rebuildspamdb task will <b>NOT</b> build a valid HMM database!<br />
   Compared to the Bayesian option, the Hidden Markov Model will produce results that are much more exact. How ever, it is possible, that HMM gets no result on very small messages, for this reason it is recommended to use both Bayesian and HMM. If you enable both checks, check your settings for baysValencePB, HMMValencePB, bayslocalValencePB and HMMlocalValencePB - eg. divide them by 2. or set the bayes values to 1/3 and the HMM values to 2/3.<br />
   NOTICE that using this option requires a <b>very fast database server</b> behind, if HMMusesBDB is set to OFF. The Bayesian- and HMM check together can produce <b>4000 and much more SQL queries per second</b>.<br />
@@ -3636,7 +3634,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['DoMSGIDsig','Do Message-ID Tagging and Validation (FBMTV)','0:disabled|1:block|2:monitor|3:score|4:testmode',\&listbox,0,'(\d*)',undef,
  'If activated, the message-ID of each outgoing message will be signed with a unique Tag and every incoming mail will be checked against this Tag. This tagging mode is called FBMTV "Forwarder(s) Bounce Message-ID Tag Validation" and it is worldwide unique to ASSP. This Tag is build nearly the same way, as BATVTag is build for the sender address. This Tag will be removed from any incoming email, to recover the original references in the mail header! If anything is changed on this option inside the mail, no DKIM-check will be done! Before activating DoMSGIDsig, please configure MSGIDpreTag and MSGIDsec !<br />
   If activated and a bounced mail from null sender or postmaster contains no valid signature the configured action is taken.<br />
-  This check requires an installed <a href="http://search.cpan.org/search?query=Digest::SHA1" rel="external">Digest::SHA1</a> module in Perl.',undef,undef,'msg004800','msg004801'],
+  This check requires an installed <a href="http://metacpan.org/search?q=Digest::SHA1" rel="external">Digest::SHA1</a> module in Perl.',undef,undef,'msg004800','msg004801'],
 ['MSGIDpreTag','Message-ID pre-Tag for MSGID-TAG-generation',10,\&textinput,'sig','([a-zA-Z0-9]{2,5})',undef,'To use Message-ID signing and to create the MSGID-Tags, a pre-Tag is needed. This Tag must be 2-5 characters [a-z,A-Z,0-9] long. Default is \'sig\'.',undef,undef,'msg004810','msg004811'],
 ['MSGIDSec','Message-ID Secrets for MSGID-TAG-generation*',80,\&textinput,'0=key0|1=key1|2=key2|3=key3|4=key4|5=key5|6=key6|7=key7|8=key8|9=key9','(\S*)','configChangeMSGIDSec','To use Message-ID signing and to generate the MSGID-Tags, at leased one secret key is needed, up to ten keys are possible.<br />
   The notation is : generationnumber[0-9]=secretKey. For example<font color=red>(do not use!)</font>: 0=jk09Z|1=oPLmn4g|....   . Multiple pairs are separated by pipes (|). Default is  0=key0|1=key1|2=key2|3=key3|4=key4|5=key5|6=key6|7=key7|8=key8|9=key9 . Do not defines spaces, tabs and \'=\' as part of the keys(secrets)! <br />
@@ -3649,14 +3647,14 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  'How are received mails processed, if they contain a valid local MessageID-Signature/Tag (eg. because it is an answer/reply to a tagged mail).<br />
  The default value is \'whitelisted\'. Notice that noprocessing and/or whitelisted may prevent those mails from being collected in the corpus folders - check noProcessingLog and NonSpamLog.',undef,undef,'msg010630','msg010631'],
 ['DoBATV','Do BATV Tagging and Validation','0:disabled|1:block|2:monitor|3:score|4:testmode',\&listbox,0,'(\d*)',undef,'If enabled any sender address of outgoing mails is mangled with a <a href="http://en.wikipedia.org/wiki/Bounce_Address_Tag_Validation" rel="external">BATV-Tag</a>. Any incoming bounced mail is checked for a valid BATV-Tag. All valid (local) BATV-Tags will be removed from incoming mails - so whitelisting, delaying and all other recipient and sender based checks will use the normal addresses. If the BATV-check is successful, no MSGID-signing-check and DNS-Backscatter-check will be done! If any BATVTag was removed, no DKIM-check will be done! BATV-address-replacement is done, before the recipient replacement rules are processed!<br />
-  This check requires an installed <a href="http://search.cpan.org/search?query=Digest::SHA1" rel="external">Digest::SHA1</a> module in Perl.',undef,undef,'msg004840','msg004841'],
+  This check requires an installed <a href="http://metacpan.org/search?q=Digest::SHA1" rel="external">Digest::SHA1</a> module in Perl.',undef,undef,'msg004840','msg004841'],
 ['BATVSec','BATV Secrets for BATV-TAG-generation*',80,\&textinput,'0=key0|1=key1|2=key2|3=key3|4=key4|5=key5|6=key6|7=key7|8=key8|9=key9','(\S*)','configChangeBATVSec','To use <a href="http://en.wikipedia.org/wiki/Bounce_Address_Tag_Validation" rel="external">BATV</a> and to create the BATV-Tags, at leased one secret key is needed, up to ten keys are possible.<br />
   The notation is : generationnumber[0-9]=secretKey. For example: 0=key0|1=KEYX45rt|....   . Multiple pairs are separated by pipes (|). Default is  0=key0|1=key1|2=key2|3=key3|4=key4|5=key5|6=key6|7=key7|8=key8|9=key9 . Do not defines spaces, tabs and \'=\' as part of the keys(secrets)! The secrets are use randomly to build the BATV-Tags.',undef,undef,'msg004850','msg004851'],
 ['removeBATVTag','remove strange BATV-Tags from incoming mails',0,\&checkbox,'0','(.*)',undef,'Any strange BATV-signature will be removed from the sender address and the real sender address will be used! Using this together with remindBATVTag keeps your clients addressbooks (also whitelist, delaydb ...) clean from BATV-Tags. This will also work, if DoBATV is disabled. If you do not use remindBATVTag and the MTA behind ASSP sends a bounced mail back - this mail will fail on BATV on the recipients site. If any BATVTag was removed, no DKIM-check will be done!',undef,undef,'msg004860','msg004861'],
 ['remindBATVTag','store incoming strange BATV-Tags to remind them for outgoing bounce mails',0,\&checkbox,'0','(.*)',undef,'If defined, any incoming stange BATV-signature will be stored and any recipient of outgoing bounce mails will be checked against this list. If there is found a valid (not older than 7 days) BATV-Tag for that recipient, it will be mangled in to the recipient address. This will also work, if DoBATV is disabled.',undef,undef,'msg004870','msg004871'],
 ['DoBackSctr','Do DNS-Backscatter Detection','0:disabled|1:block|2:monitor|3:score|4:testmode',\&listbox,0,'(\d*)',undef,
   'If activated, the IP-address of each message received for null sender,bounced or postmaster will be checked against the list below.
-   DNS base checks requires an installed <a href="http://search.cpan.org/search?query=Net::DNS" rel="external">Net::DNS</a> module in Perl.<br />
+   DNS base checks requires an installed <a href="http://metacpan.org/search?q=Net::DNS" rel="external">Net::DNS</a> module in Perl.<br />
    For more information about backscatter detection please read <a href="http://www.backscatterer.org/?target=usage" rel="external">http://www.backscatterer.org/?target=usage</a>.',undef,undef,'msg004880','msg004881'],
 ['BackDNSInterval','Backscatter-DNS Cache Refresh Interval',4,\&textinput,7,'(\d+\.?\d*|)','configUpdateBDNSCR','IP\'s in cache will be removed after this interval in days. 0 will disable the cache and the usage of downloadBackDNSFile and localBackDNSFile. <input type="button" value=" Show Backscatter-DNS Cache" onclick="javascript:popFileEditor(\''.$newDB.'pb/pbdb.back.db\',5);" />',undef,undef,'msg004890','msg004891'],
 ['BackSctrServiceProvider','ServiceProvider for Backscatterer Detection*',60,\&textinput,'ips.backscatterer.org','(.*)','configUpdateBACKSctrSP',
@@ -3715,7 +3713,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   'If set internal warnings/infos  will be sent to this address. For example: admin@domain.com',undef,undef,'msg005220','msg005221'],
 ['EmailReportDestination','Email Interface Reports Destination',40,\&textinput,'',$GUIHostPort,undef,
  'Port to connect to when Email Interface or Block reports are send. If blank they go to the main smtpDestination.<br />
-  If you need to connect to the EmailReportDestination host using native SSL, write \'SSL:\' in front of the IP/host definition. In this case the Perl module <a href="http://search.cpan.org/search?query=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> must be installed and enabled ( useIOSocketSSL ).<br />
+  If you need to connect to the EmailReportDestination host using native SSL, write \'SSL:\' in front of the IP/host definition. In this case the Perl module <a href="http://metacpan.org/search?q=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> must be installed and enabled ( useIOSocketSSL ).<br />
   eg 10.0.1.3:1025 SSL:10.0.1.3:465, etc.',undef,undef,'msg005230','msg005231'],
 ['EmailAdmins','Authorized Addresses*',80,\&textinput,'','(.*)','ConfigMakeSLRe',
   'Mail from any of these addresses can add/remove to/from redlist, spamlovers, noprocessing, blacklist. May request an EmailBlockReport for a list of users. Accepts specific addresses (user@example.com), user parts (user) or entire domains (@example.com)',undef,undef,'msg005250','msg005251'],
@@ -3732,11 +3730,11 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['EmailSpam','Report Spam Address',20,\&textinput,'asspspam','(.*)@?',undef,
   'Any mail sent or forwarded by local/authenticated users to this username will be interpreted as a spam report. Multiple attachments get truncated to MaxBytesReports. Do not put the full address here, just the user part.<br />
    For example: asspspam . Use a fake domain like @assp.local or @assp-nospam.org when you send the email- so the full address would be then asspspam@assp.local. <br />
-   You can sent multiple mails as attachments and/or zipped file(s). Each attached email-file must have the extension defined in "maillogExt". In this case only the attachments will be processed. To use this multi-attachment-feature an installed <a href="http://search.cpan.org/search?query=Email::MIME" rel="external">Email::MIME</a> module in PERL is needed. It is also possible to send MS-outlook \'.msg\' files (possibly zipped). To use this MS-outlook-feature in addition an installed <a href="http://search.cpan.org/search?query=Email::Outlook::Message" rel="external">Email::Outlook::Message</a> module in PERL is needed.','Basic',undef,'msg005280','msg005281'],
+   You can sent multiple mails as attachments and/or zipped file(s). Each attached email-file must have the extension defined in "maillogExt". In this case only the attachments will be processed. To use this multi-attachment-feature an installed <a href="http://metacpan.org/search?q=Email::MIME" rel="external">Email::MIME</a> module in PERL is needed. It is also possible to send MS-outlook \'.msg\' files (possibly zipped). To use this MS-outlook-feature in addition an installed <a href="http://metacpan.org/search?q=Email::Outlook::Message" rel="external">Email::Outlook::Message</a> module in PERL is needed.','Basic',undef,'msg005280','msg005281'],
 ['EmailHam','Report Ham (Not-Spam) Address',20,\&textinput,'asspnotspam','(.*)@?',undef,
   'Any mail sent or forwarded by local/authenticated users to this username will be interpreted as a false-positive report. Multiple attachments get truncated to MaxBytesReports. Do not put the full address here, just the user part.<br />
    For example: asspnotspam . Use a fake domain like @assp.local or @assp-nospam.org when you send the email - so the full address would be then asspspam@assp.local. <br />
-   You can sent multiple mails as attachments and/or zipped file(s). Each attached email-file must have the extension defined in "maillogExt". In this case only the attachments will be processed. To use this multi-attachment-feature an installed <a href="http://search.cpan.org/search?query=Email::MIME" rel="external">Email::MIME</a> module in PERL is needed. It is also possible to send MS-outlook \'.msg\' files (possibly zipped). To use this MS-outlook-feature in addition an installed <a href="http://search.cpan.org/search?query=Email::Outlook::Message" rel="external">Email::Outlook::Message</a> module in PERL is needed.','Basic',undef,'msg005290','msg005291'],
+   You can sent multiple mails as attachments and/or zipped file(s). Each attached email-file must have the extension defined in "maillogExt". In this case only the attachments will be processed. To use this multi-attachment-feature an installed <a href="http://metacpan.org/search?q=Email::MIME" rel="external">Email::MIME</a> module in PERL is needed. It is also possible to send MS-outlook \'.msg\' files (possibly zipped). To use this MS-outlook-feature in addition an installed <a href="http://metacpan.org/search?q=Email::Outlook::Message" rel="external">Email::Outlook::Message</a> module in PERL is needed.','Basic',undef,'msg005290','msg005291'],
 ['EmailForwardReportedTo','Email Interface Forward Reports Destination',20,\&textinput,'','^((?:' . $HostPortRe . '(?:\|' . $HostPortRe . ')*)|)$',undef,
  'Host and Port to forward EmailSpam and EmailHam reports to - eg "10.0.1.3:1025".<br />
   If you use more than one assp instance and your users are reporting spam and ham mails to multiple or all of them, but only one (but not this instance) is doing the rebuildspamdb and the corpus folders are not shared between the instances,<br />
@@ -3842,7 +3840,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['EmailAnalyze','Request Analyze Report',20,\&textinput,'asspanalyze','(.*)@?',undef,
   'Any mail sent or forwarded by local/authenticated users to this username will be interpreted as a request for analyzing the mail. Do not put the full address here, just the user part. For example: asspanalyze <br />
   Use a fake domain like @assp.local or @assp-nospam.org when you send the email- so the full address would be then asspanalyze@assp.local. <br />
-  You can sent multiple mails as attachments and/or zipped file(s). Each attached email-file must have the extension defined in "maillogExt". In this case only the attachments will be processed. To use this multi-attachment-feature an installed <a href="http://search.cpan.org/search?query=Email::MIME" rel="external">Email::MIME</a> module in PERL is needed. It is also possible to send MS-outlook \'.msg\' files (possibly zipped). To use this MS-outlook-feature in addition an installed <a href="http://search.cpan.org/search?query=Email::Outlook::Message" rel="external">Email::Outlook::Message</a> module in PERL is needed.','Basic',undef,'msg005530','msg005531'],
+  You can sent multiple mails as attachments and/or zipped file(s). Each attached email-file must have the extension defined in "maillogExt". In this case only the attachments will be processed. To use this multi-attachment-feature an installed <a href="http://metacpan.org/search?q=Email::MIME" rel="external">Email::MIME</a> module in PERL is needed. It is also possible to send MS-outlook \'.msg\' files (possibly zipped). To use this MS-outlook-feature in addition an installed <a href="http://metacpan.org/search?q=Email::Outlook::Message" rel="external">Email::Outlook::Message</a> module in PERL is needed.','Basic',undef,'msg005530','msg005531'],
 ['EmailAnalyzeReply','Reply to Analyze Request','0:NO REPLY|1:SEND TO SENDER|2:SEND TO EmailAnalyzeTo|3:SEND TO BOTH',\&listbox,1,'(\d*)',undef,'',undef,undef,'msg005540','msg005541'],
 ['EmailAnalyzeTo','Send Copy of Analyze-Reports',40,\&textinput,'','('.$EmailAdrRe.'\@'.$EmailDomainRe.')?',undef,
   'A copy of the Analyze-Report will be sent to this address. For example: admin@domain.com',undef,undef,'msg005550','msg005551'],
@@ -3875,7 +3873,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['correctednotspam','False-positive Collection',40,\&textinput,'errors/notspam','(\S+)',undef,
   'Good mail that was listed as spam, count 4x. This directory will be used in building the spamdb . For example: errors/notspam',undef,undef,'msg005670','msg005671'],
 ['resendmail','try to resend this files',40,\&textinput,'resendmail','(\S+)',undef,
-  'ASSP will try to resend the files in this directory to the original recipient. The files must have the "maillogExt" extension and must have the SMTP-format. For example: resendmail. This requires an installed <a href="http://search.cpan.org/search?query=Email::Send" rel="external">Email::Send</a> module in PERL.',undef,undef,'msg005680','msg005681'],
+  'ASSP will try to resend the files in this directory to the original recipient. The files must have the "maillogExt" extension and must have the SMTP-format. For example: resendmail. This requires an installed <a href="http://metacpan.org/search?q=Email::Send" rel="external">Email::Send</a> module in PERL.',undef,undef,'msg005680','msg005681'],
 ['maillogExt','Extension for Mail Files',20,\&textinput,'.eml','(\S*)',undef,
   'Enter the file extension (include the period) you want appended to the mail files in the mail collections.<br />
   Leave it blank for no extension - this setting will prevent several features from working. Never use \'.msg\' - this is an extension used by MS-outlook! For Example: .eml',undef,undef,'msg005690','msg005691'],
@@ -3909,9 +3907,9 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['adminusersdbpass','Admin Users Database PassPhrase',40,\&passinput,'','(.*)','ConfigChangePassPhrase','The passphrase that is used to encrypt the adminusersdb. This has to be the same on all ASSP installations that are sharing the adminusersdb. If you want to change it, first change it on the master installation and than on the slaves. Do not forget to configure \'mysqlSlaveMode\' first. An empty value is not valid!',undef,undef,'msg005800','msg005801'],
 ['griplist','GreyIPlist Database',40,\&textinput,$newDB.'griplist','(\S*)',undef,'The file with the current Grey-IP-List database -- make this blank if you don\'t use it.',undef,undef,'msg005730','msg005731'],
 ['useDB4griplist','Use BerkeleyDB for Griplist',0,\&checkbox,'','(.*)','configChangeDB',
- 'If selected ASSP uses \'BerkeleyDB\' instead of \'orderedtie\' for griplist. Depending on your settings for OrderedTieHashTableSize this could spend some memory and/or result in better performance.  The perl module <a href="http://search.cpan.org/dist/BerkeleyDB/" rel="external">BerkeleyDB</a> version 0.34 or higher and BerkeleyDB version 4.5 or higher is required to use this feature.',undef,undef,'msg005740','msg005741'],
+ 'If selected ASSP uses \'BerkeleyDB\' instead of \'orderedtie\' for griplist. Depending on your settings for OrderedTieHashTableSize this could spend some memory and/or result in better performance.  The perl module <a href="http://metacpan.org/search?q=BerkeleyDB/" rel="external">BerkeleyDB</a> version 0.34 or higher and BerkeleyDB version 4.5 or higher is required to use this feature.',undef,undef,'msg005740','msg005741'],
 ['myhost','database hostname or IP',40,\&textinput,'','(.*)',undef,
-  'You need <a  href="http://search.cpan.org/~lds/Tie-DBI-1.02/lib/Tie/RDBM.pm" rel="external">Tie::RDBM</a> to use a database instead of local files.<br />
+  'You need <a  href="http://metacpan.org/search?q=Tie::RDBM.pm" rel="external">Tie::RDBM</a> to use a database instead of local files.<br />
   This way you can share whitelist, delaydb, redlist, spamdb, HMMdb, ldaplist, adminusersdb, personal blacklist and penaltybox (all that can be set to \'DB:\') between servers.<br />
   ASSP uses permanent connections to the database server, so set the connection timeout in your server configuration to a very high value (eg - mysql: interactive_timeout=28800 , wait_timeout=28800).',undef,undef,'msg005810','msg005811'],
 ['DBdriver','database driver name',40,\&textinput,'','^([a-zA-Z].+|)$','configChangeDB',
@@ -3934,7 +3932,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   Sybase,SERVER=myserver,[PORT=myport]<br />
   mysql[,PORT=myport][,mysql_socket=/path/to/mysql.sock][,AutoCommit=1][,mysql_auto_reconnect=1]<br /><br />
   Notice: assp requires permanent database connections. Set database engine parameter like \'client-timeout\' or \'connection-timeout\' to very high values (eg: 1/2 or 1 day)! ASSP requires one database connection per thread (typical 8 connections), plus up to five connection for imports, exports and internal processing. Set the maximum allowed database connection in your database server configuration according!<br /><br />
-  <span class="negative">Instead using local files for hashes and lists via shared memory, it is recommended to use <a  href=\"http://search.cpan.org/search?query=berkeleydb\" rel=\"external\">BerkeleyDB</a> (Perl-module) version 0.34 or higher for highest performance and less memory usage.  The BerkeleyDB (engine) version 4.5 or higher is required to use BerkeleyDB.</span><br />
+  <span class="negative">Instead using local files for hashes and lists via shared memory, it is recommended to use <a  href=\"http://metacpan.org/search?q=berkeleydb\" rel=\"external\">BerkeleyDB</a> (Perl-module) version 0.34 or higher for highest performance and less memory usage.  The BerkeleyDB (engine) version 4.5 or higher is required to use BerkeleyDB.</span><br />
   If you specify BerkeleyDB here, the values for myhost, mydb, myuser and mypassword will be ignored. All possible BerkeleyDB option must be defined here - the option for \'-Filename\' is already set by ASSP! Options could be defined for example:<br />
   BerkeleyDB,-Pagesize=>number,-Env=>[-Cachesize=>number,-Mode=>mode,...,...],...,...<br />
   If \'-Env=>[-Cachesize=>number]\' (number in bytes) is specified, this cache size will be used at minimum for every single list. Setting the cache size is not recommended (as long as do not you really know what you do), because ASSP does automatically calculate the right cache for every list. You may setup configuration values for any BerkeleyDB, creating a file <a href=https://docs.oracle.com/cd/E17275_01/html/programmer_reference/env_db_config.html>DB_CONFIG</a> (case sensitive) in the corresponding directory ./tmpDB/[list]. Please use the BerkeleyDB documentation if you don\'t know the syntax of this file. Any value defined in that file will overwrite the corresponding internal ASSP configuration for this DB.<br />
@@ -4073,10 +4071,10 @@ For example: mysql/dbimport<br />
   'The maximum number of logged files with the same or similar filename (subject) that are stored in the spam folder (spamlog), if UseSubjectsAsMaillogNames is selected. Default is 0. An low value reduces the number of possibly duplicate mails, assuming that mails with the same or similar subject will have the same content. A value of 0 disables this feature. If this number of files with the same or similar filename is reached, the oldest file with the same subject will be moved to the discarded folder, which has to be defined ( in addition to spamlog ) for this feature to work.', undef, undef,'msg008660','msg008661'],
 ['AllowedDupSubjectRe','Regular Expression to Identify allowed duplicate Subjects*',80,\&textinput,'','(.*)','ConfigCompileRe','Messages their subject matches this regular expression will be collected regardless the setting in MaxAllowedDups .',undef,undef,'msg008670','msg008671'],
 ['UseUnicode4MaillogNames','Use Unicode to build Maillog Names',0,\&checkbox,'','(.*)',undef,
-  'If you have switched on UseSubjectsAsMaillogNames and your default (local language) characterset (please setup ConsoleCharset) needs 8 Bit like "KOI8-r","CP-866","Windows-1251","Windows-1252","ISO-8859-X","X-Mac-Cyrillic","JIS_X0201" or any other (or is UTF-8) - and you want to have readable filenames in the maillog and on the console screen, you can switch on this option. The resolution of some characters written to the console could be incorrect depending on your operating system. This requires an installed <a href="http://search.cpan.org/search?query=Email::MIME" rel="external">Email::MIME</a> module in PERL.<br />
-  If in addition the module <a href="http://search.cpan.org/search?query=Win32::Unicode" rel="external">Win32::Unicode</a> is installed on windows platforms, assp will generate unicode filenames for the collected corpus files (already on nix systems).',undef,undef,'msg006110','msg006111'],
+  'If you have switched on UseSubjectsAsMaillogNames and your default (local language) characterset (please setup ConsoleCharset) needs 8 Bit like "KOI8-r","CP-866","Windows-1251","Windows-1252","ISO-8859-X","X-Mac-Cyrillic","JIS_X0201" or any other (or is UTF-8) - and you want to have readable filenames in the maillog and on the console screen, you can switch on this option. The resolution of some characters written to the console could be incorrect depending on your operating system. This requires an installed <a href="http://metacpan.org/search?q=Email::MIME" rel="external">Email::MIME</a> module in PERL.<br />
+  If in addition the module <a href="http://metacpan.org/search?q=Win32::Unicode" rel="external">Win32::Unicode</a> is installed on windows platforms, assp will generate unicode filenames for the collected corpus files (already on nix systems).',undef,undef,'msg006110','msg006111'],
 ['UseUnicode4SubjectLogging','Use Unicode to build Subjects in Maillog',0,\&checkbox,'','(.*)',undef,
-  'If you have switched on UseUnicode4SubjectLogging and your default (local language) characterset (please setup ConsoleCharset) needs 8 Bit like "KOI8-r","CP-866","Windows-1251","Windows-1252","ISO-8859-X","X-Mac-Cyrillic","JIS_X0201" or any other (or is UTF-8) - and you want to have a readable subject in the maillog and on the console screen, you can switch on this option. The resolution of some characters written to the console could be incorrect depending on your operating system. This requires an installed <a href="http://search.cpan.org/search?query=Email::MIME" rel="external">Email::MIME</a> module in PERL.',undef,undef,'msg008920','msg008921'],
+  'If you have switched on UseUnicode4SubjectLogging and your default (local language) characterset (please setup ConsoleCharset) needs 8 Bit like "KOI8-r","CP-866","Windows-1251","Windows-1252","ISO-8859-X","X-Mac-Cyrillic","JIS_X0201" or any other (or is UTF-8) - and you want to have a readable subject in the maillog and on the console screen, you can switch on this option. The resolution of some characters written to the console could be incorrect depending on your operating system. This requires an installed <a href="http://metacpan.org/search?q=Email::MIME" rel="external">Email::MIME</a> module in PERL.',undef,undef,'msg008920','msg008921'],
 ['MaxFileNameLength','Max Length of File Names',10,\&textinput,50,'(\d+)',undef,
   'The maximum character count that is used from the mail subject to build the file name of the logged file, if UseSubjectsAsMaillogNames is selected. This could be useful, if your mail clients having trouble to build the resend file name (right button - URL) correctly in block reports. Every non printable character will be replaced by a 4 byte string in this link.',undef,undef,'msg006130','msg006131'],
 ['MaintBayesCollection','Maintenance for Bayesian Collection',0,\&checkbox,'1','(.*)',undef,
@@ -4314,7 +4312,7 @@ For example: mysql/dbimport<br />
 
 [0,0,0,'heading','LDAP Setup <a href="http://sourceforge.net/p/assp/wiki/LDAP" target=wiki><img height=12 width=12 src="' . $wikiinfo . '" alt="LDAP" /></a>'],
 ['LDAPHost','LDAP Host(s)',80,\&textinput,'localhost','^((?:(?:'.$HostRe.'|'.$HostPortRe.')(?:\|(?:'.$HostRe.'|'.$HostPortRe.'))*)|)$','updateLDAPHost','Enter the DNS-name(s) or IP address(es) of the server(s) that run(s) the <a href="http://ldap.perl.org/FAQ.html">LDAP</a> database. Second entry is backup. For example: localhost. Separate entries with pipes: LDAP-1.domain.com|LDAP-2.domain.com . To use a different than the default LDAP port, define host:port.' ,undef,undef,'msg007210','msg007211'],
-['DoLDAPSSL','Use SSL with LDAP (ldaps)','0:no|1:SSL|2:TLS',\&listbox,'0','(.*)',undef,'ASSP will use \'ldaps (SSL port 636)\' instead of ldap (port 389) or \'ldaps (TLS over port 389)\'. The Perl module <a href="http://search.cpan.org/search?query=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> must be installed to use SSL or TLS!',undef,undef,'msg007220','msg007221'],
+['DoLDAPSSL','Use SSL with LDAP (ldaps)','0:no|1:SSL|2:TLS',\&listbox,'0','(.*)',undef,'ASSP will use \'ldaps (SSL port 636)\' instead of ldap (port 389) or \'ldaps (TLS over port 389)\'. The Perl module <a href="http://metacpan.org/search?q=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> must be installed to use SSL or TLS!',undef,undef,'msg007220','msg007221'],
 ['LDAPtimeout','LDAP Query Timeout',2,\&textinput,15,'(\d+)',undef,'timeout when connecting to the remote server. The default is 15 seconds.',undef,undef,'msg007230','msg007231'],
 ['LDAPLogin','LDAP Login',80,\&passinput,'','(.*)',undef,'Most LDAP servers require a login and password before they allow queries.<br />
  Enter the DN specification for a user with sufficient permissions here.<br />
@@ -4416,7 +4414,7 @@ For example: mysql/dbimport<br />
 ['ConsoleCharset','Charset for STDOUT and STDERR',$Charsets,\&listbox,'0','(.*)',undef,
  'Set the characterset/codepage for the console output to your local needs. Default is "System Default" - default conversion. To display nonASCII characters on the console screen, setup UseUnicode4MaillogNames . <span class=\'negative\'>Restart is required!</span>',undef,undef,'msg007410','msg007411'],
 ['normalizeUnicode','Normalize Unicode to NFKC',0,\&checkbox,'1','(.*)','ConfigChangeNormUnicode',
- 'If set (which is the default and recommended), all regular expressions and both, the Bayesian and the HMM engine, are normalizing all characters in their setup and the checked content, according to unicode <a href="http://www.unicode.org/reports/tr15/ target=_blank">NFKC</a>.<br />
+ 'If set (which is the default and recommended), all regular expressions and both, the Bayesian and the HMM engine, are normalizing all characters in their setup and the checked content, according to unicode <a href="http://www.unicode.org/reports/tr15/ rel=external">NFKC</a>.<br />
  In addition some extended (assp unique) unicode normalization is done for the unicode blocks "Enclosed Alphanumerics", "Enclosed Alphanumeric Supplement" , "Enclosed CJK Letters And Months" and "Enclosed Ideographic Supplement" - like: &#9312; &#9313; &#9331; &#9332; &#9352; &#9451; &#9461; &#9424; &#9398; &#127280; &#12809; &#12853; &#13003; &#127559;. Those characters are decomposed by compatibility, then recomposed by canonical equivalence (eg. to LATIN or CJK).<br />
  If this value is changed, and your system processes alot of NON-Latin mails, it is recommended to run a rebuildspamdb.<br />
  This feature requires a Perl version 5.012000 (5.12.0) or higher.<br />
@@ -4465,7 +4463,7 @@ For example: mysql/dbimport<br />
   To skip the installation tests for specific modules, put the case sensitive module names followed by a comma and \'1\' (one per line) in the following file. &nbsp;&nbsp;<input type="button" value="do not test these modules" onclick="javascript:popFileEditor(\'files/noupgradetest.txt\',1);" /><br />
   If this value is set to \'download and install\', ASSP will try an autoupdate of the new available modules. It is possible, that some modules could not be installed, because the XS module parts are still in use. In this case follow the instruction - click the "new available perl modules" button above. To disable the automatic Perl module update - set "noModuleAutoUpdate" below.<br />
   Click this button to see the log file for the updated modules&nbsp;&nbsp;<input type="button" value="module upgrade log" onclick="javascript:popFileEditor(\'notes/upgraded_Perl_Modules.log\',1);" /><br />
-  The perl module <a href="http://search.cpan.org/dist/Compress-Zlib/" rel="external">Compress::Zlib</a> is required to use this feature.',undef,undef,'msg008810','msg008811'],
+  The perl module <a href="http://metacpan.org/search?q=Compress::Zlib/" rel="external">Compress::Zlib</a> is required to use this feature.',undef,undef,'msg008810','msg008811'],
 ['noModuleAutoUpdate','No Automatic Perl Module update','0:no skip - update all|1:skip all|2:skip installed but not used by assp',\&listbox,'2','(.*)',undef,'If set, ASSP will skip the automatic Perl module update for the selected. Default is: skip installed but not used by assp<br />
   On NIX systems this value is ignored, if runAsUser is used! The automatic perl module upgrade is only done, if assp is running as OS user \'root\'.',undef,undef,'msg007900','msg007901'],
 ['AutoRestartCmd','OS-shell command for AutoRestart',100,\&textinput,'','(.*)',undef,'The OS level shell-command that is used to autorestart ASSP, if it runs not as a windows service! A possible value for your system is:<br />
@@ -4478,7 +4476,7 @@ For example: mysql/dbimport<br />
 ['RestartEvery','Restart Timeout',10,\&textinput,'0','(\d+)','configChangeRestartEvery',
   'ASSP will automatically terminate and restart after this many seconds. Use this setting to periodically reload configuration data, combat potential memory leaks, or perform shutdown/startup processes. This will only work properly if ASSP runs as a Windows service or in a script that restarts it after it stops or AutoRestartCmd is configured. Alternative to this field you can use ReStartSchedule, to schedule restarts.',undef,undef,'msg007530','msg007531'],
 ['ReStartSchedule','Schedule Cron time for ASSP Restart <sup>s</sup>',50,\&textinput,'noschedule','^((?:'.$ScheduleRe.'(?:\|'.$ScheduleRe.')*)|noschedule)$','configChangeRSRBSched','If <b>not</b> set to "noschedule" (noschedule is default), ASSP uses scheduled times to shutdown or restart ( AutoRestartCmd )! The syntax is the same like in <a href="http://en.wikipedia.org/wiki/Cron" rel="external">"Vixie" cron</a>! To disable this Scheduler leave this field blank!<b> Never write quotes in to this field!</b><br />
-This requires an installed <a href="http://search.cpan.org/search?query=Schedule::Cron" rel="external">Schedule::Cron</a> module in PERL.<br />
+This requires an installed <a href="http://metacpan.org/search?q=Schedule::Cron" rel="external">Schedule::Cron</a> module in PERL.<br />
 <br />
 <b>Time and Date specification</b><br />
 <br />
@@ -4548,7 +4546,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg007
 ['MemoryUsageLimit','Memory Limit in MB that ASSP could use',40,\&textinput,'','^(\d+|)$',undef,
  'The memory limit in megabyte the assp process could use at maximum on your system. Set this to empty or zero to disable the feature. The check is done using the schedule defined in MemoryUsageCheckSchedule . If the assp process uses more memory than the limit at a scheduled time and assp is able to restart it self - a restart will be done within 15 seconds. The user running assp must have read access to /proc on nix systems or must have read access to the WMI provider on windows systems!',undef,undef,'msg009950','msg009951'],
 ['MemoryUsageCheckSchedule','Schedule(s) to check the ASSP process memory usage <sup>s</sup>',40,\&textinput,'0-59/10 * * * *','^((?:'.$ScheduleRe.'(?:\|'.$ScheduleRe.')*)|)$','configChangeSched',
- 'The schedule(s) that is used to check the current memory usage of the assp process compared to the MemoryUsageLimit. Default value is (0-59/10 * * * *), which means every 10 minutes. This requires an installed <a href="http://search.cpan.org/search?query=Schedule::Cron" rel="external">Schedule::Cron</a> module in PERL.',undef,undef,'msg009960','msg009961'],
+ 'The schedule(s) that is used to check the current memory usage of the assp process compared to the MemoryUsageLimit. Default value is (0-59/10 * * * *), which means every 10 minutes. This requires an installed <a href="http://metacpan.org/search?q=Schedule::Cron" rel="external">Schedule::Cron</a> module in PERL.',undef,undef,'msg009960','msg009961'],
 ['myName','My Name',40,\&textinput,'ASSP.nospam','('.$EmailDomainRe.')','ConfigChangeMyName',
  'ASSP will identify itself by this name in the email "Received:" header and in the helo when sending report-replies. Usually the fully qualified domain name of the host.<p><small><i>Examples:</i> assp.mydomain.com, mail.mydomain.org</small></p><br />
  <b>It is highly recommended to change this value - do NOT use the default value ASSP.nospam in production environments! Because the same hostname can be used by any other server, that uses assp and sends emails to your system.</b><br />
@@ -4602,7 +4600,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg007
   <p><small><i>Examples:</i> 55555, 192.168.0.5:12345, SSL:myhost:12345, 192.168.0.5:22345|myhost:12345</small></p>',undef,undef,'msg007630','msg007631'],
 ['enableWebAdminSSL','Use https instead of http',0,\&checkbox,'','(.*)','ConfigChangeEnableAdminSSL',
  'If selected the web admin interface will be only accessible via https. If you change this, after you click Apply you must change the URL on your browser to reconnect.
-  This requires an installed <a href="http://search.cpan.org/search?query=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> module in PERL.<br />
+  This requires an installed <a href="http://metacpan.org/search?q=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> module in PERL.<br />
   A server-certificate-file "certs/server-cert.pem" and a server-key-file "certs/server-key.pem" must exist and must be valid!<br />
   If you do not have valid certificates, you may generate both files online with <a href="http://www.mobilefish.com/services/ssl_certificates/ssl_certificates.php" rel="external">www.mobilefish.com</a> or you may use OpenSSL to generate <a href="http://www.mobilefish.com/developer/openssl/openssl_quickguide_self_certificate.html" rel="external">Self-signed SSL certificates</a>! More configuration options are webSSLRequireClientCert, SSLWEBCertVerifyCB and SSLWEBConfigure .',undef,undef,'msg007640','msg007641'],
 ['webAdminPassword','Web Admin Password - Masterpassword (root)',20,\&passinput,'nospam4me','(.{5,})','ConfigChangePassword',
@@ -4632,13 +4630,13 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg007
    <p><small><i>Examples:</i> 55553, 192.168.0.5:12345|SSL:192.168.0.6:12345</small></p>',undef,undef,'msg007670','msg007671'],
 ['enableWebStatSSL','Use https instead of http',0,\&checkbox,'','(.*)','ConfigChangeEnableStatSSL',
  'The web stat interface will be only accessible via https.<br />
-  This requires an installed <a href="http://search.cpan.org/search?query=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> module in PERL.<br />
+  This requires an installed <a href="http://metacpan.org/search?q=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> module in PERL.<br />
   A server-certificate-file "certs/server-cert.pem" and a server-key-file "certs/server-key.pem" must exits and must be valid! More configuration options are statSSLRequireClientCert, SSLSTATCertVerifyCB and SSLSTATConfigure .',undef,undef,'msg007680','msg007681'],
 ['allowStatConnectionsFrom','Only Allow Raw Statistics Connections From*',80,\&textinput,'127.0.0.1','(\S*)','ConfigMakeIPRe',
   'An optional list of IP addresses from which you will accept raw statistical connections. Blank means accept connections from any IP address. <p><small><i>Examples:</i></small></p>
  127.0.0.1|172.16.',undef,undef,'msg007690','msg007691'],
 ['EnableHTTPCompression','Enable HTTP Compression in GUI',0,\&checkbox,1,'(.*)',undef,
-  'Enable HTTP Compression for faster web administration interface loading. The perl module <a href="http://search.cpan.org/dist/Compress-Zlib/" rel="external">Compress::Zlib</a> is required to use this feature.',undef,undef,'msg007700','msg007701'],
+  'Enable HTTP Compression for faster web administration interface loading. The perl module <a href="http://metacpan.org/search?q=Compress::Zlib" rel="external">Compress::Zlib</a> is required to use this feature.',undef,undef,'msg007700','msg007701'],
 ['httpLocalIPAddress','HTTP - Destination to Local IP-address Mapping*',40,\&textinput,'','^(\s*file\s*:\s*.+|)$','configChangeLocalIPMap',
   'You need to use the "file: ..." option for this parameter!<br />
   On windows systems at least Vista/2008 is required!<br />
@@ -4705,7 +4703,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg007
  skipped checks are: all Plugins in level 2 (complete mail) and the full mail DKIM check<br />
  Please also check npSize and npSizeOut .',undef,undef,'msg007830','msg007831'],
 ['useDB4IntCache','Use BerkeleyDB for Internal Caches',0,\&checkbox,'','(.*)','configChangeDB',
-  'ASSP uses some internal caches that could grow to a large number of entries. Switch this to ON, apply and restart assp, if you want ASSP to use less memory and be a little slower. If Changed to ON, ASSP will import the current internals in to the databases at the next restart. The perl module <a href="http://search.cpan.org/dist/BerkeleyDB/" rel="external">BerkeleyDB</a> version 0.34 or higher and BerkeleyDB version 4.5 or higher is required to use this feature.',undef,undef,'msg007840','msg007841'],
+  'ASSP uses some internal caches that could grow to a large number of entries. Switch this to ON, apply and restart assp, if you want ASSP to use less memory and be a little slower. If Changed to ON, ASSP will import the current internals in to the databases at the next restart. The perl module <a href="http://metacpan.org/search?q=BerkeleyDB" rel="external">BerkeleyDB</a> version 0.34 or higher and BerkeleyDB version 4.5 or higher is required to use this feature.',undef,undef,'msg007840','msg007841'],
 ['ALARMtimeout','Module Call Timeout',5,\&textinput,10,'(\d+)',undef,'Global Timeout for SPF checks. The default is 10 seconds.
   <hr /><hr /><font color=red>Thread Control - be careful changing the following green options!</font><hr />',undef,undef,'msg007850','msg007851'],
 ['NumComWorkers','Number of SMTP-Threads',2,\&textinput,5,'^([1-9][0-9]|[2-9])$','configChangeNumThreads','Number of SMTP-Threads to be used! Typical and default is 5. 10 should be enough for 200.000 connections a day. 15 should be the absolute maximum. Values above 7 will mostly not increase performance. Configurable values are between 2 and 29. Restart ASSP if you changed this and you are using any database connection! A restart of assp is required if tis value was increased.','Basic',undef,'msg007860','msg007861'],
@@ -4733,8 +4731,8 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg007
   NOTICE that some OS are not supporting the setting of "FD_SETSIZE" because of a hard coded value for "__FD_SETSIZE" - for example linux. On most Unix and all Windows OS it is supported.<br /><br />
   NOTICE that a too low setting of \'ulimit -n\' may cause the same errors on all nix OS.','Basic',undef,'msg007980','msg007981'],
 ['MinPollTime','Minimum Poll/Select Wait Time',5,\&textinput,2,'(\d+)',undef,'The time in milliseconds that ASSP will at least wait for IO::Poll/IO::Select events! A higher value will reduce CPU usage but cause ASSP to run more slowly! Default is 2.','Basic',undef,'msg007990','msg007991'],
-['WorkerCPUPriority','CPU priority for SMTP-Threads',5,\&textinput,0,'(0|1|2)','configChangeWorkerPriority','Set the priority for the Workers in relation to all other processes/threads on the system. Than higher the value - than lower the priority. Default is 0 (system default is 0). Possible values are 0,1 and 2. This requires installed <a href="http://search.cpan.org/search?query=Thread::State" rel="external">Thread::State</a> module. It is recommended to run the Workers on lower priority, if ASSP has to process most of the time a large number of mails at one moment ( number of mails &gt; NumComWorkers ).','Basic',undef,'msg008000','msg008001'],
-['asspCpuAffinity','Cpu Affinity for assp',20,\&textinput,'-1','(\-1|\d+(?:[, ]+\d+)*)','configChangeCpuAffinity','Set the Cpu Affinity for all threads . Default is -1 (for use all CPU\'s). Possible values are comma or space separated CPU numbers starting with zero (0) or -1 for all CPU\'s. This requires installed <a href="http://search.cpan.org/search?query=Sys::CpuAffinity" rel="external">Sys::CpuAffinity</a> module. This feature will possibly not work on MacOS and OpenBSD and on any OS, if the system contains more than 32 CPU\'s.','Basic',undef,'msg009880','msg009881'],
+['WorkerCPUPriority','CPU priority for SMTP-Threads',5,\&textinput,0,'(0|1|2)','configChangeWorkerPriority','Set the priority for the Workers in relation to all other processes/threads on the system. Than higher the value - than lower the priority. Default is 0 (system default is 0). Possible values are 0,1 and 2. This requires installed <a href="http://metacpan.org/search?q=Thread::State" rel="external">Thread::State</a> module. It is recommended to run the Workers on lower priority, if ASSP has to process most of the time a large number of mails at one moment ( number of mails &gt; NumComWorkers ).','Basic',undef,'msg008000','msg008001'],
+['asspCpuAffinity','Cpu Affinity for assp',20,\&textinput,'-1','(\-1|\d+(?:[, ]+\d+)*)','configChangeCpuAffinity','Set the Cpu Affinity for all threads . Default is -1 (for use all CPU\'s). Possible values are comma or space separated CPU numbers starting with zero (0) or -1 for all CPU\'s. This requires installed <a href="http://metacpan.org/search?q=Sys::CpuAffinity" rel="external">Sys::CpuAffinity</a> module. This feature will possibly not work on MacOS and OpenBSD and on any OS, if the system contains more than 32 CPU\'s.','Basic',undef,'msg009880','msg009881'],
 ['PreAllocMem','pre allocate memory for every mail',5,\&textinput,100000,'(\d+)',undef,'ASSP pre-allocates this number of bytes in mainstorage two times (in/out) for every mail to avoid memoryfracmentation (particularly in ASSP long run conditions). The memory will be allocated, if the DATA command is received from the server. Default is 100000 - this is enough for most of the mails. If ASSP receives the SIZE command from the server, the pre-allocation-memory will be calculated on that value. Question: Is it better to increase this value? Answer: Yes, it is - but be careful, this may cause ASSP running in out of memory errors!','Basic',undef,'msg008010','msg008011'],
 ['FreeupMemoryGarbage','Freeup Memory Garbage',0,\&checkbox,'1','(.*)',undef,
   'If defined, all Threads will try to recover memory every five minutes!','Basic',undef,'msg008020','msg008021'],
@@ -4748,7 +4746,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg007
 
 [0,0,0,'heading','Rebuild Hidden Markov Model and Bayesian Database'],
 ['RebuildSchedule','Schedule Cron time for RebuildSpamdb <sup>s</sup>',50,\&textinput,'noschedule','^((?:'.$ScheduleRe.'(?:\|'.$ScheduleRe.')*)|noschedule)$','configChangeRSRBSched','If <b>not</b> set to "noschedule" (noschedule is default) , ASSP uses scheduled times to run the RebuildSpamdb! The syntax is the same like in <a href="http://en.wikipedia.org/wiki/Cron" rel="external">"Vixie" cron</a>! To disable the Scheduler write "noschedule"!<b> Never write quotes in to this field!</b><br />
-This requires an installed <a href="http://search.cpan.org/search?query=Schedule::Cron" rel="external">Schedule::Cron</a> module in PERL.<br />
+This requires an installed <a href="http://metacpan.org/search?q=Schedule::Cron" rel="external">Schedule::Cron</a> module in PERL.<br />
 It is possible to define more than one scheduled time per day to keep the Bayesian and HMM databes up to date, but this is not required - use \'newReportedInterval\' instead.<br />
 If a file '.$base.'/rebuilddebug.txt exists, the rebuild task will write the debug output to this file.<br />
 <br />
@@ -4820,7 +4818,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
 ['useDB4Rebuild','Use BerkeleyDB/DB_File or orderedtie for the RebuildSpamDB Internal Caches',0,\&checkbox,'1','(.*)','configChangeDB',
  'The RebuildSpamDB thread creates some internal temporary caches, which can grow to a very large number of entries. Switch this on (default), if you want this thread to use less memory and to be possibly a little (~30%) slower.<br />
  Adjust RebuildThreadCycleTime to a lower value (between 0 and 30) to speed up the RebuildSpamDB thread.<br />
- The perl module <a href="http://search.cpan.org/dist/BerkeleyDB/" rel="external">BerkeleyDB</a> version 0.34 or higher and BerkeleyDB version 4.5 or higher is required to use this feature. DB_File (Berkeley V1) will be used if BerkeleyDB is not available - this is not recommended! If both BerkeleyDB and DB_File are not available, the rebuild thread will hold all temporary data in RAM - the same way, this option were set to "OFF".',undef,undef,'msg008080','msg008081'],
+ The perl module <a href="http://metacpan.org/search?q=BerkeleyDB" rel="external">BerkeleyDB</a> version 0.34 or higher and BerkeleyDB version 4.5 or higher is required to use this feature. DB_File (Berkeley V1) will be used if BerkeleyDB is not available - this is not recommended! If both BerkeleyDB and DB_File are not available, the rebuild thread will hold all temporary data in RAM - the same way, this option were set to "OFF".',undef,undef,'msg008080','msg008081'],
 ['ReplaceOldSpamdb','Replace the old Records in Spamdb and Spamdb.helo',0,\&checkbox,'1','(.*)',undef,
   'If selected (default), the new created records for Spamdb and Spamdb.helo will replace the old (belongs not to HMM, which is replaced every time). If not seleted, the new records will be added to Spamdb and Spamdb.helo .',undef,undef,'msg008090','msg008091'],
 ['doMove2Num','Do move2num Before Rebuild',0,\&checkbox,'','(.*)',undef,'Renames files to numbers before the rebuild is started. If this is done, some other features like \'MailLogTail\' and \'Block-Report\' will be unable to find the files! Setting this option to "ON" is not recommended!',undef,undef,'msg008100','msg008101'],
@@ -4867,20 +4865,20 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
 [0,0,0,'heading','CharacterSet Conversions and TNEF Processing'],
 ['inChrSetConv','inbound charset conversion table*',80,\&textinput,'','(\S*)','configChangeCV',
   'If defined, characterset conversion for inbound mails will be done. For example: if your email server does not understand UTF-8, ASSP will convert the mail parts to the characterset of your choice. The rules specified here are used to convert text parts of inbound mails from one to another characterset.<p><small><i>Example:</i>UTF-8=>ISO-8859-1|ISO-8859-15=>ISO-8859-1</small></p>
- This requires an installed <a href="http://search.cpan.org/search?query=Email::MIME" rel="external">Email::MIME</a> module in PERL.<br />
+ This requires an installed <a href="http://metacpan.org/search?q=Email::MIME" rel="external">Email::MIME</a> module in PERL.<br />
  This conversions are done for all (inbound,CC,report ..) mails except relayed mails. The converted mail will be not available on disk except DEBUG.',undef,undef,'msg008130','msg008131'],
 ['outChrSetConv','outbound charset conversion table*',80,\&textinput,'','(\S*)','configChangeCV',
   'If defined, characterset conversion for outbound mails will be done. For example: if your email server is unable to send mails in UTF-8, ASSP will convert the mail parts to UTF-8. The rules specified here are used to convert text parts of outbound mails from one to another characterset.<p><small><i>Example:</i>ISO-8859-1=>UTF-8|ISO-8859-2=>UTF-8|windows-1250=>UTF-8</small></p>
- This requires an installed <a href="http://search.cpan.org/search?query=Email::MIME" rel="external">Email::MIME</a> module in PERL.<br />
+ This requires an installed <a href="http://metacpan.org/search?q=Email::MIME" rel="external">Email::MIME</a> module in PERL.<br />
  This conversions are done only for relayed mails!',undef,undef,'msg008140','msg008141'],
 ['doInFixTNEF','convert inbound MS-TNEF attachments to MIME',0,\&checkbox,'','(.*)',undef,
   'convert inbound MS-TNEF attachments like winmail.dat to MIME parts/attachments. If a TNEF-file is attached by other than Exchange (like application/octet-stream) no conversion will be done. <br />
- In addition to <a href="http://search.cpan.org/search?query=Email::MIME" rel="external">Email::MIME</a> this requires both installed <a href="http://search.cpan.org/search?query=Convert::TNEF" rel="external">Convert::TNEF</a> and <a href="http://search.cpan.org/search?query=MIME::Types" rel="external">MIME::Types</a> module in PERL.',undef,undef,'msg008150','msg008151'],
+ In addition to <a href="http://metacpan.org/search?q=Email::MIME" rel="external">Email::MIME</a> this requires both installed <a href="http://metacpan.org/search?q=Convert::TNEF" rel="external">Convert::TNEF</a> and <a href="http://metacpan.org/search?q=MIME::Types" rel="external">MIME::Types</a> module in PERL.',undef,undef,'msg008150','msg008151'],
 ['keepInTNEF','keep the MS-TNEF part in inbound mail',0,\&checkbox,'1','(.*)',undef,
   'keep inbound MS-TNEF attachments like winmail.dat in MIME parts. If unchecked and the conversion is successful, the original attachment will be removed from mail!',undef,undef,'msg008160','msg008161'],
 ['doOutFixTNEF','convert outbound MS-TNEF attachments to MIME',0,\&checkbox,'','(.*)',undef,
   'convert outbound MS-TNEF attachments like winmail.dat to MIME parts/attachments. If a TNEF-file is attached by other than Exchange (like application/octet-stream) no conversion will be done.<br />
- In addition to <a href="http://search.cpan.org/search?query=Email::MIME" rel="external">Email::MIME</a> this requires both installed <a href="http://search.cpan.org/search?query=Convert::TNEF" rel="external">Convert::TNEF</a> and <a href="http://search.cpan.org/search?query=MIME::Types" rel="external">MIME::Types</a> module in PERL.',undef,undef,'msg008170','msg008171'],
+ In addition to <a href="http://metacpan.org/search?q=Email::MIME" rel="external">Email::MIME</a> this requires both installed <a href="http://metacpan.org/search?q=Convert::TNEF" rel="external">Convert::TNEF</a> and <a href="http://metacpan.org/search?q=MIME::Types" rel="external">MIME::Types</a> module in PERL.',undef,undef,'msg008170','msg008171'],
 ['keepOutTNEF','keep the MS-TNEF part in outbound mail',0,\&checkbox,'1','(.*)',undef,
   'keep outbound MS-TNEF attachments like winmail.dat in MIME parts. If unchecked and the conversion is successful, the original attachment will be removed from mail!',undef,undef,'msg008180','msg008181'],
 ['convertNP','convert NoProcessing mails',0,\&checkbox,'','(.*)',undef,
@@ -4894,7 +4892,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
 ['DoTLS','How to Handle STARTTLS Requests','0:drop TLS|1:TLS to Proxy|2:do TLS',\&listbox,0,'(\d*)',undef,
   'If set to "drop TLS", any STARTTLS request will be removed from the protocol stack and no connection will ever go in to any TLS mode!<br />
   If set to "TLS to Proxy" and both peers (client and server) supports TLS, both connection will be moved in to a transparent Proxy mode. All data will be encrypted and unreadable to ASSP.<br />
-  If set to "do TLS", ASSP will be the "man in the middle". ASSP will try to move both connections in to TLS. All data will be readable to ASSP - so all checks could be done. If any of the peers does not support TLS, ASSP will fake this (250-STARTTLS) to the other peer. So it could be possible, that the connection to the client is going in to TLS mode, even if TLS is not supported by the server. If a client does not request TLS (STARTTLS) even it has got the (250-STARTTLS), ASSP tries to start a TLS session to server, if he has sent (250-STARTTLS)! This behavior belongs to incoming and outgoing messages. This option requires the installed perl module <a href="http://search.cpan.org/search?query=IO::Socket::SSL" rel="external">IO::Socket::SSL</a>!<br />
+  If set to "do TLS", ASSP will be the "man in the middle". ASSP will try to move both connections in to TLS. All data will be readable to ASSP - so all checks could be done. If any of the peers does not support TLS, ASSP will fake this (250-STARTTLS) to the other peer. So it could be possible, that the connection to the client is going in to TLS mode, even if TLS is not supported by the server. If a client does not request TLS (STARTTLS) even it has got the (250-STARTTLS), ASSP tries to start a TLS session to server, if he has sent (250-STARTTLS)! This behavior belongs to incoming and outgoing messages. This option requires the installed perl module <a href="http://metacpan.org/search?q=IO::Socket::SSL" rel="external">IO::Socket::SSL</a>!<br />
   For "do TLS" a server-certificate-file " SSLCertFile " and a server-key-file " SSLKeyFile " must exist and must be valid!<br />
   If you do not have valid certificates, you may generate both files online with <a href="http://www.mobilefish.com/services/ssl_certificates/ssl_certificates.php" rel="external">www.mobilefish.com</a> or you may use OpenSSL to generate <a href="http://www.mobilefish.com/developer/openssl/openssl_quickguide_self_certificate.html" rel="external">Self-signed SSL certificates</a>! If you have installed OpenSSL (must be in PATH) and installed and enabled IO::Socket::SSL and ASSP is unable to find valid certificates - ASSP will try to create them at startup!<br />
   <input type="button" value="SSL-failed-Cache" onclick="javascript:popFileEditor(\'DB-SSLfailed\',\'1h\');" /><br />',undef,undef,'msg008210','msg008211'],
@@ -5115,7 +5113,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
  The name of this client has to be known by the global server <b>before</b> it can be registered from here. Please wait until you have confirmation that your client name is known by the global server.<br />
  If assp is unable to connect to the GPB-server for registration, check the IP - and - clientname relation! You may also try to set this parameter to the value \'<b>clean</b>\' one time - this will reset all GPB-internals and GPB-configuration parameters to their default value.<br />
  Make sure, the used assp version and the perl modules are uptodate!<br />
- In addition to <a href="http://search.cpan.org/search?query=Compress::Zlib" rel="external">Compress::Zlib</a> this requires an installed <a href="http://search.cpan.org/search?query=LWP::UserAgent" rel="external">LWP::UserAgent</a> module in PERL.',undef,undef,'msg008310','msg008311'],
+ In addition to <a href="http://metacpan.org/search?q=Compress::Zlib" rel="external">Compress::Zlib</a> this requires an installed <a href="http://metacpan.org/search?q=LWP::UserAgent" rel="external">LWP::UserAgent</a> module in PERL.',undef,undef,'msg008310','msg008311'],
 ['globalClientPass','GPB Client Registration Password',20,\&passnoinput,'','(.*)','configUpdateGlobalHidden','If the global client is registered on the global-server, you will see a number of "*" in this field. This field is readonly.',undef,undef,'msg008320','msg008321'],
 ['globalClientLicDate','GPB Client Subscription Expiration Date',20,\&textnoinput,'','(.*)','configUpdateGlobalHidden','The date of license/subscription expiration for this global client. If this date is exceeded, no upload and download of global PB will be done! This field is readonly.',undef,undef,'msg008330','msg008331'],
 ['DoGlobalBlack','Enable the Global-Black-Penalty',0,\&checkbox,'','(.*)',undef,'Enables the merge of the Black-Penalty-Box-Entries, if the client is registered on the global-PB-server. Upload and download of the black penalty entries are done independent from this setting as long as any of GPBDownloadLists or GPBautoLibUpdate is activated.',undef,undef,'msg008340','msg008341'],
@@ -5185,7 +5183,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
   'Runtime hour for reports in QueueUserBlockReports. Set a number between 0 and 23. 0 means midnight and is default',undef,undef,'msg008440','msg008441'],
 ['BlockRepForwHost','Forward The Blockreportrequest to other ASSP',40,\&textinput,'','(.*)',undef,'If you are using more than one ASSP (backup MX), define the IP-address and relayPort (x.x.x.x:ppp - for SSL use SSL:x.x.x.x:ppp) of the other ASSP here (separate multiple entries by "|"). The Blockreportrequest will be forwarded to this ASSP and the user will get a blockreport from every ASSP. The forwarded request has the same sender and recipient like the original request. So EmailBlockReport and EmailBlockReportDomain have to be configured identically on all ASSP!!!! Resend requests are automatic forwarded to the right (or next) host, if ASSP finds the hostname in the subject of the request. If you have more than two ASSP, the logical sending structure must be a star. If ASSP(A) (the sun) is in the middle and you have also ASSP(B), ASSP(C) and ASSP(D) (satellites), ASSP(A) should know C,B and D, and B,C and D should only know A.<br />
   If a forward host is unreachable, the forward request will be queued for a maximum of 24 hours and the user will be informed sending the \'reports/blockreportforwarderror.txt\' file.<br />
-  The perl module <a href="http://search.cpan.org/search?query=Net::SMTP/" rel="external">Net::SMTP</a> is required to use this feature (for SSL - Net::SMTP::SSL is required).',undef,undef,'msg008450','msg008451'],
+  The perl module <a href="http://metacpan.org/search?q=Net::SMTP/" rel="external">Net::SMTP</a> is required to use this feature (for SSL - Net::SMTP::SSL is required).',undef,undef,'msg008450','msg008451'],
 ['EmailBlockTo','Send Copy of Block-Reports TO',40,\&textinput,'','('.$EmailAdrRe.'\@'.$EmailDomainRe.')?',undef,
   'Email sent from ASSP acknowledging your submissions will be sent to this address. For example: admin@domain.com',undef,undef,'msg008460','msg008461'],
 ['BlockReportAdmins','BlockReport Admins*',60,\&textinput,'','(.*)','ConfigMakeSLRe',
@@ -5210,7 +5208,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
   The resend is done to the recipient stored in the X-Assp-Intended-For: ( requires AddIntendedForHeader ) header field and the requester, if the address was found in a TO: header field. <br />
   Accepts specific addresses (user@domain.com), user parts (user).  Wildcards are supported (fribo*@domain.com).<br />
   For example: fribo*@thisdomain.com|jhanna ',undef,undef,'msg010120','msg010121'],
-['BlockReportFile','File for Blockreportrequest',40,\&textinput,'','(file:.+)|','initMaintScheduler','A file with BlockReport requests. ASSP will generate a block report for every line in this file (file:files/blockreportlist.txt - file: is required if defined!) every day at midnight for the last day. The perl modules <a href="http://search.cpan.org/search?query=Net::SMTP/" rel="external">Net::SMTP</a> and <a href="http://search.cpan.org/search?query=Email::MIME /" rel="external">Email::MIME </a> are required to use this feature. A report will be only created, if there is at least one blocked email found! The syntax is: <br />
+['BlockReportFile','File for Blockreportrequest',40,\&textinput,'','(file:.+)|','initMaintScheduler','A file with BlockReport requests. ASSP will generate a block report for every line in this file (file:files/blockreportlist.txt - file: is required if defined!) every day at midnight for the last day. The perl modules <a href="http://metacpan.org/search?q=Net::SMTP/" rel="external">Net::SMTP</a> and <a href="http://metacpan.org/search?q=Email::MIME /" rel="external">Email::MIME </a> are required to use this feature. A report will be only created, if there is at least one blocked email found! The syntax is: <br />
  QueryAddress=>ReportRecipient=>ReportDays  -  there are many possible combinations of this three parameters. For example:<br />
  user@domain and user@domain=>user@domain - will send a report for this user to this user<br />
  *@domain (better use) *@domain=>* - will send a report for every blocked user in this domain to this user<br />
@@ -5270,7 +5268,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
 
 [0,0,0,'heading','SNMP Configuration'],
 ['SNMP','Enable the ASSP-SNMP Interface','0:disable|1:enable',\&listbox,0,'(\d*)','ConfigChangeSNMP',
- 'This enables the AgentX registration of assp to a SNMP master-AgentX. ASSP will be registered to the master-AgentX as \'assp_myName\', the possible configuration file name will be assp_myName.conf . This option requires the installed perl module <a href="http://search.cpan.org/search?query=NetSNMP::agent" rel="external">NetSNMP::agent</a>. The product and needed librarys could be downloaded at <a href="http://www.net-snmp.org/download.html" rel="external">net-snmp.org</a>.<br />
+ 'This enables the AgentX registration of assp to a SNMP master-AgentX. ASSP will be registered to the master-AgentX as \'assp_myName\', the possible configuration file name will be assp_myName.conf . This option requires the installed perl module <a href="http://metacpan.org/search?q=NetSNMP::agent" rel="external">NetSNMP::agent</a>. The product and needed librarys could be downloaded at <a href="http://www.net-snmp.org/download.html" rel="external">net-snmp.org</a>.<br />
  All configuration values are accessed using the SNMPUser account. The SNMP-permission and visibility is used from the configured user GUI-permissions.<br /><br />
 The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries. The configuration values are changeable via snmp. The file mib/ASSP-MIB could be used in SNMP browsers to get a human readable view of the OID\'s (copy it to the net-snmp MIB file location - eg: [C:]/usr/share/snmp/mibs and the MIB location of your SNMP browser). Please keep in mind, that an extensive usage of SNMP queries will slow down assp.<br /><br />
 .1   - runtime information<br />
@@ -5408,7 +5406,7 @@ The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries.
   POP3SSL=0/1<br />
   SIZElimit=maximum number of bytes in a single message<br /><br />
   POP3SSL, SIZElimit, SMTPHelo, SMTPsender, SMTPAUTHuser and SMTPAUTHpassword are optional.<br />
-  If POP3SSL is set to 1 - POP3S will be done! The Perl module <a href="http://search.cpan.org/search?query=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> is required for POP3S!<br />
+  If POP3SSL is set to 1 - POP3S will be done! The Perl module <a href="http://metacpan.org/search?q=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> is required for POP3S!<br />
   If SIZElimit is exceeded by a single message, the message will not be collected and a notification email will be sent to the recipient.<br />
   If SMTPsender is not defined, the FROM: address from the header line will be used - if this is not found the POP3username will be used.<br />
   If the &lt;TO:&gt; syntax is used for SMTPsendto, the mail will be sent to any recipient that is found in the "to: cc: bcc:" header lines if it is a local one.<br />
@@ -5515,7 +5513,7 @@ if (lc $_[0] eq '-u') {
     sleep(1);
     Win32::Daemon::DeleteService('',$ServiceName) ||
       print "Failed to remove ASSP service $ServiceName: " . Win32::FormatMessage( Win32::Daemon::GetLastError() ) . "\n" && return;
-    print "Service $ServiceName successful removed\n";
+    print "Service $ServiceName successfully removed\n";
 } elsif ( lc $_[0] eq '-i') {
     unless($p=$_[1]) {
         $p=$assp;
@@ -6647,9 +6645,11 @@ push @INC,$base unless grep {/^\Q$base\E$/o} @INC;
 #}
 
 if (open my $ADV,'>' , "$base/ASSP_DEF_VARS.pm") {    # write the module to disk
-print $ADV <<'EOT';
-package ASSP_DEF_VARS;
+binmode $ADV;
+my $mybuild = $build / 1000;
 
+print $ADV "package ASSP_DEF_VARS;\n\nour \$VERSION = $mybuild;\n\n";
+print $ADV <<'EOT';
 use Filter::Util::Call;
 
 sub import {
@@ -11124,7 +11124,7 @@ $lngmsg{'msg500017'} = '<div id="pathinfo">For defining any full filepaths, alwa
 $lngmsghint{'msg500018'} = '# main form buttom hint 8';
 $lngmsg{'msg500018'} = <<EOT;
 <img class="genHelpIcon" src="get?file=images/schedule.jpg"><br />
-<div id="cron">Fields marked with one small (<sup>s</sup>) - which are interval definitions - accept a single or a list of crontab entries separated by '|'. Such entries could be used to flexible schedule the configured task. Schedule definitions requires an installed <a href="http://search.cpan.org/search?query=Schedule::Cron" rel="external">Schedule::Cron</a> module in PERL.
+<div id="cron">Fields marked with one small (<sup>s</sup>) - which are interval definitions - accept a single or a list of crontab entries separated by '|'. Such entries could be used to flexible schedule the configured task. Schedule definitions requires an installed <a href="http://metacpan.org/search?q=Schedule::Cron" rel="external">Schedule::Cron</a> module in PERL.
 <br />
 <b>Time and Date specification</b><br />
 Entry is the specification of the scheduled time in crontab format,
@@ -11666,8 +11666,6 @@ function expand(expand, force)
 //make the 'rel's work
 function externalLinks()
 {
-  if (!document.getElementsByTagName)
-    return;
   var anchors = document.getElementsByTagName(\"a\");
   for (var i=0; i<anchors.length; i++)
   {
@@ -11676,6 +11674,7 @@ function externalLinks()
       && anchor.getAttribute(\"rel\") == \"external\")
       anchor.target = \"_blank\";
   }
+  createhintbox();
 }
 
 // handle cookies to remember something
@@ -11925,9 +11924,6 @@ function newWindow(target,title)
   	if (window.focus) {newwindow.focus()}
   	return false;
 }
-
-
-window.onload = externalLinks;
 // -->
 </script>';
 
@@ -12125,12 +12121,13 @@ function createhintbox(){
     document.body.appendChild(divblock);
 }
 
-if (window.addEventListener)
-    window.addEventListener("load", createhintbox, false)
-else if (window.attachEvent)
-    window.attachEvent("onload", createhintbox)
-else if (document.getElementById)
-    window.onload=createhintbox
+// *** this is moved in to kudos and externalLinks() ***
+// if (window.addEventListener)
+//     window.addEventListener("load", createhintbox, false)
+// else if (window.attachEvent)
+//     window.attachEvent("onload", createhintbox)
+// else if (document.getElementById)
+//     window.onload=createhintbox
 
 // Set Netscape up to run the "captureMousePosition" function whenever
 // the mouse is moved. For Internet Explorer and Netscape 6, you can capture
@@ -12251,10 +12248,8 @@ function processPrint(){
     if (document.getElementById != null){
         expand(1, 1);
         var html = \'<HTML>\n<HEAD>\n\';
-        if (document.getElementsByTagName != null){
-            var headTags = document.getElementsByTagName("head");
-            if (headTags.length > 0) html += headTags[0].innerHTML;
-        }
+        var headTags = document.getElementsByTagName("head");
+        if (headTags.length > 0) html += headTags[0].innerHTML;
         html += \'\n</HE\' + \'AD>\n<BODY>\n\';
         html += \'<img src="get?file=images/logo.gif" />&nbsp;&nbsp;&nbsp;<b>ASSP version '.$version.$modversion.'</b><br /><hr /><br />\';
 
@@ -12676,7 +12671,7 @@ if ($mobile) {
 <script type=\"text/javascript\">
 <!--
   showLeftMenu();showLeftMenu();
-  document.getElementById('printLink').innerHTML = '&nbsp;';
+  document.getElementById('printLink').innerHTML = '\&nbsp;';
 // -->
 </script>
 ";
@@ -12743,6 +12738,12 @@ if ($mobile) {
  </tr>
 </table>
 </div>
+
+<script type="text/javascript">
+<!--
+externalLinks();
+// -->
+</script>
 ';
 }
 
@@ -14507,7 +14508,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.83;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.84;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.06;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -20938,7 +20939,7 @@ sub SNMPhandler {
                    } else {
                        $request->setError($request_info, $SNMPag{SNMP_ERR_NOERROR});
                        $lastSNMPAPIresult = 'success: - ' . &SNMPcleanHTML($lastSNMPAPIresult);
-                       mlog(0,"info: successful executed SNMPAPI command: $value - return value was: $lastSNMPAPIresult") if $SNMPLog;
+                       mlog(0,"info: successfully executed SNMPAPI command: $value - return value was: $lastSNMPAPIresult") if $SNMPLog;
                    }
                 }
             } elsif ($SNMPwriteable && exists $subOID2Conf{$sid}) {
@@ -22596,7 +22597,7 @@ if ((! $friend->{noprocessing} || $convertNP) && $convert && ! $friend->{signed}
                           )
                     );
                 }
-                mlog($this->{friend},"info: successful finished TNEF conversion") if $ConvLog;
+                mlog($this->{friend},"info: successfully finished TNEF conversion") if $ConvLog;
                 $convert = 2;
               }
             }
@@ -22671,7 +22672,7 @@ if ((! $friend->{noprocessing} || $convertNP) && $convert && ! $friend->{signed}
        $friend->{header} .= "\x0D\x0A.\x0D\x0A"
            if ($friend->{header} !~ /\x0D\x0A\.\x0D\x0A$/o && $addend);   # send the dot if the conversion has removed it
        $time= sprintf("%.3f",(Time::HiRes::time()) - $time) ;
-       mlog($this->{friend},"info: MIME/TNEF conversion successful - finished in $time seconds") if $ConvLog;
+       mlog($this->{friend},"info: MIME/TNEF conversion successfully finished in $time seconds") if $ConvLog;
      } else {
                # send the unconverted there was no conversion
        mlog($this->{friend},"info: no MIME/TNEF conversion done") if ($TNEFDEBUG || $ConvLog > 1);
@@ -23993,7 +23994,7 @@ sub resend_mail {
                   mlog(0,"*x**** send to $destinationA$useSSL ($hostCFGname) didn't work, trying others...") ;
                   $reason .= "X: # send to $destinationA$useSSL ($hostCFGname) didn't work, trying others\r\n";
               } else {
-                  mlog(0,"*x*info: successful sent file $file to $destinationA$useSSL ($hostCFGname)") if $MaintenanceLog;
+                  mlog(0,"*x*info: successfully sent file $file to $destinationA$useSSL ($hostCFGname)") if $MaintenanceLog;
                   $AVa = 1;
                   mlog(0,"*x*warning: unable to delete $file - $!") unless ($unlink->($file));
 
@@ -40520,7 +40521,7 @@ sub RMdone { my ($fh,$l)=@_;
     if($l!~/^ *[24]21/o) {
         RMabort($fh,"done Expected 221 or 421, got: $l");
     } else {
-        mlog(0,"info: report successful sent to ".$Con{$fh}->{to}) if $ReportLog;
+        mlog(0,"info: report successfully sent to ".$Con{$fh}->{to}) if $ReportLog;
         done2($fh); # close and delete
     }
 }
@@ -49184,8 +49185,8 @@ sub StatsGetModules {
              $inst = '<font color=red>'.$inst.'</font>';
              $requ = '<font color=red>'.$requ.'</font>';
      }
-     my $url = 'http://search.cpan.org/search?query='.$_;
-     $url = 'http://search.cpan.org/search?query=Alien::Libarchive'  if ($_ eq 'Archive::Libarchive::XS(libarchive-version)');
+     my $url = 'http://metacpan.org/search?q='.$_;
+     $url = 'http://metacpan.org/search?q=Alien::Libarchive'  if ($_ eq 'Archive::Libarchive::XS(libarchive-version)');
      $url = 'http://www.oracle.com/technology/products/berkeley-db/' if ($_ eq 'BerkeleyDB_DBEngine');
      $url = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/lib/' if ($_ eq 'AsspSelfLoader');
      $url = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/lib/' if ($_ eq 'ASSP_WordStem');
@@ -54131,7 +54132,7 @@ LOOP
    $res='no results found, searched in '. needEs($files,' log file','s') .' ('. needEs($lines,' line','s'). ')';
   }
  } else {
-  $s='<p class="warning">Please install required module <a href="http://search.cpan.org/~uri/File-ReadBackwards-1.03/" rel="external">File::ReadBackwards</a>.</p>';
+  $s='<p class="warning">Please install the required perl module <a href="http://metacpan.org/search?q=File::ReadBackwards" rel="external">File::ReadBackwards</a>.</p>';
  }
  $MaillogTailBytes = $savTailByte;
  my $size = $qs{size} ? $qs{size} : 10000;
@@ -56731,28 +56732,23 @@ function switchtime () {
 //endnoprint
 
 function processPrint(){
-    if (document.getElementById != null){
-        var html = \'<HTML>\n<HEAD>\n\';
-        if (document.getElementsByTagName != null){
-            var headTags = document.getElementsByTagName("head");
-            if (headTags.length > 0) html += headTags[0].innerHTML;
-        }
-        html = html.replace(/noprint(?:.|\n)+?endnoprint/g, \'\');
-        html += \'\n</HE\' + \'AD>\n<BODY>\n\';
-        html += \'<img src="get?file=images/logo.gif" />&nbsp;&nbsp;&nbsp;<b>ASSP version '.$version.$modversion.'</b><br /><hr /><br />\';
+    var html = \'<HTML>\n<HEAD>\n\';
+    var headTags = document.getElementsByTagName("head");
+    if (headTags.length > 0) html += headTags[0].innerHTML;
+    html = html.replace(/noprint(?:.|\n)+?endnoprint/g, \'\');
+    html += \'\n</HE\' + \'AD>\n<BODY>\n\';
+    html += \'<img src="get?file=images/logo.gif" />&nbsp;&nbsp;&nbsp;<b>ASSP version '.$version.$modversion.'</b><br /><hr /><br />\';
 
-        var printReadyElemCfg  = document.getElementById("cfgdiv");
+    var printReadyElemCfg  = document.getElementById("cfgdiv");
 
-        if (printReadyElemCfg  != null)  html += printReadyElemCfg.innerHTML;
-        html = html.replace(/<input.+?>/g, \'\');
-        html += \'\n<script type="text/javascript">\n window.print();\n<\/script>\n\';
-        html += \'\n</BO\' + \'DY>\n</HT\' + \'ML>\';
-        var printWin = window.open("","processPrint");
-        printWin.document.open();
-        printWin.document.write(html);
-        printWin.document.close();
-
-    } else alert("Browser not supported.");
+    if (printReadyElemCfg  != null)  html += printReadyElemCfg.innerHTML;
+    html = html.replace(/<input.+?>/g, \'\');
+    html += \'\n<script type="text/javascript">\n window.print();\n<\/script>\n\';
+    html += \'\n</BO\' + \'DY>\n</HT\' + \'ML>\';
+    var printWin = window.open("","processPrint");
+    printWin.document.open();
+    printWin.document.write(html);
+    printWin.document.close();
 }
 </script>
 ';
@@ -57108,28 +57104,23 @@ sub StatusASSP {
 //endnoprint
 
  function processPrint(){
-    if (document.getElementById != null){
-        var html = \'<HTML>\n<HEAD>\n\';
-        if (document.getElementsByTagName != null){
-            var headTags = document.getElementsByTagName("head");
-            if (headTags.length > 0) html += headTags[0].innerHTML;
-        }
-        html = html.replace(/noprint(?:.|\n)+?endnoprint/g, \'\');
-        html += \'\n</HE\' + \'AD>\n<BODY>\n\';
-        html += \'<img src="get?file=images/logo.gif" />&nbsp;&nbsp;&nbsp;<b>ASSP version '.$version.$modversion.'</b><br /><hr /><br />\';
+    var html = \'<HTML>\n<HEAD>\n\';
+    var headTags = document.getElementsByTagName("head");
+    if (headTags.length > 0) html += headTags[0].innerHTML;
+    html = html.replace(/noprint(?:.|\n)+?endnoprint/g, \'\');
+    html += \'\n</HE\' + \'AD>\n<BODY>\n\';
+    html += \'<img src="get?file=images/logo.gif" />&nbsp;&nbsp;&nbsp;<b>ASSP version '.$version.$modversion.'</b><br /><hr /><br />\';
 
-        var printReadyElemCfg  = document.getElementById("cfgdiv");
+    var printReadyElemCfg  = document.getElementById("cfgdiv");
 
-        if (printReadyElemCfg  != null)  html += printReadyElemCfg.innerHTML;
-        html = html.replace(/<input.+?>/g, \'\');
-        html += \'\n<script type="text/javascript">\n window.print();\n<\/script>\n\';
-        html += \'\n</BO\' + \'DY>\n</HT\' + \'ML>\';
-        var printWin = window.open("","processPrint");
-        printWin.document.open();
-        printWin.document.write(html);
-        printWin.document.close();
-
-    } else alert("Browser not supported.");
+    if (printReadyElemCfg  != null)  html += printReadyElemCfg.innerHTML;
+    html = html.replace(/<input.+?>/g, \'\');
+    html += \'\n<script type="text/javascript">\n window.print();\n<\/script>\n\';
+    html += \'\n</BO\' + \'DY>\n</HT\' + \'ML>\';
+    var printWin = window.open("","processPrint");
+    printWin.document.open();
+    printWin.document.write(html);
+    printWin.document.close();
  }
 </script>
 ';
@@ -63907,7 +63898,7 @@ sub configUpdateGlobalClient {
     } else {
        my $res = &registerGlobalClient($new);
        if ($res == 1) {
-          return " clientname $new was successful registered on global-PB server";
+          return " clientname $new was successfully registered on global-PB server";
        } else {
           $globalClientPass = '';
           $globalClientName = '';
@@ -67321,7 +67312,7 @@ EOT
             delete $AdminUsers{$suser};
             mlog(0,"info: AdminUser $suser deleted by root");
             my $t = $suser =~ /^\~/o ? 'template' : 'user';
-            $s .= "<hr><span class=\"positive\">$t $suser was successful deleted</span><br/ >";
+            $s .= "<hr><span class=\"positive\">$t $suser was successfully deleted</span><br/ >";
         } else {
             my $t = $suser =~ /^\~/o ? 'template' : 'user';
             $s .= "<hr><span class=\"negative\">you cannot delete $t $suser</span><br/ >";
@@ -67871,7 +67862,7 @@ EOT
             %{$WebIP{$_}->{perm}} = ();
         }
 
-        my $text = 'successful applied changes to ';
+        my $text = 'successfully applied changes to ';
         $text .= $suser eq '#newTemplate' ? 'template ' : 'user ';
         $text .= $user;
 
@@ -68453,7 +68444,7 @@ sub downASSP {
     mlog(0,'initializing shutdown sequence');
     mlogWrite();
     $WorkerName = 'Shutdown';
-    if ($isNoWIN || ($isWIN && Win32::GetOSDisplayName() !~ /$downASSPFixRe/i)) {$sequenceOK &&= &closeAllSMTPListeners;}   # w2k8r2 KB4338818,KB4339093,KB4340556
+    $sequenceOK &&= &closeAllSMTPListeners;
     mlogWrite();
     $sequenceOK &&= &stopSMTPThreads;
     mlogWrite();
@@ -68474,7 +68465,7 @@ sub downASSP {
     mlogWrite();
     &clearDBCon();
     mlogWrite();
-    if ($isNoWIN || ($isWIN && Win32::GetOSDisplayName() !~ /$downASSPFixRe/i)) {&closeAllWEBListeners;}   # w2k8r2 KB4338818,KB4339093,KB4340556
+    &closeAllWEBListeners;
     mlogWrite();
     &syncWriteConfig() if $enableCFGShare;
     &removeLeftCrashFile();
@@ -69217,7 +69208,7 @@ sub ThreadStart {
           $ComWorker{$Iam}->{inerror} = 0;
           &initDBHashes();
           &initPrivatHashes();
-          mlog(0,"$WorkerName recovered successful from the startup error");
+          mlog(0,"$WorkerName recovered successfully from the startup error");
       }
       
       mlog(0,"$WorkerName started");
@@ -71986,7 +71977,7 @@ sub registerGlobalClient {
         $Config{globalClientPass}=$globalClientPass;
         $globalClientName = $client;
         $Config{globalClientName}=$globalClientName;
-        mlog(0,"info: successful registered client $client on global-PB server");
+        mlog(0,"info: successfully registered client $client on global-PB server");
         if (! -e "$base/$pbdir/global/out/pbdb.white.db.gz") {
             unlink "$base/$pbdir/global/out/pbdb.black.db";
             unlink "$base/$pbdir/global/out/pbdb.black.db.gz";
@@ -72064,7 +72055,7 @@ _
     $res =~ /(error[^\n]+)|filename\:([$NOCRLF]+)\r?\n?/ios;
     $url=$2;
     if ($responds->is_success && ! $1) {
-        mlog(0,"info: successful uploaded [$outfile] to global-PB") if $MaintenanceLog;
+        mlog(0,"info: successfully uploaded [$outfile] to global-PB") if $MaintenanceLog;
     } else {
         mlog(0,"warning: upload [$outfile] to global-PB failed : $1");
         return 0;
@@ -72113,7 +72104,7 @@ _
         if ($@) {
             mlog(0,"warning: error while executing cmd: $cmd - $@") if $MaintenanceLog;
         } else {
-            mlog(0,"info: successful executed cmd: $cmd") if $MaintenanceLog > 2;
+            mlog(0,"info: successfully executed cmd: $cmd") if $MaintenanceLog > 2;
             $chgcfg = 1;
         }
     }
@@ -72125,7 +72116,7 @@ _
         return 1;
     }
     if ($responds->is_success) {
-        mlog(0,"info: successful downloaded the global-PB $list") if $MaintenanceLog;
+        mlog(0,"info: successfully downloaded the global-PB $list") if $MaintenanceLog;
     } else {
         mlog(0,"warning: download the global-PB $list failed");
         return 0;
