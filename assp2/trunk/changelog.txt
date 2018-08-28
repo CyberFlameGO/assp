@@ -1,3 +1,22 @@
+2018-08-28
+fixed in assp 2.6.2 *Fortress* build 18240:
+
+
+added:
+
+- DoNoSpoofing4From is now splitted in to DoNoSpoofing4From and DoNoSpoofing4ReplyTo
+
+'DoNoSpoofing4From','Do NoSpoofing for from:'
+  'Do the NoSpoofing check also for header 'from:', 'sender:' addresses.'
+
+
+'DoNoSpoofing4ReplyTo','Do NoSpoofing for Reply-To:'
+  'Do the NoSpoofing check also for header 'reply-to:' and 'errors-to:' addresses.'
+
+
+
+
+
 2018-08-02
 fixed in assp 2.6.2 *Fortress* build 18214:
 

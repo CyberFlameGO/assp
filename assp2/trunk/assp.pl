@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18214';        # 02.08.2018 TE
+$build   = '18240';        # 28.08.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -585,7 +585,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '5B4F351DB40D24FD13D0132CBAEB4A118445FA79'; }
+sub __cs { $codeSignature = '62BB07F24CE7A9EAB0D11945C3259307D3AA36FD'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1609,7 +1609,7 @@ sub assp_socket_blocking {
 }
 
 sub defConfigArray {
- # last used msg number 010721
+ # last used msg number 010731
 
  # still unused msg numbers
  #
@@ -2563,7 +2563,9 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['noSpoofingCheckDomain','Don\'t do Spoofing Check for these Addresses/Domains*',80,\&textinput,'','(.*)','ConfigMakeSLRe',
  'Accepts specific addresses (user@example.com), user parts (user) or entire domains (@example.com). Wildcards are supported (fribo*@example.com).',undef,undef,'msg001780','msg001781'],
 ['DoNoSpoofing4From','Do NoSpoofing for from:',0,\&checkbox,'','(.*)',undef,
-  'Do the NoSpoofing check also for header \'from:\', \'sender:\', \'reply-to:\' and \'errors-to:\' addresses.',undef,undef,'msg009850','msg009851'],
+  'Do the NoSpoofing check also for header \'from:\', \'sender:\' addresses.',undef,undef,'msg009850','msg009851'],
+['DoNoSpoofing4ReplyTo','Do NoSpoofing for Reply-To:',0,\&checkbox,'','(.*)',undef,
+  'Do the NoSpoofing check also for header \'reply-to:\' and \'errors-to:\' addresses.',undef,undef,'msg010730','msg010731'],
 ['DoReversed','Reversed Lookup','0:disabled|1:block|2:monitor|3:score',\&listbox,3,'(.*)',undef,
   'If activated, each sender IP is checked for the existence of a PTR record. Having no PTR record is a fault. Scoring is done using ptmValencePB . This requires an installed <a href="http://metacpan.org/search?q=Net::DNS" rel="external">Net::DNS</a> module in PERL.',undef,undef,'msg001800','msg001801'],
 ['DoReversedWL','Do Reversed Lookup for Whitelisted',0,\&checkbox,'1','(.*)',undef,
@@ -5424,7 +5426,7 @@ The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries.
   <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/pop3collect.txt\',3);" />',undef,undef,'msg009090','msg009091']
 );
 
- # last used msg number 010721
+ # last used msg number 010731
 
  &loadModuleVars;
  -d "$base/language" or mkdirOP("$base/language",'0755');
@@ -20135,7 +20137,7 @@ sub SetRE {
      delete $RegexError{$name};
      exportOptRE($var,$name) if ($WorkerNumber == 0);
  }
- mlog(0,"warning: regular expression for $name matches an empty string - ignore this warning if this match is expected, otherwise correct the regular expression") if $WorkerNumber == 0 && '' =~ /$$var/;
+ mlog(0,"warning: regular expression for $name matches an empty string - ignore this warning if this match is expected, otherwise correct the regular expression") if $WorkerNumber == 0 && $name ne 'BounceSenders' && '' =~ /$$var/;
  mlog(0,"warning: regular expression for $name seems to match every string - ignore this warning if this match is expected, otherwise correct the regular expression") if $WorkerNumber == 0 && '' =~ /$$var/ && "\r\n$UTF8BOM\r\n" =~ /$$var/;
  return 1;
 }
@@ -27816,7 +27818,10 @@ sub getheader {
         if (&MsgScoreTooHigh($fh,$done)) {$this->{skipnotspam} = 0;return;}
 
         if (! $this->{whitelisted} ) {
-            if (! &NoSpoofingOK( $fh, 'mailfrom' ) || ($DoNoSpoofing4From && (! &NoSpoofingOK( $fh, 'from' ) || ! &NoSpoofingOK( $fh, 'sender' ) || ! &NoSpoofingOK( $fh, 'reply-to' ) || ! &NoSpoofingOK( $fh, 'errors-to' ))) ) {
+            if (   ! &NoSpoofingOK( $fh, 'mailfrom' )
+                || ($DoNoSpoofing4From && (! &NoSpoofingOK( $fh, 'from' ) || ! &NoSpoofingOK( $fh, 'sender' )))
+                || ($DoNoSpoofing4ReplyTo && (! &NoSpoofingOK( $fh, 'reply-to' ) || ! &NoSpoofingOK( $fh, 'errors-to' ))) )
+            {
                 my $slok = $this->{allLoveISSpam} == 1;
                 $Stats{senderInvalidLocals}++ unless $slok;
                 $reply = $SenderInvalidError;
@@ -50073,6 +50078,7 @@ $ret .= StatLine({'stat'=>'','text'=>($codeOK ? 'code integrity signature:' : "<
 
 my $currentCL = (-e "$base/docs/changelog.txt") ? "docs/changelog.txt" : '';
 my $currentCLtext = $currentCL ? '<a href="javascript:void(0);" onclick="javascript:popFileEditor(\'docs/changelog.txt\',8);">show current local change log</a>' : '&nbsp;';
+my $rel = ($subversion % 2) ? '(rel)' : '(dev)';
 $ret .= <<EOT;
           <tr>
             <td class="statsOptionTitle">
@@ -50082,7 +50088,7 @@ $ret .= <<EOT;
               <table>
                <tr>
                 <td rowspan="2">
-                 $version$modversion
+                 $rel $version build $build
                 </td>
                 <td class="statsOptionValueC">
                  $currentCLtext
@@ -50096,10 +50102,10 @@ $ret .= <<EOT;
               </table>
             </td>
             <td class="statsOptionValueC">
-              <a href="http://sourceforge.net/project/showfiles.php?group_id=69172" rel="external" target="_blank">release</a>
+              <a href="http://sourceforge.net/projects/assp/files/ASSP\%20V2\%20multithreading" rel="external" target="_blank">latest release</a>
             </td>
             <td class="statsOptionValueC">
-              <a href="http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/" rel="external" target="_blank">beta</a>
+              <a href="http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/" rel="external" target="_blank">latest development version (SVN)</a>
             </td>
           </tr>
           <tr>
@@ -58268,6 +58274,8 @@ sub fixConfigSettings {
     $Config{maxBayesValues} = $maxBayesValues = 30 if $maxBayesValues < 30;
     
     $Config{noMaxAUTHErrorIPs} = $Config{noBlockingIPs} if (exists $newConfig{noMaxAUTHErrorIPs});
+
+    $Config{DoNoSpoofing4ReplyTo} = $Config{DoNoSpoofing4From} if (exists $newConfig{DoNoSpoofing4ReplyTo});
 
     $Config{MaxEqualXHeader} = '*=>'.$Config{MaxEqualXHeader} if $Config{MaxEqualXHeader} =~ /^\d+$/;
     
