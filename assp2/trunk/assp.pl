@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18240';        # 28.08.2018 TE
+$build   = '18246';        # 03.09.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -425,7 +425,7 @@ our $BlockReportAdminPassword = {};      # the password must be anywhere startin
 our $enableBRtoggleButton = 1;           # (0/1) show the "toggle view" button in HTML BlockReports
 
 # some more
-our $enablePermanentSSLContext = 1;      # (0/1) enable usage of permanent SSL Context - maxunused = 1 hour, max lifetime = 1 day (default = 1)
+our $enablePermanentSSLContext = 1;      # (0/1) enable usage of permanent SSL Context - maxunused ($SSLContextMaxUnused) = 8 hours, max lifetime ($SSLContextMaxAge) = 1 day (default = 1)
 our $SPF_max_dns_interactive_terms = 15; # (number > 0) max_dns_interactive_terms max number of SPF-mechanism per domain (defaults to 10)
 our $SPF_max_allowed_IP = 0;             # maximum allowed IP (v4 and v6) adrresses in a SPF-record - default is 0 (disabled) - 2**17 seems to be OK
 our $disableEarlyTalker = 0;             # (0/1) disable the EarlyTalker check
@@ -585,7 +585,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '62BB07F24CE7A9EAB0D11945C3259307D3AA36FD'; }
+sub __cs { $codeSignature = '36C737FFB20A9FE8B00E9FEE061C29A24D9BBC64'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -14510,7 +14510,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.84;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.85;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.06;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -19893,6 +19893,17 @@ sub SMTPWrite {
     return;
 }
 
+sub checkSMTPKeepAlive {
+    my $this = shift || return;
+    my $timeout = $smtpIdleTimeout || 180;   # send some data to the server to prevent SMTP-timeout
+    if ($this->{lastwritten} && (time - $this->{lastwritten}) > ($timeout - 15)) {
+        $this->{lastwritten} = time;
+        my $dummy = "X-ASSP-KEEP:\r\n";
+        &NoLoopSyswrite($this->{self},$dummy,0);
+        mlog(0,"info: keep MTA connection - sent 'X-ASSP-KEEP:' headerline") if $ConnectionLog > 1;
+    }
+}
+
 sub SMTPTimeOut {
     my $sfh = shift;
     if ($smtpIdleTimeout > 0 || $smtpNOOPIdleTimeout > 0){
@@ -22357,12 +22368,7 @@ sub sendquedata {
           $this->{allocmem} = $nlength;
           mlog($this->{friend}, "info: allocated $nlength MB memory for large message (currently $length).") if $ConnectionLog > 2;
       }
-      my $timeout = $smtpIdleTimeout || 180;   # send some data to the server to prevent SMTP-timeout
-      if ($this->{lastwritten} && time - $this->{lastwritten} > ($timeout - 15)) {
-          $this->{lastwritten} = time;
-          my $dummy = "X-ASSP-KEEP:\r\n";
-          sendque($fh,\$dummy);
-      }
+      checkSMTPKeepAlive($this);
       return;                         # queue the data until all data are received
   }
 
@@ -54364,6 +54370,8 @@ if ('$qs{autorefresh}' != 'Auto') {
 MlEndPos = document.getElementById('allLogLines').scrollHeight;
 window.location.href = '#MlTop';
 ${\($MaillogTailJump && $qs{autorefresh} ne 'Auto' ? 'document.getElementById(\'LogLines\').scrollTop=MlEndPos;' : 'order = order;') }
+// create the hintbox and external links
+externalLinks();
 }
 </script>
 </div>
@@ -68209,6 +68217,7 @@ sub callPlugin {
       $runpl{$priority} = $pl;
     }
     foreach my $priority (sort {int($main::a) <=> int($main::b)} (keys %runpl)) {
+      &checkSMTPKeepAlive($this) if $where == 2;
       &NewSMTPConCall();
       my $pl = $runpl{$priority};
       d("call Plugin $pl with priority: $priority in run level $runlevel[$where]");

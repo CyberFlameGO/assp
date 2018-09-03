@@ -1,3 +1,15 @@
+2018-09-03
+fixed in assp 2.6.2 *Fortress* build 18246:
+
+- the hintbox was not working in the MaillogTail view since build 18214
+
+- If a large amount of attachments was processed by ASSP_AFC or any other level 2 plugin, it was possible that the MTA was running in its own SMTP-timeout, because
+  no data were sent by assp for a too long time. This assp V2 build and the new ASSP_AFC.pm version 4.85 will prevent this issue by sending an "X-ASSP-KEEP" header to the MTA,
+  if the assp smtpIdleTimeout will be reached within the next 15 seconds.
+  Keep in mind, that the smtptimeout value of your MTA has to be larger than the value defined in 'smtpIdleTimeout'!
+
+
+
 2018-08-28
 fixed in assp 2.6.2 *Fortress* build 18240:
 
