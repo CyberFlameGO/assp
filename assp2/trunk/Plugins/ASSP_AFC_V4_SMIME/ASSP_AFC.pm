@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 4.84 2018/08/01 09:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 4.85 2018/08/31 09:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -206,7 +206,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.84 2018/08/01 09:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.85 2018/08/31 09:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -890,7 +890,7 @@ sub process {
     # check the header of the email for virus
     my $emailRawHeader = substr($this->{header},0,&main::getheaderLength($fh));
     if ($emailRawHeader && $self->{select} != 1 && !(&main::ClamScanOK($fh,\$emailRawHeader) && &main::FileScanOK($fh,\$emailRawHeader))) {
-        if ($self->{rv}) {     # replace the complete mail, because the haeder is NOT OK
+        if ($self->{rv}) {     # replace the complete mail, because the heaader is NOT OK
             $modified = 2;
             my $text = $self->{rvtext};
             $text =~ s/FILENAME/MIME-TEXT.eml/g;
@@ -953,6 +953,7 @@ sub process {
            }
         }
         foreach my $part ( @parts, @addparts ) {
+            checkSMTPKeepAlive($main::Con{$this->{friend}}) if $this->{friend} && $main::Con{$this->{friend}};
             $this->{clamscandone}=0;
             $this->{filescandone}=0;
             $this->{attachdone}=0;
@@ -1461,6 +1462,17 @@ HeaderIsNotOK:
     }
     correctHeader($this);
     return 1;
+}
+
+sub checkSMTPKeepAlive {
+    my $this = shift || return;
+    my $timeout = $main::smtpIdleTimeout || 180;   # send some data to the server to prevent SMTP-timeout
+    if ($this->{lastwritten} && (time - $this->{lastwritten}) > ($timeout - 15)) {
+        $this->{lastwritten} = time;
+        my $dummy = "X-ASSP-KEEP:\r\n";
+        &main::NoLoopSyswrite($this->{self},$dummy,0);
+        mlog(0,"info: ASSP_AFC - keep MTA connection - sent 'X-ASSP-KEEP:' headerline") if $main::ConnectionLog > 1;
+    }
 }
 
 sub checkrcpt {
