@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18246';        # 03.09.2018 TE
+$build   = '18247';        # 04.09.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -585,7 +585,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '36C737FFB20A9FE8B00E9FEE061C29A24D9BBC64'; }
+sub __cs { $codeSignature = '97C59600569EC9CF37A0D89C90CEC26978FA3C5F'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -68217,7 +68217,7 @@ sub callPlugin {
       $runpl{$priority} = $pl;
     }
     foreach my $priority (sort {int($main::a) <=> int($main::b)} (keys %runpl)) {
-      &checkSMTPKeepAlive($this) if $where == 2;
+      &checkSMTPKeepAlive($Con{$this->{friend}}) if $where == 2 && $this->{friend} && $Con{$this->{friend}};
       &NewSMTPConCall();
       my $pl = $runpl{$priority};
       d("call Plugin $pl with priority: $priority in run level $runlevel[$where]");

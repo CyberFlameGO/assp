@@ -1,3 +1,11 @@
+2018-09-04
+fixed in assp 2.6.2 *Fortress* build 18247:
+
+- the "X-ASSP-KEEP" (build 18246) header was sent to the wrong peer
+
+
+
+
 2018-09-03
 fixed in assp 2.6.2 *Fortress* build 18246:
 
