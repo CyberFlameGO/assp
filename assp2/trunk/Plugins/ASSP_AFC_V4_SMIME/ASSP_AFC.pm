@@ -890,7 +890,7 @@ sub process {
     # check the header of the email for virus
     my $emailRawHeader = substr($this->{header},0,&main::getheaderLength($fh));
     if ($emailRawHeader && $self->{select} != 1 && !(&main::ClamScanOK($fh,\$emailRawHeader) && &main::FileScanOK($fh,\$emailRawHeader))) {
-        if ($self->{rv}) {     # replace the complete mail, because the heaader is NOT OK
+        if ($self->{rv}) {     # replace the complete mail, because the header is NOT OK
             $modified = 2;
             my $text = $self->{rvtext};
             $text =~ s/FILENAME/MIME-TEXT.eml/g;
