@@ -1,4 +1,4 @@
-# $Id: ASSP_ARC.pm,v 2.06 2018/05/07 10:30:00 TE Exp $
+# $Id: ASSP_ARC.pm,v 2.07 2018/09/09 17:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is an archive Plugin. Desinged for ASSP v 2.1.1(12030) and above
@@ -11,7 +11,7 @@ use vars qw($VERSION);
 use File::Copy;
 no warnings qw(uninitialized);
 
-$VERSION = $1 if('$Id: ASSP_ARC.pm,v 2.06 2018/05/07 10:30:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_ARC.pm,v 2.07 2018/09/09 17:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(12030)';
 our $MINASSPVER = '2.0.1'.$MINBUILD;
 our %Con;
@@ -405,7 +405,6 @@ sub archive {
  {
      $file .= '.aes';
      $this->{ARCFILENAME} = $file;
-     utf8::upgrade($file);
      my $key;
      my @chars =('0'...'9','a'...'z','A'...'Z');
      
@@ -422,12 +421,12 @@ sub archive {
      my $ret = $? >> 8;
      if (-e $tmpoOUTfile) {
          $main::move->($tmpoOUTfile,$out);
-         mlog(0,"$self->{myName}: message encrypted to - $file") if $self->{Log};
+         mlog(0,"$self->{myName}: message encrypted to - ".&main::de8($file)) if $self->{Log};
          $this->{ARCCRYPTKEY} = $key;
      } else {
          $this->{ARCFILE} =~ s/\.aes$//;
          $this->{ARCFILENAME} =~ s/\.aes$//;
-         mlog(0,"$self->{myName}: error - unable to encrypt message to - $file - $res") if $self->{Log};
+         mlog(0,"$self->{myName}: error - unable to encrypt message to - ".&main::de8($file)." - $res") if $self->{Log};
      }
      $main::unlink->($tmpINfile);
  }
@@ -443,8 +442,8 @@ sub archive {
  }
 
  if ($Con{$fh}->{deletemaillog}) {
-     $main::unlink->("$this->{maillogfilename}");
-     mlog(0,"$self->{myName}: file $Con{$fh}->{maillogfilename} was deleted - matched $Con{$fh}->{deletemaillog}");
+     $main::unlink->($this->{maillogfilename});
+     mlog(0,"$self->{myName}: file ".&main::de8($Con{$fh}->{maillogfilename})." was deleted - matched $Con{$fh}->{deletemaillog}");
  }
  undef $this;
  undef $self;
