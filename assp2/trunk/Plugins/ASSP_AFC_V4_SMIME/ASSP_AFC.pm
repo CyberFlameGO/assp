@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 4.85 2018/08/31 09:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 4.86 2018/09/10 06:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -206,7 +206,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.85 2018/08/31 09:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.86 2018/09/10 06:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -1330,7 +1330,7 @@ sub process {
 
         my $logsub =
         ( $main::subjectLogging ? " $main::subjectStart$this->{originalsubject}$main::subjectEnd" : '' );
-        mlog( $fh, "file path changed to $fn", 0, 2 ) if $fn;
+        mlog( $fh, "file path changed to ".&main::de8($fn), 0, 2 ) if $fn;
         my $reason = 'spam attachment found';
         $this->{sayMessageOK} = 'already';
         $self->{errstr} = $reason;
@@ -1364,9 +1364,9 @@ HeaderIsNotOK:
 
         my $logsub =
         ( $main::subjectLogging ? " $main::subjectStart$this->{originalsubject}$main::subjectEnd" : '' );
-        mlog( $fh, "file path changed to $fn", 0, 2 ) if $fn;
+        mlog( $fh, "file path changed to ".&main::de8($fn), 0, 2 ) if $fn;
         my $reason =  ($modified == 2) ? $this->{messagereason} : $this->{attachcomment};
-        mlog( $fh, "[spam found] $reason $logsub$fn", 0, 2 );
+        mlog( $fh, "[spam found] $reason $logsub".&main::de8($fn), 0, 2 );
         $this->{sayMessageOK} = 'already';
 
         $this->{header} = $email->as_string;
