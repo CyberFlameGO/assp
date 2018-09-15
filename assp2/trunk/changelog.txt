@@ -1,3 +1,45 @@
+2018-09-15
+fixed in assp 2.6.2 *Fortress* build 18258:
+
+- File names with nonascii characters were some times wrong encoded written to the maillog.txt on perl 5.28 (only perl 5.28). This caused several problems: blockreports missing the resendlinks,
+  maillog tail view missed file links, the GUI was unable to open the files ...
+  ASSP_AFC.pm 4.86 and ASSP_ARC.pm 2.07 fixes the same issue.
+
+- Depending on the used perl version and the used OS, it was possible that the loglines for different workers in maillog.txt had some times a wrong timeline order.
+  This was caused by different microseconds (OS) counts in different workers. ASSP now keeps the logline order.
+
+- If 'sendNoopInfo' was enabled and 'DoTLS' was set to 'doTLS', the STARTTLS command was some times failing. A hint is added to both GUI descriptions to not enable 'sendNoopInfo' if 'DoTLS' is enabled.
+  If assp detects both features enabled at startup, 'sendNoopInfo' will be switched to OFF (silent).
+  
+- If the 'file:....' option was defined for any of the following configuration parameters
+
+  MSGIDsigAddresses
+  onlySpoofingCheckIP
+  onlySpoofingCheckDomain
+  subjectFrequencyOnly
+  LocalFrequencyOnly
+  onlyAUTHHeloRe
+  BlockResendLinkOnly
+  Bayesian_localOnly
+
+  and the defined file was empty, the related feature was not working correctly (skipped).
+  
+
+changed:
+
+- If a config file or included file of any configuration parameter was used by or included in to the Groups feature (by accident or stupid settings), the
+  configuration was destroyed. ASSP will now check such settings and ignores the configuration files (and included files) in such a case.
+  A hint related to this issue is added to the Groups feature GUI description.
+  In case of such wrong settings, an error messages will be written to maillog.txt and the healthy state of assp will be set to yellow and recommendations will
+  be shown in the assp GUI status page. 
+
+- The shutdown sequence is now faster. Both high workers are now terminated first and SMTP connections that have not reached the SMTP-DATA command are now terminated instead of
+  processing them.
+
+- If 'ForceNoValidLocalSender' is enabled, the local address spoofing check is now done before the local sender address validation.
+  
+
+
 2018-09-04
 fixed in assp 2.6.2 *Fortress* build 18247:
 
