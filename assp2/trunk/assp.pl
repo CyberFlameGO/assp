@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18258';        # 15.09.2018 TE
+$build   = '18271';        # 28.09.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -585,7 +585,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '7450FC0453C97D38CABF24F9A9898E95EDEC8B49'; }
+sub __cs { $codeSignature = 'D43CC5FA7945174101AA90E96654A89C4EF2B61E'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -629,6 +629,10 @@ our $tlds3_URL = 'http://george.surbl.org/three-level-tlds';
 
 our $BackDNSFileURL = 'http://wget-mirrors.uceprotect.net/rbldnsd-all/ips.backscatterer.org.gz';
 
+our $DroplistURL = "http://www.spamhaus.org/drop/drop.txt";
+our $DroplistEURL = "http://www.spamhaus.org/drop/edrop.txt";
+our $Droplist6URL = "http://www.spamhaus.org/drop/dropv6.txt";
+
 # set the blocking mode for HTTP (0/1 default is 0) and HTTPS (0/1 default is 0) on the GUI
 our $HTTPblocking = 0;
 our $HTTPSblocking = 0;
@@ -647,6 +651,10 @@ our $RegexGroupingOnly = 1;
 
 # enables fast import of GPB in case RDBM is used
 our $GPBFastImport = 1;
+
+#################################################################
+# BUT at least from here - custom code changes are not required #
+#################################################################
 
 sub sockclose {
     my $socket = shift;
@@ -2482,7 +2490,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   'Use the list of blacklisted-helo hosts built by rebuildspamdb.',undef,undef,'msg001490','msg001491'],
 ['useHeloGoodlist','Use the Helo Goodlist','0:disabled|1:bonus|2:whitelisted|3:bonus &amp; whitelisted',\&listbox,1,'(.*)',undef,
   'Use the list of known good helo hosts built by rebuildspamdb.<br />
-  bonus - the message/IP get a bonus of the weighted negative value of hlValencePB <br />
+  bonus - the message/IP get a bonus of a calculated negative weighted value using hlValencePB - score = -10 * hlValencePB * good-helo-weigth - example: -10 * 20 * 0.2 = -40<br />
   whitelisted - the message is processed as whitelisted<br /><br />
   The good helos and weights are stored together with the helo blacklist.',undef,undef,'msg009920','msg009921'],
 ['DoIPinHelo','Do Score Suspicious Helos','0:disabled|2:monitor|3:score',\&listbox,3,'(\d*)',undef,
@@ -2713,8 +2721,8 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['denySMTPConnectionsFromAlways','Deny Connections from these IP\'s Strictly*',40,\&textinput,'file:files/denyalways.txt','(\S*)','ConfigMakeIPRe',
  'Manually maintained list of IP\'s which should <b>strictly</b> be blocked after address verification and before body and header is downloaded. Contrary to <i>denySMTPConnectionsFrom</i> IP\'s in noDelay, acceptAllMail, ispip, whiteListedIPs, noProcessingIPs, whitebox (PBWhite) will <b>not</b> pass if listed here.',undef,'7','msg002030','msg002031'],
 ['DoDropList','Do also Deny Connections from these IP\'s','0:disabled|1:add to deny|2:add to denyAlways|3:add to both',\&listbox,0,'(\d*)',undef,
- 'If activated, the IP is checked against the Droplist in addition to \'denySMTPConnectionsFromAlways\' and/or \'denySMTPConnectionsFrom\'. The droplist is downloaded if a new one is available and contains the Spamhaus DROP List. See "http://www.spamhaus.org/drop/drop.lasso".',undef,undef,'msg002040','msg002041'],
-['droplist','Drop also Connections from these IP\'s*',40,\&textinput,'file:files/droplist.txt','(\s*file\s*:\s*.+|)','ConfigMakeIPRe','Automatically downloaded (http://www.spamhaus.org/drop/drop.lasso) list of IP\'s which should be blocked right away. This list could be used in addition to denySMTPConnectionsFrom and/or denySMTPConnectionsFromAlways!',undef,'7','msg005750','msg005751'],
+ 'If activated, the IP is checked against the Droplist in addition to \'denySMTPConnectionsFromAlways\' and/or \'denySMTPConnectionsFrom\'. The droplist is downloaded if a new one is available and contains the Spamhaus DROP List. See "http://www.spamhaus.org/drop http://www.spamhaus.org/drop/drop.txt http://www.spamhaus.org/drop/edrop.txt http://www.spamhaus.org/drop/dropv6.txt".',undef,undef,'msg002040','msg002041'],
+['droplist','Drop also Connections from these IP\'s*',40,\&textinput,'file:files/droplist.txt','(\s*file\s*:\s*.+|)','ConfigMakeIPRe','Automatically downloaded (http://www.spamhaus.org/drop/drop.txt http://www.spamhaus.org/drop/edrop.txt http://www.spamhaus.org/drop/dropv6.txt) list of IP\'s which should be blocked right away. This list could be used in addition to denySMTPConnectionsFrom and/or denySMTPConnectionsFromAlways!',undef,'7','msg005750','msg005751'],
 ['denySMTPstrictEarly','Do Strictly Deny Connections Early',0,\&checkbox,'','(.*)',undef,
   'IP\'s in <b>denySMTPConnectionsFromAlways</b> will be denied right away.',undef,undef,'msg002050','msg002051'],
 ['enhancedOriginIPDetect','Do an Enhanced Origin IP Address Detection in the Mail Header','0:disabled|1:all|2:all but most origin',\&listbox,2,'(.*)',undef,
@@ -18281,7 +18289,7 @@ sub mlog {
         }
     }
 
-    return 1 if ((! $comment || $comment =~ /^[\s\r\n]+$/o) && ($fh == 0 || $WorkerNumber == 0));
+    return 1 if ((! $comment || $comment =~ /^\s+$/o) && ($fh == 0 || $WorkerNumber == 0));
 
     my @m;
     if ($this) {
@@ -18338,6 +18346,7 @@ sub mlog {
 
     if ($canNotify &&
         ! $noNotify &&
+        $comment !~ /^\s+$/o &&
         scalar keys %NotifyRE &&
         $m =~ /($NotifyReRE)/ &&
         $m !~ /$NoNotifyReRE/ &&
@@ -29564,8 +29573,10 @@ sub downloadHTTP {
     my ($gripListUrl,$gripFile,$nextload,$list,$dl,$tl,$ds,$ts) = @_;
     my $dummy = 0;
     my $showNext = 1;
-    if (! $nextload || ! defined($$nextload)) {
+    if (! $nextload || (ref($nextload) && ! defined($$nextload))) {
         $nextload = \$dummy;
+        $showNext = 0;
+    } elsif (ref($nextload) && $$nextload == 1) {
         $showNext = 0;
     }
     my $rc;
@@ -45593,22 +45604,79 @@ sub downloadDropList {
     d('droplistdownload-start');
     my $ret;
     my ($file) = $droplist =~ /^ *file: *(.+)/io;
-    $ret = downloadHTTP("http://www.spamhaus.org/drop/drop.lasso",
-                 "$base/$file.tmp",
-                 \$NextDroplistDownload,
-                 "Droplist",5,9,2,1) if $file;
+    if ($file) {
+        my ($nextL,$nextE,$next6) = (1,1,1);
+        my $res;
+        $res = downloadHTTP($DroplistURL,
+                     "$base/$file.tmp",
+                     \$nextL,
+                     "Droplist",5,9,2,1) if $DroplistURL;
+        $ret ||= $res;
+        $res = downloadHTTP($DroplistEURL,
+                     "$base/$file.E.tmp",
+                     \$nextE,
+                     "Extended Droplist",5,9,2,1) if $DroplistEURL;
+        $ret ||= $res;
+        $res = downloadHTTP($Droplist6URL,
+                     "$base/$file.6.tmp",
+                     \$next6,
+                     "IPv6 Droplist",5,9,2,1) if $Droplist6URL;
+        $ret ||= $res;
+        $nextL -= 1;
+        $nextE -= 1;
+        $next6 -= 1;
+        $NextDroplistDownload = 0;
+        $NextDroplistDownload = $nextL if $nextL;
+        $NextDroplistDownload = $nextE if $nextE && $nextE < $NextDroplistDownload;
+        $NextDroplistDownload = $next6 if $next6 && $next6 < $NextDroplistDownload;
+        $NextDroplistDownload = time + 3600 * 9 if ! $NextDroplistDownload;
+        my $time = $NextDroplistDownload - time;
+        mlog(0,"info: next droplist download in ".&getTimeDiff($time)) if $MaintenanceLog;
+    }
     if ($ret) {
-        open (my $F, '<' , "$base/$file.tmp") or return;
-        my $firstline = <$F>;
-        $F->close;
-        if ($firstline =~ /^\s*;\s*Spamhaus\s+DROP\s+List/io ) {
-            unlink "$base/$file";
-            copy("$base/$file.tmp","$base/$file");
+        my $content;
+        my $F;
+        if (open ($F, '<' , "$base/$file.tmp")) {
+            my $msg;
+            $F->binmode;
+            $F->read($msg,fsize("$base/$file.tmp"));
+            $F->close;
+            $content .= $msg."\n" if $msg =~ /^\s*;\s*Spamhaus.+?DROP\s+List/o;
+        }
+        if (open ($F, '<' , "$base/$file.E.tmp")) {
+            my $msg;
+            $F->binmode;
+            $F->read($msg,fsize("$base/$file.E.tmp"));
+            $F->close;
+            $content .= $msg."\n" if $msg =~ /^\s*;\s*Spamhaus.+?DROP\s+List/o;
+        }
+        if (open ($F, '<' , "$base/$file.6.tmp")) {
+            my $msg;
+            $F->binmode;
+            $F->read($msg,fsize("$base/$file.6.tmp"));
+            $F->close;
+            $content .= $msg if $msg =~ /^\s*;\s*Spamhaus.+?DROP\s+List/o;
+        }
+        $content =~ s/^\s+//o;
+        if ($content =~ /^;\s*Spamhaus.+?DROP\s+List/io ) {
+            if (getSHAFile("$base/$file",undef) ne sha1_hex($content)) {
+                unlink "$base/$file";
+                if (open ($F, '>' , "$base/$file")) {
+                    $F->binmode;
+                    print $F $content;
+                    $F->close;
+                    mlog(0,"info: new consolidated file $droplist created") if $MaintenanceLog;
+                } else {
+                    mlog(0,"warning: can't write the file $droplist - $!");
+                }
+                $ConfigChanged = 1;         # tell all to reload Config
+            } else {
+                mlog(0,"info: content of file $droplist was not changed") if $MaintenanceLog;
+            }
         } else {
             mlog(0,"warning: the file $droplist was downloaded but contains no usable data - ignoring the download");
             return;
         }
-        $ConfigChanged = 1;         # tell all to reload Config
     }
     return $ret;
 }
@@ -45618,39 +45686,40 @@ sub downloadTLDList {
     my $ret;
     my $ret2;
     my $ret3;
-    my $n1;
-    my $n2;
-    my $n3;
-    $NextTLDlistDownload = time + 7200;
+    my ($n1,$n2,$n3) = (1,1,1);
 
     my ($file) = $TLDS =~ /^ *file: *(.+)/io;
+    $NextTLDlistDownload = $file ? time + 7200 : time + 49 * 3600;
+    return $ret if (! $file);
+
     $ret = downloadHTTP(
                  $tlds_alpha_URL,
                  "$base/$file",
                  \$n1,
-                 "TLDlist",24,48,2,1) if $file;
+                 "TLDlist",24,48,2,1) if $file && $tlds_alpha_URL;
 
     ($file) = $URIBLCCTLDS =~ /^ *file: *(.+)/io;
     $ret2 = downloadHTTP(
                  $tlds2_URL,
                  "$base/files/URIBLCCTLDS-L2.txt",
                  \$n2,
-                 "level-2-TLDlist",24,48,2,1) if $file;
+                 "level-2-TLDlist",24,48,2,1) if $file && $tlds2_URL;
     $ret3 = downloadHTTP(
                  $tlds3_URL,
                  "$base/files/URIBLCCTLDS-L3.txt",
                  \$n3,
-                 "level-3-TLDlist",24,48,2,1) if $file;
+                 "level-3-TLDlist",24,48,2,1) if $file && $tlds3_URL;
 
-    if (! $file) {
-        if ($n1) {
-            $NextTLDlistDownload = $n1;
-            return $ret;
-        }
-    }
-    
-    $NextTLDlistDownload  =  ($n1 && $n1 < $n2) ? $n1 : ($n2 > 0) ? $n2 : $NextTLDlistDownload;
-    $NextTLDlistDownload  =  $n3 if $n3 &&  $NextTLDlistDownload > $n3;
+    $n1 -= 1;
+    $n2 -= 1;
+    $n3 -= 1;
+
+    $NextTLDlistDownload = time + 49 * 3600;
+    $NextTLDlistDownload = $n1 if $n1 && $n1 < $NextTLDlistDownload;
+    $NextTLDlistDownload = $n2 if $n2 && $n2 < $NextTLDlistDownload;
+    $NextTLDlistDownload = $n3 if $n3 && $n3 < $NextTLDlistDownload;
+    my $time = $NextTLDlistDownload - time;
+    mlog(0,"info: next TLDlist download in ".&getTimeDiff($time)) if $MaintenanceLog;
 
     if ($file &&
         -s "$base/files/URIBLCCTLDS-L2.txt" > 0 &&
@@ -61939,8 +62008,8 @@ sub getSSLParms {
                 if ($clearcontext) {      # clear the old context if required
                     delete $SSLServerContextList{$SSLServerContext{$asServer}->{'!CONTEXT!'}};  # delete the context from the context list hash
                     delete $SSLServerContext{$asServer}->{'!CONTEXT!'};                         # delete the context object itself
-                    $SSLServerContext{$asServer}->{'!CONTEXT!lastused!'};                       # delete the time values
-                    $SSLServerContext{$asServer}->{'!CONTEXT!created!'};
+                    delete $SSLServerContext{$asServer}->{'!CONTEXT!lastused!'};                # delete the time values
+                    delete $SSLServerContext{$asServer}->{'!CONTEXT!created!'};
                     mlog(0,"info: changes detected in SSL configuration data provided by 'SSL$asServer"."Configure' - removed old SSL-Context for '$asServer'") if $ConnectionLog || $SSLDEBUG;
                     mlog(0,"info: the following domains and associates certificates are now registered in the SSL-Server-Context:\n".join("\n",map {my $t = $_; $t ||= '<DEFAULT>'; $t; } sort keys(%{$ssl{SSL_cert_file}}))) if $SSLDEBUG;
                 }
@@ -62001,7 +62070,7 @@ sub cleanSSLContext {
     my $maxage = time - $SSLContextMaxAge;  # default one day
     my $maxlastused = time - $SSLContextMaxUnused;  # default one hour
     while ( my ($k,$v) = each(%SSLServerContext)) {
-        # context was not used for more than a hour in this thread
+        # context was not used for more than 8 hours in this thread
         if ($SSLContextMaxUnused && $SSLServerContext{$k}->{'!CONTEXT!lastused!'} && $SSLServerContext{$k}->{'!CONTEXT!lastused!'} < $maxlastused ) {
             delete $SSLServerContextList{$SSLServerContext{$k}};
             delete $SSLServerContext{$k};

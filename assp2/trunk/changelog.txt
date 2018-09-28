@@ -1,3 +1,15 @@
+2018-09-28
+fixed in assp 2.6.2 *Fortress* build 18271:
+
+- The Spamhaus DROP List download URL was changed. 
+  ASSP now consoldates the following file in to 'droplist'.
+  
+  http://www.spamhaus.org/drop/drop.txt
+  http://www.spamhaus.org/drop/edrop.txt
+  http://www.spamhaus.org/drop/dropv6.txt
+
+
+
 2018-09-15
 fixed in assp 2.6.2 *Fortress* build 18258:
 
