@@ -7,7 +7,7 @@ fixed in assp 2.6.2 *Fortress* build 18277:
 
 added:
 
-notice: the default behavior of assp is changed for whitelisted and noprocessing envelope recipients/domains and IP's!
+notice: the default behavior of assp is changed for whitelisted and noprocessing envelope sender addresses, domains and IP's!
 
   It was often the case, that mails from known good external senders were blocked, because they sent mails to a list of envelope recipients - but over the time, some of the recipient were no longer valid.
   ASSP detected this 'invalid recipient' attempt and the known good mail was blocked by the recipient check or the mail/IP got a high penalty and was blocked by the penalty-box.
