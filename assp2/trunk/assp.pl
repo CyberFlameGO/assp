@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18271';        # 28.09.2018 TE
+$build   = '18277';        # 04.10.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -482,6 +482,8 @@ our $noSupportSummay = 0;                # (0/1) skips the output of a support s
 our $AllowCodeInRegex = 0;               # (0/1) allow the usage of executable perl code (?{code_to_run}) in regular expression - change this ONLY, if you really know what you do
 
 our $maxSameFileIncludes = 100;          # number of times the same include file can occure in a configuration file
+
+our $ignoreInvalidAddressNPWL = 3;       # (0/1/2/3) ignore invalid envelope recipients for whitelisted (2) or noprocessing (1) or both (3) senders and IP's (no score, no connection drop, no error count)
 # *********************************************************************************************************************************************
 
 our $trustedFWSF = 'mx.sourceforge.net,lists.sourceforge.net';   # comma separed list of host1,helo1,host2,helo2,.... for an exact host match in the first line of an X-Spam-Report: spamassassin header!
@@ -585,7 +587,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'D43CC5FA7945174101AA90E96654A89C4EF2B61E'; }
+sub __cs { $codeSignature = 'D10315096D74B792260929FDECBCD8F86E67FC4B'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -24477,7 +24479,6 @@ sub stateReset {
     delete $this->{numrcpt};
     delete $this->{overwritedo};
     delete $this->{passingreason};
-    delete $this->{rcptNonexistent};
     delete $this->{rcptValidated};
     delete $this->{received_spf};
     delete $this->{rwlstatus};
@@ -26788,7 +26789,7 @@ sub getline {
 	        return;
         }
         
-        $this->{rcptValidated}=$this->{rcptNonexistent}=0;
+        $this->{rcptValidated} = 0;
 
         if ($this->{addressedToSpamBucket}) {
 
@@ -26853,8 +26854,8 @@ sub getline {
                 mlog( $fh, "invalid address $uh replaced with $uhx", 1 )
                   if $this->{alllog} or $ValidateUserLog >= 2;
                 $this->{rcpt} .= "$uhx ";
-                $this->{messagereason} = "invalid address $uhx";
-                pbTrapAdd( $fh, "$uhx" );
+                $this->{messagereason} = "invalid address $uh";
+                pbTrapAdd( $fh, "$uh" );
                 pbAdd( $fh, $this->{ip}, 'irValencePB', 'InvalidAddress' );
                 $Stats{rcptNonexistent}++;
                 $this->{rcptValidated} = 1;
@@ -26867,18 +26868,24 @@ sub getline {
                 }
 
             } else {
+                my $be_nice = $ignoreInvalidAddressNPWL & ((($this->{whitelisted} & 1) << 1) | ($this->{noprocessing} & 1));
                 $this->{prepend}="[InvalidAddress]";
                 $this->{messagereason}="invalid address $uh";
-                mlog($fh,"invalid address rejected: $uh") if $this->{alllog} or $ValidateUserLog;
-                pbTrapAdd($fh,"$uh");
-                pbAdd($fh,$this->{ip},'irValencePB','InvalidAddress');
+                my $ignored = $be_nice ? ' - this mistake is ignored' : '';
+                mlog($fh,"invalid address rejected: $uh$ignored") if $this->{alllog} || $ValidateUserLog;
+                if (! $be_nice) {
+                    pbTrapAdd($fh,$uh);
+                    pbAdd($fh,$this->{ip},'irValencePB','InvalidAddress') if ! $this->{userTempFail};
+                }
                 $Stats{rcptNonexistent}++;
-                $this->{rcptNonexistent}=1;
                 if ($NoValidRecipient) {
                     $reply = $NoValidRecipient."\r\n";
                     $reply =~ s/EMAILADDRESS/$u$h/go;
                 } else {
-                    $reply = "550 5.1.1 User unknown\r\n";
+                    $reply = "550 5.1.1 User <$u$h> unknown\r\n";
+                }
+                if ($be_nice && $reply =~ /^4/o) {
+                    $reply = "550 5.1.1 User <$u$h> unknown\r\n";
                 }
                 if ($reply =~ /^5/o) {
                     if ( ($this->{userTempFail} &&
@@ -26905,7 +26912,7 @@ sub getline {
                 }
 
                 # increment error and drop line if necessary
-                if($MaxErrors && ++$this->{serverErrors} > $MaxErrors) {
+                if(! $this->{userTempFail} && ! $be_nice && $MaxErrors && ++$this->{serverErrors} > $MaxErrors) {
                     MaxErrorsFailed($fh,
                     $reply ."421 <$myName> closing transmission\r\n",
                     "max errors (MaxErrors=$MaxErrors) exceeded -- dropping connection - after invalid address");
@@ -26947,8 +26954,6 @@ sub getline {
             $Stats{rcptSpamLover}++;
         } elsif ($this->{rcptValidated}) {
             $Stats{rcptValidated}++;
-        } elsif ($this->{rcptNonexistent}) {
-            $Stats{rcptNonexistent}++;
         } elsif ($rcptislocal) {
             $Stats{rcptUnchecked}++;
         } elsif (&Whitelist("$u$h")) {
@@ -31247,15 +31252,45 @@ sub DMARCok {
    $this->{dmarcresult} = 'pass';
    makeOrgAuthHeader(\$this->{myheader}, 'dmarc', $this->{dmarcresult});
    skipCheck($this,'aa','ro','co') && return 1;
-   my $failed;
-   $failed = $this->{dmarc}->{auth_results} if $this->{dmarc}->{auth_results};
-   $failed->{spf} ||= $this->{spf_result} if $this->{dmarc}->{aspf} eq 's' && $this->{spf_result} ne 'pass';
-   $failed->{spf} ||= ($this->{spf_result} || 'none') if $this->{dmarc}->{aspf} eq 'r' && $this->{spf_result} !~ /pass|softfail|neutral|none/o;
 
+   my $failed = {};
+   # use trusted spf and dkim results if available
+   $failed = $this->{dmarc}->{auth_results} if $this->{dmarc}->{auth_results};
+   # check the strict spf alignment
+   if (! $failed->{spf} && $this->{dmarc}->{aspf} eq 's' && (!($this->{dmarc}->{dom} && $this->{dmarc}->{mfd}) || ($this->{dmarc}->{dom} ne $this->{dmarc}->{mfd}))) {
+       $failed->{spf} = 'fail';
+       mlog($fh,"DMARC: this mail breakes the strict SPF alignment rules: envelope domain '$this->{dmarc}->{mfd}' and from domain '$this->{dmarc}->{dom}' are not equal") if $SPFLog;
+   }
+   if (! $failed->{spf} && $this->{dmarc}->{aspf} eq 's' && $this->{spf_result} ne 'pass') {
+       $failed->{spf} = $this->{spf_result};
+   }
+   #check the relax spf alignment
+   if (! $failed->{spf} && $this->{dmarc}->{aspf} eq 'r') {
+       my $match = $this->{dmarc}->{mfd} =~ /\Q$this->{dmarc}->{dom}\E$/i;
+       $match  ||= $this->{dmarc}->{dom} =~ /\Q$this->{dmarc}->{mfd}\E$/i;
+       if (! $match) {
+           $failed->{spf} = 'fail';
+           mlog($fh,"DMARC: this mail breakes the relax SPF alignment rules: not matching envelope domain '$this->{dmarc}->{mfd}' and from domain '$this->{dmarc}->{dom}' found") if $SPFLog;
+       }
+   }
+   $failed->{spf} ||= ($this->{spf_result} || 'none') if $this->{dmarc}->{aspf} eq 'r' && $this->{spf_result} !~ /pass|softfail|neutral|none/o;
+   if ($failed->{spf} eq 'fail') {
+       my $how = $this->{dmarc}->{aspf} eq 's' ? 'strict' : 'relax';
+       mlog($fh,"DMARC: this mail breakes the $how SPF rules defined in the DMARC record for domain $this->{dmarc}->{dom} - check result='$failed->{spf}'") if $SPFLog;
+   }
+   
+   # check the dkim alignment
    if (@{$this->{dmarc}->{DKIMdomains}}) {
-       $failed->{dkim} ||= 'fail' if $this->{dmarc}->{adkim} eq 's' && ! grep {/^\Q$this->{dmarc}->{dom}\E$/} @{$this->{dmarc}->{DKIMdomains}};
-       $failed->{dkim} ||= 'fail' if $this->{dmarc}->{adkim} eq 'r' && ! grep {/\Q$this->{dmarc}->{domain}\E$/} @{$this->{dmarc}->{DKIMdomains}};
-       mlog($fh,"DMARC: this mail breakes the DKIM rules defined in the DMARC record for domain $this->{dmarc}->{dom} - 'adkim'=$this->{dmarc}->{adkim} check result='$failed->{dkim}'") if $SPFLog && $failed->{dkim} eq 'fail';
+       if (! $failed->{dkim} && $this->{dmarc}->{adkim} eq 's' && ! grep {/^\Q$this->{dmarc}->{dom}\E$/} @{$this->{dmarc}->{DKIMdomains}}) {
+           $failed->{dkim} = 'fail';
+           mlog($fh,"DMARC: this mail breakes the DKIM (strict alignment) rules: envelope domain '$this->{dmarc}->{mfd}' and from domain '$this->{dmarc}->{dom}' are not equal") if $SPFLog;
+       } elsif (! $failed->{dkim} && $this->{dmarc}->{adkim} eq 'r' && ! grep {/\Q$this->{dmarc}->{domain}\E$/} @{$this->{dmarc}->{DKIMdomains}}) {
+           $failed->{dkim} = 'fail';
+           mlog($fh,"DMARC: this mail breakes the DKIM (relax alignment) rules: not matching envelope domain '$this->{dmarc}->{mfd}' and from domain '$this->{dmarc}->{dom}' found") if $SPFLog;
+       } elsif ($failed->{dkim} eq 'fail') {
+           my $how = $this->{dmarc}->{adkim} eq 's' ? 'strict' : 'relax';
+           mlog($fh,"DMARC: this mail breakes the DKIM ($how alignment) rules defined in the DMARC record for domain $this->{dmarc}->{dom} - check result='$failed->{dkim}'") if $SPFLog;
+       }
    } else {
        $failed->{dkim} ||= 'fail' if $this->{dmarc}->{adkim} eq 's';
        $failed->{dkim} ||= 'neutral' if $this->{dmarc}->{adkim} eq 'r';

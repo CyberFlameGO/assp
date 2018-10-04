@@ -1,5 +1,43 @@
+2018-10-04
+fixed in assp 2.6.2 *Fortress* build 18277:
+
+- the DMARC check ignored the SPF alignment, if 'DoSPFinHeader' was not enabled
+
+
+
+added:
+
+notice: the default behavior of assp is changed for whitelisted and noprocessing envelope recipients/domains and IP's!
+
+  It was often the case, that mails from known good external senders were blocked, because they sent mails to a list of envelope recipients - but over the time, some of the recipient were no longer valid.
+  ASSP detected this 'invalid recipient' attempt and the known good mail was blocked by the recipient check or the mail/IP got a high penalty and was blocked by the penalty-box.
+  The hidden configuration parameter 'ignoreInvalidAddressNPWL' is used to ignore the defined 'invalid recipient action', if a known good sender uses unknown envelope recipents in a sequence
+  of multiple envelope recipents. The mail is only blocked, if no valid envelope recipient is left over at the DATA command. If an unknown envelope recipient is used, the sender gets no penalty score,
+  but the invalid 'RCPT TO:' command is replied with the permanent error '550 5.1.1 User <xxxxx> unknown'. The connection is not dropped in this case. Such an 'invalid recipient' attempt will also
+  not be counted for 'MaxErros'.
+  
+  consequence: the mail is delivered to all left over valid envelope recipients and the sender will be informed about each invalid recipient (if NDR is supported by the sending server)
+
+  $ignoreInvalidAddressNPWL = 3;       # (0/1/2/3) ignore invalid envelope recipients for whitelisted (2) or noprocessing (1) or both (3) senders and IP's (no score, no connection drop, no error count)
+
+  Until now, the default action of assp was like 'ignoreInvalidAddressNPWL = 0' - this is now changed to 'ignoreInvalidAddressNPWL = 3'
+  
+  To change back to the old behavior or to change the default behavior, you have two options:
+  
+  1. start assp with the commandline switch --ignoreInvalidAddressNPWL:=X
+  
+  2. add the line below to the sub set in 'lib/CorrectASSPcfg.pm'.
+  
+  $main::ignoreInvalidAddressNPWL = X;
+  
+  In both cases, X is the configuration value of your choice (0...2).
+  
+
+
 2018-09-28
 fixed in assp 2.6.2 *Fortress* build 18271:
+
+This release is published for public as 2.6.1 build 18271.
 
 - The Spamhaus DROP List download URL was changed. 
   ASSP now consoldates the following file in to 'droplist'.
