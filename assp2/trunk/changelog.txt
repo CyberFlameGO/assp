@@ -1,3 +1,21 @@
+2018-10-05
+fixed in assp 2.6.2 *Fortress* build 18278:
+
+- the (SPF) statistic counter was not working for failed DMARC checks
+
+changed:
+
+- 'DoNoSpoofing4ReplyTo','Do NoSpoofing for Reply-To:' now also processes 'Return-Path:' and 'Disposition-Notification-To:' addresses.
+
+- If a malformed address is found in any of the following header tags, 
+  from, sender, reply-to, errors-to, returnreceipt, return-receipt-to, return-path, disposition-notification-to
+  the mail and IP gets a score of'nofromValencePB' for each found malformed address and if 'DoDomainCheck' is enabled, this check failes/scores for each found malformed address.
+  
+
+
+
+
+
 2018-10-04
 fixed in assp 2.6.2 *Fortress* build 18277:
 

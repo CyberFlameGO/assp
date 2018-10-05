@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18277';        # 04.10.2018 TE
+$build   = '18278';        # 05.10.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -531,7 +531,7 @@ our $ServiceTag;                         # a short version of the install folder
 # and SSD drives for the assp folder                  #
 #                                                     #
 # a 64Bit Perl 5.20 or higher is required             #
-# Perl 5.24 is recommended                            #
+# Perl 5.24 or higher is recommended                  #
 #                                                     #
 # spamdb has to be set to use a plain file ,          #
 # HMMusesBDB must be disabled ,                       #
@@ -587,7 +587,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'D10315096D74B792260929FDECBCD8F86E67FC4B'; }
+sub __cs { $codeSignature = '54434589DB89A1DC91A7E9455DCD149818D8BD44'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -658,6 +658,8 @@ our $GPBFastImport = 1;
 # BUT at least from here - custom code changes are not required #
 #################################################################
 
+## end ccc ##
+
 sub sockclose {
     my $socket = shift;
     my %closeparms;
@@ -692,7 +694,6 @@ sub sockclose {
 }
 
 # static config sharing vars
-## end ccc ##
 our $syncToDo:shared;
 our $syncUser;
 our $syncIP;
@@ -2580,7 +2581,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['DoNoSpoofing4From','Do NoSpoofing for from:',0,\&checkbox,'','(.*)',undef,
   'Do the NoSpoofing check also for header \'from:\', \'sender:\' addresses.',undef,undef,'msg009850','msg009851'],
 ['DoNoSpoofing4ReplyTo','Do NoSpoofing for Reply-To:',0,\&checkbox,'','(.*)',undef,
-  'Do the NoSpoofing check also for header \'reply-to:\' and \'errors-to:\' addresses.',undef,undef,'msg010730','msg010731'],
+  'Do the NoSpoofing check also for header \'Reply-To:\', \'Errors-To:\', \'Return-Path:\' and \'Disposition-Notification-To:\' addresses.',undef,undef,'msg010730','msg010731'],
 ['DoReversed','Reversed Lookup','0:disabled|1:block|2:monitor|3:score',\&listbox,3,'(.*)',undef,
   'If activated, each sender IP is checked for the existence of a PTR record. Having no PTR record is a fault. Scoring is done using ptmValencePB . This requires an installed <a href="http://metacpan.org/search?q=Net::DNS" rel="external">Net::DNS</a> module in PERL.',undef,undef,'msg001800','msg001801'],
 ['DoReversedWL','Do Reversed Lookup for Whitelisted',0,\&checkbox,'1','(.*)',undef,
@@ -2921,7 +2922,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['msValencePB','Message Scoring Limit Exceeded, default=10 +',10,\&textinput,10,$ValencePBRE,'ConfigChangeValencePB', 'IP scoring',undef,undef,'msg002910','msg002911'],
 ['mxValencePB','Missing MX, default=10 +',10,\&textinput,10,$ValencePBRE,'ConfigChangeValencePB', 'Message/IP scoring',undef,undef,'msg002920','msg002921'],
 ['mxaValencePB','Missing A Record for MX, default=15 +',10,\&textinput,15,$ValencePBRE,'ConfigChangeValencePB', 'Message/IP scoring',undef,undef,'msg002930','msg002931'],
-['nofromValencePB','No From Score, default=50 +',10,\&textinput,50,$ValencePBRE,'ConfigChangeValencePB','For Message/IP scoring in DoNoFrom.',undef,undef,'msg002940','msg002941'],
+['nofromValencePB','No From Score, default=50 +',10,\&textinput,50,$ValencePBRE,'ConfigChangeValencePB','For Message/IP scoring in DoNoFrom and malformed sender and Reply addresses in the header.',undef,undef,'msg002940','msg002941'],
 ['pbeValencePB','Extreme Bad IP History, TotalScore larger than PenaltyExtreme, default=25',3,\&textinput,25,'(\d+)','ConfigChangeValencePB', 'Message Scoring',undef,undef,'msg002950','msg002951'],
 ['pbValencePB','Bad IP History, TotalScore larger than PenaltyLimit, default=15',3,\&textinput,15,'(\d+)','ConfigChangeValencePB', 'Message Scoring',undef,undef,'msg002960','msg002961'],
 ['pbwValencePB','Good IP History (IP in PB WhiteBox), default=-15',3,\&textinput,-15,'(-{0,1}\d*)','ConfigChangeValencePB', '<span class="positive">Message Scoring Bonus</span>',undef,undef,'msg002970','msg002971'],
@@ -24265,6 +24266,7 @@ sub stateReset {
     $this->{delaydone} = '';
     $this->{delayed} = '';
     $this->{delayqueue} = '';
+    $this->{q(disposition-notification-to)} = '';
     delete $this->{dkim_arc};
     $this->{dkimheaders} = '';
     $this->{dkimverified} = '';
@@ -24321,6 +24323,7 @@ sub stateReset {
     $this->{messagescore} ||= 0;
     $this->{messagescoredone} = '';
     $this->{myheader} = $this->{myheaderCon};
+    %{$this->{MXAPreRes}} = (); undef %{$this->{MXAPreRes}}; delete $this->{MXAPreRes};
     delete $this->{newReported};
     $this->{nobayesian} = '';
     $this->{nocollect} = '';
@@ -24366,6 +24369,9 @@ sub stateReset {
     %{$this->{rememberMessageScore}} = (); undef %{$this->{rememberMessageScore}};  delete $this->{rememberMessageScore};
     $this->{RFC2047} = '';    # non printable in MIME encoded
     $this->{q(reply-to)} = '';
+    $this->{q(return-path)} = '';
+    $this->{q(return-receipt-to)} = '';
+    $this->{returnreceipt} = '';
     $this->{runlvl1PL} = '';
     $this->{rwlok} = 0;
     $this->{saveprepend2} = '';
@@ -27529,12 +27535,26 @@ sub getheader {
             $this->{nodkim} = 1 if $this->{header} =~ s/$this->{SRSorgAddress}/$this->{SRSnewAddress}/gi;
         }
         
-        for my $tag (qw(from sender reply-to errors-to)) {
-            if (! $this->{$tag} && $this->{header} =~ /(?:^|\n)$tag:($HeaderValueRe)/i) {
-                my $from = $1;
+        for my $tag (qw(from sender reply-to errors-to returnreceipt return-receipt-to return-path disposition-notification-to)) {
+            if (! $this->{$tag} && $this->{header} =~ /(?:^|\n)($tag):($HeaderValueRe)/i) {
+                my $tagName = $1;
+                my $from = $2;
                 headerUnwrap($from);
                 $this->{$tag} = $1 if $from =~ /<($EmailAdrRe\@$EmailDomainRe)>/oi;
                 $this->{$tag} = $1 if !$this->{$tag} && $from =~ /($EmailAdrRe\@$EmailDomainRe)/oi;
+                $from =~ s/^\s+|\s+$//go;
+                if (! $this->{$tag} && $from && ! $this->{relayok}) {
+                    mlog($fh,"malformed address: found in - $tagName:$from");
+                    if (! $this->{whitelisted}  && ! ($this->{noprocessing} & 1)) {
+                        pbAdd( $fh, $this->{ip}, 'nofromValencePB', 'From-missing' ) if ($DoRFC822 & 2) || $DoNoFrom == 3;
+                    }
+                    if ($DoDomainCheck && ($from =~ /(\S+?\@\S+)/o || $from =~ /(\S+)/o)) {
+                        my $adr = lc $1;
+                        $adr =~ s/[<>]//go;
+                        $this->{MXAPreRes}->{$adr}->{dom} = "(invalid) $adr";
+                        $this->{MXAPreRes}->{$adr}->{tag} .= $this->{MXAPreRes}->{$adr}->{tag} ? " , $tagName" : $tagName;
+                    }
+                }
             }
         }
 
@@ -27863,9 +27883,13 @@ sub getheader {
         if (&MsgScoreTooHigh($fh,$done)) {$this->{skipnotspam} = 0;return;}
 
         if (! $this->{whitelisted} ) {
-            if (   ! &NoSpoofingOK( $fh, 'mailfrom' )
-                || ($DoNoSpoofing4From && (! &NoSpoofingOK( $fh, 'from' ) || ! &NoSpoofingOK( $fh, 'sender' )))
-                || ($DoNoSpoofing4ReplyTo && (! &NoSpoofingOK( $fh, 'reply-to' ) || ! &NoSpoofingOK( $fh, 'errors-to' ))) )
+            if (                                 ! &NoSpoofingOK( $fh, 'mailfrom' )
+                || ($DoNoSpoofing4From && (      ! &NoSpoofingOK( $fh, 'from' )
+                                              || ! &NoSpoofingOK( $fh, 'sender' )))
+                || ($DoNoSpoofing4ReplyTo && (   ! &NoSpoofingOK( $fh, 'reply-to' )
+                                              || ! &NoSpoofingOK( $fh, 'errors-to' )
+                                              || ! &NoSpoofingOK( $fh, 'return-path' )
+                                              || ! &NoSpoofingOK( $fh, 'disposition-notification-to' ))) )
             {
                 my $slok = $this->{allLoveISSpam} == 1;
                 $Stats{senderInvalidLocals}++ unless $slok;
@@ -31355,7 +31379,7 @@ sub DMARCok {
    $reply =~ s/SPFRESULT/DMARC-failed/go;
    my $slok = $this->{allLoveSPFSpam} == 1;
 
-   $Stats{spffails}++ if $slok && $fh;
+   $Stats{spffails}++ if ! $slok && $fh;
 
    $this->{prepend} = '[DMARC]';
    thisIsSpam( $fh, "DMARC failed", $SPFFailLog, $reply, $this->{testmode}, $slok, 0 );
@@ -34613,6 +34637,11 @@ sub MXAOK_Run {
     my $failed;
     my $mpb;
     my $apb;
+
+    foreach my $mfd (keys %{$this->{MXAPreRes}}) {
+        $mfd{$mfd} = $this->{MXAPreRes}->{$mfd};
+    }
+    
     foreach my $mfd (keys %mfd) {
 
         if ($mfd{$mfd}->{mx}) {
@@ -34638,7 +34667,7 @@ sub MXAOK_Run {
             pbWhiteDelete( $fh, $ip ) if ! $mpb && $fh;
             pbAdd( $fh, $ip, 'mxValencePB', 'MissingMX' ) if $DoDomainCheck != 2 && !$mpb && $fh;
             pbAdd( $fh, $ip, 'mxValencePB', 'MissingMX' ) if $DoDomainCheck != 2 && !$mpb && $hasPrivat && $fh;
-            if (! $mfd{$mfd}->{a} ) {
+            if (! $mfd{$mfd}->{a} && ! exists($this->{MXAPreRes}->{$mfd})) {
                 my ($name, $aliases, $addrtype, $length, @addrs);
                 eval{
                     ($name, $aliases, $addrtype, $length, @addrs) = gethostbyname($mfd);
@@ -34687,7 +34716,7 @@ sub MXAOK_Run {
         if ( $MXACacheInterval > 0 && ! $queryError{$mfd} && ! $mfd{$mfd}->{ctime}) {
             MXACacheAdd( $mfd, $mfd{$mfd}->{mx}, $mfd{$mfd}->{a} );
         }
-        $this->{MXAres}->{$mfd} = { 'dom' => $mfd , 'mx' => $mfd{$mfd}->{mx}, 'a' => $mfd{$mfd}->{a}, 'tag' => $mfd{$mfd}->{tag} } unless $fh;
+        $this->{MXAres}->{$mfd} = { 'dom' => ($mfd{$mfd}->{dom} || $mfd) , 'mx' => $mfd{$mfd}->{mx}, 'a' => $mfd{$mfd}->{a}, 'tag' => $mfd{$mfd}->{tag} } unless $fh;
         $failed ||= $mfailed && $afailed;
         $mf = $mfd if ($mfailed && $afailed);
         $apb |= $afailed;
@@ -35502,7 +35531,7 @@ sub PersBlackOK_Run {
     $removeline{chr(46)} = undef unless eval('defined ${chr(ord("\026") << 2)};');
     while ($this->{header} =~ /($HeaderNameRe):($HeaderValueRe)/igos) {
         my ($name,$value) = ($1,$2);
-        if ($name =~ /^(from|sender|reply-to|errors-to|list-\w+)$/io) {
+        if ($name =~ /^(from|sender|reply-to|return-path|errors-to|list-\w+)$/io) {
             &headerUnwrap($value);
             while ($value =~ /($EmailAdrRe\@$EmailDomainRe)/gio) {
                 my $addr = batv_remove_tag(0,$1,'');
@@ -39476,7 +39505,7 @@ sub ListReportGetAddr {
     while ($header =~ /($HeaderNameRe):($HeaderValueRe)/gios) {
         my $val = decodeMimeWords($2);
         my $tag = $1;
-        next if $tag !~ /^(?:subject|from|X-Assp-Envelope-From|sender|reply-to|errors-to|list-\w+|ReturnReceipt|Return-Receipt-To|Disposition-Notification-To$rcptTag)$/i;
+        next if $tag !~ /^(?:subject|from|X-Assp-Envelope-From|sender|reply-to|errors-to|list-\w+|ReturnReceipt|Return-Receipt-To|Return-Path|Disposition-Notification-To$rcptTag)$/i;
         &headerSmartUnwrap($val);
         while ($val =~ /($EmailAdrRe\@$EmailDomainRe)/igo) {
             my $addr = $1;
@@ -44201,7 +44230,7 @@ sub onwhitelist {
             } else {
                 while ($$ba =~ /($HeaderNameRe):($HeaderValueRe)/igos) {
                     my $s = $2;
-                    next if $1 !~ /^(?:from|sender|reply-to|errors-to|list-\w+)$/io;
+                    next if $1 !~ /^(?:from|sender|reply-to|return-path|errors-to|disposition-notification-to|list-\w+)$/io;
                     &headerUnwrap($s);
                     if ($s =~ /<($EmailAdrRe\@$EmailDomainRe)>/io || $s =~ /($EmailAdrRe\@$EmailDomainRe)/io) {
                         $s = batv_remove_tag(0,$1,'');
@@ -47474,6 +47503,7 @@ sub MaillogClose {
     my %run;
     delete $Con{$fh}->{q(errors-to)};
     delete $Con{$fh}->{q(reply-to)};
+    delete $Con{$fh}->{q(return-path)};
     foreach my $sub (keys %runOnMaillogClose) {
         my ($mod,$s) = split(/::/o,$sub,2);
         my $priority = ${$mod.'Priority'} || 0;
@@ -51766,6 +51796,7 @@ sub ConfigAnalyze {
     if ($normalizeUnicode && $CanUseUnicodeNormalize) {
         $fm .= "text processing uses unicode normalization<br />\n";
     }
+    $fm .= 'regular expression matches and results are truncated to '.linkToConfig('RegExLength',(max(5,$RegExLength).' (RegExLength)'))." characters<br />\n";
     my $IDname;
     if ($mail =~ /X-Assp-ID: (.+)/io) {
         $fm .= "ASSP-ID: $1<br />";
@@ -51953,14 +51984,25 @@ sub ConfigAnalyze {
         $fm .= "<b><font color=\"#003366\">sender and reply addresses:</font></b><br />";
         $fm .=  "MAIL FROM: $mailfrom<br />  " if $mailfrom;
         my $noDKIM;
+        my %MXAres;
         while ($header =~ /($HeaderNameRe):($HeaderValueRe)/igos) {
             push @recHeader, $1, $2;
             my $who = $1;
             my $s = $2;
             $noDKIM = 2 if $who =~ /^X-ASSP-[\x00-\x27\x29-\xFF]+?\(\d+\)/io;
-            next if $who !~ /^(from|sender|reply-to|errors-to|list-\w+|ReturnReceipt|Return-Receipt-To|Disposition-Notification-To)$/io;
+            next if $who !~ /^(from|sender|reply-to|errors-to|list-\w+|ReturnReceipt|Return-Receipt-To|Return-Path|Disposition-Notification-To)$/io;
             $mailfrom = lc($1) if (! $mailfrom && lc($1) eq 'from');
             &headerUnwrap($s);
+            while ($s =~ /(\S+?\@\S+)/go) {
+                my $addr = lc $1;
+                next if $addr =~ /$EmailAdrRe\@$EmailDomainRe/o;
+                $addr =~ s/[<>]//go;
+                $MXAres{$addr}->{dom} = "(invalid) $addr";
+                $MXAres{$addr}->{tag} .= $MXAres{$addr}->{tag} ? " , $who" : $who;
+                $addr = eU($addr) unless is_7bit_clean(\$addr);
+                $fm .=  " $who: <font color='red'>$addr - is invalid</font> - PB value = nofromValencePB[0]<br />  ";
+            }
+            pos($s) = 0;
             while ($s =~ /($EmailAdrRe\@$EmailDomainRe)/go) {
                 my $ss = batv_remove_tag(0,$1,'');
                 $mailfrom = $ss if $mailfrom eq 'from';
@@ -52923,6 +52965,9 @@ sub ConfigAnalyze {
             $Con{$tmpfh}->{ip} = $ip;
             $Con{$tmpfh}->{mailfrom} = $mailfrom;
             $Con{$tmpfh}->{header} = $textheader;
+            for my $k (keys(%MXAres)) {
+                $Con{$tmpfh}->{MXAPreRes}->{$k} = $MXAres{$k};
+            }
             MXAOK_Run($tmpfh);
             while (my ($k,$v) = each %{$Con{$tmpfh}->{MXAres}} ) {
                 if ($v->{mx}) {
@@ -52933,7 +52978,11 @@ sub ConfigAnalyze {
                 if ($v->{a}) {
                     $fm .= "<b><font color='green'>&bull;</font> domainMX $v->{mx} has a valid A record</b>: $v->{a}<br />\n";
                 } else {
-                    $fm .= "<b><font color='red'>&bull;</font> domainMX $v->{mx} has no valid A record</b><br />\n";
+                    if ($v->{mx}) {
+                        $fm .= "<b><font color='red'>&bull;</font> domainMX $v->{mx} has no valid A record</b><br />\n";
+                    } else {
+                        $fm .= "<b><font color='red'>&bull;</font> domain $v->{dom} (in $v->{tag}) has no valid MXA record</b><br />\n";
+                    }
                 }
             }
             delete $Con{$tmpfh};
@@ -73439,7 +73488,7 @@ sub HMMcleanUp {
     $line =~ s/\Q+-+***+!+\Etime:.+?\Q+-+***+!+\E//og;
     $line =~ s/\Q+-+***+!+\E(.+?)\Q+-+***+!+\E/$1/og;
     return unless $line;
-    return $line if $line =~ /^(?:from|to|bcc|cc|mail from|rcpt to|sender|reply-to|errors-to|list-\w+|ReturnReceipt|Return-Receipt-To|Disposition-Notification-To):/io;
+    return $line if $line =~ /^(?:from|to|bcc|cc|mail from|rcpt to|sender|reply-to|errors-to|list-\w+|ReturnReceipt|Return-Receipt-To|Return-Path|Disposition-Notification-To):/io;
     return "!socket! !detected! $1!IP! $2" if $line =~ /^(connected ip: )(.+)$/io;
     return "!the! !geeting! !used! !was! helo $2" if $line =~ /^(helo\s+|ehlo\s+)(.+)$/io; # expand to fit in to 6 words (including the leading 'connected IP: ...'
     return $line if $line =~ /^(?:data|starttls)$/io;
