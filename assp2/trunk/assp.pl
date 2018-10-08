@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18278';        # 05.10.2018 TE
+$build   = '18281';        # 08.10.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -587,7 +587,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '54434589DB89A1DC91A7E9455DCD149818D8BD44'; }
+sub __cs { $codeSignature = '90895399D8E44D19D7A43303FE86CCD54AF16023'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -31363,16 +31363,17 @@ sub DMARCok {
    makeOrgAuthHeader(\$this->{myheader}, 'dmarc', $this->{dmarcresult});
    
    my $validate = $DoDKIM;
-   $validate = 2 if $ValidateSPF == 2;
-   $validate = 3 if ($validate != 2 && $ValidateSPF == 3);
+   $validate = 2 if $ValidateSPF == 2;    # set to monitor
+   $validate = 3 if ($validate != 2 && $ValidateSPF == 3);    # set to score
 
    my $tlit = tlit($validate);
-   return 1 if $validate == 3;
    $this->{messagereason} = "DMARC failed";
    mlog( $fh, "$tlit $this->{messagereason} SPF:$failed->{spf} DKIM:$failed->{dkim}") if $SPFLog;
+   pbWhiteDelete( $fh , $this->{dmarc}->{source_ip} );
+   return 1 if $validate == 2;
    $this->{myheader} .= "X-Assp-DMARC-failed: SPF:$failed->{spf} DKIM:$failed->{dkim}\r\n";
    pbAdd( $fh, $this->{dmarc}->{source_ip}, 'spfValencePB', "DMARC-failed" );
-   return 1 if $validate == 2;
+   return 1 if $validate == 3;
    return 1 if $this->{dmarc}->{domain} eq $this->{dmarc}->{dom} && $this->{dmarc}->{p} !~ /reject|quarantine/io;
    return 1 if $this->{dmarc}->{domain} ne $this->{dmarc}->{dom} && $this->{dmarc}->{sp} !~ /reject|quarantine/io;
    my $reply = $SPFError;
@@ -51752,9 +51753,9 @@ sub ConfigAnalyze {
             binmode $F;
             $F->read($mail,fsize($filename));
             $F->close;
-            $fm .= "<b></b><br />Analyzed file is $filename\n";
+            $fm .= '<b>Analyzed file is '.eU($filename)."</b><br />\n";
         } else {
-            $fm .= "<b>ERROR: unable to open file '$filename'</b><br />\n";
+            $fm .= '<b>ERROR: unable to open file '.eU($filename)."</b><br />\n";
         }
     }
     fixCRLF(\$mail);

@@ -1,3 +1,13 @@
+2018-10-08
+fixed in assp 2.6.2 *Fortress* build 18281:
+
+- the analyzer has wrong shown nonascii characters in the analyzed file name  
+
+- depending on the modes set for 'ValidateSPF' and 'DoDKIM', the DMARC-check was unexpected using monitoring-mode instead of scoring-mode
+
+
+
+
 2018-10-05
 fixed in assp 2.6.2 *Fortress* build 18278:
 
