@@ -1,3 +1,46 @@
+2018-10-15
+fixed in assp 2.6.2 *Fortress* build 18288:
+
+- the included rebuildspamdb.pm inreases the rebuild performance by 10 to 20%
+
+- the correction of the spamDB and HMMdb in case of reported spam or ham was too weak
+
+
+changed:
+
+- a new ASSP-MIB file is available and required for this version if SNMP is used
+
+- the default value for 'backupDBInterval','backup database Interval' is changed from 2 to 12 hours
+
+- the description for 'SNMP' is changed
+
+...
+The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries. The configuration values are changeable via snmp. The published file mib/ASSP-MIB, 
+which contains all possible OID\'s, could be used in SNMP browsers to get a human readable view of the OID's (copy it to the net-snmp MIB file location - eg: [C:]/usr/share/snmp/mibs 
+and the MIB location of your SNMP browser). Please keep in mind, that an extensive usage of SNMP queries will slow down assp.
+Because the OID numbers can change in different assp versions, it is recommended to query the OID's by its consistent name (not by its number). This requires the usage of the assp version 
+compatible mib/ASSP-MIB file!
+If you want to query or set any of the following configuration parameters: LocalAddresses_Flat, LocalAddresses_Flat_Domains, noBayesian_local, Bayesian_localOnly, SSL_version, SSL_cipher_list - 
+remove all underscores from the config name to build the OID-name, because underscores ar not allowed in SNMP queries. The MIB file already contains the corrected names.
+If you get unexpected SNMP-query results or you've lost the version compatible MIB file, rename the perl scripts lib/SNMPmakeMIB.p_ and lib/SNMPmakeMRTG.p_ to *.pl and restart assp. 
+This will create the mib/ASSP-MIB and mib/assp-mrtg.cfg files, based on your installation and configuration. It is recommended to rename both scripts back, after the new MIB files are created.
+NOTICE: If you install or uninstall any plugin or you enable or disable the configuration synchronization and you use such a custom MIB file, the mib/ASSP-MIB file needs to be recreated 
+to implement the new OID\'s and (at least) to correct the new OID order!
+To prevent permantly copying the changed mib/ASSP-MIB file to your net-snmp daemons MIB-folder - (e.g.) create a link there to the mib/ASSP-MIB file.
+...
+
+- the check (and ignore) whitelisted and redlisted mails in the rebuildspamdb task is now disabled per default
+  to return to the old behavior set the hidden parameters 'DoRBWhite' and/or 'DoRBRed' to 1.
+
+
+
+added:
+
+'spfValencePB' is no longer scored in case DMARC failed - instead 'dmarcValencePB' is used
+'dmarcValencePB','DMARC Failed, default=10 +'
+
+
+
 2018-10-08
 fixed in assp 2.6.2 *Fortress* build 18281:
 

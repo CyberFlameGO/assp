@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18281';        # 08.10.2018 TE
+$build   = '18288';        # 15.10.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -352,6 +352,8 @@ our $DNSErrorCheckInterval:shared = 5;
 our %SSLServerContext;
 our %SSLServerContextList;
 our $mlogtime:shared;
+our $MIBFile;
+our $MRTGFile;
 #our %startupMem:shared;
 
 
@@ -392,6 +394,8 @@ our $BayesDomainPrior = 2;               # (number > 0) Bayesian/HMM domain entr
 our $BayesPrivatPrior = 3;               # (number > 0) Bayesian/HMM private/user entry priority (1 = lowest)
 our $debugWordEncoding = 0;              # (0/1) write/debug suspect word encodings to debug/_enc_susp.txt
 our $reportBadDetectedSpam = 1;          # (0/1) report mails to spamaddresses that are not detected as SPAM, to the rebuild process
+our $DoRBRed = 0;                        # (0/1) check relisted mails on rebuildspamdb (default 0)
+our $DoRBWhite = 0;                      # (0/1) check whitelisted mails on rebuildspamdb (default 0)
 
 # logging related
 our $AUTHLogUser = 0;                    # (0/1) write the username for AUTH (PLAIN/LOGIN) to maillog.txt
@@ -587,7 +591,7 @@ our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '90895399D8E44D19D7A43303FE86CCD54AF16023'; }
+sub __cs { $codeSignature = '2A21086BB3CB40A65A091A69D0C4E6B15A88BCDE'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1624,7 +1628,7 @@ sub assp_socket_blocking {
 }
 
 sub defConfigArray {
- # last used msg number 010731
+ # last used msg number 010741
 
  # still unused msg numbers
  #
@@ -2894,6 +2898,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['bombSuspiciousValencePB','Bomb Suspicious - scoring only, default=10 +',10,\&textinput,10,$ValencePBRE,'ConfigChangeValencePB', 'Message scoring',undef,undef,'msg002670','msg002671'],
 ['bombValencePB','Bomb Expression, default=20 +',10,\&textinput,20,$ValencePBRE,'ConfigChangeValencePB', 'Message/IP scoring',undef,undef,'msg002680','msg002681'],
 ['blackValencePB','Bomb Black Expression, default=20 +',10,\&textinput,20,$ValencePBRE,'ConfigChangeValencePB', 'Message/IP scoring',undef,undef,'msg002690','msg002691'],
+['dmarcValencePB','DMARC Failed, default=10 +',10,\&textinput,10,$ValencePBRE,'ConfigChangeValencePB','Message/IP scoring',undef,undef,'msg010740','msg010741'],
 ['dkimValencePB','Domain Key Verification failed, default=15 +',10,\&textinput,15,$ValencePBRE,'ConfigChangeValencePB', 'Message/IP scoring',undef,undef,'msg002700','msg002701'],
 ['dkimOkValencePB','Domain Key Verification OK, default=0',3,\&textinput,0,'(-{0,1}\d*)','ConfigChangeValencePB', '<span class="positive">Message Scoring Bonus</span>',undef,undef,'msg002710','msg002711'],
 ['erValencePB','Empty Recipients, default=5 +',10,\&textinput,5,$ValencePBRE,'ConfigChangeValencePB', 'Message/IP scoring',undef,undef,'msg002720','msg002721'],
@@ -3088,7 +3093,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  <div class="cfgnotes">Notes On SPF</div>
  <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/spf.txt\',3);" /> ',undef,undef,'msg003660','msg003661'],
 ['DoDMARC','Enable DMARC Check',0,\&checkbox,'1','(.*)',undef,
-  'If enabled and ValidateSPF and DoDKIM are enabled and the sending domain has published a DMARC-record/policy, assp will act on the mail according to the senders DMARC-policy using the results of the SPF and DKIM check. It is save to leave this feature ON, it will not produce false positives! The blocking mode (block, score, testmode) is adapted from less aggressive setting of ValidateSPF and DoDKIM - and the published DMARC record ([p][sp]=[reject][quarantine]). Scoring is done using spfValencePB.<br />
+  'If enabled and ValidateSPF and DoDKIM are enabled and the sending domain has published a DMARC-record/policy, assp will act on the mail according to the senders DMARC-policy using the results of the SPF and DKIM check. It is save to leave this feature ON, it will not produce false positives! The blocking mode (block, monitor, score, testmode) is adapted from the most less aggressive setting of ValidateSPF and DoDKIM - and the published DMARC record ([p][sp]=[reject][quarantine]). Scoring is done using dmarcValencePB.<br />
   If you have published a DMARC-record and you want to collect statisical data, look at <a href="https://dmarcian.com" rel="external">dmarcian.com</a>',undef,undef,'msg010410','msg010411'],
 ['noDMARCDomain','Don\'t Check DMARC for these Addresses/Domains*',80,\&textinput,'','(.*)','ConfigMakeSLRe',
  'Put any sender domain (or address) in to this list, for which you want to disable the DMARC check - for example if an invalid DMARC record is published.<br />
@@ -3899,9 +3904,9 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  <hr />It is recommended to use a database for all possible lists and caches for best performance, less memoryusage and stability! If you do not want to install a database engine like MySql or Oracle, use BerkeleyDB! Please read the section DBdriver !<br />
   If you set this value to "DB:" and you want HMMdb to use the same database backend like spamdb, don\'t forget to disable HMMusesBDB !<br />
  <hr /><div class="cfgnotes">Last Run Rebuildspamdb</div><input type="button" value="Last Run Rebuildspamdb" onclick="javascript:popFileEditor(\'rebuildrun.txt\',5);" />',undef,undef,'msg005700','msg005701'],
-['whitelistdb','E<!--get rid of google autofill-->mail Whitelist Database File',40,\&textinput,$newDB.'whitelist','(\S+)','configChangeDB','The file with the whitelist.<br />
+['whitelistdb','Whitelist Database File',40,\&textinput,$newDB.'whitelist','(\S+)','configChangeDB','The file with the whitelist.<br />
   Write only "DB:" to use a database table instead of a local file, in this case you need to edit the database parameters below.',undef,undef,'msg005710','msg005711'],
-['redlistdb','E<!--get rid of google autofill-->mail Redlist Database File',40,\&textinput,$newDB.'redlist','(\S+)','configChangeDB','The file with the redlist.<br />
+['redlistdb','Redlist Database File',40,\&textinput,$newDB.'redlist','(\S+)','configChangeDB','The file with the redlist.<br />
   Write only "DB:" to use a database table instead of a local file, in this case you need to edit the database parameters below.',undef,undef,'msg005720','msg005721'],
 ['persblackdb','Personal Blacklist Database File',40,\&textinput,$newDB.'persblack','(\S+)','configChangeDB','The file with the personal blacklist. The check of the personal black list is done shortly after the RCPT TO: command. This command will be rejected if an entry is found - any other setting except send250OK and send250OKISP will be ignored.<br />
   Each entry is represented by two comma separated values TO,FROM (and an expiration date).<br />
@@ -4036,9 +4041,9 @@ For example: mysql/dbimport<br />
  The schema of the files is the assp-schema.<br />
  Ten versions of backups are available!<br />
  For example: mysql/dbbackup',undef,undef,'msg005920','msg005921'],
-['backupDBInterval','backup database Interval <sup>s</sup>',40,\&textinput,2,$ScheduleGUIRe,'configChangeSched',
-  'backup the database (all tables used by assp at the time)  every this hours.<br />
-  Defaults to 2 hours.',undef,undef,'msg005930','msg005931'],
+['backupDBInterval','backup database Interval <sup>s</sup>',40,\&textinput,12,$ScheduleGUIRe,'configChangeSched',
+  'Backup the database (all tables used by assp at the time) every this hours.<br />
+  Defaults to a 12 hours interval. You may set this to a higher frequency (e.g. two hours), if you have daily system backups configured.',undef,undef,'msg005930','msg005931'],
 ['copyDBToOrgLoc','copy the last DB-backup to the original location',0,\&checkbox,'1','(.*)',undef,
   'If DB-backup is enabled, the last backupversion is also copied to the original location.<br />
   If database connections are failed, while ASSP is running, ASSP will switch over to use these files instead of DB-tables.<br />
@@ -5294,7 +5299,12 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
 ['SNMP','Enable the ASSP-SNMP Interface','0:disable|1:enable',\&listbox,0,'(\d*)','ConfigChangeSNMP',
  'This enables the AgentX registration of assp to a SNMP master-AgentX. ASSP will be registered to the master-AgentX as \'assp_myName\', the possible configuration file name will be assp_myName.conf . This option requires the installed perl module <a href="http://metacpan.org/search?q=NetSNMP::agent" rel="external">NetSNMP::agent</a>. The product and needed librarys could be downloaded at <a href="http://www.net-snmp.org/download.html" rel="external">net-snmp.org</a>.<br />
  All configuration values are accessed using the SNMPUser account. The SNMP-permission and visibility is used from the configured user GUI-permissions.<br /><br />
-The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries. The configuration values are changeable via snmp. The file mib/ASSP-MIB could be used in SNMP browsers to get a human readable view of the OID\'s (copy it to the net-snmp MIB file location - eg: [C:]/usr/share/snmp/mibs and the MIB location of your SNMP browser). Please keep in mind, that an extensive usage of SNMP queries will slow down assp.<br /><br />
+The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries. The configuration values are changeable via snmp. The published file mib/ASSP-MIB, which contains all possible OID\'s, could be used in SNMP browsers to get a human readable view of the OID\'s (copy it to the net-snmp MIB file location - eg: [C:]/usr/share/snmp/mibs and the MIB location of your SNMP browser). Please keep in mind, that an extensive usage of SNMP queries will slow down assp.<br />
+Because the OID numbers can change in different assp versions, it is recommended to query the OID\'s by its consistent name (not by its number). This requires the usage of the assp version compatible mib/ASSP-MIB file!<br />
+If you want to query or set any of the following configuration parameters: LocalAddresses_Flat, LocalAddresses_Flat_Domains, noBayesian_local, Bayesian_localOnly, SSL_version, SSL_cipher_list - remove all underscores from the config name to build the OID-name, because underscores ar not allowed in SNMP queries. The MIB file already contains the corrected names.<br />
+If you get unexpected SNMP-query results or you\'ve lost the version compatible MIB file, rename the perl scripts lib/SNMPmakeMIB.p_ and lib/SNMPmakeMRTG.p_ to *.pl and restart assp. This will create the mib/ASSP-MIB and mib/assp-mrtg.cfg files, based on your installation and configuration. It is recommended to rename both scripts back, after the new MIB files are created.<br />
+<b>NOTICE:</b> If you install or uninstall any plugin or you enable or disable the configuration synchronization and you use such a custom MIB file, the mib/ASSP-MIB file needs to be recreated to implement the new OID\'s and (at least) to correct the new OID order!<br />
+To prevent permantly copying the changed mib/ASSP-MIB file to your net-snmp deamons MIB-folder - (e.g.) create a link there to the mib/ASSP-MIB file.<br /><br />
 .1   - runtime information<br />
 .1.0 - assp healthy status boolean 0/1<br />
 .1.1 - assp healthy status text<br />
@@ -5344,7 +5354,6 @@ The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries.
 .1.20.30 - next BlockReport Schedule<br />
 .1.20.31 - next File Age Schedule<br />
 .1.20.32 - next BlockReport Queue Schedule<br />
-
 <br />
 .1.30.X - worker status (boolean) X = worker<br />
 .1.30.X.1 - worker time since last loop (text) X = worker<br />
@@ -5355,7 +5364,7 @@ The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries.
 .1.31.X - database table status (boolean) 0/1 - X >= 1<br />
 .1.31.X.1 - database table name - X >= 1 related to .1.31.X<br />
 <br />
-.2 - Configuration - X is the internal value number adapted from the language files<br />
+.2 - Configuration - X is the internal number adapted from the language files (without the leading \'msg\' and leading zeros<br />
 .2.H - heading description - H is the internal GUI heading number<br />
 .2.H.X   - config value<br />
 <br />
@@ -5366,24 +5375,32 @@ The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries.
 .3.X.3 - module installation status<br />
 .3.X.4 - download URL for the module<br />
 <br />
-.4 - assp runtime status<br />
-.4.1 - current stat - X is a counted number<br />
-.4.1.X - current stat value<br />
+<b>The trailing .0 for the value query in all statistcs may be ommited, because the three digit OID\'s have no value, assp will return the next value (the four digit OID with the trailing .0)</b><br />
 <br />
-.4.2 - cumulative stat - X is a counted number<br />
-.4.2.X - cumulative stat value<br />
+.4 - assp runtime statistic<br />
+.4.1 - current stat<br />
+.4.1.X - current stat - X is a counted number<br />
+.4.1.X.0 - current stat value<br />
 <br />
-.4.3 - current total stat - X is a counted number<br />
-.4.3.X - current total value<br />
+.4.2 - cumulative statistic<br />
+.4.2.X - cumulative stat - X is a counted number<br />
+.4.2.X.0 - cumulative stat value<br />
 <br />
-.4.4 - cumulative total stat - X is a counted number<br />
-.4.4.X - cumulative total stat value
+.4.3 - current total statistic<br />
+.4.3.X - current total stat - X is a counted number<br />
+.4.3.X.0 - current total value<br />
 <br />
-.4.5 - current scoring stat - X is a counted number<br />
-.4.5.X - current scoring stat value<br />
+.4.4 - cumulative total statistic<br />
+.4.4.X - cumulative total stat - X is a counted number<br />
+.4.4.X.0 - cumulative total stat value<br />
 <br />
-.4.6 - cumulative scoring stat - X is a counted number<br />
-.4.6.X - cumulative scoring stat value
+.4.5 - current scoring statistic<br />
+.4.5.X - current scoring stat - X is a counted number<br />
+.4.5.X.0 - current scoring stat value<br />
+<br />
+.4.6 - cumulative scoring statistic<br />
+.4.6.X - cumulative scoring stat - X is a counted number<br />
+.4.6.X.0 - cumulative scoring stat value<br />
 <br />
 .5.0 - SNMP-API : is writeable - accepts internal subroutine command/call to be executed<br />
 .5.1 - the result of the last SNMP-API call (success or error)<br />
@@ -5448,7 +5465,7 @@ The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries.
   <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/pop3collect.txt\',3);" />',undef,undef,'msg009090','msg009091']
 );
 
- # last used msg number 010731
+ # last used msg number 010741
 
  &loadModuleVars;
  -d "$base/language" or mkdirOP("$base/language",'0755');
@@ -7160,8 +7177,11 @@ while (my ($k,$v) = each %Config) {
    $$k = $v;
 }
 
-$CreateMIB ||= -e "$base/SNMPmakeMIB.pl";
 $enableCrashAnalyzer ||= -e "$base/enableCrashAnalyzer" || -e "$base/enableCrashAnalyzer.txt";
+# output of MIB files
+$CreateMIB ||= -e "$base/lib/SNMPmakeMIB.pl" || -e "$base/SNMPmakeMIB.pl";
+$MIBFile ||= "$base/mib/ASSP-MIB";
+$MRTGFile ||= "$base/mib/assp-mrtg.cfg";
 
 checkINC();
 GPBSetup();
@@ -8128,7 +8148,7 @@ if ($@) {
 sub write_rebuild_module {
 my $curr_version = shift;
 
-my $rb_version = '7.48';
+my $rb_version = '7.49';
 my $keepVersion;
 
 if (open my $ADV, '<',"$base/lib/rebuildspamdb.pm") {
@@ -8505,7 +8525,7 @@ EOT
                 $main::lastd{$Iam} = "mounting BerkeleyDB $DBDir/rbtmp.hamHMM";
                 $hamHMM  = ASSP::MarkovChain->new(longest => $main::HMMSequenceLength,
                                                   shortest => $main::HMMSequenceLength,
-                                                  top => 1,
+                                                  top => 0,
                                                   nostarts => 1,
                                                   BDB => {-Filename => "$DBDir/rbtmp.hamHMM" ,
                                                           -Flags => DB_CREATE
@@ -8514,7 +8534,7 @@ EOT
                 $main::lastd{$Iam} = "mounting BerkeleyDB $DBDir/rbtmp.spamHMM";
                 $spamHMM = ASSP::MarkovChain->new(longest => $main::HMMSequenceLength,
                                                   shortest => $main::HMMSequenceLength,
-                                                  top => 1,
+                                                  top => 0,
                                                   nostarts => 1,
                                                   BDB => {-Filename => "$DBDir/rbtmp.spamHMM" ,
                                                           -Flags => DB_CREATE
@@ -8552,7 +8572,7 @@ EOT
                 $main::lastd{$Iam} = "loading model from $DBDir/rbtmp.hamHMM in to memory";
                 $hamHMM  = ASSP::MarkovChain->new(longest => $main::HMMSequenceLength,
                                                   shortest => $main::HMMSequenceLength,
-                                                  top => 1,
+                                                  top => 0,
                                                   nostarts => 1,
                                                   initcount => $initcount,
                                                   File => "$DBDir/rbtmp.hamHMM" ,
@@ -8560,7 +8580,7 @@ EOT
                 $main::lastd{$Iam} = "loading model from $DBDir/rbtmp.spamHMM in to memory";
                 $spamHMM = ASSP::MarkovChain->new(longest => $main::HMMSequenceLength,
                                                   shortest => $main::HMMSequenceLength,
-                                                  top => 1,
+                                                  top => 0,
                                                   nostarts => 1,
                                                   initcount => $initcount,
                                                   File => "$DBDir/rbtmp.spamHMM" ,
@@ -8732,8 +8752,8 @@ EOT
     &rb_move2num() if $main::doMove2Num;
 
     # isspam?, path, filter, weight, processing sub
-    $correctedspamcount    = &rb_processfolder( 1, $main::correctedspam,    "*", 2, \&rb_dospamhash );
-    $correctednotspamcount = &rb_processfolder( 0, $main::correctednotspam, "*", 4, \&rb_dohamhash );
+    $correctedspamcount    = &rb_processfolder( 1, $main::correctedspam,    "*", 2, \&rb_dospamhash, undef, undef, undef );
+    $correctednotspamcount = &rb_processfolder( 0, $main::correctednotspam, "*", 4, \&rb_dohamhash, undef, undef, undef );
     my $tempnorm = ($HamWordCount ? ( $SpamWordCount / $HamWordCount ) : $SpamWordCount ? 9.9999 : 1) || 0.0001;
     my ($neededspam,$neededham, $spamf, $hamf, $SwordsPfile, $HwordsPfile);
     my @tn = split(/\-/o,$main::autoCorrectCorpus);
@@ -8808,7 +8828,7 @@ EOT
         &rb_d("$nham = (($SpamWordCount/$targetNorm) > $HamWordCount) ? int($SpamWordCount/$targetNorm) : 1 \n");
     }
     my $hamWords = $HamWordCount;
-    $notspamlogcount = &rb_processfolder( 0, $main::notspamlog, "*", 1, \&rb_checkham , $neededham, $nham);
+    $notspamlogcount = &rb_processfolder( 0, $main::notspamlog, "*", 1, \&rb_checkham , $neededham, $nham, undef);
     $hamWords = $HamWordCount - $hamWords;
     $HwordsPfile = ($HwordsPfile ? int(($HwordsPfile + $hamWords/$notspamlogcount)/2) : int($hamWords/$notspamlogcount)) if $notspamlogcount;
 
@@ -9326,6 +9346,7 @@ sub rb_generateHMM {
     $count = 0;
     my $rec = 0;
     my $sep = $spamHMM->{seperator};
+    my %spamchainseen;
     while( my ($k,$sw) = each %{$spamHMM->{chains}} ) {
         $count++;
         if ($count%1000==0) {
@@ -9352,7 +9373,7 @@ sub rb_generateHMM {
                 $HMMIgnored++;
             }
         }
-        delete ${$hamHMM->{chains}}{$k};
+        $spamchainseen{$k} = 1;
     }
     &main::checkDBCon() if ($main::CanUseTieRDBM && $main::DBisUsed);
     while( my ($k,$hw) = each %{$hamHMM->{chains}} ) {
@@ -9361,6 +9382,7 @@ sub rb_generateHMM {
             die "warning: got stop request from MainThread" unless $main::ComWorker{$Iam}->{run};
             $main::lastd{$Iam} = "add HMM ham sequences $count";
         }
+        next if exists $spamchainseen{$k};
         my ($seq) = $k =~ /^(.+)$sep[^$sep]+$/;
         next unless ($seq);
         my $ht = $hamHMM->get_totals($seq);
@@ -9471,14 +9493,14 @@ sub rb_processNewCorrected {
     $icount = $main::HMMDBWords * scalar(keys(%main::newReported)) if $DoHMM;
     my $newhamHMM  = ASSP::MarkovChain->new(longest => $main::HMMSequenceLength,
                                           shortest => $main::HMMSequenceLength,
-                                          top => 1,
+                                          top => 0,
                                           nostarts => 1,
                                           initcount => $icount,
                                           simple => 1
                                           );
     my $newspamHMM = ASSP::MarkovChain->new(longest => $main::HMMSequenceLength,
                                           shortest => $main::HMMSequenceLength,
-                                          top => 1,
+                                          top => 0,
                                           nostarts => 1,
                                           initcount => $icount,
                                           simple => 1
@@ -9487,10 +9509,10 @@ sub rb_processNewCorrected {
     foreach my $file (sort { $main::newReported{$b} cmp $main::newReported{$a} } keys(%main::newReported) ) {
         my ($fldrType,$weight) = split(/\s+/o,$main::newReported{$file});
         if ($fldrType eq 'ham') {
-            $weight += 4;
+            $weight += 5;    # 1 + 4 - equalize and correct
             $fldrType = 0;
         } else {
-            $weight += 2;
+            $weight += 3;    # 1 + 2 - equalize and correct
             $fldrType = 1;
         }
         delete $main::newReported{$file};
@@ -9861,11 +9883,11 @@ sub rb_checkspam {
         &rb_deletefile( $FileName, ' - same file found in corrected ham' );
         return 1;
     }
-    elsif ( $reason = &rb_redlisted( $msgText ) ) {
+    if ( $main::DoRBRed && ($reason = &rb_redlisted( $msgText )) ) {
         &rb_deletefile( $FileName, $reason );
         return 1;
     }
-    elsif ( $reason = &rb_whitelisted( $msgText ) ) {
+    if ( $main::DoRBWhite && ($reason = &rb_whitelisted( $msgText )) ) {
         &rb_deletefile( $FileName, $reason );
         return 1;
     }
@@ -9882,7 +9904,7 @@ sub rb_checkham {
         &rb_deletefile( $FileName, ' - same file found in corrected spam' );
         return 1;
     }
-    elsif ( $reason = &rb_redlisted( $msgText ) ) {
+    if ( $main::DoRBRed && ($reason = &rb_redlisted( $msgText )) ) {
         &rb_deletefile( $FileName, "$reason" );
         return 1;
     }
@@ -10063,6 +10085,7 @@ sub rb_checkRunTime {
 sub rb_add {
     my ( $isspam, $fn, $factor, $sub, $spam ,$spamHMM, $hamHMM, $heloOnly) = @_;
     return if $main::dF->( $fn );
+    $isspam ||= 0;
     my $startTime = Time::HiRes::time();
     my ($content,$headerlen) = &rb_get( $fn, $sub , $factor);
     return unless $content;
@@ -10199,89 +10222,87 @@ sub rb_add {
         $disclaimerCount++;
     }
     my $BayesCont = $main::BayesCont;
-    my @HMMhamWords;
-    my @HMMspamWords;
+    my @HMMWords;
     my $i = 0;
     foreach (keys %$imgHash) {
-        if   ($isspam) { $SpamWordCount += $factor;}
-        else           { $HamWordCount  += $factor;}
+        if   ($isspam == 1) { $SpamWordCount += $factor;}
+        else                { $HamWordCount  += $factor;}
 
         ( $sfac, $tfac ) = split( q{ }, $spam->{ $_ } );
-        $sfac += $isspam ? ($factor * 2) : 0;
+        $sfac += ($isspam == 1) ? ($factor * 2) : 0;
         $tfac += ($factor * 2);
         $spam->{ $_ } = "$sfac $tfac";
         $i++;
         if ($reportedBy) {
             ( $sfac, $tfac ) = split( q{ }, $spam->{ "$reportedBy $_" } );
-            $sfac += $isspam ? $factor : 0;
+            $sfac += ($isspam == 1) ? $factor : 0;
             $tfac += $factor;
             $spam->{ "$reportedBy $_" } = "$sfac $tfac";
         }
         if ($domain) {
             ( $sfac, $tfac ) = split( q{ }, $spam->{ "$domain $_" } );
-            $sfac += $isspam ? $factor : 0;
+            $sfac += ($isspam == 1) ? $factor : 0;
             $tfac += $factor;
             $spam->{ "$domain $_" } = "$sfac $tfac";
         }
     }
     $attachments += $i;
     if ($doattach && $i) {
-        rb_d("$i ".($isspam ? 'spam-' : 'ham-')."attachment/image entries processed in file $fn");
+        rb_d("$i ".(($isspam == 1) ? 'spam-' : 'ham-')."attachment/image entries processed in file $fn");
     }
     rb_checkRunTime($startTime,"reached $movetime s in Bayes word pairs on $fn");
     my $ret = 1;
     $i = 0;
-    my $sfactor = $isspam ? $factor : 0;
-    my @Words;
-    eval { @Words = map { &main::BayesWordClean($_); } $content =~ /([$BayesCont]{2,})/go };
-    while (@Words) {
-        $CurWord = substr(shift(@Words),0,37);
-        next unless $CurWord;
-        if ( ! $PrevWord ) {            # only collect the first word
+    my $sfactor = ($isspam == 1) ? $factor : 0;
+    my $words = 0;
+    my $maxWords = $main::HMMDBWords;
+    map {
+        if ($CurWord = substr($_,0,37)) {
+            if ( $i ) {
+                # increment global weights, they are not really word counts
+                $words += $factor;
+
+                my $tag = "$PrevWord $CurWord";
+                ( $sfac, $tfac ) = split( q{ }, $spam->{ $tag } );
+                $sfac += $sfactor;
+                $tfac += $factor;
+                $spam->{ $tag } = "$sfac $tfac";
+                if ($reportedBy) {
+                    my $rtag = "$reportedBy $tag";
+                    ( $sfac, $tfac ) = split( q{ }, $spam->{ $rtag } );
+                    $sfac += $sfactor;
+                    $tfac += $factor;
+                    $spam->{ $rtag } = "$sfac $tfac";
+                }
+                if ($domain) {
+                    my $dtag = "$domain $tag";
+                    ( $sfac, $tfac ) = split( q{ }, $spam->{ $dtag } );
+                    $sfac += $sfactor;
+                    $tfac += $factor;
+                    $spam->{ $dtag } = "$sfac $tfac";
+                }
+            }
+            push(@HMMWords,$CurWord) if $DoHMM && $i < $maxWords;
             $PrevWord = $CurWord;
-            push(@HMMspamWords,$CurWord) if $DoHMM && $isspam;
-            push(@HMMhamWords,$CurWord) if $DoHMM && ! $isspam;
             $i++;
-            next;
         }
+    } map { &main::BayesWordClean($_); } $content =~ /([$BayesCont]{2,})/go;
 
-        # increment global weights, they are not really word counts
-        if   ($isspam) { $SpamWordCount += $factor; push(@HMMspamWords,$CurWord) if $DoHMM && $i < $main::HMMDBWords;}
-        else           { $HamWordCount  += $factor; push(@HMMhamWords, $CurWord) if $DoHMM && $i < $main::HMMDBWords;}
+    if   ($isspam == 1) { $SpamWordCount += $words; }
+    else                { $HamWordCount  += $words; }
 
-        my $tag = "$PrevWord $CurWord";
-        ( $sfac, $tfac ) = split( q{ }, $spam->{ $tag } );
-        $sfac += $sfactor;
-        $tfac += $factor;
-        $spam->{ $tag } = "$sfac $tfac";
-        if ($reportedBy) {
-            my $rtag = "$reportedBy $tag";
-            ( $sfac, $tfac ) = split( q{ }, $spam->{ $rtag } );
-            $sfac += $sfactor;
-            $tfac += $factor;
-            $spam->{ $rtag } = "$sfac $tfac";
-        }
-        if ($domain) {
-            my $dtag = "$domain $tag";
-            ( $sfac, $tfac ) = split( q{ }, $spam->{ $dtag } );
-            $sfac += $sfactor;
-            $tfac += $factor;
-            $spam->{ $dtag } = "$sfac $tfac";
-        }
-        $PrevWord = $CurWord;
-        $i++;
-    }
     if ($DoHMM) {
-#        &rb_mlog( 'Rebuild: adding HMM: H = ' .scalar(@HMMhamWords).', S = '.scalar(@HMMspamWords).' words'.' P = '.$reportedBy);
-        eval {
             my @privacy;
             push @privacy, $domain if $domain;
             push @privacy, $reportedBy if $reportedBy;
-            
-            if ($isspam && @HMMspamWords > $main::HMMSequenceLength) {$spamHMM->seed(symbols => \@HMMspamWords, count => $factor, privacy => \@privacy);}
-            if (!$isspam && @HMMhamWords > $main::HMMSequenceLength) {$hamHMM->seed(symbols => \@HMMhamWords, count => $factor, privacy => \@privacy);}
-            1;
-        } or do{$DoHMM = 0;};    # stop HMM if we get an exception while processing (possibly file too large)
+#            &rb_d( "file $fn , isspam = $isspam , factor = $factor , adding HMM: ".(($isspam == 1) ? 'S = ' : 'H = ').scalar(@HMMWords)." words, P = @privacy");
+
+            if ($isspam == 1) {
+                if (@HMMWords > $main::HMMSequenceLength) {$spamHMM->seed(symbols => \@HMMWords, count => $factor, privacy => \@privacy);}
+            } else {
+                if (@HMMWords > $main::HMMSequenceLength) { $hamHMM->seed(symbols => \@HMMWords, count => $factor, privacy => \@privacy);}
+            }
+#            rb_d("after file $fn , spam - totals: ".keys(%{$spamHMM->{totals}}).' , chains: '.keys(%{$spamHMM->{chains}}).', ham - totals: '.keys(%{$hamHMM->{totals}}).' , chains: '.keys(%{$hamHMM->{chains}}));
     }
 
     return $ret;
@@ -20794,7 +20815,7 @@ sub SNMPhandler {
         if ($CreateMIB) {
             my $mibSUB;
             my $mibFile;
-            if (open $mibFile , '<',"$base/SNMPmakeMIB.pl") {
+            if (open($mibFile , '<',"$base/lib/SNMPmakeMIB.pl") || open($mibFile , '<',"$base/SNMPmakeMIB.pl")) {
                 binmode $mibFile;
                 while (<$mibFile>) {
                     $mibSUB .= $_;
@@ -20804,7 +20825,7 @@ sub SNMPhandler {
                 mlog(0,"info: MIB failed - $@") if $@;
             }
             $mibSUB = '';
-            if (open $mibFile , '<',"$base/SNMPmakeMRTG.pl") {
+            if (open($mibFile , '<',"$base/lib/SNMPmakeMRTG.pl") || open($mibFile , '<',"$base/SNMPmakeMRTG.pl")) {
                 binmode $mibFile;
                 while (<$mibFile>) {
                     $mibSUB .= $_;
@@ -20825,14 +20846,16 @@ sub SNMPhandler {
         $sid =~ s/^\Q$bid\E//;
         my ($ts,$tl) = $sid =~ /^\.?((\d+)\.\d+)/o;
         $tl ||= 1;
-        if ($ts eq '1.30' && $subOIDLastLoad{$ts} < Time::HiRes::time() - 2) {
-            &SNMPload_1_30();
-        } elsif ($ts eq '1.31' && $subOIDLastLoad{$ts} < Time::HiRes::time() - 2) {
-            &SNMPload_1_31();
-        } elsif ($ts eq '1.32' && $subOIDLastLoad{$ts} < Time::HiRes::time() - 2) {
-            &SNMPload_1_32();
-        } elsif ($subOIDLastLoad{$tl} < Time::HiRes::time() - 2) {
-            &{"SNMPload_$tl"};
+        if ($subOIDLastLoad{$ts} < (Time::HiRes::time() - 2)) {
+            if ($ts eq '1.30') {
+                &SNMPload_1_30();
+            } elsif ($ts eq '1.31') {
+                &SNMPload_1_31();
+            } elsif ($ts eq '1.32') {
+                &SNMPload_1_32();
+            } else {
+                &{"SNMPload_$tl"};
+            }
         }
         my $mode = $request_info->getMode();
         my $value;
@@ -23687,7 +23710,9 @@ sub resend_mail {
   }
   return unless(@filelist);
   my $bytes = max( $MaxBytes, $ClamAVBytes, 100000 );
-  while ( my $file  = shift @filelist) {
+  while (@filelist) {
+      my $file = shift @filelist;
+      next unless defined $file;
       my $hostCFGname;
       mlog(0,"*x*(re)send - try to open: $file") if $MaintenanceLog >= 2;
       my $FMAIL;
@@ -23868,13 +23893,19 @@ sub resend_mail {
               if ($reason =~ /virus/io) {
                   $ResendFile{$file} = 98;
                   my $averror = &encodeMimeWord($Con{$fh}->{averror});
+                  if ($message !~ s/((?:^|\n)subject:)($HeaderValueRe)/$1 VIRUS INFECTED! $2/io) {
+                      $message = "Subject: VIRUS INFECTED!\r\n".$message;
+                  }
                   $message = "X: # (re)send - $MIMEfile - is virus infected - $averror\r\n"
-                            ."X-ASSP-ForceResend:\r\n"
+                            ."X-ASSP-ForceResend: to force the resend of the virus infected email, rename the file to ...$maillogExt\r\n"
                             .$message;
               } else {
                   $ResendFile{$file} = 99;
+                  if ($message !~ s/((?:^|\n)subject:)($HeaderValueRe)/$1 CONTAINS BAD ATTACHMENTS! $2/io) {
+                      $message = "Subject: CONTAINS BAD ATTACHMENTS!\r\n".$message;
+                  }
                   $message = "X: # (re)send - $MIMEfile - contains forbidden attachments\r\n"
-                            ."X-ASSP-ForceResend:\r\n"
+                            ."X-ASSP-ForceResend: to force the resend (including the forbidden attachments), rename the file to ...$maillogExt\r\n"
                             .$message;
               }
               &resendError($file,\$message);
@@ -23898,8 +23929,11 @@ sub resend_mail {
                    || ($FileLogScan && $DoFileScan && $FileScanCMD && ! FileScanOK_Run($fh, bodyWrap(\$message,$bytes)))))
       {
           $ResendFile{$file} = 98;
+          if ($message !~ s/((?:^|\n)subject:)($HeaderValueRe)/$1 VIRUS INFECTED! $2/io) {
+              $message = "Subject: VIRUS INFECTED!\r\n".$message;
+          }
           $message = "X: # (re)send - $MIMEfile - is virus infected - $Con{$fh}->{averror}\r\n"
-                    ."X-ASSP-ForceResend:\r\n"
+                    ."X-ASSP-ForceResend: to force the resend of the virus infected email, rename the file to ...$maillogExt\r\n"
                     .$message;
           &resendError($file,\$message);
 
@@ -31372,7 +31406,7 @@ sub DMARCok {
    pbWhiteDelete( $fh , $this->{dmarc}->{source_ip} );
    return 1 if $validate == 2;
    $this->{myheader} .= "X-Assp-DMARC-failed: SPF:$failed->{spf} DKIM:$failed->{dkim}\r\n";
-   pbAdd( $fh, $this->{dmarc}->{source_ip}, 'spfValencePB', "DMARC-failed" );
+   pbAdd( $fh, $this->{dmarc}->{source_ip}, 'dmarcValencePB', "DMARC-failed" );
    return 1 if $validate == 3;
    return 1 if $this->{dmarc}->{domain} eq $this->{dmarc}->{dom} && $this->{dmarc}->{p} !~ /reject|quarantine/io;
    return 1 if $this->{dmarc}->{domain} ne $this->{dmarc}->{dom} && $this->{dmarc}->{sp} !~ /reject|quarantine/io;
@@ -31380,7 +31414,7 @@ sub DMARCok {
    $reply =~ s/SPFRESULT/DMARC-failed/go;
    my $slok = $this->{allLoveSPFSpam} == 1;
 
-   $Stats{spffails}++ if ! $slok && $fh;
+   $Stats{dmarc}++ if ! $slok && $fh;
 
    $this->{prepend} = '[DMARC]';
    thisIsSpam( $fh, "DMARC failed", $SPFFailLog, $reply, $this->{testmode}, $slok, 0 );
@@ -43789,51 +43823,46 @@ sub BayesWordClean {
 #    }
 #    return unless $word;
     my @words;
-    my $noAlpha;
-    if ($noAlpha = $word =~ /\P{IsAlpha}/o) {
+    if ($word =~ /\P{IsAlpha}/o) {
         my $e = $@;
         eval{
-            if ($word =~ /^$EmailAdrRe\@$EmailDomainRe$/io) {    # email addresses are too long -> MD5 (24 Byte hex)
+            if (index($word,'@') > 0 && $word =~ /^$EmailAdrRe\@$EmailDomainRe$/io) {    # email addresses are too long -> MD5 (24 Byte hex)
                 $utf8off->(\$word);
-                $word = lc substr(Digest::MD5::md5_hex($word),0,24);
-            } elsif ($word =~ /^.*?(?:ht|f)tps?:\/\/($EmailDomainRe)([\?\&\/].*)?$/io && length($1) > 1) {    # get URL's
+                push(@words, lc substr(Digest::MD5::md5_hex($word),0,24));
+            } elsif ($word =~ /(?:ht|f)tps?:\/\/($EmailDomainRe)(.*)/io) {    # get URL's
                 $word = $1;
                 my $text = $2;
                 $utf8off->(\$word);
-                $utf8off->(\$text);
                 push(@words,$word) for (2..$HMMSequenceLength);
-                for my $w (split(/[\/#?=&]+/o,$text)) {
-                    next if length($w) < 2;
-                    push(@words,$w);
-                    last if (scalar @words == ($HMMSequenceLength + 1));
+                if ($text) {
+                    push(@words,'randword');
                 }
-#            } else {
-#                BayesCharClean(\$word);
+            } else {
+                $utf8off->(\$word);
+                @words = map { BayesCharClean($_); $_; } getUniWords($word);
             }
             1;
         } or do {$@ = $e; return};
+        return @words;
     }
     $utf8off->(\$word);
-    unshift @words, $word;
-    @words = map { getUniWords($_); } @words;
-    if (! $noAlpha) {BayesCharClean(\$_) for @words;}
+    @words = getUniWords($word);
     return @words;
 }
 
 sub BayesCharClean {
-    my $word = shift;
-    $$word =~ s/^\d+$/randnumber/o;
-    $$word =~ s/#(?:[a-f0-9]{2})+/randcolor/go;
-    $$word =~ s/^#\d+/randdecnum/o;
-    $$word =~ s/(?:[a-f0-9]{2}){3,}/randword/go;
-    $$word =~ s/[_\[\]\~\@\%\$\&\{\}<>#(),.'";:=!?*+\/\\\-]+$//o;
-    $$word =~ s/^[_\[\]\~\@\%\$\&\{\}<>#(),.'";:=!?*+\/\\\-]+//o;
-    $$word =~ s/!!!+/!!/go;
-    $$word =~ s/\*\*+/**/go;
-    $$word =~ s/--+/-/go;
-    $$word =~ s/__+/_/go;
-    $$word =~ s/^[\d:\.\-+();<>,!"'\/%]+(?:[ap]m)?$/randwildnum/o;    # ignore numbers , dates, times, versions ...
-    $$word =~ s/['"]/quote/go;
+    $_[0] =~ s/^\d+$/randnumber/o && return;
+    $_[0] =~ s/^[\d:\.\-+();<>,!"'\/%]+(?:[ap]m)?$/randwildnum/o && return;    # ignore numbers , dates, times, versions ...
+    $_[0] =~ s/#(?:[a-f0-9]{2})+/randcolor/go;
+    $_[0] =~ s/^#\d+/randdecnum/o;
+    $_[0] =~ s/(?:[a-f0-9]{2}){3,}/randword/go;
+    $_[0] =~ s/[_\[\]\~\@\%\$\&\{\}<>#(),.'";:=!?*+\/\\\-]+$//o;
+    $_[0] =~ s/^[_\[\]\~\@\%\$\&\{\}<>#(),.'";:=!?*+\/\\\-]+//o;
+    $_[0] =~ s/!!!+/!!/go;
+    $_[0] =~ s/\*\*+/**/go;
+    $_[0] =~ s/--+/-/go;
+    $_[0] =~ s/__+/_/go;
+    $_[0] =~ s/['"]/quote/go;
 }
 
 sub BayesOK {
@@ -49159,6 +49188,7 @@ bspams
 crashAnalyze
 denyConnection
 denyConnectionA
+dmarc
 dkim
 dkimpre
 forgedHelo
@@ -49884,7 +49914,7 @@ forgedHelo mxaMissing ptrMissing ptrInvalid spambucket penaltytrap viri viridete
 bombBlack bombs bombSender pbdenied pbextreme denyConnection sbblocked msgscoring
 senderInvalidLocals internaladdresses scripts spffails rblfails uriblfails msgMaxVRFYErrors
 msgBackscatterErrors msgMSGIDtrErrors batvErrors msgMaxErrors msgDelayed msgNoRcpt
-msgNoSRSBounce dkimpre dkim localFrequency preHeader msgverify crashAnalyze Razor DCC
+msgNoSRSBounce dkimpre dkim dmarc localFrequency preHeader msgverify crashAnalyze Razor DCC
 );
 %st = ();
 map {$st{$_} = $Stats{$_};} @msgStats;
@@ -50060,6 +50090,10 @@ $ret .= StatLine({'stat'=>'bhams','text'=>'Message OK:','class'=>'statsOptionTit
       . StatLine({'stat'=>'dkim','text'=>'DKIM Signature:','class'=>'statsOptionTitle'},
                  {'text'=>"$Stats{dkim}",'class'=>'statsOptionValue negative','colspan'=>'2','min'=>$smin,'max'=>$smax},
                  {'text'=>"$AllStats{dkim}",'class'=>'statsOptionValue negative','colspan'=>'2','min'=>$amin,'max'=>$amax})
+
+      . StatLine({'stat'=>'dmarc','text'=>'DMARC:','class'=>'statsOptionTitle'},
+                 {'text'=>"$Stats{dmarc}",'class'=>'statsOptionValue negative','colspan'=>'2','min'=>$smin,'max'=>$smax},
+                 {'text'=>"$AllStats{dmarc}",'class'=>'statsOptionValue negative','colspan'=>'2','min'=>$amin,'max'=>$amax})
 
       . StatLine({'stat'=>'localFrequency','text'=>'local frequency:','class'=>'statsOptionTitle'},
                  {'text'=>"$Stats{localFrequency}",'class'=>'statsOptionValue negative','colspan'=>'2','min'=>$smin,'max'=>$smax},
@@ -75720,6 +75754,7 @@ sub new {
     if (! $self->{top}) {
         $self->{top} = $args{top} || 10;
         $self->{top}--;
+        $self->{top} = 0 if $self->{top} < 0;
     }
     delete $args{top};
     delete $self->{q};
