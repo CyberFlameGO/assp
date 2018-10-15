@@ -10,7 +10,7 @@ IMPORTS
     TruthValue FROM SNMPv2-TC;
 
 thockar MODULE-IDENTITY
-    LAST-UPDATED "201805080000Z"
+    LAST-UPDATED "201810150000Z"
     ORGANIZATION "www.thockar.com"
     CONTACT-INFO
 	 "postal:       Thomas Eckardt
@@ -18,13 +18,13 @@ thockar MODULE-IDENTITY
       email:    thockar@lists.sourceforge.net"
     DESCRIPTION
 	"Top-level infrastructure of thockar projects enterprise MIB tree"
-    REVISION     "201805080000Z"
+    REVISION     "201810150000Z"
     DESCRIPTION
 	"First draft"
     ::= { enterprises 37058}
 
 asspSNMP MODULE-IDENTITY
-    LAST-UPDATED "201805080000Z"
+    LAST-UPDATED "201810150000Z"
     ORGANIZATION "www.thockar.com"
     CONTACT-INFO
 	 "postal:       Thomas Eckardt
@@ -32,7 +32,7 @@ asspSNMP MODULE-IDENTITY
       email:    thockar@lists.sourceforge.net"
     DESCRIPTION
 	"Top-level infrastructure of the thockar ASSP project enterprise MIB tree"
-    REVISION     "201805070000Z"
+    REVISION     "201810140000Z"
     DESCRIPTION
 	"First draft"
     ::= { thockar 2}
@@ -5727,6 +5727,7 @@ Groups  OBJECT-TYPE
  ldap:{host=&gt;'edir.your-domain.local:389,edir2.your-domain.local:389',base=&gt;'ou=your-domain,o=com',user=&gt;'ldapadmin',password=&gt;'LdapAdmin0PW=',timeout=&gt;10,scheme=&gt;ldap,starttls=&gt;1,version=&gt;3},<font color='orange'>{(&amp;(objectclass=group)(cn=mailAdmins))<font color='red'>&lt;=s/,o=.+//io</font>}{member}</font>,<font color='green'>{(&amp;(objectclass=inetOrgPerson)(<font color='red'>%USERID%</font>))}{mail}</font>
  
  ASSP will do a small syntax check for your LDAP line definition. How ever - it is recommended to validate your LDAP queries with a ldap tool before you put them in to assp and to set LDAPLog to diagnostic while you play around with this configuration!
+ NOTICE: Do NOT '#include ...' any configuration file used by any other configuration parameter - those file will become inaccessible, because this feature will encrypt the included file. Instead define the group here and use it in the other configuration parameter.
  
 "
     REFERENCE "Address and Domain Groups*"
@@ -6598,7 +6599,7 @@ ccSpamNeverRe  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Never Copy Spam regardless of collection mode. Put anything here to identify messages which should not be copied.
+Never Copy Spam regardless of collection mode. Put anything here to identify messages in their MIME header, any headerline added by assp and any scoring reason - which should not be copied.
 "
     REFERENCE "Do Not Copy Spam Regex*"
     DEFVAL { "" }
@@ -9718,7 +9719,8 @@ Sets the privacy level of the whitelistdb . If a (local) user adds an email addr
   (0) global &amp; private - this email address is automatically whitelisted for all other local users
   (1) domain &amp; private - this email address is automatically whitelisted for all other local users in the same local domain
   (2) private only - this email address is only whitelisted for this single local user
-  (0-1) unless another user has removed this email address from his whitelist. Default is zero, which is the legacy setting.
+  (0-1) unless another user has removed this email address from his whitelist.
+  Default setting is zero, which is the legacy setting.
   NOTICE: independent from this setting, the whitelistdb is filled with all three entries (global,domain,private), to make it possible to change this value.
 "
     REFERENCE "PrivacyLevel of the Whitelist"
@@ -11931,7 +11933,7 @@ useHeloGoodlist  OBJECT-TYPE
     DESCRIPTION
 "
 Use the list of known good helo hosts built by rebuildspamdb.
-  bonus - the message/IP get a bonus of the weighted negative value of hlValencePB 
+  bonus - the message/IP get a bonus of a calculated negative weighted value using hlValencePB - score = -10 * hlValencePB * good-helo-weigth - example: -10 * 20 * 0.2 = -40
   whitelisted - the message is processed as whitelisted
   The good helos and weights are stored together with the helo blacklist.
 "
@@ -13516,7 +13518,7 @@ DoNoSpoofing4From  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Do the NoSpoofing check also for header 'from:', 'sender:', 'reply-to:' and 'errors-to:' addresses.
+Do the NoSpoofing check also for header 'from:', 'sender:' addresses.
 "
     REFERENCE "Do NoSpoofing for from:"
     DEFVAL { "" }
@@ -13761,6 +13763,49 @@ If enabled,  signed Mails are checked for the right signature sequence and conte
     DEFVAL { "0" }
     ::= {ValidateSenderAddressesDomainsMsgIDPTRMXandDKIM 1070}
 
+DoNoSpoofing4ReplyTo  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+Do the NoSpoofing check also for header 'Reply-To:', 'Errors-To:', 'Return-Path:' and 'Disposition-Notification-To:' addresses.
+"
+    REFERENCE "Do NoSpoofing for Reply-To:"
+    DEFVAL { "" }
+    ::= {ValidateSenderAddressesDomainsMsgIDPTRMXandDKIM 1073}
+
+syncStatDoNoSpoofing4ReplyTo  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for DoNoSpoofing4ReplyTo
+-1 - DoNoSpoofing4ReplyTo could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {DoNoSpoofing4ReplyTo 5}
+
+syncStatStrDoNoSpoofing4ReplyTo  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for DoNoSpoofing4ReplyTo
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {DoNoSpoofing4ReplyTo 6}
+
 IPBlocking  OBJECT IDENTIFIER ::= {asspConfig 13}
 DoDenySMTP  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -13999,7 +14044,7 @@ DoDropList  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-If activated, the IP is checked against the Droplist in addition to 'denySMTPConnectionsFromAlways' and/or 'denySMTPConnectionsFrom'. The droplist is downloaded if a new one is available and contains the Spamhaus DROP List. See 'http://www.spamhaus.org/drop/drop.lasso'.
+If activated, the IP is checked against the Droplist in addition to 'denySMTPConnectionsFromAlways' and/or 'denySMTPConnectionsFrom'. The droplist is downloaded if a new one is available and contains the Spamhaus DROP List. See 'http://www.spamhaus.org/drop http://www.spamhaus.org/drop/drop.txt http://www.spamhaus.org/drop/edrop.txt http://www.spamhaus.org/drop/dropv6.txt'.
 "
     REFERENCE "Do also Deny Connections from these IP's"
     DEFVAL { "0" }
@@ -14431,7 +14476,7 @@ droplist  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Automatically downloaded (http://www.spamhaus.org/drop/drop.lasso) list of IP's which should be blocked right away. This list could be used in addition to denySMTPConnectionsFrom and/or denySMTPConnectionsFromAlways!
+Automatically downloaded (http://www.spamhaus.org/drop/drop.txt http://www.spamhaus.org/drop/edrop.txt http://www.spamhaus.org/drop/dropv6.txt) list of IP's which should be blocked right away. This list could be used in addition to denySMTPConnectionsFrom and/or denySMTPConnectionsFromAlways!
 "
     REFERENCE "Drop also Connections from these IP's*"
     DEFVAL { "file:files/droplist.txt" }
@@ -18043,7 +18088,7 @@ nofromValencePB  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-For Message/IP scoring in DoNoFrom.
+For Message/IP scoring in DoNoFrom and malformed sender and Reply addresses in the header.
 "
     REFERENCE "No From Score, default=50 +"
     DEFVAL { "50" }
@@ -20192,6 +20237,49 @@ synchronization status line from file assp_sync.cfg for slValencePB
  4 - in sync - running master mode (wait to reach state 2)
 "
     ::= {slValencePB 6}
+
+dmarcValencePB  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+Message/IP scoring
+"
+    REFERENCE "DMARC Failed, default=10 +"
+    DEFVAL { "10" }
+    ::= {PenaltyBoxMessageandIPScoring 1074}
+
+syncStatdmarcValencePB  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for dmarcValencePB
+-1 - dmarcValencePB could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {dmarcValencePB 5}
+
+syncStatStrdmarcValencePB  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for dmarcValencePB
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {dmarcValencePB 6}
 
 DelayingGreylisting  OBJECT IDENTIFIER ::= {asspConfig 16}
 EnableDelaying  OBJECT-TYPE
@@ -22437,7 +22525,7 @@ DoDMARC  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-If enabled and ValidateSPF and DoDKIM are enabled and the sending domain has published a DMARC-record/policy, assp will act on the mail according to the senders DMARC-policy using the results of the SPF and DKIM check. It is save to leave this feature ON, it will not produce false positives! The blocking mode (block, score, testmode) is adapted from less aggressive setting of ValidateSPF and DoDKIM - and the published DMARC record ([p][sp]=[reject][quarantine]). Scoring is done using spfValencePB.
+If enabled and ValidateSPF and DoDKIM are enabled and the sending domain has published a DMARC-record/policy, assp will act on the mail according to the senders DMARC-policy using the results of the SPF and DKIM check. It is save to leave this feature ON, it will not produce false positives! The blocking mode (block, monitor, score, testmode) is adapted from the most less aggressive setting of ValidateSPF and DoDKIM - and the published DMARC record ([p][sp]=[reject][quarantine]). Scoring is done using dmarcValencePB.
   If you have published a DMARC-record and you want to collect statisical data, look at 
 "
     REFERENCE "Enable DMARC Check"
@@ -24354,7 +24442,7 @@ This regular expression is used to identify Level 1 attachments that should be b
   If you've installed the ASSP_AFC Plugin (at least version 2.10) and 'exe-bin' is defined (on any level), the Plugin will detect executable files based on their binary content. Detected will be all executables, libraries and scripts for DOS and Windows (except .com files), MS office macros(VBA), MAC-OS and linux ELF (for all processor architectures).
   If you want to skip the detection for a specific executable type, define any combination of the tags below like: 'exe-bin|:WSH|:MSOM|:WIN' - notice the leading collon for the exceptions!
  :WIN - windows executables
- :MOS - Mach-O executables
+ :MOS - Java Class Bytecode or Mach-O executables
  :PEF - Classic MacOS executables
  :ELF - ELF (linux) executables
  :WSH - windows shell scripts
@@ -24365,7 +24453,8 @@ This regular expression is used to identify Level 1 attachments that should be b
  :CERTPDF - certificate signed adobe PDF file
  :JSPDF - adobe PDF file with JavaScript inside - notice: well known malicious JavaScript combinations will be blocked, even this option is defined
  :URIPDF - adobe PDF file with URIs to download exeutables from the web or to open local files
- :MSOLE - Microsoft Office Compound File Binary (OLE)
+ :MSOLE - all Microsoft Office Compound File Binary (OLE) - legacy not recommended, OLE files can contain any conceivable content
+ :HLMSOLE - (HarmLess) Microsoft Office Compound File Binary (OLE) - MSOLE, except it contains forbidden files (the  module in PERL is needed)
  :MSOM - Microsoft Office Macros
 "
     REFERENCE "Level 1 rejected File Extensions"
@@ -26434,7 +26523,7 @@ DoBombRe  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-If activated, each message is checked  against bombRe and BombData Regular Expressions.
+If activated, each message is checked  against bombRe and bombDataRe Regular Expressions.
   The scoring value is the sum of all valences(weights) of all found bombs - bombValencePB .
 "
     REFERENCE "Use Bomb Regular Expressions"
@@ -30732,6 +30821,15 @@ EmailWhitelistRemove  OBJECT-TYPE
 "
 Any mail sent by local/authenticated users to this username will be interpreted as a request to remove addresses from the whitelist. Do not put the full address here, just the user part. 
   For example: asspnotwhite
+  EmailAdmins and EmailAdminReportsTo are able to force global or domain based removal and deletion requests as well as removal and deletion requests for other users - like:
+  sender@domain.org,*
+  sender@domain.org,@localdomain.org
+  sender@domain.org,otheruser@localdomain.org
+  Per default a removal request is processed. To delete records from whitelistdb, write 'delete' (unquoted) into the subject of the report mail.
+  NOTICE: removing whitelist entries will mark the records as NOT whitelisted!
+  <p class='warning'>
+  NOTICE: deleting whitelist entries will DELETE ALL related records! For example: an emailaddress is globaly whitelisted but markted as not whitelisted for a specific domain.
+  Now if you DELETE the domain based record, all domain related records will be deleted - but because of the global whitelisting, all emailaddresses from this domain are now treated as whitelisted!
 "
     REFERENCE "Remove from Whitelist Address"
     DEFVAL { "asspnotwhite" }
@@ -32624,7 +32722,7 @@ whitelistdb  OBJECT-TYPE
 The file with the whitelist.
   Write only 'DB:' to use a database table instead of a local file, in this case you need to edit the database parameters below.
 "
-    REFERENCE "E<!--get rid of google autofill-->mail Whitelist Database File"
+    REFERENCE "Whitelist Database File"
     DEFVAL { "whitelist" }
     ::= {FilePathsandDatabase 571}
 
@@ -32637,7 +32735,7 @@ redlistdb  OBJECT-TYPE
 The file with the redlist.
   Write only 'DB:' to use a database table instead of a local file, in this case you need to edit the database parameters below.
 "
-    REFERENCE "E<!--get rid of google autofill-->mail Redlist Database File"
+    REFERENCE "Redlist Database File"
     DEFVAL { "redlist" }
     ::= {FilePathsandDatabase 572}
 
@@ -33276,7 +33374,8 @@ All tables of the database and all plain hash files will be exported to the 'exp
  NOTICE: both encrypted tables/hashes, AdminUsersRight and AdminUsers, will be exported unencrypted (eg. in plain text), the same applies to the exported configuration file and the exported option files!
  If possible, assp will compress the config files, option files and the AdminUsersRight and AdminUsers to the file 'config.zip' in the  'exportDBDir' directory.
  If possible, assp will encrypt the config.zip to config.zip.aes using openssl or Crypt::CBC. To decrypt this file, use the OS commandline:
- openssl enc -d -aes-256-cbc -in config.zip.aes -out config.zip -pass pass:PASSWORD
+ openssl enc -d -aes-256-cbc [-md md5|sha256] -in config.zip.aes -out config.zip -pass pass:PASSWORD
+ Notice: The default hash used by openssl enc for password-based key derivation changed in version 1.1.0 to SHA256 versus MD5 in lower versions. ASSP uses the default hash algorythm of the currently installed OpenSSL version. It may possible, that you need to define '-md md5' or '-md sha256' to decrypt exports made by other OpenSSL versions!
  The created file config.zip[.aes] will also contain an assp support summary with important files, folders, history-, runtime- and schedule- information. This file may requested by the assp support stuff - but it can also be used as a full configuration backup. Keep in mind, that certificate information (certs and keys) will be never exported! Keep them safe outside assp.
  NOTICE: The password / key, used for the export encryption function, may change at the next assp start or if the assp.cfg gets an external update! Record the password after each export!
  &nbsp;&nbsp;
@@ -33337,11 +33436,11 @@ backupDBInterval  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-backup the database (all tables used by assp at the time)  every this hours.
-  Defaults to 2 hours.
+Backup the database (all tables used by assp at the time) every this hours.
+  Defaults to a 12 hours interval. You may set this to a higher frequency (e.g. two hours), if you have daily system backups configured.
 "
     REFERENCE "backup database Interval <sup>s</sup>"
-    DEFVAL { "2" }
+    DEFVAL { "12" }
     ::= {FilePathsandDatabase 593}
 
 syncStatbackupDBInterval  OBJECT-TYPE
@@ -36006,7 +36105,7 @@ noCollectRe  OBJECT-TYPE
     DESCRIPTION
 "
 If the content of a collected file (incl. X-ASSP-... headers) matches this regular expression, it will be deleted from the collection after the mail is completely processed.
-  If the ASSP_ARC plugin is used, the file will be deleted from the collection after it was archived. This is the only 'no collect' option which removes an already collected file, all other options will prevent assp from creating a collection file - if set to 'no collection'. The check is limited to MaxBytes or at max 100000 Bytes.
+  If the ASSP_ARC or ASSP_RSS plugin is used, the file will be deleted from the collection after it was archived. This is the only 'no collect' option which removes an already collected file, all other options will prevent assp from creating a collection file - if set to 'no collection'. The check is limited to MaxBytes or at max 100000 Bytes.
 "
     REFERENCE "Do Not Collect Messages - Content Based*"
     DEFVAL { "" }
@@ -39017,6 +39116,8 @@ sendNoopInfo  OBJECT-TYPE
     DESCRIPTION
 "
 Checked means you want ASSP to send a 'NOOP Connection from IP' message to your SMTP server.
+  It is not recommended to enable this legacy feature - use myHelo instead.
+  DO NOT enable this feature, if DoTLS is enabled! Sending NOOP breaks the STARTTLS interception and processing!
   
   
   
@@ -39604,10 +39705,13 @@ This filter is used to query the LDAP database. This strongly depends on the LDA
  The literal EMAILADDRESS is replaced by the fully qualified SMTP recipient (eg. user@domain.com) during the search.
  The literal USERNAME is replaced by the user part of SMTP recipient (eg. user) during the search.
  The literal DOMAIN is replaced by the domain part of SMTP recipient (eg. domain.com) during the search.
+ Make sure, that foreign members of global addressbooks are not reported as valid addresses.
  For example:
  (proxyaddresses=smtp:EMAILADDRESS)
  or
  (|(mail=EMAILADDRESS)(mailaddress=EMAILADDRESS))
+ or (e.g. IBM Domino)
+ (&amp;(|(objectClass=dominoGroup)(&amp;(objectClass=dominoPerson)(uid=*)))(maildomain=your-domino-domain)(|(mail=EMAILADDRESS)(mailaddress=EMAILADDRESS)))
  or
  (&amp;(objectClass=user)(objectcategory=person)(mail=EMAILADDRESS)(!(msExchHideFromAddressLists=TRUE)))
  or (eg. AD/Exchange 2013/2016)
@@ -44706,6 +44810,7 @@ If set to 'drop TLS', any STARTTLS request will be removed from the protocol sta
   If set to 'do TLS', ASSP will be the 'man in the middle'. ASSP will try to move both connections in to TLS. All data will be readable to ASSP - so all checks could be done. If any of the peers does not support TLS, ASSP will fake this (250-STARTTLS) to the other peer. So it could be possible, that the connection to the client is going in to TLS mode, even if TLS is not supported by the server. If a client does not request TLS (STARTTLS) even it has got the (250-STARTTLS), ASSP tries to start a TLS session to server, if he has sent (250-STARTTLS)! This behavior belongs to incoming and outgoing messages. This option requires the installed perl module !
   For 'do TLS' a server-certificate-file ' SSLCertFile ' and a server-key-file ' SSLKeyFile ' must exist and must be valid!
   If you do not have valid certificates, you may generate both files online with  or you may use OpenSSL to generate ! If you have installed OpenSSL (must be in PATH) and installed and enabled IO::Socket::SSL and ASSP is unable to find valid certificates - ASSP will try to create them at startup!
+  Before you enable this feature, make sure that sendNoopInfo is switched off! If sendNoopInfo is enabled, STARTTLS will possibly not work!
   
 "
     REFERENCE "How to Handle STARTTLS Requests"
@@ -45441,16 +45546,16 @@ If used, assp will call the defined subroutine as SSL->SSL_verify_callback in an
   You can use/modify the module lib/CorrectASSPcfg.pm to implement your code. For example
   sub checkWebSSLCert {
   &nbsp;&nbsp;&nbsp;&nbsp;my ($OpenSSLSays,$CertStackPtr,$DN,$OpenSSLError, $Cert)=@_;
-  &nbsp;&nbsp;&nbsp;&nbsp;my $subject = Net::SSLeay::X509_NAME_oneline(Net::SSLeay::X509_get_subject_name($Cert));
-  &nbsp;&nbsp;&nbsp;&nbsp;my $chain = Net::SSLeay::PEM_get_string_X509($Cert);
+  &nbsp;&nbsp;&nbsp;&nbsp;my $Subject = Net::SSLeay::X509_NAME_oneline(Net::SSLeay::X509_get_subject_name($Cert));
+  &nbsp;&nbsp;&nbsp;&nbsp;my $Chain = Net::SSLeay::PEM_get_string_X509($Cert);
   &nbsp;&nbsp;&nbsp;&nbsp;...any code...;
-  &nbsp;&nbsp;&nbsp;&nbsp;my $success = eval{verify($Cert);};
+  &nbsp;&nbsp;&nbsp;&nbsp;my $isSuccess = eval{verify($Cert);};
   &nbsp;&nbsp;&nbsp;&nbsp;return $OpenSSLSays if $@;
-  &nbsp;&nbsp;&nbsp;&nbsp;my $user = eval{get_owner($Cert);};
+  &nbsp;&nbsp;&nbsp;&nbsp;my $Owner = eval{get_owner($Cert);};
   &nbsp;&nbsp;&nbsp;&nbsp;return $OpenSSLSays if $@;
-  &nbsp;&nbsp;&nbsp;&nbsp;my $pass = get_pass($user);};
-  &nbsp;&nbsp;&nbsp;&nbsp;@main::ExtWebAuth = ($user,$pass)
-  &nbsp;&nbsp;&nbsp;&nbsp;return $success;
+  &nbsp;&nbsp;&nbsp;&nbsp;my $userPass = get_pass($Owner);};
+  &nbsp;&nbsp;&nbsp;&nbsp;@main::ExtWebAuth = ($Owner,$userPass)
+  &nbsp;&nbsp;&nbsp;&nbsp;return $isSuccess;
   }
   Now, if you set this parameter to 'CorrectASSPcfg::checkWebSSLCert' - assp will call
   CorrectASSPcfg::checkWebSSLCert->(@_);
@@ -46180,8 +46285,12 @@ Any mail sent by local/authenticated users to this username will be interpreted 
  user@domain=>recipient@any-domain - will send a report for user@domain to recipient@any-domain
  *@domain=>recipient@any-domain - will send a report for every blocked user in this domain to recipient@any-domain
  It is possible to define a group ( Groups ) in the first parameter like:
- [user@domain]=>recipient@any-domain
- The group name must be a lower case email address of a local domain without any wildcard. This will create a combined block report for all email addresses defined in this group - useful, if someone has multiple email addresses and wants to get a single report.
+ [users@domain]
+ [users@domain]=>*
+ [users@domain]=>recipient@any-domain
+ The group name must be a lower case email address of a local domain without any wildcard.
+ The first and second example will create a block report for each group member.
+ The third example will create a combined block report for all email addresses defined in this group - useful, if someone has multiple email addresses and wants to get a single report.
  If the group name is equal to a real existing email address of a user, and this user requests a block report using this email address (MAIL FROM:), a combined block report for the group will be generated.
  A third parameter is possible to set, which defines the number of days for which the report should be created. The default (if empty or not defined) is one day. This value is used to calculate the 'next run date'. For example:
  *@domain=>recipient@any-domain=>2 - creates a report for two days.
@@ -46196,7 +46305,7 @@ Any mail sent by local/authenticated users to this username will be interpreted 
  Only Admins are able to request blockreports for non local email addresses. For example:
  user@non_local_domain=>recipient@any-domain=>4
  *@non_local_domain=>recipient@any-domain=>4
- This will result in an extended blockreport for the non local address(es). Replace 'non_local_domain' with the domain name you want to query for.
+ This will result in an extended blockreport for the non local address(es). Replace 'non_local_domain' with the domain name you want to query for. Defining the report receipient '=>recipient@any-domain' is mandatory in this case!
  It is possible to change the complete design of the BlockReports to your needs,  using a html-css file. A default css-file 'blockreport.css' is in the image folder as is a default icon file 'blockreporticon.gif' and a default header-image-file 'blockreport.gif'.  These are optional files - If assp can not find these files in its
  image folder, it will use the default hardcoded css and icon. If the file 'blockreport.gif' is not found 'logo.gif' will be used.
  To change any content, use the Blockreport::modify module in the lib folder. You'll need some Perl skills to do that.
@@ -46488,8 +46597,13 @@ A file with BlockReport requests. ASSP will generate a block report for every li
  user@domain=>recipient@any-domain - will send a report for user@domain to recipient@any-domain
  *@domain=>recipient@any-domain - will send a report for every blocked user in this domain to recipient@any-domain
  It is possible to define a group ( Groups ) in the first parameter like:
- [user@domain]=>recipient@any-domain
- The group name must be a lower case email address of a local domain without any wildcard. This will create a combined block report for all email addresses defined in this group - useful, if someone has multiple email addresses and want's to get a single report.
+ [users@domain]
+ [users@domain]=>*
+ [users@domain]=>recipient@any-domain
+ The group name must be a lower case email address of a local domain without any wildcard.
+ The first and second example will create a block report for each group member.
+ The third example will create a combined block report for all email addresses defined in this group - useful, if someone has multiple email addresses and wants to get a single report.
+ If the group name is equal to a real existing email address of a user, and this user requests a block report using this email address (MAIL FROM:), a combined block report for the group will be generated.
  An optional third parameter can define the number of days for which the report should be created. The default (if empty or not defined) is one day. This value is used to calculate the 'next run date'. For example:
  *@domain=>recipient@any-domain=>2 - creates a report for two days.
  *@domain=>*=>14 - creates a report for 14 days.
@@ -46731,7 +46845,7 @@ inclResendLink  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Block reports will be sent as multipart/alternative MIME messages. They contains two parts, a plain text part and a html part. If a blocked email is stored in any folder, it is possible to include a link for each email in to the report. Define here what you want ASSP to do. Default is 'in both'. If set to not to disabled ' fileLogging ' will be automatically set to on.
+Block reports will be sent as multipart/alternative MIME messages. They contains two parts, a plain text part and a html part. If a blocked email is stored in any folder (except viruslog), it is possible to include a link for each email in to the report. Define here what you want ASSP to do. Default is 'in both'. If set to not to disabled ' fileLogging ' will be automatically set to on.
 "
     REFERENCE "Include a Resend-Link for every resendable email"
     DEFVAL { "3" }
@@ -46817,9 +46931,9 @@ BlockResendLinkLeft  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-List of users and domains that will get the left link only. The setting for BlockResendLink will be ignored for this entries!
+List of users and domains that will get the left link only. The setting for BlockResendLink will be ignored for these entries! Using Groups is supported.
 "
-    REFERENCE "User which get the Left link only*"
+    REFERENCE "User which get the Left link only *"
     DEFVAL { "" }
     ::= {BlockReportingScheduleandInstant 855}
 
@@ -46860,9 +46974,9 @@ BlockResendLinkRight  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-List of users and domains that will get the right link only. The setting for BlockResendLink will be ignored for this entries!
+List of users and domains that will get the right link only. The setting for BlockResendLink will be ignored for these entries! Using Groups is supported.
 "
-    REFERENCE "User which get the right link only* "
+    REFERENCE "User which get the right link only *"
     DEFVAL { "" }
     ::= {BlockReportingScheduleandInstant 856}
 
@@ -47215,6 +47329,92 @@ synchronization status line from file assp_sync.cfg for BlockReportAdmins
  4 - in sync - running master mode (wait to reach state 2)
 "
     ::= {BlockReportAdmins 6}
+
+BlockResendLinkOnly  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+List of users and domains that will get a ResendLink. If defined, only users listed here will get a ResendLink! Using Groups is supported.
+"
+    REFERENCE "User which get a ResendLink only *"
+    DEFVAL { "" }
+    ::= {BlockReportingScheduleandInstant 1071}
+
+syncStatBlockResendLinkOnly  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for BlockResendLinkOnly
+-1 - BlockResendLinkOnly could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {BlockResendLinkOnly 5}
+
+syncStatStrBlockResendLinkOnly  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for BlockResendLinkOnly
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {BlockResendLinkOnly 6}
+
+BlockResendLinkNo  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+List of users and domains that will not get any ResendLink. If defined, users listed here will not get a ResendLink! Using Groups is supported.
+"
+    REFERENCE "User which not get any ResendLink *"
+    DEFVAL { "" }
+    ::= {BlockReportingScheduleandInstant 1072}
+
+syncStatBlockResendLinkNo  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for BlockResendLinkNo
+-1 - BlockResendLinkNo could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {BlockResendLinkNo 5}
+
+syncStatStrBlockResendLinkNo  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for BlockResendLinkNo
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {BlockResendLinkNo 6}
 
 SNMPConfiguration  OBJECT IDENTIFIER ::= {asspConfig 38}
 SNMP  OBJECT-TYPE
@@ -50138,7 +50338,7 @@ If set, encrypted or password protected compressed attachments will be blocked o
  If 'exe-bin' is defined, the Plugin will detect executable files based on there binary content. Detected will be all executables, libraries and scripts for DOS and Windows (except .com files), MS office macros(VBA), MAC-OS and linux ELF (for all processor architectures).
  If you want to skip the detection for a specific executable type, specify exe-bin (which detects all executables) and then add exceptions to exclude specific types:Example:  'exe-bin|:MSOM|:WSH' - notice the single leading collon for the exceptions!  This example will block all detected executable files except for MS Office Macro files (:MSOM) and Windows Shell Scripts (:WSH)
  :WIN - windows executables
- :MOS - Mach-O executables
+ :MOS - Java Class Bytecode or Mach-O executables
  :PEF - Classic MacOS executables
  :ELF - ELF (linux) executables
  :WSH - windows shell scripts
@@ -50149,7 +50349,8 @@ If set, encrypted or password protected compressed attachments will be blocked o
  :CERTPDF - certificate signed adobe PDF file
  :JSPDF - adobe PDF file with JavaScript inside - notice: well known malicious JavaScript combinations will be blocked, even this option is defined
  :URIPDF - adobe PDF file with URIs to download exeutables from the web or to open local files
- :MSOLE - Microsoft Office Compound File Binary (OLE)
+ :MSOLE - all Microsoft Office Compound File Binary (OLE) - legacy not recommended, OLE files can contain any conceivable content
+ :HLMSOLE - (HarmLess) Microsoft Office Compound File Binary (OLE) - MSOLE, except it contains forbidden files (the  module in PERL is needed)
  :MSOM - Microsoft Office Macros
  The following compression formats are supported by the common perl module Archive::Extract: tar.gz,tgz,gz,tar,zip,jar,ear,war,par,tbz,tbz2,tar.bz,tar.bz2,bz2,Z,lzma,txz,tar.xz,xz.
  The detection of compressed files is done content based not filename extension based. The perl modules File::Type and MIME::Types are required in every case!
@@ -50159,7 +50360,7 @@ If set, encrypted or password protected compressed attachments will be blocked o
  If the perl module Archive::Libarchive::XS is available , the following formats are supported: 7z, XZ, BZIP2, BZ2, GZIP, GZ, TAR.GZ, TAR, ZIP, WIM, AR, ARJ, CPIO, EXT, IHEX, ISO, LHA, LZH, LZMA, NSIS, QCOW2, RAR, RPM, SquashFS, UDF, XAR, Z.
  For performance reasons it is strongly recommended to install the module Archive::Libarchive::XS!
  Currently supported compression formats are: 7z, 7zip, AR, ARJ, BZ2, BZIP2, CPIO, EAR, EXT, GZIP, GZ, IHEX, ISO, JAR, LBR, LHA, LRZ, LZ, LZ4, LZH, LZMA, LZR, NSIS, PAR, PAX, QCOW2, RAR, RPM, SquashFS, TAR, TBZ, TBZ2, UDF, WAR, XAR, Z, ZIP
- Detected decompression executables are: C:\perl\perl\site\bin\rar.EXE , C:\perl\perl\site\bin\7z.EXE , libarchive 3.3.1
+ Detected decompression executables are: C:\perl\perl\site\bin\rar.EXE , C:\perl\perl\site\bin\7z.EXE , libarchive 3.3.2
  If multiple options are available to decompress a file, ASSP_AFC will use the following order: first Archive::Libarchive::XS, than Archive::Rar + rar/unrar, than Archive::Rar + 7z and last Archive::Extract. 
  Notice: you need to restart assp after installing any perl module and/or exexutable, to get them activated!
 "
@@ -50329,6 +50530,50 @@ synchronization status line from file assp_sync.cfg for ASSPAFCSMIME
  4 - in sync - running master mode (wait to reach state 2)
 "
     ::= {ASSPAFCSMIME 6}
+
+ASSPAFCextractAttMail  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+If enabled, the selected attachments will be extracted and their MIME parts will be analyzed! If such a MIME part contains not allowed content and attachment replacement is enabled for the fault, the complete attachment will be replaced!
+ To extract MS-Outlook .msg files, in addition an installed  module in PERL is needed.
+"
+    REFERENCE "Extract Attached Emails"
+    DEFVAL { "3" }
+    ::= {ASSPAFCPlugin 10015}
+
+syncStatASSPAFCextractAttMail  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPAFCextractAttMail
+-1 - ASSPAFCextractAttMail could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPAFCextractAttMail 5}
+
+syncStatStrASSPAFCextractAttMail  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPAFCextractAttMail
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPAFCextractAttMail 6}
 
 ASSPARCPlugin  OBJECT IDENTIFIER ::= {asspConfig 42}
 DoASSPARC  OBJECT-TYPE
@@ -50675,7 +50920,7 @@ ASSPARCDBdriver  OBJECT-TYPE
     DESCRIPTION
 "
 The database driver used to access your database - DBD-driver. The following drivers are available on your system:
-  BerkeleyDB, ADO, CSV, DBM, ExampleP, File, Gofer, LDAP, Mem, ODBC, Oracle, Pg, PgPP, Proxy, SQLite, Sponge, Sprite, WMI, mysql
+  BerkeleyDB, ADO, DBM, ExampleP, File, Gofer, LDAP, Mem, ODBC, Oracle, Pg, PgPP, Proxy, SQLite, Sponge, Sprite, mysql
   If you can not find the driver for your database in this list, you should install it via cpan or ppm!
   -  or if you have installed an ODBC-driver for your database and DBD-ODBC, just create a DSN and use ODBC.
   Usefull are ADO|DB2|Informix|ODBC|Oracle|Pg|Sybase|mysql|mysqlPP - but any other SQL compatible database should also work.
@@ -53990,6 +54235,56 @@ download URL for the module
 "
     ::= {EmailMIME 4}
 
+EmailOutlookMessage  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+ASSP Perl module information for Email::Outlook::Message;
+"
+    ::= {asspPerlModuleInfo 19}
+
+iVEmailOutlookMessage  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+installed module version
+"
+    ::= {EmailOutlookMessage 1}
+
+rVEmailOutlookMessage  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+required/recommended module version
+"
+    ::= {EmailOutlookMessage 2}
+
+iSEmailOutlookMessage  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+module installation status
+"
+    ::= {EmailOutlookMessage 3}
+
+dUEmailOutlookMessage  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+download URL for the module
+"
+    ::= {EmailOutlookMessage 4}
+
 EmailSend  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
@@ -53998,7 +54293,7 @@ EmailSend  OBJECT-TYPE
 "
 ASSP Perl module information for Email::Send;
 "
-    ::= {asspPerlModuleInfo 19}
+    ::= {asspPerlModuleInfo 20}
 
 iVEmailSend  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54048,7 +54343,7 @@ FileReadBackwards  OBJECT-TYPE
 "
 ASSP Perl module information for File::ReadBackwards;
 "
-    ::= {asspPerlModuleInfo 20}
+    ::= {asspPerlModuleInfo 21}
 
 iVFileReadBackwards  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54098,7 +54393,7 @@ FileScanClamAV  OBJECT-TYPE
 "
 ASSP Perl module information for File::Scan::ClamAV;
 "
-    ::= {asspPerlModuleInfo 21}
+    ::= {asspPerlModuleInfo 22}
 
 iVFileScanClamAV  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54148,7 +54443,7 @@ FileType  OBJECT-TYPE
 "
 ASSP Perl module information for File::Type;
 "
-    ::= {asspPerlModuleInfo 22}
+    ::= {asspPerlModuleInfo 23}
 
 iVFileType  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54198,7 +54493,7 @@ FileWhich  OBJECT-TYPE
 "
 ASSP Perl module information for File::Which;
 "
-    ::= {asspPerlModuleInfo 23}
+    ::= {asspPerlModuleInfo 24}
 
 iVFileWhich  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54248,7 +54543,7 @@ HTMLStrip  OBJECT-TYPE
 "
 ASSP Perl module information for HTML::Strip;
 "
-    ::= {asspPerlModuleInfo 24}
+    ::= {asspPerlModuleInfo 25}
 
 iVHTMLStrip  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54298,7 +54593,7 @@ IOPoll  OBJECT-TYPE
 "
 ASSP Perl module information for IO::Poll;
 "
-    ::= {asspPerlModuleInfo 25}
+    ::= {asspPerlModuleInfo 26}
 
 iVIOPoll  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54348,7 +54643,7 @@ IOSelect  OBJECT-TYPE
 "
 ASSP Perl module information for IO::Select;
 "
-    ::= {asspPerlModuleInfo 26}
+    ::= {asspPerlModuleInfo 27}
 
 iVIOSelect  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54398,7 +54693,7 @@ IOSocketINET6  OBJECT-TYPE
 "
 ASSP Perl module information for IO::Socket::INET6;
 "
-    ::= {asspPerlModuleInfo 27}
+    ::= {asspPerlModuleInfo 28}
 
 iVIOSocketINET6  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54448,7 +54743,7 @@ IOSocketSSL  OBJECT-TYPE
 "
 ASSP Perl module information for IO::Socket::SSL;
 "
-    ::= {asspPerlModuleInfo 28}
+    ::= {asspPerlModuleInfo 29}
 
 iVIOSocketSSL  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54498,7 +54793,7 @@ ImageOCRTesseract  OBJECT-TYPE
 "
 ASSP Perl module information for Image::OCR::Tesseract;
 "
-    ::= {asspPerlModuleInfo 29}
+    ::= {asspPerlModuleInfo 30}
 
 iVImageOCRTesseract  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54548,7 +54843,7 @@ LWPSimple  OBJECT-TYPE
 "
 ASSP Perl module information for LWP::Simple;
 "
-    ::= {asspPerlModuleInfo 30}
+    ::= {asspPerlModuleInfo 31}
 
 iVLWPSimple  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54598,7 +54893,7 @@ MIMETypes  OBJECT-TYPE
 "
 ASSP Perl module information for MIME::Types;
 "
-    ::= {asspPerlModuleInfo 31}
+    ::= {asspPerlModuleInfo 32}
 
 iVMIMETypes  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54648,7 +54943,7 @@ MailDKIMVerifier  OBJECT-TYPE
 "
 ASSP Perl module information for Mail::DKIM::Verifier;
 "
-    ::= {asspPerlModuleInfo 32}
+    ::= {asspPerlModuleInfo 33}
 
 iVMailDKIMVerifier  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54698,7 +54993,7 @@ MailSPF  OBJECT-TYPE
 "
 ASSP Perl module information for Mail::SPF;
 "
-    ::= {asspPerlModuleInfo 33}
+    ::= {asspPerlModuleInfo 34}
 
 iVMailSPF  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54748,7 +55043,7 @@ MailSPFQuery  OBJECT-TYPE
 "
 ASSP Perl module information for Mail::SPF::Query;
 "
-    ::= {asspPerlModuleInfo 34}
+    ::= {asspPerlModuleInfo 35}
 
 iVMailSPFQuery  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54798,7 +55093,7 @@ MailSRS  OBJECT-TYPE
 "
 ASSP Perl module information for Mail::SRS;
 "
-    ::= {asspPerlModuleInfo 35}
+    ::= {asspPerlModuleInfo 36}
 
 iVMailSRS  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54848,7 +55143,7 @@ NetCIDRLite  OBJECT-TYPE
 "
 ASSP Perl module information for Net::CIDR::Lite;
 "
-    ::= {asspPerlModuleInfo 36}
+    ::= {asspPerlModuleInfo 37}
 
 iVNetCIDRLite  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54898,7 +55193,7 @@ NetDNS  OBJECT-TYPE
 "
 ASSP Perl module information for Net::DNS;
 "
-    ::= {asspPerlModuleInfo 37}
+    ::= {asspPerlModuleInfo 38}
 
 iVNetDNS  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54948,7 +55243,7 @@ NetIP  OBJECT-TYPE
 "
 ASSP Perl module information for Net::IP;
 "
-    ::= {asspPerlModuleInfo 38}
+    ::= {asspPerlModuleInfo 39}
 
 iVNetIP  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54998,7 +55293,7 @@ NetLDAP  OBJECT-TYPE
 "
 ASSP Perl module information for Net::LDAP;
 "
-    ::= {asspPerlModuleInfo 39}
+    ::= {asspPerlModuleInfo 40}
 
 iVNetLDAP  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55048,7 +55343,7 @@ NetSMTP  OBJECT-TYPE
 "
 ASSP Perl module information for Net::SMTP;
 "
-    ::= {asspPerlModuleInfo 40}
+    ::= {asspPerlModuleInfo 41}
 
 iVNetSMTP  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55098,7 +55393,7 @@ NetSMTPSSL  OBJECT-TYPE
 "
 ASSP Perl module information for Net::SMTP::SSL;
 "
-    ::= {asspPerlModuleInfo 41}
+    ::= {asspPerlModuleInfo 42}
 
 iVNetSMTPSSL  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55148,7 +55443,7 @@ NetSSLeay  OBJECT-TYPE
 "
 ASSP Perl module information for Net::SSLeay;
 "
-    ::= {asspPerlModuleInfo 42}
+    ::= {asspPerlModuleInfo 43}
 
 iVNetSSLeay  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55198,7 +55493,7 @@ NetAddrIPLite  OBJECT-TYPE
 "
 ASSP Perl module information for NetAddr::IP::Lite;
 "
-    ::= {asspPerlModuleInfo 43}
+    ::= {asspPerlModuleInfo 44}
 
 iVNetAddrIPLite  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55248,7 +55543,7 @@ NetSNMPagent  OBJECT-TYPE
 "
 ASSP Perl module information for NetSNMP::agent;
 "
-    ::= {asspPerlModuleInfo 44}
+    ::= {asspPerlModuleInfo 45}
 
 iVNetSNMPagent  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55290,6 +55585,56 @@ download URL for the module
 "
     ::= {NetSNMPagent 4}
 
+OLEStorageLite  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+ASSP Perl module information for OLE::Storage_Lite;
+"
+    ::= {asspPerlModuleInfo 46}
+
+iVOLEStorageLite  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+installed module version
+"
+    ::= {OLEStorageLite 1}
+
+rVOLEStorageLite  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+required/recommended module version
+"
+    ::= {OLEStorageLite 2}
+
+iSOLEStorageLite  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+module installation status
+"
+    ::= {OLEStorageLite 3}
+
+dUOLEStorageLite  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+download URL for the module
+"
+    ::= {OLEStorageLite 4}
+
 OpenSSL110h  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
@@ -55298,7 +55643,7 @@ OpenSSL110h  OBJECT-TYPE
 "
 ASSP Perl module information for OpenSSL 1.1.0h;
 "
-    ::= {asspPerlModuleInfo 45}
+    ::= {asspPerlModuleInfo 47}
 
 iVOpenSSL110h  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55348,7 +55693,7 @@ OpenSSLlib110h27Mar2018  OBJECT-TYPE
 "
 ASSP Perl module information for OpenSSL-lib 1.1.0h  27 Mar 2018;
 "
-    ::= {asspPerlModuleInfo 46}
+    ::= {asspPerlModuleInfo 48}
 
 iVOpenSSLlib110h27Mar2018  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55398,7 +55743,7 @@ PDFOCR2  OBJECT-TYPE
 "
 ASSP Perl module information for PDF::OCR2;
 "
-    ::= {asspPerlModuleInfo 47}
+    ::= {asspPerlModuleInfo 49}
 
 iVPDFOCR2  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55448,7 +55793,7 @@ PerlIOscalar  OBJECT-TYPE
 "
 ASSP Perl module information for PerlIO::scalar;
 "
-    ::= {asspPerlModuleInfo 48}
+    ::= {asspPerlModuleInfo 50}
 
 iVPerlIOscalar  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55498,7 +55843,7 @@ PluginsASSPAFC  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_AFC;
 "
-    ::= {asspPerlModuleInfo 49}
+    ::= {asspPerlModuleInfo 51}
 
 iVPluginsASSPAFC  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55548,7 +55893,7 @@ PluginsASSPARC  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_ARC;
 "
-    ::= {asspPerlModuleInfo 50}
+    ::= {asspPerlModuleInfo 52}
 
 iVPluginsASSPARC  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55598,7 +55943,7 @@ PluginsASSPDCC  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_DCC;
 "
-    ::= {asspPerlModuleInfo 51}
+    ::= {asspPerlModuleInfo 53}
 
 iVPluginsASSPDCC  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55648,7 +55993,7 @@ PluginsASSPFakeMX  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_FakeMX;
 "
-    ::= {asspPerlModuleInfo 52}
+    ::= {asspPerlModuleInfo 54}
 
 iVPluginsASSPFakeMX  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55698,7 +56043,7 @@ PluginsASSPOCR  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_OCR;
 "
-    ::= {asspPerlModuleInfo 53}
+    ::= {asspPerlModuleInfo 55}
 
 iVPluginsASSPOCR  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55748,7 +56093,7 @@ PluginsASSPRSS  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_RSS;
 "
-    ::= {asspPerlModuleInfo 54}
+    ::= {asspPerlModuleInfo 56}
 
 iVPluginsASSPRSS  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55798,7 +56143,7 @@ PluginsASSPRazor  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_Razor;
 "
-    ::= {asspPerlModuleInfo 55}
+    ::= {asspPerlModuleInfo 57}
 
 iVPluginsASSPRazor  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55848,7 +56193,7 @@ RegexpOptimizer  OBJECT-TYPE
 "
 ASSP Perl module information for Regexp::Optimizer;
 "
-    ::= {asspPerlModuleInfo 56}
+    ::= {asspPerlModuleInfo 58}
 
 iVRegexpOptimizer  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55898,7 +56243,7 @@ ScheduleCron  OBJECT-TYPE
 "
 ASSP Perl module information for Schedule::Cron;
 "
-    ::= {asspPerlModuleInfo 57}
+    ::= {asspPerlModuleInfo 59}
 
 iVScheduleCron  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55948,7 +56293,7 @@ SysCpuAffinity  OBJECT-TYPE
 "
 ASSP Perl module information for Sys::CpuAffinity;
 "
-    ::= {asspPerlModuleInfo 58}
+    ::= {asspPerlModuleInfo 60}
 
 iVSysCpuAffinity  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55998,7 +56343,7 @@ SysMemInfo  OBJECT-TYPE
 "
 ASSP Perl module information for Sys::MemInfo;
 "
-    ::= {asspPerlModuleInfo 59}
+    ::= {asspPerlModuleInfo 61}
 
 iVSysMemInfo  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -56048,7 +56393,7 @@ SysSyslog  OBJECT-TYPE
 "
 ASSP Perl module information for Sys::Syslog;
 "
-    ::= {asspPerlModuleInfo 60}
+    ::= {asspPerlModuleInfo 62}
 
 iVSysSyslog  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -56098,7 +56443,7 @@ TextUnidecode  OBJECT-TYPE
 "
 ASSP Perl module information for Text::Unidecode;
 "
-    ::= {asspPerlModuleInfo 61}
+    ::= {asspPerlModuleInfo 63}
 
 iVTextUnidecode  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -56148,7 +56493,7 @@ ThreadQueue  OBJECT-TYPE
 "
 ASSP Perl module information for Thread::Queue;
 "
-    ::= {asspPerlModuleInfo 62}
+    ::= {asspPerlModuleInfo 64}
 
 iVThreadQueue  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -56198,7 +56543,7 @@ ThreadSemaphore  OBJECT-TYPE
 "
 ASSP Perl module information for Thread::Semaphore;
 "
-    ::= {asspPerlModuleInfo 63}
+    ::= {asspPerlModuleInfo 65}
 
 iVThreadSemaphore  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -56248,7 +56593,7 @@ ThreadState  OBJECT-TYPE
 "
 ASSP Perl module information for Thread::State;
 "
-    ::= {asspPerlModuleInfo 64}
+    ::= {asspPerlModuleInfo 66}
 
 iVThreadState  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -56298,7 +56643,7 @@ TieRDBM  OBJECT-TYPE
 "
 ASSP Perl module information for Tie::RDBM;
 "
-    ::= {asspPerlModuleInfo 65}
+    ::= {asspPerlModuleInfo 67}
 
 iVTieRDBM  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -56348,7 +56693,7 @@ TimeHiRes  OBJECT-TYPE
 "
 ASSP Perl module information for Time::HiRes;
 "
-    ::= {asspPerlModuleInfo 66}
+    ::= {asspPerlModuleInfo 68}
 
 iVTimeHiRes  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -56398,7 +56743,7 @@ UnicodeGCString  OBJECT-TYPE
 "
 ASSP Perl module information for Unicode::GCString;
 "
-    ::= {asspPerlModuleInfo 67}
+    ::= {asspPerlModuleInfo 69}
 
 iVUnicodeGCString  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -56448,7 +56793,7 @@ Win32APIOutputDebugString  OBJECT-TYPE
 "
 ASSP Perl module information for Win32::API::OutputDebugString;
 "
-    ::= {asspPerlModuleInfo 68}
+    ::= {asspPerlModuleInfo 70}
 
 iVWin32APIOutputDebugString  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -56498,7 +56843,7 @@ Win32Daemon  OBJECT-TYPE
 "
 ASSP Perl module information for Win32::Daemon;
 "
-    ::= {asspPerlModuleInfo 69}
+    ::= {asspPerlModuleInfo 71}
 
 iVWin32Daemon  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -56548,7 +56893,7 @@ Win32Unicode  OBJECT-TYPE
 "
 ASSP Perl module information for Win32::Unicode;
 "
-    ::= {asspPerlModuleInfo 70}
+    ::= {asspPerlModuleInfo 72}
 
 iVWin32Unicode  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -56598,7 +56943,7 @@ XMLRSS  OBJECT-TYPE
 "
 ASSP Perl module information for XML::RSS;
 "
-    ::= {asspPerlModuleInfo 71}
+    ::= {asspPerlModuleInfo 73}
 
 iVXMLRSS  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -56648,7 +56993,7 @@ threads  OBJECT-TYPE
 "
 ASSP Perl module information for threads;
 "
-    ::= {asspPerlModuleInfo 72}
+    ::= {asspPerlModuleInfo 74}
 
 iVthreads  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -56698,7 +57043,7 @@ threadsshared  OBJECT-TYPE
 "
 ASSP Perl module information for threads::shared;
 "
-    ::= {asspPerlModuleInfo 73}
+    ::= {asspPerlModuleInfo 75}
 
 iVthreadsshared  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -56800,6 +57145,16 @@ Bomb Regex
 "
     ::= {currentStats 5}
 
+currentdmarc  OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+DMARC
+"
+    ::= {currentStats 6}
+
 currentFakeMX  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
@@ -56808,7 +57163,7 @@ currentFakeMX  OBJECT-TYPE
 "
 ASSP_FakeMX Plugin
 "
-    ::= {currentStats 6}
+    ::= {currentStats 7}
 
 currentbspams  OBJECT-TYPE
     SYNTAX      Counter32
@@ -56818,7 +57173,7 @@ currentbspams  OBJECT-TYPE
 "
 Bayesian/HMM Spams
 "
-    ::= {currentStats 7}
+    ::= {currentStats 8}
 
 currentcpuAvg  OBJECT-TYPE
     SYNTAX      Counter32
@@ -56828,7 +57183,7 @@ currentcpuAvg  OBJECT-TYPE
 "
 CPU Usage
 "
-    ::= {currentStats 8}
+    ::= {currentStats 9}
 
 currentlocals  OBJECT-TYPE
     SYNTAX      Counter32
@@ -56838,7 +57193,7 @@ currentlocals  OBJECT-TYPE
 "
 Local
 "
-    ::= {currentStats 9}
+    ::= {currentStats 10}
 
 currentuptime  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -56848,7 +57203,7 @@ currentuptime  OBJECT-TYPE
 "
 ASSP Proxy Uptime
 "
-    ::= {currentStats 10}
+    ::= {currentStats 11}
 
 currentwhites  OBJECT-TYPE
     SYNTAX      Counter32
@@ -56858,7 +57213,7 @@ currentwhites  OBJECT-TYPE
 "
 Whitelisted
 "
-    ::= {currentStats 11}
+    ::= {currentStats 12}
 
 currentmailCount  OBJECT-TYPE
     SYNTAX      Counter32
@@ -56868,7 +57223,7 @@ currentmailCount  OBJECT-TYPE
 "
 
 "
-    ::= {currentStats 12}
+    ::= {currentStats 13}
 
 currentadmConn  OBJECT-TYPE
     SYNTAX      Counter32
@@ -56878,7 +57233,7 @@ currentadmConn  OBJECT-TYPE
 "
 Admin Connections Accepted
 "
-    ::= {currentStats 13}
+    ::= {currentStats 14}
 
 currentcpuTime  OBJECT-TYPE
     SYNTAX      Counter32
@@ -56888,7 +57243,7 @@ currentcpuTime  OBJECT-TYPE
 "
 
 "
-    ::= {currentStats 14}
+    ::= {currentStats 15}
 
 currentdamping  OBJECT-TYPE
     SYNTAX      Counter32
@@ -56898,7 +57253,7 @@ currentdamping  OBJECT-TYPE
 "
 SMTP Connection damping
 "
-    ::= {currentStats 15}
+    ::= {currentStats 16}
 
 currentdkimpre  OBJECT-TYPE
     SYNTAX      Counter32
@@ -56908,7 +57263,7 @@ currentdkimpre  OBJECT-TYPE
 "
 DKIM pre Check
 "
-    ::= {currentStats 16}
+    ::= {currentStats 17}
 
 currentscripts  OBJECT-TYPE
     SYNTAX      Counter32
@@ -56918,7 +57273,7 @@ currentscripts  OBJECT-TYPE
 "
 Scripts
 "
-    ::= {currentStats 17}
+    ::= {currentStats 18}
 
 currentdamptime  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -56928,7 +57283,7 @@ currentdamptime  OBJECT-TYPE
 "
 stolen time by damping
 "
-    ::= {currentStats 19}
+    ::= {currentStats 20}
 
 currentpbdenied  OBJECT-TYPE
     SYNTAX      Counter32
@@ -56938,7 +57293,7 @@ currentpbdenied  OBJECT-TYPE
 "
 Penalty Box
 "
-    ::= {currentStats 21}
+    ::= {currentStats 22}
 
 currentrblfails  OBJECT-TYPE
     SYNTAX      Counter32
@@ -56948,7 +57303,7 @@ currentrblfails  OBJECT-TYPE
 "
 RBL Failures
 "
-    ::= {currentStats 22}
+    ::= {currentStats 23}
 
 currentsmtpConn  OBJECT-TYPE
     SYNTAX      Counter32
@@ -56958,7 +57313,7 @@ currentsmtpConn  OBJECT-TYPE
 "
 Accepted Logged SMTP Connections
 "
-    ::= {currentStats 23}
+    ::= {currentStats 24}
 
 currentspffails  OBJECT-TYPE
     SYNTAX      Counter32
@@ -56968,7 +57323,7 @@ currentspffails  OBJECT-TYPE
 "
 SPF Failures
 "
-    ::= {currentStats 24}
+    ::= {currentStats 25}
 
 currentstatConn  OBJECT-TYPE
     SYNTAX      Counter32
@@ -56978,7 +57333,7 @@ currentstatConn  OBJECT-TYPE
 "
 Stat Connections Accepted
 "
-    ::= {currentStats 25}
+    ::= {currentStats 26}
 
 currentavgdamped  OBJECT-TYPE
     SYNTAX      Counter32
@@ -56988,7 +57343,7 @@ currentavgdamped  OBJECT-TYPE
 "
 
 "
-    ::= {currentStats 26}
+    ::= {currentStats 27}
 
 currentbombBlack  OBJECT-TYPE
     SYNTAX      Counter32
@@ -56998,7 +57353,7 @@ currentbombBlack  OBJECT-TYPE
 "
 Black Regex
 "
-    ::= {currentStats 27}
+    ::= {currentStats 28}
 
 currentmsgNoRcpt  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57008,7 +57363,7 @@ currentmsgNoRcpt  OBJECT-TYPE
 "
 Empty Recipient
 "
-    ::= {currentStats 28}
+    ::= {currentStats 29}
 
 currentmsgPerDay  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57018,7 +57373,7 @@ currentmsgPerDay  OBJECT-TYPE
 "
 
 "
-    ::= {currentStats 29}
+    ::= {currentStats 30}
 
 currentmsgverify  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57028,7 +57383,7 @@ currentmsgverify  OBJECT-TYPE
 "
 uuencoded and Header error
 "
-    ::= {currentStats 30}
+    ::= {currentStats 31}
 
 currentpbextreme  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57038,7 +57393,7 @@ currentpbextreme  OBJECT-TYPE
 "
 PenaltyBox Extreme
 "
-    ::= {currentStats 31}
+    ::= {currentStats 32}
 
 currentpreHeader  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57048,7 +57403,7 @@ currentpreHeader  OBJECT-TYPE
 "
 early (pre)Header
 "
-    ::= {currentStats 32}
+    ::= {currentStats 33}
 
 currentsbblocked  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57058,7 +57413,7 @@ currentsbblocked  OBJECT-TYPE
 "
 CountryCode blocked
 "
-    ::= {currentStats 34}
+    ::= {currentStats 35}
 
 currentspamlover  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57068,7 +57423,7 @@ currentspamlover  OBJECT-TYPE
 "
 Spamlover Spams Passed
 "
-    ::= {currentStats 35}
+    ::= {currentStats 36}
 
 currentstarttime  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57078,7 +57433,7 @@ currentstarttime  OBJECT-TYPE
 "
 
 "
-    ::= {currentStats 36}
+    ::= {currentStats 37}
 
 currentstatstart  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -57088,7 +57443,7 @@ currentstatstart  OBJECT-TYPE
 "
 
 "
-    ::= {currentStats 37}
+    ::= {currentStats 38}
 
 currentAUTHErrors  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57098,7 +57453,7 @@ currentAUTHErrors  OBJECT-TYPE
 "
 By AUTH Errors Count
 "
-    ::= {currentStats 38}
+    ::= {currentStats 39}
 
 currentbatvErrors  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57108,7 +57463,7 @@ currentbatvErrors  OBJECT-TYPE
 "
 BATV Errors
 "
-    ::= {currentStats 39}
+    ::= {currentStats 40}
 
 currentbombSender  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57118,7 +57473,7 @@ currentbombSender  OBJECT-TYPE
 "
 Bomb - Sender/Header Regex
 "
-    ::= {currentStats 40}
+    ::= {currentStats 41}
 
 currentforgedHelo  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57128,7 +57483,7 @@ currentforgedHelo  OBJECT-TYPE
 "
 HELO Forged
 "
-    ::= {currentStats 41}
+    ::= {currentStats 42}
 
 currenthelolisted  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57138,7 +57493,7 @@ currenthelolisted  OBJECT-TYPE
 "
 HELO Blacklisted
 "
-    ::= {currentStats 42}
+    ::= {currentStats 43}
 
 currentmsgDelayed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57148,7 +57503,7 @@ currentmsgDelayed  OBJECT-TYPE
 "
 Delayed/Greylisted
 "
-    ::= {currentStats 43}
+    ::= {currentStats 44}
 
 currentmsgscoring  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57158,7 +57513,7 @@ currentmsgscoring  OBJECT-TYPE
 "
 Message Scoring
 "
-    ::= {currentStats 44}
+    ::= {currentStats 45}
 
 currentmxaMissing  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57168,7 +57523,7 @@ currentmxaMissing  OBJECT-TYPE
 "
 Missing MX and A Record
 "
-    ::= {currentStats 45}
+    ::= {currentStats 46}
 
 currentnextUpload  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57178,7 +57533,7 @@ currentnextUpload  OBJECT-TYPE
 "
 
 "
-    ::= {currentStats 46}
+    ::= {currentStats 47}
 
 currentpctBlocked  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57188,7 +57543,7 @@ currentpctBlocked  OBJECT-TYPE
 "
 Non-Local Mail Blocked
 "
-    ::= {currentStats 47}
+    ::= {currentStats 48}
 
 currentptrInvalid  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57198,7 +57553,7 @@ currentptrInvalid  OBJECT-TYPE
 "
 Invalid PTR Record
 "
-    ::= {currentStats 48}
+    ::= {currentStats 49}
 
 currentptrMissing  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57208,7 +57563,7 @@ currentptrMissing  OBJECT-TYPE
 "
 Missing PTR Record
 "
-    ::= {currentStats 49}
+    ::= {currentStats 50}
 
 currentspambucket  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57218,7 +57573,7 @@ currentspambucket  OBJECT-TYPE
 "
 Spam Collected Messages
 "
-    ::= {currentStats 51}
+    ::= {currentStats 52}
 
 currenturiblfails  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57228,7 +57583,7 @@ currenturiblfails  OBJECT-TYPE
 "
 URIBL Failures
 "
-    ::= {currentStats 52}
+    ::= {currentStats 53}
 
 currentblacklisted  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57238,7 +57593,7 @@ currentblacklisted  OBJECT-TYPE
 "
 Domains Blacklisted
 "
-    ::= {currentStats 53}
+    ::= {currentStats 54}
 
 currentcpuBusyTime  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57248,7 +57603,7 @@ currentcpuBusyTime  OBJECT-TYPE
 "
 
 "
-    ::= {currentStats 54}
+    ::= {currentStats 55}
 
 currentinvalidHelo  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57258,7 +57613,7 @@ currentinvalidHelo  OBJECT-TYPE
 "
 HELO Invalid
 "
-    ::= {currentStats 55}
+    ::= {currentStats 56}
 
 currentpenaltytrap  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57268,7 +57623,7 @@ currentpenaltytrap  OBJECT-TYPE
 "
 Penalty Trap Messages
 "
-    ::= {currentStats 56}
+    ::= {currentStats 57}
 
 currentrcptDelayed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57278,7 +57633,7 @@ currentrcptDelayed  OBJECT-TYPE
 "
 Delayed Recipients
 "
-    ::= {currentStats 57}
+    ::= {currentStats 58}
 
 currentsmtpConnSSL  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57288,7 +57643,7 @@ currentsmtpConnSSL  OBJECT-TYPE
 "
 SSL-Port SMTP Connections
 "
-    ::= {currentStats 58}
+    ::= {currentStats 59}
 
 currentsmtpConnTLS  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57298,7 +57653,7 @@ currentsmtpConnTLS  OBJECT-TYPE
 "
 STARTTLS SMTP Connections
 "
-    ::= {currentStats 59}
+    ::= {currentStats 60}
 
 currentcrashAnalyze  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57308,7 +57663,7 @@ currentcrashAnalyze  OBJECT-TYPE
 "
 Crash Analyzer
 "
-    ::= {currentStats 61}
+    ::= {currentStats 62}
 
 currentmsgMaxErrors  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57318,7 +57673,7 @@ currentmsgMaxErrors  OBJECT-TYPE
 "
 Max Errors Exceeded
 "
-    ::= {currentStats 62}
+    ::= {currentStats 63}
 
 currentnoprocessing  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57328,7 +57683,7 @@ currentnoprocessing  OBJECT-TYPE
 "
 Noprocessing
 "
-    ::= {currentStats 63}
+    ::= {currentStats 64}
 
 currentviridetected  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57338,7 +57693,7 @@ currentviridetected  OBJECT-TYPE
 "
 Viruses Detected
 "
-    ::= {currentStats 64}
+    ::= {currentStats 65}
 
 currentadmConnDenied  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57348,7 +57703,7 @@ currentadmConnDenied  OBJECT-TYPE
 "
 Admin Connections Rejected
 "
-    ::= {currentStats 65}
+    ::= {currentStats 66}
 
 currentrcptEmbargoed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57358,7 +57713,7 @@ currentrcptEmbargoed  OBJECT-TYPE
 "
 Embargoed Recipients
 "
-    ::= {currentStats 66}
+    ::= {currentStats 67}
 
 currentrcptReportHam  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57368,7 +57723,7 @@ currentrcptReportHam  OBJECT-TYPE
 "
 Ham Reports
 "
-    ::= {currentStats 67}
+    ::= {currentStats 68}
 
 currentrcptSpamLover  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57378,7 +57733,7 @@ currentrcptSpamLover  OBJECT-TYPE
 "
 Spam-Lover Recipients
 "
-    ::= {currentStats 68}
+    ::= {currentStats 69}
 
 currentrcptUnchecked  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57388,7 +57743,7 @@ currentrcptUnchecked  OBJECT-TYPE
 "
 Unchecked Recipients
 "
-    ::= {currentStats 69}
+    ::= {currentStats 70}
 
 currentrcptValidated  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57398,7 +57753,7 @@ currentrcptValidated  OBJECT-TYPE
 "
 Validated Recipients
 "
-    ::= {currentStats 70}
+    ::= {currentStats 71}
 
 currentsmtpConnLimit  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57408,7 +57763,7 @@ currentsmtpConnLimit  OBJECT-TYPE
 "
 Overall Limits
 "
-    ::= {currentStats 71}
+    ::= {currentStats 72}
 
 currentdenyConnection  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57418,7 +57773,7 @@ currentdenyConnection  OBJECT-TYPE
 "
 Deny Connection
 "
-    ::= {currentStats 74}
+    ::= {currentStats 75}
 
 currentlocalFrequency  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57428,7 +57783,7 @@ currentlocalFrequency  OBJECT-TYPE
 "
 local frequency
 "
-    ::= {currentStats 75}
+    ::= {currentStats 76}
 
 currentmsgNoSRSBounce  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57438,7 +57793,7 @@ currentmsgNoSRSBounce  OBJECT-TYPE
 "
 Unsigned SRS Bounces
 "
-    ::= {currentStats 76}
+    ::= {currentStats 77}
 
 currentrcptReportSpam  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57448,7 +57803,7 @@ currentrcptReportSpam  OBJECT-TYPE
 "
 Spam Reports
 "
-    ::= {currentStats 77}
+    ::= {currentStats 78}
 
 currentrcptSpamBucket  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57458,7 +57813,7 @@ currentrcptSpamBucket  OBJECT-TYPE
 "
 Spam Bucketed Recipients
 "
-    ::= {currentStats 78}
+    ::= {currentStats 79}
 
 currentsmtpConnDenied  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57468,7 +57823,7 @@ currentsmtpConnDenied  OBJECT-TYPE
 "
 Denied SMTP Connections (enforced Extreme)
 "
-    ::= {currentStats 79}
+    ::= {currentStats 80}
 
 currentstatConnDenied  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57478,7 +57833,7 @@ currentstatConnDenied  OBJECT-TYPE
 "
 Stat Connections Rejected
 "
-    ::= {currentStats 80}
+    ::= {currentStats 81}
 
 currentdelayConnection  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57488,7 +57843,7 @@ currentdelayConnection  OBJECT-TYPE
 "
 By Delay on PB
 "
-    ::= {currentStats 81}
+    ::= {currentStats 82}
 
 currentdenyConnectionA  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57498,7 +57853,7 @@ currentdenyConnectionA  OBJECT-TYPE
 "
 Denied SMTP Connections (strict)
 "
-    ::= {currentStats 82}
+    ::= {currentStats 83}
 
 currentrcptDelayedLate  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57508,7 +57863,7 @@ currentrcptDelayedLate  OBJECT-TYPE
 "
 Delayed (Late) Recipients
 "
-    ::= {currentStats 83}
+    ::= {currentStats 84}
 
 currentrcptNonexistent  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57518,7 +57873,7 @@ currentrcptNonexistent  OBJECT-TYPE
 "
 Nonexistent Recipients
 "
-    ::= {currentStats 84}
+    ::= {currentStats 85}
 
 currentrcptUnprocessed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57528,7 +57883,7 @@ currentrcptUnprocessed  OBJECT-TYPE
 "
 Noprocessed Recipients
 "
-    ::= {currentStats 85}
+    ::= {currentStats 86}
 
 currentrcptWhitelisted  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57538,7 +57893,7 @@ currentrcptWhitelisted  OBJECT-TYPE
 "
 Whitelisted Recipients
 "
-    ::= {currentStats 86}
+    ::= {currentStats 87}
 
 currentsmtpConnLimitIP  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57548,7 +57903,7 @@ currentsmtpConnLimitIP  OBJECT-TYPE
 "
 By IP Limits
 "
-    ::= {currentStats 87}
+    ::= {currentStats 88}
 
 currentsmtpSameSubject  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57558,7 +57913,7 @@ currentsmtpSameSubject  OBJECT-TYPE
 "
 By Same Subjects Limits
 "
-    ::= {currentStats 88}
+    ::= {currentStats 89}
 
 currentmsgMSGIDtrErrors  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57568,7 +57923,7 @@ currentmsgMSGIDtrErrors  OBJECT-TYPE
 "
 MSGID signing Errors
 "
-    ::= {currentStats 90}
+    ::= {currentStats 91}
 
 currentmsgMaxVRFYErrors  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57578,7 +57933,7 @@ currentmsgMaxVRFYErrors  OBJECT-TYPE
 "
 Max VRFY Errors
 "
-    ::= {currentStats 91}
+    ::= {currentStats 92}
 
 currentsmtpConnDomainIP  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57588,7 +57943,7 @@ currentsmtpConnDomainIP  OBJECT-TYPE
 "
 By Domain IP Limits
 "
-    ::= {currentStats 93}
+    ::= {currentStats 94}
 
 currentinternaladdresses  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57598,7 +57953,7 @@ currentinternaladdresses  OBJECT-TYPE
 "
 Invalid Internal Mail
 "
-    ::= {currentStats 94}
+    ::= {currentStats 95}
 
 currentrcptAcceptedLocal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57608,7 +57963,7 @@ currentrcptAcceptedLocal  OBJECT-TYPE
 "
 Local Recipients Accepted
 "
-    ::= {currentStats 95}
+    ::= {currentStats 96}
 
 currentrcptRelayRejected  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57618,7 +57973,7 @@ currentrcptRelayRejected  OBJECT-TYPE
 "
 Relay Attempts Rejected
 "
-    ::= {currentStats 99}
+    ::= {currentStats 100}
 
 currentsmtpConnLimitFreq  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57628,7 +57983,7 @@ currentsmtpConnLimitFreq  OBJECT-TYPE
 "
 By IP Frequency Limits
 "
-    ::= {currentStats 100}
+    ::= {currentStats 101}
 
 currentsmtpConnNotLogged  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57638,7 +57993,7 @@ currentsmtpConnNotLogged  OBJECT-TYPE
 "
 Not Logged SMTP Connections
 "
-    ::= {currentStats 101}
+    ::= {currentStats 102}
 
 currentrcptDelayedExpired  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57648,7 +58003,7 @@ currentrcptDelayedExpired  OBJECT-TYPE
 "
 Delayed (Expired) Recipients
 "
-    ::= {currentStats 103}
+    ::= {currentStats 104}
 
 currentrcptNotWhitelisted  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57658,7 +58013,7 @@ currentrcptNotWhitelisted  OBJECT-TYPE
 "
 Not Whitelisted Recipients
 "
-    ::= {currentStats 104}
+    ::= {currentStats 105}
 
 currentsenderInvalidLocals  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57668,7 +58023,7 @@ currentsenderInvalidLocals  OBJECT-TYPE
 "
 Invalid Sender
 "
-    ::= {currentStats 106}
+    ::= {currentStats 107}
 
 currentsmtpConnIdleTimeout  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57678,7 +58033,7 @@ currentsmtpConnIdleTimeout  OBJECT-TYPE
 "
 SMTP Connections Timeout
 "
-    ::= {currentStats 107}
+    ::= {currentStats 108}
 
 currentmsgBackscatterErrors  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57688,7 +58043,7 @@ currentmsgBackscatterErrors  OBJECT-TYPE
 "
 BackScatter Errors
 "
-    ::= {currentStats 108}
+    ::= {currentStats 109}
 
 currentrcptReportRedlistAdd  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57698,7 +58053,7 @@ currentrcptReportRedlistAdd  OBJECT-TYPE
 "
 Redlist Additions
 "
-    ::= {currentStats 109}
+    ::= {currentStats 110}
 
 currentrcptReportWhitelistAdd  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57708,7 +58063,7 @@ currentrcptReportWhitelistAdd  OBJECT-TYPE
 "
 Whitelist Additions
 "
-    ::= {currentStats 112}
+    ::= {currentStats 113}
 
 currentsmtpConcurrentSessions  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57718,7 +58073,7 @@ currentsmtpConcurrentSessions  OBJECT-TYPE
 "
 
 "
-    ::= {currentStats 113}
+    ::= {currentStats 114}
 
 currentsmtpConnSSLIdleTimeout  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57728,7 +58083,7 @@ currentsmtpConnSSLIdleTimeout  OBJECT-TYPE
 "
 SMTP SSL-Port-Connections Timeout
 "
-    ::= {currentStats 114}
+    ::= {currentStats 115}
 
 currentsmtpConnTLSIdleTimeout  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57738,7 +58093,7 @@ currentsmtpConnTLSIdleTimeout  OBJECT-TYPE
 "
 SMTP STARTTLS-Connections Timeout
 "
-    ::= {currentStats 115}
+    ::= {currentStats 116}
 
 currentrcptReportRedlistRemove  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57748,7 +58103,7 @@ currentrcptReportRedlistRemove  OBJECT-TYPE
 "
 Redlist Deletions
 "
-    ::= {currentStats 116}
+    ::= {currentStats 117}
 
 currentrcptReportWhitelistRemove  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57758,7 +58113,7 @@ currentrcptReportWhitelistRemove  OBJECT-TYPE
 "
 Whitelist Deletions
 "
-    ::= {currentStats 117}
+    ::= {currentStats 118}
 
 currentsmtpMaxConcurrentSessions  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57768,7 +58123,7 @@ currentsmtpMaxConcurrentSessions  OBJECT-TYPE
 "
 Concurrent SMTP Sessions
 "
-    ::= {currentStats 118}
+    ::= {currentStats 119}
 
 cumulDCC  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57830,6 +58185,16 @@ Bomb Regex
 "
     ::= {cumulativeStat 5}
 
+cumuldmarc  OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+DMARC
+"
+    ::= {cumulativeStat 6}
+
 cumulFakeMX  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
@@ -57838,7 +58203,7 @@ cumulFakeMX  OBJECT-TYPE
 "
 ASSP_FakeMX Plugin
 "
-    ::= {cumulativeStat 6}
+    ::= {cumulativeStat 7}
 
 cumulbspams  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57848,7 +58213,7 @@ cumulbspams  OBJECT-TYPE
 "
 Bayesian/HMM Spams
 "
-    ::= {cumulativeStat 7}
+    ::= {cumulativeStat 8}
 
 cumulcpuAvg  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57858,7 +58223,7 @@ cumulcpuAvg  OBJECT-TYPE
 "
 CPU Usage
 "
-    ::= {cumulativeStat 8}
+    ::= {cumulativeStat 9}
 
 cumullocals  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57868,7 +58233,7 @@ cumullocals  OBJECT-TYPE
 "
 Local
 "
-    ::= {cumulativeStat 9}
+    ::= {cumulativeStat 10}
 
 cumuluptime  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -57878,7 +58243,7 @@ cumuluptime  OBJECT-TYPE
 "
 ASSP Proxy Uptime
 "
-    ::= {cumulativeStat 10}
+    ::= {cumulativeStat 11}
 
 cumulwhites  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57888,7 +58253,7 @@ cumulwhites  OBJECT-TYPE
 "
 Whitelisted
 "
-    ::= {cumulativeStat 11}
+    ::= {cumulativeStat 12}
 
 cumulmailCount  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57898,7 +58263,7 @@ cumulmailCount  OBJECT-TYPE
 "
 
 "
-    ::= {cumulativeStat 12}
+    ::= {cumulativeStat 13}
 
 cumuladmConn  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57908,7 +58273,7 @@ cumuladmConn  OBJECT-TYPE
 "
 Admin Connections Accepted
 "
-    ::= {cumulativeStat 13}
+    ::= {cumulativeStat 14}
 
 cumulcpuTime  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57918,7 +58283,7 @@ cumulcpuTime  OBJECT-TYPE
 "
 
 "
-    ::= {cumulativeStat 14}
+    ::= {cumulativeStat 15}
 
 cumuldamping  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57928,7 +58293,7 @@ cumuldamping  OBJECT-TYPE
 "
 SMTP Connection damping
 "
-    ::= {cumulativeStat 15}
+    ::= {cumulativeStat 16}
 
 cumuldkimpre  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57938,7 +58303,7 @@ cumuldkimpre  OBJECT-TYPE
 "
 DKIM pre Check
 "
-    ::= {cumulativeStat 16}
+    ::= {cumulativeStat 17}
 
 cumulscripts  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57948,7 +58313,7 @@ cumulscripts  OBJECT-TYPE
 "
 Scripts
 "
-    ::= {cumulativeStat 17}
+    ::= {cumulativeStat 18}
 
 cumulversion  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57958,7 +58323,7 @@ cumulversion  OBJECT-TYPE
 "
 
 "
-    ::= {cumulativeStat 18}
+    ::= {cumulativeStat 19}
 
 cumuldamptime  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -57968,7 +58333,7 @@ cumuldamptime  OBJECT-TYPE
 "
 stolen time by damping
 "
-    ::= {cumulativeStat 19}
+    ::= {cumulativeStat 20}
 
 cumulpbdenied  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57978,7 +58343,7 @@ cumulpbdenied  OBJECT-TYPE
 "
 Penalty Box
 "
-    ::= {cumulativeStat 21}
+    ::= {cumulativeStat 22}
 
 cumulrblfails  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57988,7 +58353,7 @@ cumulrblfails  OBJECT-TYPE
 "
 RBL Failures
 "
-    ::= {cumulativeStat 22}
+    ::= {cumulativeStat 23}
 
 cumulsmtpConn  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57998,7 +58363,7 @@ cumulsmtpConn  OBJECT-TYPE
 "
 Accepted Logged SMTP Connections
 "
-    ::= {cumulativeStat 23}
+    ::= {cumulativeStat 24}
 
 cumulspffails  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58008,7 +58373,7 @@ cumulspffails  OBJECT-TYPE
 "
 SPF Failures
 "
-    ::= {cumulativeStat 24}
+    ::= {cumulativeStat 25}
 
 cumulstatConn  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58018,7 +58383,7 @@ cumulstatConn  OBJECT-TYPE
 "
 Stat Connections Accepted
 "
-    ::= {cumulativeStat 25}
+    ::= {cumulativeStat 26}
 
 cumulavgdamped  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -58028,7 +58393,7 @@ cumulavgdamped  OBJECT-TYPE
 "
 
 "
-    ::= {cumulativeStat 26}
+    ::= {cumulativeStat 27}
 
 cumulbombBlack  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58038,7 +58403,7 @@ cumulbombBlack  OBJECT-TYPE
 "
 Black Regex
 "
-    ::= {cumulativeStat 27}
+    ::= {cumulativeStat 28}
 
 cumulmsgNoRcpt  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58048,7 +58413,7 @@ cumulmsgNoRcpt  OBJECT-TYPE
 "
 Empty Recipient
 "
-    ::= {cumulativeStat 28}
+    ::= {cumulativeStat 29}
 
 cumulmsgPerDay  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58058,7 +58423,7 @@ cumulmsgPerDay  OBJECT-TYPE
 "
 
 "
-    ::= {cumulativeStat 29}
+    ::= {cumulativeStat 30}
 
 cumulmsgverify  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58068,7 +58433,7 @@ cumulmsgverify  OBJECT-TYPE
 "
 uuencoded and Header error
 "
-    ::= {cumulativeStat 30}
+    ::= {cumulativeStat 31}
 
 cumulpbextreme  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58078,7 +58443,7 @@ cumulpbextreme  OBJECT-TYPE
 "
 PenaltyBox Extreme
 "
-    ::= {cumulativeStat 31}
+    ::= {cumulativeStat 32}
 
 cumulpreHeader  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58088,7 +58453,7 @@ cumulpreHeader  OBJECT-TYPE
 "
 early (pre)Header
 "
-    ::= {cumulativeStat 32}
+    ::= {cumulativeStat 33}
 
 cumulsbblocked  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58098,7 +58463,7 @@ cumulsbblocked  OBJECT-TYPE
 "
 CountryCode blocked
 "
-    ::= {cumulativeStat 34}
+    ::= {cumulativeStat 35}
 
 cumulspamlover  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58108,7 +58473,7 @@ cumulspamlover  OBJECT-TYPE
 "
 Spamlover Spams Passed
 "
-    ::= {cumulativeStat 35}
+    ::= {cumulativeStat 36}
 
 cumulstarttime  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58118,7 +58483,7 @@ cumulstarttime  OBJECT-TYPE
 "
 
 "
-    ::= {cumulativeStat 36}
+    ::= {cumulativeStat 37}
 
 cumulstatstart  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -58128,7 +58493,7 @@ cumulstatstart  OBJECT-TYPE
 "
 
 "
-    ::= {cumulativeStat 37}
+    ::= {cumulativeStat 38}
 
 cumulAUTHErrors  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58138,7 +58503,7 @@ cumulAUTHErrors  OBJECT-TYPE
 "
 By AUTH Errors Count
 "
-    ::= {cumulativeStat 38}
+    ::= {cumulativeStat 39}
 
 cumulbatvErrors  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58148,7 +58513,7 @@ cumulbatvErrors  OBJECT-TYPE
 "
 BATV Errors
 "
-    ::= {cumulativeStat 39}
+    ::= {cumulativeStat 40}
 
 cumulbombSender  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58158,7 +58523,7 @@ cumulbombSender  OBJECT-TYPE
 "
 Bomb - Sender/Header Regex
 "
-    ::= {cumulativeStat 40}
+    ::= {cumulativeStat 41}
 
 cumulforgedHelo  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58168,7 +58533,7 @@ cumulforgedHelo  OBJECT-TYPE
 "
 HELO Forged
 "
-    ::= {cumulativeStat 41}
+    ::= {cumulativeStat 42}
 
 cumulhelolisted  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58178,7 +58543,7 @@ cumulhelolisted  OBJECT-TYPE
 "
 HELO Blacklisted
 "
-    ::= {cumulativeStat 42}
+    ::= {cumulativeStat 43}
 
 cumulmsgDelayed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58188,7 +58553,7 @@ cumulmsgDelayed  OBJECT-TYPE
 "
 Delayed/Greylisted
 "
-    ::= {cumulativeStat 43}
+    ::= {cumulativeStat 44}
 
 cumulmsgscoring  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58198,7 +58563,7 @@ cumulmsgscoring  OBJECT-TYPE
 "
 Message Scoring
 "
-    ::= {cumulativeStat 44}
+    ::= {cumulativeStat 45}
 
 cumulmxaMissing  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58208,7 +58573,7 @@ cumulmxaMissing  OBJECT-TYPE
 "
 Missing MX and A Record
 "
-    ::= {cumulativeStat 45}
+    ::= {cumulativeStat 46}
 
 cumulnextUpload  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58218,7 +58583,7 @@ cumulnextUpload  OBJECT-TYPE
 "
 
 "
-    ::= {cumulativeStat 46}
+    ::= {cumulativeStat 47}
 
 cumulpctBlocked  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58228,7 +58593,7 @@ cumulpctBlocked  OBJECT-TYPE
 "
 Non-Local Mail Blocked
 "
-    ::= {cumulativeStat 47}
+    ::= {cumulativeStat 48}
 
 cumulptrInvalid  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58238,7 +58603,7 @@ cumulptrInvalid  OBJECT-TYPE
 "
 Invalid PTR Record
 "
-    ::= {cumulativeStat 48}
+    ::= {cumulativeStat 49}
 
 cumulptrMissing  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58248,7 +58613,7 @@ cumulptrMissing  OBJECT-TYPE
 "
 Missing PTR Record
 "
-    ::= {cumulativeStat 49}
+    ::= {cumulativeStat 50}
 
 cumulspambucket  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58258,7 +58623,7 @@ cumulspambucket  OBJECT-TYPE
 "
 Spam Collected Messages
 "
-    ::= {cumulativeStat 51}
+    ::= {cumulativeStat 52}
 
 cumuluriblfails  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58268,7 +58633,7 @@ cumuluriblfails  OBJECT-TYPE
 "
 URIBL Failures
 "
-    ::= {cumulativeStat 52}
+    ::= {cumulativeStat 53}
 
 cumulblacklisted  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58278,7 +58643,7 @@ cumulblacklisted  OBJECT-TYPE
 "
 Domains Blacklisted
 "
-    ::= {cumulativeStat 53}
+    ::= {cumulativeStat 54}
 
 cumulcpuBusyTime  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58288,7 +58653,7 @@ cumulcpuBusyTime  OBJECT-TYPE
 "
 
 "
-    ::= {cumulativeStat 54}
+    ::= {cumulativeStat 55}
 
 cumulinvalidHelo  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58298,7 +58663,7 @@ cumulinvalidHelo  OBJECT-TYPE
 "
 HELO Invalid
 "
-    ::= {cumulativeStat 55}
+    ::= {cumulativeStat 56}
 
 cumulpenaltytrap  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58308,7 +58673,7 @@ cumulpenaltytrap  OBJECT-TYPE
 "
 Penalty Trap Messages
 "
-    ::= {cumulativeStat 56}
+    ::= {cumulativeStat 57}
 
 cumulrcptDelayed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58318,7 +58683,7 @@ cumulrcptDelayed  OBJECT-TYPE
 "
 Delayed Recipients
 "
-    ::= {cumulativeStat 57}
+    ::= {cumulativeStat 58}
 
 cumulsmtpConnSSL  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58328,7 +58693,7 @@ cumulsmtpConnSSL  OBJECT-TYPE
 "
 SSL-Port SMTP Connections
 "
-    ::= {cumulativeStat 58}
+    ::= {cumulativeStat 59}
 
 cumulsmtpConnTLS  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58338,7 +58703,7 @@ cumulsmtpConnTLS  OBJECT-TYPE
 "
 STARTTLS SMTP Connections
 "
-    ::= {cumulativeStat 59}
+    ::= {cumulativeStat 60}
 
 cumulcrashAnalyze  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58348,7 +58713,7 @@ cumulcrashAnalyze  OBJECT-TYPE
 "
 Crash Analyzer
 "
-    ::= {cumulativeStat 61}
+    ::= {cumulativeStat 62}
 
 cumulmsgMaxErrors  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58358,7 +58723,7 @@ cumulmsgMaxErrors  OBJECT-TYPE
 "
 Max Errors Exceeded
 "
-    ::= {cumulativeStat 62}
+    ::= {cumulativeStat 63}
 
 cumulnoprocessing  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58368,7 +58733,7 @@ cumulnoprocessing  OBJECT-TYPE
 "
 Noprocessing
 "
-    ::= {cumulativeStat 63}
+    ::= {cumulativeStat 64}
 
 cumulviridetected  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58378,7 +58743,7 @@ cumulviridetected  OBJECT-TYPE
 "
 Viruses Detected
 "
-    ::= {cumulativeStat 64}
+    ::= {cumulativeStat 65}
 
 cumuladmConnDenied  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58388,7 +58753,7 @@ cumuladmConnDenied  OBJECT-TYPE
 "
 Admin Connections Rejected
 "
-    ::= {cumulativeStat 65}
+    ::= {cumulativeStat 66}
 
 cumulrcptEmbargoed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58398,7 +58763,7 @@ cumulrcptEmbargoed  OBJECT-TYPE
 "
 Embargoed Recipients
 "
-    ::= {cumulativeStat 66}
+    ::= {cumulativeStat 67}
 
 cumulrcptReportHam  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58408,7 +58773,7 @@ cumulrcptReportHam  OBJECT-TYPE
 "
 Ham Reports
 "
-    ::= {cumulativeStat 67}
+    ::= {cumulativeStat 68}
 
 cumulrcptSpamLover  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58418,7 +58783,7 @@ cumulrcptSpamLover  OBJECT-TYPE
 "
 Spam-Lover Recipients
 "
-    ::= {cumulativeStat 68}
+    ::= {cumulativeStat 69}
 
 cumulrcptUnchecked  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58428,7 +58793,7 @@ cumulrcptUnchecked  OBJECT-TYPE
 "
 Unchecked Recipients
 "
-    ::= {cumulativeStat 69}
+    ::= {cumulativeStat 70}
 
 cumulrcptValidated  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58438,7 +58803,7 @@ cumulrcptValidated  OBJECT-TYPE
 "
 Validated Recipients
 "
-    ::= {cumulativeStat 70}
+    ::= {cumulativeStat 71}
 
 cumulsmtpConnLimit  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58448,7 +58813,7 @@ cumulsmtpConnLimit  OBJECT-TYPE
 "
 Overall Limits
 "
-    ::= {cumulativeStat 71}
+    ::= {cumulativeStat 72}
 
 cumuldenyConnection  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58458,7 +58823,7 @@ cumuldenyConnection  OBJECT-TYPE
 "
 Deny Connection
 "
-    ::= {cumulativeStat 74}
+    ::= {cumulativeStat 75}
 
 cumullocalFrequency  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58468,7 +58833,7 @@ cumullocalFrequency  OBJECT-TYPE
 "
 local frequency
 "
-    ::= {cumulativeStat 75}
+    ::= {cumulativeStat 76}
 
 cumulmsgNoSRSBounce  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58478,7 +58843,7 @@ cumulmsgNoSRSBounce  OBJECT-TYPE
 "
 Unsigned SRS Bounces
 "
-    ::= {cumulativeStat 76}
+    ::= {cumulativeStat 77}
 
 cumulrcptReportSpam  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58488,7 +58853,7 @@ cumulrcptReportSpam  OBJECT-TYPE
 "
 Spam Reports
 "
-    ::= {cumulativeStat 77}
+    ::= {cumulativeStat 78}
 
 cumulrcptSpamBucket  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58498,7 +58863,7 @@ cumulrcptSpamBucket  OBJECT-TYPE
 "
 Spam Bucketed Recipients
 "
-    ::= {cumulativeStat 78}
+    ::= {cumulativeStat 79}
 
 cumulsmtpConnDenied  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58508,7 +58873,7 @@ cumulsmtpConnDenied  OBJECT-TYPE
 "
 Denied SMTP Connections (enforced Extreme)
 "
-    ::= {cumulativeStat 79}
+    ::= {cumulativeStat 80}
 
 cumulstatConnDenied  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58518,7 +58883,7 @@ cumulstatConnDenied  OBJECT-TYPE
 "
 Stat Connections Rejected
 "
-    ::= {cumulativeStat 80}
+    ::= {cumulativeStat 81}
 
 cumuldelayConnection  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58528,7 +58893,7 @@ cumuldelayConnection  OBJECT-TYPE
 "
 By Delay on PB
 "
-    ::= {cumulativeStat 81}
+    ::= {cumulativeStat 82}
 
 cumuldenyConnectionA  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58538,7 +58903,7 @@ cumuldenyConnectionA  OBJECT-TYPE
 "
 Denied SMTP Connections (strict)
 "
-    ::= {cumulativeStat 82}
+    ::= {cumulativeStat 83}
 
 cumulrcptDelayedLate  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58548,7 +58913,7 @@ cumulrcptDelayedLate  OBJECT-TYPE
 "
 Delayed (Late) Recipients
 "
-    ::= {cumulativeStat 83}
+    ::= {cumulativeStat 84}
 
 cumulrcptNonexistent  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58558,7 +58923,7 @@ cumulrcptNonexistent  OBJECT-TYPE
 "
 Nonexistent Recipients
 "
-    ::= {cumulativeStat 84}
+    ::= {cumulativeStat 85}
 
 cumulrcptUnprocessed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58568,7 +58933,7 @@ cumulrcptUnprocessed  OBJECT-TYPE
 "
 Noprocessed Recipients
 "
-    ::= {cumulativeStat 85}
+    ::= {cumulativeStat 86}
 
 cumulrcptWhitelisted  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58578,7 +58943,7 @@ cumulrcptWhitelisted  OBJECT-TYPE
 "
 Whitelisted Recipients
 "
-    ::= {cumulativeStat 86}
+    ::= {cumulativeStat 87}
 
 cumulsmtpConnLimitIP  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58588,7 +58953,7 @@ cumulsmtpConnLimitIP  OBJECT-TYPE
 "
 By IP Limits
 "
-    ::= {cumulativeStat 87}
+    ::= {cumulativeStat 88}
 
 cumulsmtpSameSubject  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58598,7 +58963,7 @@ cumulsmtpSameSubject  OBJECT-TYPE
 "
 By Same Subjects Limits
 "
-    ::= {cumulativeStat 88}
+    ::= {cumulativeStat 89}
 
 cumulmsgMSGIDtrErrors  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58608,7 +58973,7 @@ cumulmsgMSGIDtrErrors  OBJECT-TYPE
 "
 MSGID signing Errors
 "
-    ::= {cumulativeStat 90}
+    ::= {cumulativeStat 91}
 
 cumulmsgMaxVRFYErrors  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58618,7 +58983,7 @@ cumulmsgMaxVRFYErrors  OBJECT-TYPE
 "
 Max VRFY Errors
 "
-    ::= {cumulativeStat 91}
+    ::= {cumulativeStat 92}
 
 cumulsmtpConnDomainIP  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58628,7 +58993,7 @@ cumulsmtpConnDomainIP  OBJECT-TYPE
 "
 By Domain IP Limits
 "
-    ::= {cumulativeStat 93}
+    ::= {cumulativeStat 94}
 
 cumulinternaladdresses  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58638,7 +59003,7 @@ cumulinternaladdresses  OBJECT-TYPE
 "
 Invalid Internal Mail
 "
-    ::= {cumulativeStat 94}
+    ::= {cumulativeStat 95}
 
 cumulrcptAcceptedLocal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58648,7 +59013,7 @@ cumulrcptAcceptedLocal  OBJECT-TYPE
 "
 Local Recipients Accepted
 "
-    ::= {cumulativeStat 95}
+    ::= {cumulativeStat 96}
 
 cumulrcptRelayRejected  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58658,7 +59023,7 @@ cumulrcptRelayRejected  OBJECT-TYPE
 "
 Relay Attempts Rejected
 "
-    ::= {cumulativeStat 99}
+    ::= {cumulativeStat 100}
 
 cumulsmtpConnLimitFreq  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58668,7 +59033,7 @@ cumulsmtpConnLimitFreq  OBJECT-TYPE
 "
 By IP Frequency Limits
 "
-    ::= {cumulativeStat 100}
+    ::= {cumulativeStat 101}
 
 cumulsmtpConnNotLogged  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58678,7 +59043,7 @@ cumulsmtpConnNotLogged  OBJECT-TYPE
 "
 Not Logged SMTP Connections
 "
-    ::= {cumulativeStat 101}
+    ::= {cumulativeStat 102}
 
 cumulrcptDelayedExpired  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58688,7 +59053,7 @@ cumulrcptDelayedExpired  OBJECT-TYPE
 "
 Delayed (Expired) Recipients
 "
-    ::= {cumulativeStat 103}
+    ::= {cumulativeStat 104}
 
 cumulrcptNotWhitelisted  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58698,7 +59063,7 @@ cumulrcptNotWhitelisted  OBJECT-TYPE
 "
 Not Whitelisted Recipients
 "
-    ::= {cumulativeStat 104}
+    ::= {cumulativeStat 105}
 
 cumulsenderInvalidLocals  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58708,7 +59073,7 @@ cumulsenderInvalidLocals  OBJECT-TYPE
 "
 Invalid Sender
 "
-    ::= {cumulativeStat 106}
+    ::= {cumulativeStat 107}
 
 cumulsmtpConnIdleTimeout  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58718,7 +59083,7 @@ cumulsmtpConnIdleTimeout  OBJECT-TYPE
 "
 SMTP Connections Timeout
 "
-    ::= {cumulativeStat 107}
+    ::= {cumulativeStat 108}
 
 cumulmsgBackscatterErrors  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58728,7 +59093,7 @@ cumulmsgBackscatterErrors  OBJECT-TYPE
 "
 BackScatter Errors
 "
-    ::= {cumulativeStat 108}
+    ::= {cumulativeStat 109}
 
 cumulrcptReportRedlistAdd  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58738,7 +59103,7 @@ cumulrcptReportRedlistAdd  OBJECT-TYPE
 "
 Redlist Additions
 "
-    ::= {cumulativeStat 109}
+    ::= {cumulativeStat 110}
 
 cumulrcptReportWhitelistAdd  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58748,7 +59113,7 @@ cumulrcptReportWhitelistAdd  OBJECT-TYPE
 "
 Whitelist Additions
 "
-    ::= {cumulativeStat 112}
+    ::= {cumulativeStat 113}
 
 cumulsmtpConcurrentSessions  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58758,7 +59123,7 @@ cumulsmtpConcurrentSessions  OBJECT-TYPE
 "
 
 "
-    ::= {cumulativeStat 113}
+    ::= {cumulativeStat 114}
 
 cumulsmtpConnSSLIdleTimeout  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58768,7 +59133,7 @@ cumulsmtpConnSSLIdleTimeout  OBJECT-TYPE
 "
 SMTP SSL-Port-Connections Timeout
 "
-    ::= {cumulativeStat 114}
+    ::= {cumulativeStat 115}
 
 cumulsmtpConnTLSIdleTimeout  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58778,7 +59143,7 @@ cumulsmtpConnTLSIdleTimeout  OBJECT-TYPE
 "
 SMTP STARTTLS-Connections Timeout
 "
-    ::= {cumulativeStat 115}
+    ::= {cumulativeStat 116}
 
 cumulrcptReportRedlistRemove  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58788,7 +59153,7 @@ cumulrcptReportRedlistRemove  OBJECT-TYPE
 "
 Redlist Deletions
 "
-    ::= {cumulativeStat 116}
+    ::= {cumulativeStat 117}
 
 cumulrcptReportWhitelistRemove  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58798,7 +59163,7 @@ cumulrcptReportWhitelistRemove  OBJECT-TYPE
 "
 Whitelist Deletions
 "
-    ::= {cumulativeStat 117}
+    ::= {cumulativeStat 118}
 
 cumulsmtpMaxConcurrentSessions  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58808,7 +59173,7 @@ cumulsmtpMaxConcurrentSessions  OBJECT-TYPE
 "
 Concurrent SMTP Sessions
 "
-    ::= {cumulativeStat 118}
+    ::= {cumulativeStat 119}
 
 currentTotmsgTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58818,7 +59183,7 @@ currentTotmsgTotal  OBJECT-TYPE
 "
 Messages Processed
 "
-    ::= {currentTotalStat 20}
+    ::= {currentTotalStat 21}
 
 currentTotrcptTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58828,7 +59193,7 @@ currentTotrcptTotal  OBJECT-TYPE
 "
 Envelope Recipients Processed
 "
-    ::= {currentTotalStat 33}
+    ::= {currentTotalStat 34}
 
 currentTotrcptReport  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58838,7 +59203,7 @@ currentTotrcptReport  OBJECT-TYPE
 "
 Email Reports
 "
-    ::= {currentTotalStat 50}
+    ::= {currentTotalStat 51}
 
 currentTotsmtpConnSSL  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58848,7 +59213,7 @@ currentTotsmtpConnSSL  OBJECT-TYPE
 "
 SSL-Port SMTP Connections
 "
-    ::= {currentTotalStat 58}
+    ::= {currentTotalStat 59}
 
 currentTotsmtpConnTLS  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58858,7 +59223,7 @@ currentTotsmtpConnTLS  OBJECT-TYPE
 "
 STARTTLS SMTP Connections
 "
-    ::= {currentTotalStat 59}
+    ::= {currentTotalStat 60}
 
 currentTotadmConnTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58868,7 +59233,7 @@ currentTotadmConnTotal  OBJECT-TYPE
 "
 Admin Connections Received
 "
-    ::= {currentTotalStat 60}
+    ::= {currentTotalStat 61}
 
 currentTotsmtpConnLimit  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58878,7 +59243,7 @@ currentTotsmtpConnLimit  OBJECT-TYPE
 "
 Overall Limits
 "
-    ::= {currentTotalStat 71}
+    ::= {currentTotalStat 72}
 
 currentTotsmtpConnTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58888,7 +59253,7 @@ currentTotsmtpConnTotal  OBJECT-TYPE
 "
 SMTP Connections Received
 "
-    ::= {currentTotalStat 72}
+    ::= {currentTotalStat 73}
 
 currentTotstatConnTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58898,7 +59263,7 @@ currentTotstatConnTotal  OBJECT-TYPE
 "
 Stat Connections Received
 "
-    ::= {currentTotalStat 73}
+    ::= {currentTotalStat 74}
 
 currentTotrcptUnprocessed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58908,7 +59273,7 @@ currentTotrcptUnprocessed  OBJECT-TYPE
 "
 Noprocessed Recipients
 "
-    ::= {currentTotalStat 85}
+    ::= {currentTotalStat 86}
 
 currentTotmsgAcceptedTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58918,7 +59283,7 @@ currentTotmsgAcceptedTotal  OBJECT-TYPE
 "
 Messages Passed
 "
-    ::= {currentTotalStat 89}
+    ::= {currentTotalStat 90}
 
 currentTotmsgRejectedTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58928,7 +59293,7 @@ currentTotmsgRejectedTotal  OBJECT-TYPE
 "
 Messages Rejected
 "
-    ::= {currentTotalStat 92}
+    ::= {currentTotalStat 93}
 
 currentTotrcptAcceptedLocal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58938,7 +59303,7 @@ currentTotrcptAcceptedLocal  OBJECT-TYPE
 "
 Local Recipients Accepted
 "
-    ::= {currentTotalStat 95}
+    ::= {currentTotalStat 96}
 
 currentTotrcptAcceptedTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58948,7 +59313,7 @@ currentTotrcptAcceptedTotal  OBJECT-TYPE
 "
 Envelope Recipients Accepted
 "
-    ::= {currentTotalStat 96}
+    ::= {currentTotalStat 97}
 
 currentTotrcptRejectedLocal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58958,7 +59323,7 @@ currentTotrcptRejectedLocal  OBJECT-TYPE
 "
 Local Recipients Rejected
 "
-    ::= {currentTotalStat 97}
+    ::= {currentTotalStat 98}
 
 currentTotrcptRejectedTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58968,7 +59333,7 @@ currentTotrcptRejectedTotal  OBJECT-TYPE
 "
 Envelope Recipients Rejected
 "
-    ::= {currentTotalStat 98}
+    ::= {currentTotalStat 99}
 
 currentTotrcptAcceptedRemote  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58978,7 +59343,7 @@ currentTotrcptAcceptedRemote  OBJECT-TYPE
 "
 Remote Recipients Accepted
 "
-    ::= {currentTotalStat 102}
+    ::= {currentTotalStat 103}
 
 currentTotrcptRejectedRemote  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58988,7 +59353,7 @@ currentTotrcptRejectedRemote  OBJECT-TYPE
 "
 Remote Recipients Rejected
 "
-    ::= {currentTotalStat 105}
+    ::= {currentTotalStat 106}
 
 currentTotsmtpConnIdleTimeout  OBJECT-TYPE
     SYNTAX      Counter32
@@ -58998,7 +59363,7 @@ currentTotsmtpConnIdleTimeout  OBJECT-TYPE
 "
 SMTP Connections Timeout
 "
-    ::= {currentTotalStat 107}
+    ::= {currentTotalStat 108}
 
 currentTotsmtpConnAcceptedTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59008,7 +59373,7 @@ currentTotsmtpConnAcceptedTotal  OBJECT-TYPE
 "
 SMTP Connections Accepted
 "
-    ::= {currentTotalStat 110}
+    ::= {currentTotalStat 111}
 
 currentTotsmtpConnRejectedTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59018,7 +59383,7 @@ currentTotsmtpConnRejectedTotal  OBJECT-TYPE
 "
 SMTP Connections Rejected
 "
-    ::= {currentTotalStat 111}
+    ::= {currentTotalStat 112}
 
 currentTotsmtpConnSSLIdleTimeout  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59028,7 +59393,7 @@ currentTotsmtpConnSSLIdleTimeout  OBJECT-TYPE
 "
 SMTP SSL-Port-Connections Timeout
 "
-    ::= {currentTotalStat 114}
+    ::= {currentTotalStat 115}
 
 currentTotsmtpConnTLSIdleTimeout  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59038,7 +59403,7 @@ currentTotsmtpConnTLSIdleTimeout  OBJECT-TYPE
 "
 SMTP STARTTLS-Connections Timeout
 "
-    ::= {currentTotalStat 115}
+    ::= {currentTotalStat 116}
 
 cumulTotmsgTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59048,7 +59413,7 @@ cumulTotmsgTotal  OBJECT-TYPE
 "
 Messages Processed
 "
-    ::= {cumulativeTotalStat 20}
+    ::= {cumulativeTotalStat 21}
 
 cumulTotrcptTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59058,7 +59423,7 @@ cumulTotrcptTotal  OBJECT-TYPE
 "
 Envelope Recipients Processed
 "
-    ::= {cumulativeTotalStat 33}
+    ::= {cumulativeTotalStat 34}
 
 cumulTotrcptReport  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59068,7 +59433,7 @@ cumulTotrcptReport  OBJECT-TYPE
 "
 Email Reports
 "
-    ::= {cumulativeTotalStat 50}
+    ::= {cumulativeTotalStat 51}
 
 cumulTotsmtpConnSSL  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59078,7 +59443,7 @@ cumulTotsmtpConnSSL  OBJECT-TYPE
 "
 SSL-Port SMTP Connections
 "
-    ::= {cumulativeTotalStat 58}
+    ::= {cumulativeTotalStat 59}
 
 cumulTotsmtpConnTLS  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59088,7 +59453,7 @@ cumulTotsmtpConnTLS  OBJECT-TYPE
 "
 STARTTLS SMTP Connections
 "
-    ::= {cumulativeTotalStat 59}
+    ::= {cumulativeTotalStat 60}
 
 cumulTotadmConnTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59098,7 +59463,7 @@ cumulTotadmConnTotal  OBJECT-TYPE
 "
 Admin Connections Received
 "
-    ::= {cumulativeTotalStat 60}
+    ::= {cumulativeTotalStat 61}
 
 cumulTotsmtpConnLimit  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59108,7 +59473,7 @@ cumulTotsmtpConnLimit  OBJECT-TYPE
 "
 Overall Limits
 "
-    ::= {cumulativeTotalStat 71}
+    ::= {cumulativeTotalStat 72}
 
 cumulTotsmtpConnTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59118,7 +59483,7 @@ cumulTotsmtpConnTotal  OBJECT-TYPE
 "
 SMTP Connections Received
 "
-    ::= {cumulativeTotalStat 72}
+    ::= {cumulativeTotalStat 73}
 
 cumulTotstatConnTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59128,7 +59493,7 @@ cumulTotstatConnTotal  OBJECT-TYPE
 "
 Stat Connections Received
 "
-    ::= {cumulativeTotalStat 73}
+    ::= {cumulativeTotalStat 74}
 
 cumulTotrcptUnprocessed  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59138,7 +59503,7 @@ cumulTotrcptUnprocessed  OBJECT-TYPE
 "
 Noprocessed Recipients
 "
-    ::= {cumulativeTotalStat 85}
+    ::= {cumulativeTotalStat 86}
 
 cumulTotmsgAcceptedTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59148,7 +59513,7 @@ cumulTotmsgAcceptedTotal  OBJECT-TYPE
 "
 Messages Passed
 "
-    ::= {cumulativeTotalStat 89}
+    ::= {cumulativeTotalStat 90}
 
 cumulTotmsgRejectedTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59158,7 +59523,7 @@ cumulTotmsgRejectedTotal  OBJECT-TYPE
 "
 Messages Rejected
 "
-    ::= {cumulativeTotalStat 92}
+    ::= {cumulativeTotalStat 93}
 
 cumulTotrcptAcceptedLocal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59168,7 +59533,7 @@ cumulTotrcptAcceptedLocal  OBJECT-TYPE
 "
 Local Recipients Accepted
 "
-    ::= {cumulativeTotalStat 95}
+    ::= {cumulativeTotalStat 96}
 
 cumulTotrcptAcceptedTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59178,7 +59543,7 @@ cumulTotrcptAcceptedTotal  OBJECT-TYPE
 "
 Envelope Recipients Accepted
 "
-    ::= {cumulativeTotalStat 96}
+    ::= {cumulativeTotalStat 97}
 
 cumulTotrcptRejectedLocal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59188,7 +59553,7 @@ cumulTotrcptRejectedLocal  OBJECT-TYPE
 "
 Local Recipients Rejected
 "
-    ::= {cumulativeTotalStat 97}
+    ::= {cumulativeTotalStat 98}
 
 cumulTotrcptRejectedTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59198,7 +59563,7 @@ cumulTotrcptRejectedTotal  OBJECT-TYPE
 "
 Envelope Recipients Rejected
 "
-    ::= {cumulativeTotalStat 98}
+    ::= {cumulativeTotalStat 99}
 
 cumulTotrcptAcceptedRemote  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59208,7 +59573,7 @@ cumulTotrcptAcceptedRemote  OBJECT-TYPE
 "
 Remote Recipients Accepted
 "
-    ::= {cumulativeTotalStat 102}
+    ::= {cumulativeTotalStat 103}
 
 cumulTotrcptRejectedRemote  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59218,7 +59583,7 @@ cumulTotrcptRejectedRemote  OBJECT-TYPE
 "
 Remote Recipients Rejected
 "
-    ::= {cumulativeTotalStat 105}
+    ::= {cumulativeTotalStat 106}
 
 cumulTotsmtpConnIdleTimeout  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59228,7 +59593,7 @@ cumulTotsmtpConnIdleTimeout  OBJECT-TYPE
 "
 SMTP Connections Timeout
 "
-    ::= {cumulativeTotalStat 107}
+    ::= {cumulativeTotalStat 108}
 
 cumulTotsmtpConnAcceptedTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59238,7 +59603,7 @@ cumulTotsmtpConnAcceptedTotal  OBJECT-TYPE
 "
 SMTP Connections Accepted
 "
-    ::= {cumulativeTotalStat 110}
+    ::= {cumulativeTotalStat 111}
 
 cumulTotsmtpConnRejectedTotal  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59248,7 +59613,7 @@ cumulTotsmtpConnRejectedTotal  OBJECT-TYPE
 "
 SMTP Connections Rejected
 "
-    ::= {cumulativeTotalStat 111}
+    ::= {cumulativeTotalStat 112}
 
 cumulTotsmtpConnSSLIdleTimeout  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59258,7 +59623,7 @@ cumulTotsmtpConnSSLIdleTimeout  OBJECT-TYPE
 "
 SMTP SSL-Port-Connections Timeout
 "
-    ::= {cumulativeTotalStat 114}
+    ::= {cumulativeTotalStat 115}
 
 cumulTotsmtpConnTLSIdleTimeout  OBJECT-TYPE
     SYNTAX      Counter32
@@ -59268,7 +59633,7 @@ cumulTotsmtpConnTLSIdleTimeout  OBJECT-TYPE
 "
 SMTP STARTTLS-Connections Timeout
 "
-    ::= {cumulativeTotalStat 115}
+    ::= {cumulativeTotalStat 116}
 
 currentScoredHMM  OBJECT-TYPE
     SYNTAX      Counter32
