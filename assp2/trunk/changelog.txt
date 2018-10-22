@@ -1,3 +1,40 @@
+2018-10-22
+fixed in assp 2.6.2 *Fortress* build 18295:
+
+- The DMARC check now follows the RFC7489 for the blocking rules. The DMARC-check is OK, when SPF or DKIM passes there check.
+
+- If an email was blocked by the SPF-check, no DMARC-report was generated for this email.
+
+- The DKIM-precheck is improved to detect, if a domain supports DKIM or not.
+
+
+
+added:
+
+- ASSP supports now the SMTP extension 'Require-TLS - REQUIRETLS' https://tools.ietf.org/html/draft-ietf-uta-smtp-require-tls-04
+  This is just a Draft in version 04 - for this reason, the feature is still experimental.
+  The following hidden configuration parameters are used by this feature.
+
+  our $enableREQUIRETLS = 0;          # (0/1) enable testing of the REQUIRETLS implementation
+  our $provideREQUIRETLS = 0;         # (0/1) include REQUIRETLS in to the EHLO reply if not already provided
+  our $forceREQUIRETLS = 0;           # (0/1) include REQUIRETLS in to the MAIL FROM: command if not provided by the MTA
+
+
+changed:
+
+- If DMARC is enabled and a NDR is received for a sent DMARC-report for any reason and 'noDMARCReportDomain' is configured using the 'file:...' option,
+  the foreign report recipient address and/or the report domain are automatically added to 'noDMARCReportDomain'.
+
+- If a domain provides an explicite _adsp policy with the value 'unknown', the domain is no longer added to the DKIMCache and does no longer require to sign all mail using DKIM,
+  if 'DKIMCacheStrict' is not set. 
+  The behavior is not changed for the case where the _adsp policy with the value 'unknown' is not explicite defined and falls per default to 'unknown' or 'DKIMCacheStrict' is set.
+
+- The mail analyzer now shows results with more details for the DMARC-check.
+
+- The maillog.txt file list in the 'MaillogTail view' is now shown permanent (unless closed) and contains four columns to provide more files to be shown.
+
+
+
 2018-10-15
 fixed in assp 2.6.2 *Fortress* build 18288:
 

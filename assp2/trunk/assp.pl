@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18288';        # 15.10.2018 TE
+$build   = '18295';        # 22.10.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -488,9 +488,12 @@ our $AllowCodeInRegex = 0;               # (0/1) allow the usage of executable p
 our $maxSameFileIncludes = 100;          # number of times the same include file can occure in a configuration file
 
 our $ignoreInvalidAddressNPWL = 3;       # (0/1/2/3) ignore invalid envelope recipients for whitelisted (2) or noprocessing (1) or both (3) senders and IP's (no score, no connection drop, no error count)
+
+our $DKIMCacheStrict = 1;                # (0/1) if a DKIM signature is found for a domain - all other mails from this domain will require a DKIM signature to pass the Pre-DKIM-Check
 # *********************************************************************************************************************************************
 
-our $trustedFWSF = 'mx.sourceforge.net,lists.sourceforge.net';   # comma separed list of host1,helo1,host2,helo2,.... for an exact host match in the first line of an X-Spam-Report: spamassassin header!
+# comma separed list of host1,helo1,host2,helo2,.... for an exact host match in the first line of an X-Spam-Report: spamassassin header!
+our $trustedFWSF = 'mx.sourceforge.net,lists.sourceforge.net';
 
 our $consolidateWhitelList = 1;          # (0/1) consolidate the whitelistdb - removes unneeded entries
 
@@ -577,27 +580,32 @@ our $dnswlForceRWLOK = 4;           # if the dnswl.org trust is equal or higher 
 ################## end HMM4ISP ########################
 #######################################################
 
-our $threadCheckConfig = 0;  # set to 1 - all threads will check the assp.cfg file
+our $threadCheckConfig = 0;         # set to 1 - all threads will check the assp.cfg file
 
-our $PBscoreNoDelay = 1;     # score noDelay messages
+our $PBscoreNoDelay = 1;            # score noDelay messages
 
-our $dbBackupVersions = 10;  # (3- ...) min=3, default=10 - number of database backup and export version that are keeped
+our $dbBackupVersions = 10;         # (3- ...) min=3, default=10 - number of database backup and export version that are keeped
 
-our $reReadSpamFolderInterval = 300;  # reread interval of the spamfolder content for MaxAllowedDups to prevent possible DoS attacks
+our $reReadSpamFolderInterval = 300;# reread interval of the spamfolder content for MaxAllowedDups to prevent possible DoS attacks
 
-our %NotifyFreqTF:shared = (     # one notification per timeframe in seconds per tag per worker
-    'info'    => 60,             # to prevent log flooding with equal loglines - default to 60 seconds for each tag
+                                    # https://tools.ietf.org/html/draft-ietf-uta-smtp-require-tls-04
+our $enableREQUIRETLS = 0;          # (0/1) enable testing of the REQUIRETLS implementation
+our $provideREQUIRETLS = 0;         # (0/1) include REQUIRETLS in to the EHLO reply if not already provided
+our $forceREQUIRETLS = 0;           # (0/1) include REQUIRETLS in to the MAIL FROM: command if not provided by the MTA
+
+our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds per tag per worker
+    'info'    => 60,                # to prevent log flooding with equal loglines - default to 60 seconds for each tag
     'warning' => 60,
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '2A21086BB3CB40A65A091A69D0C4E6B15A88BCDE'; }
+sub __cs { $codeSignature = '42412BA7446A4BF99DA2518CA8D8BA5D11533A6A'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
 #######################################################
 
-our $showMEM = 0;                        # (0/1) show the current memory usage in every worker  !!! DO NOT use - this causes SEGV in Devel::Size !!!
+our $showMEM = 0;                   # (0/1) show the current memory usage in every worker  !!! DO NOT use - this causes SEGV in Devel::Size !!!
 
 # these four values are configured using 'TCPBufferSize'
 # there is no longer a need to change them here
@@ -606,18 +614,18 @@ our $maxTCPSNDbuf;
 our $maxTCPRCVbufSSL = 16384;
 our $maxTCPSNDbufSSL = 16384;
 # fall back to these values in case the system reports nothing for SOL_SOCKET:SO_RCVBUF or SOL_SOCKET:SO_SNDBUF
-our $fallBackTcpBuf = 8192;  # fall back to this TCP (receive/send) buffersize, if the system reports less or nothing
-our $fallBackSSLBuf = 16384; # fall back to this SSL (receive/send) buffersize, if the system reports less or nothing
+our $fallBackTcpBuf = 8192;         # fall back to this TCP (receive/send) buffersize, if the system reports less or nothing
+our $fallBackSSLBuf = 16384;        # fall back to this SSL (receive/send) buffersize, if the system reports less or nothing
 
 # SSL/TLS assp will try to do a fast read ahead using the following values
 # be carefull changing any of these values !
-our $SSL_read_ahead = 1;               # try the SSL readahead
-our $SSL_read_ahead_wait = 2;          # poll/select socket wait time in milliseconds for the read ahead
-our $SSL_read_ahead_max_time = 50;     # time in milliseconds used for read ahead
+our $SSL_read_ahead = 1;            # try the SSL readahead
+our $SSL_read_ahead_wait = 2;       # poll/select socket wait time in milliseconds for the read ahead
+our $SSL_read_ahead_max_time = 50;  # time in milliseconds used for read ahead
 
 # the SSL/TLS renegotiation counter will be reset after this number of seconds without a renegotiation request and any regular data are sent or received
 our $maxSSLRenegDuration;
-BEGIN {$maxSSLRenegDuration = 10;} # maxSSLRenegDuration is referenced in the GUI - so we have to set the value at begin
+BEGIN {$maxSSLRenegDuration = 10;}  # maxSSLRenegDuration is referenced in the GUI - so we have to set the value at begin
 our $SSLContextMaxAge = 24 * 3600;
 our $SSLContextMaxUnused = 8 * 3600;
 
@@ -642,8 +650,8 @@ our $Droplist6URL = "http://www.spamhaus.org/drop/dropv6.txt";
 # set the blocking mode for HTTP (0/1 default is 0) and HTTPS (0/1 default is 0) on the GUI
 our $HTTPblocking = 0;
 our $HTTPSblocking = 0;
-our $HTTPS_OCSP_NO_STAPLE = 1;  # disable OCSP staple
-our $HTTPS_NO_VERIFY = 1;       # disable certificate verification and CRL
+our $HTTPS_OCSP_NO_STAPLE = 1;      # disable OCSP staple
+our $HTTPS_NO_VERIFY = 1;           # disable certificate verification and CRL
 
 # set the blocking mode for STATS connection (0/1) - default is 0
 our $STATSblocking = 0;
@@ -2524,7 +2532,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['DoValidFormatHelo','Validate Format of HELO','0:disabled|1:block|2:monitor|3:score',\&listbox,1,'(\d*)',undef,
   'If activated, the HELO is checked against the expression below. If the Regular Expression matches, the HELO is validated as being ok. ',undef,undef,'msg001600','msg001601'],
 ['validFormatHeloRe','Regular Expression to Validate Format of HELO*',80,\&textinput,'file:files/validhelo.txt','(.*)','ConfigCompileRe',
-  'Validate Format HELO will check incoming HELOs according to rfc1123. <br />
+  'Validate Format HELO will check incoming HELOs according to <a href="https://tools.ietf.org/html/rfc1123" rel="external">RFC1123</a>.<br />
   For example: ^(?:\w[\w\.\-]*\.\w{2,6})$ or ^(?:(?:[a-z\d][a-z\d\-]*)?[a-z\d]\.)+[a-z]{2,6}$',undef,undef,'msg001610','msg001611'],
 ['DoInvalidFormatHelo','Invalidate Format of HELO','0:disabled|1:block|2:monitor|3:score',\&listbox,1,'(\d*)',undef,
   'If activated, the HELO is checked against the expression below. If the Regular Expression matches, the HELO is invalidated as being not ok.',undef,undef,'msg001620','msg001621'],
@@ -2626,7 +2634,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['DoDKIM','Validate DomainKeys Identified Mail <a href="http://en.wikipedia.org/wiki/DomainKeys" target=wiki><img height=12 width=12 src="' . $wikiinfo . '" alt="DKIM" /></a>','0:disabled|1:block|2:monitor|3:score',\&listbox,3,'(.*)',undef,
   'If activated, DomainKeys Identified Mails are checked for the right signature and contents. All DKIM parameters belongs also to the old DomainKey specification. This requires an installed <a href="http://metacpan.org/search?q=Mail::DKIM::Verifier" rel="external">Mail::DKIM::Verifier</a> module in PERL. In addition DKIM is used to process Domain-based Message Authentication, Reporting &amp; Conformance - described in <a href="http://www.dmarc.org/" rel="external">DMARC</a> (DMARC requires also ValidateSPF to be enabled).',undef,undef,'msg001920','msg001921'],
 ['DoStrictDKIM','Validate DomainKeys Identified Mail strictly',0,\&checkbox,0,'(.*)',undef,
-  'The DKIM test will fail, if the mail was modified by a mailhop. In this case the from address, the from domain, the to domain, the DKIM-signature by itself and the prefix of the digest-verification are valid, only the lower digest value differs! This may happen, if a mailhop has modified any other headerfield like X-...! If unchecked a mail will only pass, if the author policy and sender policy are accept or neutral!',undef,undef,'msg001930','msg001931'],
+  'The DKIM test will fail, if the mail was modified by a mailhop. In this case the from address, the from domain, the to domain, the DKIM-signature by itself and the prefix of the digest-verification are valid, only the lower digest value differs! This may happen, if a mailhop has modified any other headerfield like X-...! If unchecked a mail will only pass, if the author policy results and sender policy results are accept or neutral!',undef,undef,'msg001930','msg001931'],
 ['noDKIMAddresses','Do not any DKIM Check for these Addresses *',80,\&textinput,'','(.*)','ConfigMakeSLRe',
   'Mail from or to any of these envelope addresses will not be tagged and checked for DKIM. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com).',undef,undef,'msg001940','msg001941'],
 ['noDKIMIP','Exclude these IP\'s from any DKIM Check*',80,\&textinput,'','(\S*)','ConfigMakeIPRe','Enter IP\'s that you want to exclude from DKIM check, separated by pipes (|).',undef,undef,'msg001950','msg001951'],
@@ -3093,14 +3101,14 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  <div class="cfgnotes">Notes On SPF</div>
  <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/spf.txt\',3);" /> ',undef,undef,'msg003660','msg003661'],
 ['DoDMARC','Enable DMARC Check',0,\&checkbox,'1','(.*)',undef,
-  'If enabled and ValidateSPF and DoDKIM are enabled and the sending domain has published a DMARC-record/policy, assp will act on the mail according to the senders DMARC-policy using the results of the SPF and DKIM check. It is save to leave this feature ON, it will not produce false positives! The blocking mode (block, monitor, score, testmode) is adapted from the most less aggressive setting of ValidateSPF and DoDKIM - and the published DMARC record ([p][sp]=[reject][quarantine]). Scoring is done using dmarcValencePB.<br />
+  'If enabled and ValidateSPF and DoDKIM are enabled and the sending domain has published a DMARC-record/policy, assp will act on the mail according to the senders DMARC-policy using the results of the SPF and DKIM check and validating the SPF/DKIM address/domain Identifier Alignment rules (<a href="https://tools.ietf.org/html/rfc7489#section-3" rel="external">RFC7489 section 3</a>). It is safe to leave this feature ON, it will not produce false positives! The blocking mode (block, monitor, score, testmode) is adapted from the most less aggressive setting of ValidateSPF and DoDKIM - and the published DMARC record ([p][sp]=[reject][quarantine]). Scoring is done using dmarcValencePB.<br />
   If you have published a DMARC-record and you want to collect statisical data, look at <a href="https://dmarcian.com" rel="external">dmarcian.com</a>',undef,undef,'msg010410','msg010411'],
 ['noDMARCDomain','Don\'t Check DMARC for these Addresses/Domains*',80,\&textinput,'','(.*)','ConfigMakeSLRe',
  'Put any sender domain (or address) in to this list, for which you want to disable the DMARC check - for example if an invalid DMARC record is published.<br />
  Use \'noDMARCReportDomain\' if you only want to disable DMARC reports.<br />
  Accepts entire domains (@example.com) (specific addresses (user@example.com) and user parts (user) are accepted, but not usefull!). Wildcards are supported (@*example.com or @*.example.com).',undef,undef,'msg010530','msg010531'],
 ['trustedAuthForwarders','X-Original-Authentication-Results and Authenticated Received Chain(ARC) Trusted Forwarder*',80,\&textinput,'','(.*)','ConfigCompileRe','
- If an email contains a valid DKIM signature and the signature protects the "X-Original-Authentication-Results" header line in its h= tag (RFC7601) and the host in this header line matches this regular expression, DMARC will fully trust the provided original authentication results for SPF, DKIM and DMARC.<br />
+ If an email contains a valid DKIM signature and the signature protects the "X-Original-Authentication-Results" header line in its h= tag (<a href="https://tools.ietf.org/html/rfc7601" rel="external">RFC7601</a>) and the host in this header line matches this regular expression, DMARC will fully trust the provided original authentication results for SPF, DKIM and DMARC.<br />
  If DoARC is enabled and a host match is found for the most recent <a href="http://arc-spec.org" rel="external">Authenticated-Received-Chain(ARC)-Signature</a> instance (highest instance number), the SPF-check, the DKIM-check and the DMARC-check will fully trust the provided ARC results.<br />
  For example: ^mx\d*\.domain\.com$ or ^2\.2\.2\.2$<br /><br />
  An regular expression for the values of myName and myNameAlso are already added!.',undef,undef,'msg010670','msg010671'],
@@ -3108,6 +3116,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   'The email address to be used as FROM: address to send <a href="http://www.dmarc.org/" rel="external">DMARC</a> reports. If blank, no DMARC reports will be sent! If only the user name is defined, assp will add the domain name that belongs to the report.',undef,undef,'msg009730','msg009731'],
 ['noDMARCReportDomain','Don\'t send DMARC reports to these Addresses/Domains*',80,\&textinput,'','(.*)','ConfigMakeSLRe',
  'Put any DMARC report recipient domain or address (ruf/rua) in to this list - for example if DMARC reports could be never delivered for any reason.<br />
+ If assp receives a NDR (No Delivery Report) for a sent DMARC-Report and the file:... option is configured here, assp will automatically add the dmarc report domain and the dmarc report recipient to this file.<br />
  Accepts specific addresses (user@example.com), user parts (user) or entire domains (@example.com). Wildcards are supported (fribo*@example.com).',undef,undef,'msg010240','msg010241'],
 ['EnableSRS','Enable Sender Rewriting Scheme',0,\&checkbox,'','(.*)','updateSRS',
   'Enable Sender Rewriting Scheme as described at <a href="http://www.openspf.org/SRS" rel="external">www.openspf.org/SRS</a>.<br />
@@ -3126,7 +3135,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   'Enter the maximum number of days for which a timestamp is considered valid. Default is 2 days. After this number of days a SRS bounce is no longer valid!',undef,undef,'msg003700','msg003701'],
 ['SRSHashLength','Hash Length',5,\&textinput,6,'(\d+)',undef,
   'The number of bytes of base64 encoded data to use for the cryptographic hash.<br />
-  More is better, but makes for longer addresses which might exceed the 64 character length suggested by RFC2821.<br />
+  More is better, but makes for longer addresses which might exceed the 64 character length suggested by <a href="https://tools.ietf.org/html/rfc2821" rel="external">RFC2821</a>.<br />
   This defaults to 6, which gives 6 x 6 = 36 bits of cryptographic information, which means that a spammer will have <br />
   to make 2^36 attempts to guarantee forging a SRS address.',undef,undef,'msg003710','msg003711'],
 ['SRSValidateBounce','Enable Bounce Recipient Validation','0:disabled|1:block|2:monitor|3:score',\&listbox,0,'(.*)',undef,
@@ -3291,7 +3300,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   'This regular expression is used to identify Level 1 attachments that should be blocked.<br />
   Separate entries with a pipe |. The dot . is assumed to precede these, so don\'t include it.<br />
   For example:<br />
-  ad[ep]|asx|ba[st]|chm|cmd|com|cpl|crt|dbx|exe|exe\-bin|hlp|ht[ab]|in[fs]|isp|js|jse|lnk|md[abez]|mht|ms[cipt]|nch|pcd|pif|prf|ps1?|reg|sc[frt]|sh[bs]|vb|vb[es]|wms|ws[cfh]<br />
+  ace|ad[ep]|asx|ba[st]|chm|cmd|com|cpl|crt|dbx|exe|exe\-bin|hlp|ht[ab]|in[fs]|isp|js|jse|lnk|md[abez]|mht|ms[cipt]|nch|pcd|pif|prf|ps1?|reg|sc[frt]|sh[bs]|vb|vb[es]|wms|ws[cfh]<br />
   If you\'ve installed the ASSP_AFC Plugin (at least version 2.10) and \'exe-bin\' is defined (on any level), the Plugin will detect executable files based on their binary content. Detected will be all executables, libraries and scripts for DOS and Windows (except .com files), MS office macros(VBA), MAC-OS and linux ELF (for all processor architectures).<br />
   If you want to skip the detection for a specific executable type, define any combination of the tags below like: \'exe-bin|:WSH|:MSOM|:WIN\' - notice the leading collon for the exceptions!<br /><br />
  :WIN - windows executables<br />
@@ -3513,7 +3522,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['bombHeaderRe','Regular Expression to Identify Spam in Header Part**',80,\&textinput,'file:files/bombheaderre.txt','(.*)','ConfigCompileRe',
   'Part of DoBombHeaderRe: header will be checked against this Regex if DoBombHeaderRe is enabled. For example<br />
   file:files/bombheaderre.txt',undef,undef,'msg004490','msg004491'],
-['bombSubjectRe','Regular Expression to Identify Spam in Subject**',80,\&textinput,'','(.*)','ConfigCompileRe','Part of DoBombHeaderRe : the mail header will be checked against this Regex if DoBombHeaderRe is enabled. If DoBombHeaderRe is enabled, the mail subject will be automatically checked against RFC2047 (for NON printable characters in the undecoded MIME content).',undef,undef,'msg004500','msg004501'],
+['bombSubjectRe','Regular Expression to Identify Spam in Subject**',80,\&textinput,'','(.*)','ConfigCompileRe','Part of DoBombHeaderRe : the mail header will be checked against this Regex if DoBombHeaderRe is enabled. If DoBombHeaderRe is enabled, the mail subject will be automatically checked against <a href="https://tools.ietf.org/html/rfc2047" rel="external">RFC2047</a> (for NON printable characters in the undecoded MIME content).',undef,undef,'msg004500','msg004501'],
 ['maxSubjectLength','Maximum allowed Subject Length',20,\&textinput,'200=>100','^(\d+(?:\=\>\d+)?|)$',undef,'If set to a value greater than 0, assp will check the length of the Subject of the mail. If the Subject length exceeds this value, the message score will be increased by \'bombValencePB\' and the string that is checked in \'bombSubjectRe\' will be trunked to this length. It is possible to define a special weight using the syntax \'length=>value\', in this case the defined absolute value will be used instead of \'bombValencePB\' to increase the message score. If the subject is too long and this weight is equal or higher than \'bombMaxPenaltyVal\' no further bomb checks will be done on the subject.',undef,undef,'msg009360','msg009361'],
 ['bombCharSets','Regular Expression to Identify Foreign Charsets**',60,\&textinput,'charset=(?:BIG5|CHINESEBIG|GB2312|KS_C_5601|KOI8-R|EUC-KR|ISO-2022-JP|ISO-2022-KR|ISO-2022-CN|CP1251|UNKNOWN)','(.*)','ConfigCompileRe','Part of DoBombHeaderRe: header will be checked against this Regex if DoBombHeaderRe is enabled. The literal UNKNOWN will detect all wrong defined MIME character sets.<br />
   Part of DoBombRe : every MIME-part header will be checked against this Regex if DoBombRe is enabled.<br />
@@ -4924,31 +4933,29 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
   For "do TLS" a server-certificate-file " SSLCertFile " and a server-key-file " SSLKeyFile " must exist and must be valid!<br />
   If you do not have valid certificates, you may generate both files online with <a href="http://www.mobilefish.com/services/ssl_certificates/ssl_certificates.php" rel="external">www.mobilefish.com</a> or you may use OpenSSL to generate <a href="http://www.mobilefish.com/developer/openssl/openssl_quickguide_self_certificate.html" rel="external">Self-signed SSL certificates</a>! If you have installed OpenSSL (must be in PATH) and installed and enabled IO::Socket::SSL and ASSP is unable to find valid certificates - ASSP will try to create them at startup!<br />
   Before you enable this feature, make sure that sendNoopInfo is switched off! If sendNoopInfo is enabled, STARTTLS will possibly not work!<br />
+  If possible, you should consider to implement the \'SMTP MTA Strict Transport Security (MTA-STS)\' by following the instructions in <a href="https://tools.ietf.org/html/rfc8461" rel="external">RFC8461</a>. To get MTA-STS working for incoming mails, it may required to configure and to enable the SNI support (please read the complete SSL/TLS section). To use MTA-STS for outgoing mails, no special assp configuration is required - your outgoing MTA must support and implement MTA-STS.<br />
+  <b>DO NOT</b> try to use the assp internal webserver to provide MTA-STS policy fetching (like: https://mta-sts.your-domain.tld/.well-known/mta-sts.txt - read <a href="https://tools.ietf.org/html/rfc8461#section-3.2" rel="external">RFC8461 section-3.2</a>)!<br />
   <input type="button" value="SSL-failed-Cache" onclick="javascript:popFileEditor(\'DB-SSLfailed\',\'1h\');" /><br />',undef,undef,'msg008210','msg008211'],
 ['SSL_version','SSL version used for transmission',80,\&textinput,'SSLv23:!SSLv3:!SSLv2','(\!?(?:SSLv2\/?3|SSLv2|SSLv3|TLSv1(_?[12])?)(?:\:\!?(SSLv2\/?3|SSLv2|SSLv3|TLSv1(_?[12])?))*)','ConfigChangeSSL',
   'Sets the version of the SSL protocol used to transmit data. The default is SSLv23:!SSLv3:!SSLv2.<br />
   The IO::Socket::SSL POD explains:<br />
   Sets the version of the SSL protocol used to transmit data.<br />
   \'SSLv23\' and the older definition \'SSLv2/3\' (of the same) uses a handshake compatible with SSL2.0, SSL3.0 and TLS1.x, while
-  \'SSLv2\', \'SSLv3\', \'TLSv1\', \'TLSv1_1\' or \'TLSv1_2\' restrict handshake and
-  protocol to the specified version.<br />
-  All values are case-insensitive.  Instead of \'TLSv1_1\' and \'TLSv1_2\' one can
-  also use \'TLSv11\' and \'TLSv12\'.  Support for \'TLSv1_1\' and \'TLSv1_2\' requires
-  recent versions of Net::SSLeay and openssl.<br /><br />
-  Independent from the handshake format you can limit to set of accepted SSL
-  versions by adding !version separated by \':\'. <br /><br />
+  \'SSLv2\', \'SSLv3\', \'TLSv1\', \'TLSv1_1\', \'TLSv1_2\' or \'TLSv1_3\' restrict handshake and protocol to the specified version.<br />
+  All values are case-insensitive.  Instead of \'TLSv1_1\', \'TLSv1_2\' and \'TLSv1_3\' one can
+  also use \'TLSv11\', \'TLSv12\' and \'TLSv13\'.  Support for \'TLSv1_1\', \'TLSv1_2\' and \'TLSv1_3\' requires
+  recent versions of Net::SSLeay, openssl and IO::Socket::SSL.<br /><br />
+  Independent from the handshake format you can limit to set of accepted SSL versions by adding !version separated by \':\'. <br /><br />
   The default SSL_version is \'SSLv23:!SSLv3:!SSLv2\' which means, that the
   handshake format is compatible to SSL2.0 and higher, but that the successful
   handshake is limited to TLS1.0 and higher, that is no SSL2.0 or SSL3.0 because
-  both of these versions have serious security issues and should not be used
-  anymore.<br />
-  You can also use !TLSv1_1 and !TLSv1_2 to disable TLS versions 1.1 and 1.2 while
-  still allowing TLS version 1.0.<br /><br />
+  both of these versions have serious security issues and should not be used anymore.<br />
+  You can also use !TLSv1_1, !TLSv1_2 and !TLSv1_3 to disable TLS versions 1.1, 1.2 and 1.3 while still allowing TLS version 1.0.<br /><br />
   Setting the version instead to \'TLSv1\' might break interaction with older
   clients, which need a SSL2.0 compatible handshake. On the other
   side, some clients just close the connection when they receive a TLS version 1.1
   request. In this case setting the version to
-  \'SSLv23:!SSLv2:!SSLv3:!TLSv1_1:!TLSv1_2\' might help.',undef,undef,'msg009660','msg009661'],
+  \'SSLv23:!SSLv2:!SSLv3:!TLSv1_1:!TLSv1_2:!TLSv1_3\' might help.',undef,undef,'msg009660','msg009661'],
 ['SSL_cipher_list','SSL key cipher list',80,\&textinput,'','(.*)','ConfigChangeSSL',
  'If this option is set, the cipher list for the connection will be set to the given value, e.g. something like \'ALL:!LOW:!EXP:!ADH\' or \'DEFAULT:!aNULL:!RC4:!MD5\'. Look into the OpenSSL documentation (<a href="http://www.openssl.org/docs/apps/ciphers.html#CIPHER_STRINGS" rel="external">http://www.openssl.org/docs/apps/ciphers.html#CIPHER_STRINGS</a>) for more details. Setting this value causes the \'SSL_honor_cipher_order\' flag to be switched on (BEAST vulnerable)<br />
  If this option is not used (default) the IO::Socket::SSL builtin defaults are used, which are suitable for most cases.',undef,undef,'msg009670','msg009671'],
@@ -5301,7 +5308,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
  All configuration values are accessed using the SNMPUser account. The SNMP-permission and visibility is used from the configured user GUI-permissions.<br /><br />
 The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries. The configuration values are changeable via snmp. The published file mib/ASSP-MIB, which contains all possible OID\'s, could be used in SNMP browsers to get a human readable view of the OID\'s (copy it to the net-snmp MIB file location - eg: [C:]/usr/share/snmp/mibs and the MIB location of your SNMP browser). Please keep in mind, that an extensive usage of SNMP queries will slow down assp.<br />
 Because the OID numbers can change in different assp versions, it is recommended to query the OID\'s by its consistent name (not by its number). This requires the usage of the assp version compatible mib/ASSP-MIB file!<br />
-If you want to query or set any of the following configuration parameters: LocalAddresses_Flat, LocalAddresses_Flat_Domains, noBayesian_local, Bayesian_localOnly, SSL_version, SSL_cipher_list - remove all underscores from the config name to build the OID-name, because underscores ar not allowed in SNMP queries. The MIB file already contains the corrected names.<br />
+If you want to query or set any of the following configuration parameters: LocalAddresses_Flat, LocalAddresses_Flat_Domains, noBayesian_local, Bayesian_localOnly, SSL_version, SSL_cipher_list - remove all underscores from the config name to build the OID-name, because underscores are not allowed in SNMP queries. The MIB file already contains the corrected names.<br />
 If you get unexpected SNMP-query results or you\'ve lost the version compatible MIB file, rename the perl scripts lib/SNMPmakeMIB.p_ and lib/SNMPmakeMRTG.p_ to *.pl and restart assp. This will create the mib/ASSP-MIB and mib/assp-mrtg.cfg files, based on your installation and configuration. It is recommended to rename both scripts back, after the new MIB files are created.<br />
 <b>NOTICE:</b> If you install or uninstall any plugin or you enable or disable the configuration synchronization and you use such a custom MIB file, the mib/ASSP-MIB file needs to be recreated to implement the new OID\'s and (at least) to correct the new OID order!<br />
 To prevent permantly copying the changed mib/ASSP-MIB file to your net-snmp deamons MIB-folder - (e.g.) create a link there to the mib/ASSP-MIB file.<br /><br />
@@ -8148,7 +8155,7 @@ if ($@) {
 sub write_rebuild_module {
 my $curr_version = shift;
 
-my $rb_version = '7.49';
+my $rb_version = '7.50';
 my $keepVersion;
 
 if (open my $ADV, '<',"$base/lib/rebuildspamdb.pm") {
@@ -8791,9 +8798,9 @@ EOT
             $f = $f / (($main::bayesnorm - $targetNorm + 1) ** 2) if ($main::bayesnorm >= $tn[0] && $main::bayesnorm <= $tn[1]);
             $sf = &main::min($spamf,$sf);
             rb_d("info: SpamCountNormCorrection = $main::SpamCountNormCorrection , f = $f , sf = $sf , spamf = $spamf, norm = $main::bayesnorm, target = $targetNorm");
-            $neededspam = int($sf*$r*$f);
+            $neededspam = int($sf * $r * $f * (1+(($main::SpamCountNormCorrection > -100 && $main::SpamCountNormCorrection < 100) ? $main::SpamCountNormCorrection/100 : 0)));
             $neededspam = 1 if $neededspam <= 0;
-            my $t = ($neededspam < $spamf) ? 'approx. '.&rb_commify($neededspam) : 'approx. all';
+            my $t = ($neededspam < $spamf) ? 'approximately '.&rb_commify($neededspam) : 'approximately all';
             $nspam = int($sf * $r * $SwordsPfile * (1+(($main::SpamCountNormCorrection > -100 && $main::SpamCountNormCorrection < 100) ? $main::SpamCountNormCorrection/100 : 0)));
             $nspam = 2 if $nspam < 2;
 
@@ -8810,7 +8817,7 @@ EOT
         &rb_mlog("warning: corpusnorm after processing $main::correctedspam and $main::correctednotspam is too unbalanced (>=30) spamwords $SpamWordCount/ hamwords $HamWordCount => $tn - you should fill some known good files in to the folder $main::correctednotspam");
     }
     my $spamWords = $SpamWordCount;
-    $spamlogcount = &rb_processfolder( 1, $main::spamlog, "*", 1, \&rb_checkspam , $neededspam, undef, $nspam );
+    $spamlogcount = &rb_processfolder( 1, $main::spamlog, "*", 1, \&rb_checkspam , $neededspam, undef, (($neededspam < $spamf) ? $nspam : undef) );
     $spamWords = $SpamWordCount - $spamWords;
     $SwordsPfile = ($SwordsPfile ? int(($SwordsPfile + $spamWords/$spamlogcount)/2) : int($spamWords/$spamlogcount)) if $spamlogcount;
     my $nham = undef;
@@ -8821,14 +8828,14 @@ EOT
         &rb_d("$neededham = int($nham/$HwordsPfile) \n");
         $neededham = 1 if $neededham <= 0;
         $nham = 2 if $nham < 2;
-        my $t = ($neededham < $hamf) ? "approx. ".&rb_commify($neededham) : 'approx. all';
+        my $t = ($neededham < $hamf) ? "approximately ".&rb_commify($neededham) : 'approximately all';
         &rb_printlog("info: require $t files (".&rb_commify($nham)." words) from folder $main::notspamlog to get the wanted corpusnorm ($targetNorm)\n");
         &rb_mlog("info: require $t files (".&rb_commify($nham)." words) from folder $main::notspamlog to get the wanted corpusnorm ($targetNorm)");
         $nham = (($SpamWordCount/$targetNorm) > $HamWordCount) ? int($SpamWordCount/$targetNorm) : 1;
         &rb_d("$nham = (($SpamWordCount/$targetNorm) > $HamWordCount) ? int($SpamWordCount/$targetNorm) : 1 \n");
     }
     my $hamWords = $HamWordCount;
-    $notspamlogcount = &rb_processfolder( 0, $main::notspamlog, "*", 1, \&rb_checkham , $neededham, $nham, undef);
+    $notspamlogcount = &rb_processfolder( 0, $main::notspamlog, "*", 1, \&rb_checkham , $neededham, (($neededham < $hamf) ? $nham : undef), undef);
     $hamWords = $HamWordCount - $hamWords;
     $HwordsPfile = ($HwordsPfile ? int(($HwordsPfile + $hamWords/$notspamlogcount)/2) : int($hamWords/$notspamlogcount)) if $notspamlogcount;
 
@@ -14368,7 +14375,7 @@ EOT
     }
   } elsif (!$AvailRegexpOptimizer)  {
     $installed = $useRegexpOptimizer ? 'is not installed' : 'is disabled in config';
-    mlog(0,"Regexp::Optimizer module $installed - default Regular Expression Optimization is not available - regex processing will take  approximately 3 times longer");
+    mlog(0,"Regexp::Optimizer module $installed - default Regular Expression Optimization is not available - regex processing will take approximately 3 times longer");
   }
   $ModuleList{'Regexp::Optimizer'} = $VerRegexpOptimizer.'/0.23';
   $ModuleStat{'Regexp::Optimizer'} = $installed;
@@ -17642,7 +17649,7 @@ sub LoadHash {
    binmode($LH);
    %$hash = ();
    keys (%$hash) = $keys;      # preallocate Memory for Hash
-   mlog(0,"info: start loading $hashname from $file with approx. $keys records") if $MaintenanceLog;
+   mlog(0,"info: start loading $hashname from $file with approximately $keys records") if $MaintenanceLog;
    while (<$LH>) {
      my ($k,$v) = split/\002/o;
      chomp $v;
@@ -17654,7 +17661,7 @@ sub LoadHash {
      if (!($count % 10000)) {
          if ($WorkerNumber == 0) {
              if ($WorkerName !~ /start|init/io) {
-                 &ThreadMonitorMainLoop("loading $hashname - $count records loaded from approx. $keys");
+                 &ThreadMonitorMainLoop("loading $hashname - $count records loaded from approximately $keys");
                  MainLoop2();
              }
          }  elsif ($WorkerNumber > 0 && $WorkerNumber < 10000) {
@@ -17685,8 +17692,8 @@ sub LoadHash {
                    }
                    $i = 2 ** $exp + $count * 4 + ($size * ($NumComWorkers + 3));
                    if (! $EnableHighPerformance || $EnableHighPerformance > 500) {
-                       mlog(0,"error: $hashname contains $count records (allocating approx. " . &formatDataSize($i,1) . " shared memory) - it is highly recommended to use a database for '$dbConfig' to reduce memory usage and to prevent memory leaking");
-                       $Recommends{$hashname} = "the $hashname contains $count records (allocating approx. " . &formatDataSize($i,1) . " shared memory) - it is highly recommended to use a database for '$dbConfig' to reduce memory usage and to prevent memory leaking";
+                       mlog(0,"error: $hashname contains $count records (allocating approximately " . &formatDataSize($i,1) . " shared memory) - it is highly recommended to use a database for '$dbConfig' to reduce memory usage and to prevent memory leaking");
+                       $Recommends{$hashname} = "the $hashname contains $count records (allocating approximately " . &formatDataSize($i,1) . " shared memory) - it is highly recommended to use a database for '$dbConfig' to reduce memory usage and to prevent memory leaking";
                    }
                }
            }
@@ -23790,6 +23797,8 @@ sub resend_mail {
           $message =~ s/(^|\n)X-Assp-Intended-For:[^\<]*?<?($EmailAdrRe\@$EmailDomainRe)>?\s*\r?\n/$1To: <$2>\r\n/sio;
       }
 
+      my $requireTLS = $message =~ /(?:^|\n)X-ASSP-REQUIRETLS:\s*YES/io && $message !~ /(?:^|\n)REQUIRETLS:\s*NO/io;
+      
       my $islocal = localmail($to);
       if ($islocal && $ReplaceRecpt) {
             my ($mf) = $mailfrom =~ /<($EmailAdrRe\@$EmailDomainRe)>/o;
@@ -24039,6 +24048,7 @@ sub resend_mail {
                   my %auth = ($hostCFGname eq 'relayHost' && $relayAuthUser && $relayAuthPass) ? (username => $relayAuthUser, password => $relayAuthPass) : ();
                   my (%from, %to, %Bits);
                   %from = ('From' => $mailfrom);
+                  $from{From} .= ' REQUIRETLS' if $enableREQUIRETLS && $requireTLS && ($useSSL || $DoTLS == 2);
                   $Bits{Bits} = 8 if $IS8BITMIME && ! $CCignore8BitMIME;
 #                  %to = ('To' => $to);
                   my $sender = Email::Send->new({mailer => 'SMTP'});
@@ -24050,6 +24060,7 @@ sub resend_mail {
                   if ($@ && $DoTLS == 2 && ! $useSSL && $@ =~ /STARTTLS: *50\d/io) {
                       $result = undef;
                       $localTLSfailed{$destinationA} = time;
+                      $from{From} =~ s/\s+REQUIRETLS//o;
                       $sender = Email::Send->new({mailer => 'SMTP'});
                       $sender->mailer_args([Host => $host, Port => $port, Hello => $myName, NoTLS => 1, %auth, %from, %to, %Bits]);
                       $result = eval{$sender->send($message)};
@@ -25299,6 +25310,7 @@ sub getline {
 
         $this->{lastcmd} = 'MAIL FROM';
         push(@{$this->{cmdlist}},$this->{lastcmd}) if $ConnectionLog >= 2;
+
         if($EnforceAuth && &matchFH($fh,@lsn2I) && ! $this->{authenticated} && ! $this->{DisableAUTH} && ($l !~ /\sAUTH=[^\s<>]+/io || $l =~ /\sAUTH=<>/io)) {
             NoLoopSyswrite($fh,"530 5.7.0 Authentication required before [Mail From]\r\n",0);
             mlog($fh,"$fr submited without previous or included AUTH - 'EnforceAuth' is set to 'ON' for 'listenPort2'",1);
@@ -25351,11 +25363,53 @@ sub getline {
         $this->{mailfrom}=$fr;
         $this->{mailfrom} =~ s/\s//go;
         
+        ######################
+        # process REQUIRETLS
+        # related to: https://tools.ietf.org/html/draft-ietf-uta-smtp-require-tls-04 and later or the resulting RFC
+        ######################
+        if ($enableREQUIRETLS) {
+            # REQUIRETLS is requested in MAIL FROM:
+            if ($l =~ /\sREQUIRETLS\s/oi) {
+                # check that SSL is in use
+                if ("$fh" !~ /SSL/io) {
+                    my $text = "$this->{ip} used an unsecured connection";
+                    NoLoopSyswrite($fh,"530 5.7.10 Encryption needed - REQUIRETLS was used in MAIL FROM:, $text - use STARTTLS first\r\n",0);
+                    mlog($fh,"info: REQUIRETLS was used in MAIL FROM:, $text",1);
+                    done($fh);
+                    return;
+                # check that REQUIRETLS is supported
+                } elsif (! $this->{REQUIRETLS} && "$fh" =~ /SSL/io) {
+                    NoLoopSyswrite($fh,"530 5.7.10 REQUIRETLS extension is not supported\r\n",0);
+                    mlog($fh,"info: REQUIRETLS requested in MAIL FROM: but not supported - possibly set forceREQUIRETLS to 1",1);
+                    done($fh);
+                    return;
+                }
+            }
+
+            # remove REQUIRETLS from the MAIL FROM: command in case we faked REQUIRETLS in the EHLO reply
+            $l =~ s/\sREQUIRETLS//oi if ($this->{REQUIRETLSfaked});
+            # remove REQUIRETLS from the MAIL FROM: command in case incoming mail and our MTA connection is not SSL for any reason
+            $l =~ s/\sREQUIRETLS//oi if (!$this->{relayok} && "$server" =~ /SSL/io);
+
+            # append the REQUIRETLS extension to the MAIL FROM: command
+            # if configured     and seen in EHLO reply  and  was not faked            and  not already included  and SSL is active
+            if ($forceREQUIRETLS && $this->{REQUIRETLS} && ! $this->{REQUIRETLSfaked} && $l !~ /\sREQUIRETLS\s/oi && "$server" =~ /SSL/io) {
+                $l =~ s/(\r?\n)$/ REQUIRETLS$1/o;
+                mlog($fh,"info: appended 'REQUIRETLS' to MAIL FROM command") if $SessionLog;
+            }
+            
+            # set the X-ASSP-REQUIRETLS header, if REQUIRETLS is used - we'll need this, in case of a resend or forwardSpam or CCmail
+            $this->{myheader} .= "X-ASSP-REQUIRETLS: YES\r\n" if $l =~ s/\sREQUIRETLS//oi;
+        }
+        ######################
+        # end REQUIRETLS
+        ######################
+
         # BATV stuff  for mail from
         if ($this->{relayok}) {               # it's outgoing mail
             if ($DoBATV && $this->{mailfrom}) {         # if there is a sender address and BATV enabled
                 $this->{mailfrom} = &batv_mail_out($fh,$this->{mailfrom});   # tag mailfrom
-                $l =~ s/$fr/$this->{mailfrom}/i;        # replace orig sender address with taged address
+                $l =~ s/\Q$fr\E/$this->{mailfrom}/i;        # replace orig sender address with taged address
             }
         } else {                             # it's incoming mail
             $this->{mailfrom} = batv_remove_tag($fh,$this->{mailfrom},'BATVfrom') if ($removeBATVTag); # remove possible BATV-Tag from sender address  - if removed orig recipient is strored in ->{BATVfrom}
@@ -28433,9 +28487,11 @@ sub SPFok {
     my $this = $Con{$fh};
     my $do1 = $CanUseSPF && $ValidateSPF;
     my $do2 = $CanUseSPF2 && $ValidateSPF && $SPF2;
+    my $res;
     return 1 unless $do1 or $do2;
-    return 0 unless SPFok_Run($fh);    # do SPF check on 'mail from'
-    if (   $DoSPFinHeader
+    $res = SPFok_Run($fh);    # do SPF check on 'mail from'
+    if (   $res
+        && $DoSPFinHeader
         && defined $this->{spfok}
         && ! $this->{error}
         && $this->{header} =~ /(?:^|\n)from:\s*($HeaderValueRe)/ois)   # and 'from:'
@@ -28449,22 +28505,22 @@ sub SPFok {
             if ( $blockstrictSPFRe && $mf =~ /$blockstrictSPFReRE/ ) # ONLY if the 'from'  address is in strictSPFre
             {
         		 $envmfd = $1 if lc $this->{mailfrom} =~ /\@(.*)/o;
-        		 return 1 if ($mfd eq $envmfd);
-        		 mlog($fh,"SPF: do now the check for the header 'from: $mf' address") if $SPFLog;
-        		 delete $this->{spfok};
-        		 $this->{SPFokDone} = 0;
-        		 my $omf = $this->{mailfrom};
-        		 $this->{mailfrom} = $mf;
-                 delete $this->{spf_arc};
-        		 my $ret = SPFok_Run($fh);
-        		 $this->{spf_arc} = $this->{arcresult}->{spf} if $this->{arcresult}->{spf} && $this->{arcresult}->{trustedhost};
-        		 $this->{mailfrom} = $omf;
-        		 return 0 unless $ret;
+        		 if ($mfd ne $envmfd) {
+            		 mlog(($fh !~ /^\d+$/o ? $fh : 0),"SPF: do now the check for the header 'from: $mf' address") if $SPFLog;
+            		 delete $this->{spfok};
+            		 $this->{SPFokDone} = 0;
+            		 my $omf = $this->{mailfrom};
+            		 $this->{mailfrom} = $mf;
+                     delete $this->{spf_arc};
+            		 $res = SPFok_Run($fh);
+            		 $this->{spf_arc} = $this->{arcresult}->{spf} if $this->{arcresult}->{spf} && $this->{arcresult}->{trustedhost};
+            		 $this->{mailfrom} = $omf;
+        		 }
             }
         }
     }
-    return 0 if $fh && $DoDKIM && ! DMARCok($fh);
-    return 1;
+    return 0 if $fh !~ /^\d+$/o && $DoDKIM && $CanUseDKIM && $DKIMCacheInterval && $this->{spf_result} && (! DMARCok($fh) || ! $res);
+    return $res;
 }
 
 sub SPFok_Run {
@@ -31114,6 +31170,13 @@ sub DKIMCacheAdd {
     $DKIMCache{$domain} = time;
 }
 
+sub DKIMCacheDelete {
+    my $domain = lc shift;
+    return unless $domain;
+    lock($DKIMCacheLock) if $lockDatabases;
+    delete $DKIMCache{$domain};
+}
+
 sub DKIMCacheFind {
     my $domain = lc shift;
     return 0 unless $domain;
@@ -31213,25 +31276,25 @@ sub DKIMpreCheckOK_Run {
    my $qstxt;
    &sigoff(__LINE__);
 
-   $qdsoa = getRRData($qd,'SOA');   # try to get a SOA for _domainkey.domain.toplevel
-   d("DKIM: SOAd: $qd - $qdsoa");
-   $qssoa = getRRData($qs,'SOA');   # try to get a SOA for *.domain.toplevel
-   d("DKIM: SOAs: $qs - $qssoa");
-   if (! $qdsoa) {
-       $qdsoa = getRRData($qp,'SOA');   # try to get a SOA for _adsp._domainkey.domain.toplevel
-       d("DKIM: SOAp: $qp - $qdsoa");
-   }
-
-   if (! $qdsoa || $qdsoa eq $qssoa) {
-       $qdsoa = '';
-       $qstxt = getRRData($qs,'TXT');   # try to get a TXT for *.domain.toplevel
-       d("DKIM: TXTs: $qs - $qstxt");
-       $qdtxt = getRRData($qd,'TXT');   # try to get a TXT for _domainkey.domain.toplevel
-       d("DKIM: TXTd: $qd - $qdtxt");
-       if (! $qdtxt) {
-           $qdtxt = getRRData($qp,'TXT');   # try to get a TXT for _adsp._domainkey.domain.toplevel
-           d("DKIM: TXTp: $qd - $qdtxt");
+   if ( ! ($qdtxt = getRRData($qp,'TXT'))) { # try to get a TXT for _adsp._domainkey.domain.toplevel
+       $qdsoa = getRRData($qd,'SOA');   # try to get a SOA for _domainkey.domain.toplevel
+       d("DKIM: SOAd: $qd - $qdsoa");
+       $qssoa = getRRData($qs,'SOA');   # try to get a SOA for *.domain.toplevel
+       d("DKIM: SOAs: $qs - $qssoa");
+       if (! $qdsoa) {
+           $qdsoa = getRRData($qp,'SOA');   # try to get a SOA for _adsp._domainkey.domain.toplevel
+           d("DKIM: SOAp: $qp - $qdsoa");
        }
+
+       if (! $qdsoa || $qdsoa eq $qssoa) {
+           $qdsoa = '';
+           $qstxt = getRRData($qs,'TXT');   # try to get a TXT for *.domain.toplevel
+           d("DKIM: TXTs: $qs - $qstxt");
+           $qdtxt = getRRData($qd,'TXT');   # try to get a TXT for _domainkey.domain.toplevel
+           d("DKIM: TXTd: $qd - $qdtxt");
+       }
+   } else {
+       d("DKIM: TXTp: $qp - $qdtxt");
    }
 
    unless ($qdsoa or
@@ -31242,21 +31305,21 @@ sub DKIMpreCheckOK_Run {
            $topdom = $entry.'.'.$topdom;                    # we are checking all sub domain levels
            $qd = '_domainkey.'. $topdom;
            $qp = '_adsp._domainkey.'. $topdom;
-           $qdsoa = getRRData($qd,'SOA');   # try to get a SOA for subdomain
-           d("DKIM2: SOAd: $qd - $qdsoa");
-           if (! $qdsoa || $qdsoa eq $qssoa) {
-               $qdsoa = getRRData($qp,'SOA');   # try to get a SOA for _policy._domainkey.domain.toplevel
-               d("DKIM2: SOAp: $qp - $qdsoa");
-           }
-           if ($qdsoa && $qdsoa ne $qssoa) {
-               $dkimdomain = 1;
-               last;
-           }
-           $qdtxt = getRRData($qd,'TXT');   # try to get a TXT for subdomain
-           d("DKIM2: TXTd: $qd - $qdtxt");
-           if (! $qdtxt) {
-               $qdtxt = getRRData($qp,'TXT');   # try to get a TXT for _policy._domainkey.domain.toplevel
-               d("DKIM2: TXTp: $qd - $qdtxt");
+           if ( ! ($qdtxt = getRRData($qp,'TXT'))) {   # try to get a TXT for _adsp._domainkey.domain.toplevel
+               $qdsoa = getRRData($qd,'SOA');   # try to get a SOA for subdomain
+               d("DKIM2: SOAd: $qd - $qdsoa");
+               if (! $qdsoa || $qdsoa eq $qssoa) {
+                   $qdsoa = getRRData($qp,'SOA');   # try to get a SOA for _adsp._domainkey.domain.toplevel
+                   d("DKIM2: SOAp: $qp - $qdsoa");
+               }
+               if ($qdsoa && $qdsoa ne $qssoa) {
+                   $dkimdomain = 1;
+                   last;
+               }
+               $qdtxt = getRRData($qd,'TXT');   # try to get a TXT for subdomain
+               d("DKIM2: TXTd: $qd - $qdtxt");
+           } else {
+               d("DKIM2: TXTp: $qp - $qdtxt");
            }
            if (($qdtxt && ! $qstxt) || ($qdtxt && $qstxt && $qdtxt ne $qstxt)) {
                $dkimdomain = 1;
@@ -31267,12 +31330,14 @@ sub DKIMpreCheckOK_Run {
        $dkimdomain = 1;
    }
    &sigon(__LINE__);
-   DKIMCacheAdd($domain) if $dkimdomain;
+   $qdtxt = lc($qdtxt);
+   DKIMCacheDelete($domain) if ($qdtxt eq 'unknown' && ! $DKIMCacheStrict);
+   DKIMCacheAdd($domain) if $dkimdomain && ($qdtxt ne 'unknown' || $DKIMCacheStrict);
 
    if ($dkimdomain && $this->{isDKIM}) {
        return DKIMOK($fh,\$this->{org_header},defined${chr(ord(",")<< 1)}) ? 1 : 0;
    }
-   if ($dkimdomain && ! $this->{isDKIM}) {
+   if ($dkimdomain && ! $this->{isDKIM} && ($qdtxt ne 'unknown' || $DKIMCacheStrict)) {
        $this->{dkimresult} = 'fail';
        makeOrgAuthHeader(\$this->{myheader}, 'dkim', $this->{dkimresult});
        $this->{prepend}="[DKIM]";
@@ -31287,7 +31352,8 @@ sub DKIMpreCheckOK_Run {
        thisIsSpam($fh,$this->{messagereason},$DKIMLog,$err,$dkimTestMode,0,1);
        return 0;
    }
-   mlog($fh,"$tlit DKIM domain-check skipped - $domain does not support DKIM") if $ValidateSenderLog >= 2;
+   my $text = $DKIMCacheStrict ? '' : " or _adsp 'unknown' policy is provided";
+   mlog($fh,"$tlit DKIM domain-check skipped - $domain does not support DKIM$text") if $ValidateSenderLog >= 2;
    return 1;
 }
 
@@ -31312,8 +31378,9 @@ sub DMARCok {
    skipCheck($this,'aa','ro','co') && return 1;
 
    my $failed = {};
-   # use trusted spf and dkim results if available
+   # use trusted spf and dkim results or real check results if available
    $failed = $this->{dmarc}->{auth_results} if $this->{dmarc}->{auth_results};
+   d("dmarc: dmarc got auth_results - spf '$failed->{spf}' - dkim '$failed->{dkim}'");
    # check the strict spf alignment
    if (! $failed->{spf} && $this->{dmarc}->{aspf} eq 's' && (!($this->{dmarc}->{dom} && $this->{dmarc}->{mfd}) || ($this->{dmarc}->{dom} ne $this->{dmarc}->{mfd}))) {
        $failed->{spf} = 'fail';
@@ -31331,7 +31398,8 @@ sub DMARCok {
            mlog($fh,"DMARC: this mail breakes the relax SPF alignment rules: not matching envelope domain '$this->{dmarc}->{mfd}' and from domain '$this->{dmarc}->{dom}' found") if $SPFLog;
        }
    }
-   $failed->{spf} ||= ($this->{spf_result} || 'none') if $this->{dmarc}->{aspf} eq 'r' && $this->{spf_result} !~ /pass|softfail|neutral|none/o;
+   $failed->{spf} ||= ($this->{spf_result} || 'none') if $this->{dmarc}->{aspf} eq 'r' && $this->{spf_result} !~ /pass|neutral|none/o;
+   $failed->{spf} ='fail' if $failed->{spf} eq 'softfail';  # make softfail -> fail
    if ($failed->{spf} eq 'fail') {
        my $how = $this->{dmarc}->{aspf} eq 's' ? 'strict' : 'relax';
        mlog($fh,"DMARC: this mail breakes the $how SPF rules defined in the DMARC record for domain $this->{dmarc}->{dom} - check result='$failed->{spf}'") if $SPFLog;
@@ -31354,9 +31422,12 @@ sub DMARCok {
        $failed->{dkim} ||= 'neutral' if $this->{dmarc}->{adkim} eq 'r';
        mlog($fh,"DMARC: this mail breakes the DKIM policies defined in the DMARC record for domain $this->{dmarc}->{domain} - there is no DKIM-signature found in this mail for domain $this->{dmarc}->{domain}") if $failed->{dkim} eq 'fail' && $SPFLog;
    }
-   if (! $this->{DMARC_arc}) {
+   if (! $this->{DMARC_arc} && $DKIMCacheStrict) {
        DKIMCacheAdd($this->{dmarc}->{domain}) if $this->{dmarc}->{domain} && $this->{dmarc}->{domain} ne $this->{dmarc}->{dom};
        DKIMCacheAdd($this->{dmarc}->{dom}) if $this->{dmarc}->{dom};
+       for my $dom (@{$this->{dmarc}->{DKIMdomains}}) {
+           DKIMCacheAdd($dom) if $dom && $dom ne $this->{dmarc}->{domain} && $dom ne $this->{dmarc}->{dom};
+       }
    }
    $failed->{spf} ||= 'pass';
    $failed->{dkim} ||= 'pass';
@@ -31390,8 +31461,15 @@ sub DMARCok {
                                  )
                              );
 
-   return 1 if $this->{dmarc}->{domain} eq $this->{dmarc}->{dom} && $this->{dmarc}->{p} eq 'none';
-   return 1 if $this->{dmarc}->{domain} ne $this->{dmarc}->{dom} && $this->{dmarc}->{sp} eq 'none';
+   if ($failed->{spf} ne 'pass' && $failed->{dkim} ne 'pass') {
+       $this->{dmarcresult} = 'fail';
+       makeOrgAuthHeader(\$this->{myheader}, 'dmarc', $this->{dmarcresult});
+   }
+
+   return 1 if $this->{dmarc}->{domain} eq $this->{dmarc}->{dom} && $this->{dmarc}->{p} eq 'none' && $this->{dmarcresult} eq 'pass';
+   return 1 if $this->{dmarc}->{domain} ne $this->{dmarc}->{dom} && $this->{dmarc}->{sp} eq 'none' && $this->{dmarcresult} eq 'pass';
+
+   return 1 if ($failed->{spf} eq 'pass' || $failed->{dkim} eq 'pass');  # rfc7489 section-3 - Identifier Alignment:  SPF or DKIM or BOTH
 
    $this->{dmarcresult} = 'fail';
    makeOrgAuthHeader(\$this->{myheader}, 'dmarc', $this->{dmarcresult});
@@ -31417,7 +31495,7 @@ sub DMARCok {
    $Stats{dmarc}++ if ! $slok && $fh;
 
    $this->{prepend} = '[DMARC]';
-   thisIsSpam( $fh, "DMARC failed", $SPFFailLog, $reply, $this->{testmode}, $slok, 0 );
+   thisIsSpam( $fh, "DMARC failed", $SPFFailLog, $reply, $this->{testmode}, $slok, 0 ) if $fh && ! $this->{error};
    return 0;
 }
 
@@ -31465,7 +31543,7 @@ sub DMARCget_Run {
    skipCheck($this,'aa','ro','invalidSenderDomain') && return;
    return if $this->{noprocessing} & 1;
    # do not report to reports
-   return if $this->{subject3} =~ /$DMARCReportSubjectRe/i;
+   return if $this->{subject3} =~ /$DMARCReportSubjectRe/io;
    my $mfd;
    $mfd = $1 if $this->{mailfrom} =~ /\@($EmailDomainRe)/o;
    my $toDomain;
@@ -31534,8 +31612,8 @@ sub DMARCget_Run {
                }
            }
            next if ! $trustedforwarder;
-           $this->{dmarc}->{auth_results}->{spf} = ($h =~ /SPF_PASS/io) ? 'pass' : 'fail';
-           $this->{dmarc}->{auth_results}->{dkim} = ($h =~ /DKIM_VALID_AU/io) ? 'pass' : 'fail';
+           $this->{dmarc}->{auth_results}->{spf} = ($h =~ /SPF_PASS/io) ? 'pass' : (($h =~ /\sSPF:/io) ? 'fail' : undef);
+           $this->{dmarc}->{auth_results}->{dkim} = ($h =~ /DKIM_VALID_AU/io) ? 'pass' : (($h =~ /DKIM_SIGNED|DKIM or DK/io) ? 'fail' : undef);
            $this->{dmarc}->{policy_evaluated}->{reason} = 'mailing_list';
        }
    }
@@ -31562,6 +31640,8 @@ sub DMARCget_Run {
        }
    }
    @{$this->{dmarc}->{DKIMdomains}} = @dkimDom if @dkimDom;
+   $this->{dmarc}->{auth_results}->{spf} ||= $this->{spf_result} if $this->{spf_result};
+
    $this->{dmarc}->{sp} ||= $this->{dmarc}->{p};
    $this->{dmarc}->{aspf} ||= 'r';
    $this->{dmarc}->{adkim} ||= 'r';
@@ -31652,6 +31732,7 @@ sub DMARCget_Run {
 
 sub DMARCaddReport {
     my $fh = shift;
+    return unless $DMARCReportFrom;
     my $this = $Con{$fh};
     my $size = $this->{dmarc}->{ruaSize} || 0;
     my $pol = $this->{dmarc}->{domain} . ' ' . $this->{dmarc}->{toDomain};
@@ -31772,12 +31853,16 @@ EOT
             }
         }
         push @deletePol, $k;
+        if (matchSL([$to,$domain],'noDMARCReportDomain')) {
+            mlog(0,"info: skip DMARC report for domain $domain , recipient $to - because match in noDMARCReportDomain") if $MaintenanceLog;
+            next;
+        }
         eval{require IO::Compress::Zip; 1;} or next;
         my $zmail;
         IO::Compress::Zip::zip(\$mail => \$zmail, Name => "$toDomain!$domain!$begin!$end.xml") or next;
         undef $mail;
         if ($size && length($zmail) > $size) {
-            mlog(0,'info: skip DMARC report for domain $domain - report size is larger than policy restriction '.formatNumDataSize($size)) if $MaintenanceLog;
+            mlog(0,"info: skip DMARC report for domain $domain - report size is larger than policy restriction ".formatNumDataSize($size)) if $MaintenanceLog;
             next;
         }
         # multipart message - attach DMARC report as ZIP
@@ -31805,7 +31890,8 @@ EOT
             header_str => [ From => $mailFrom,
                             To => $to,
                             Subject => "Report Domain: $domain Submitter: $toDomain Report-ID: <$report_id>",
-                            'Message-ID' => $msgid
+                            'Message-ID' => $msgid,
+                            'X-ASSP-DMARC-Report' => "rua; $to"
                           ],
             parts      => [ @parts ],
         );
@@ -31838,6 +31924,7 @@ EOT
 
 sub DMARCSendForensic {
     my $fh = shift;
+    return unless $DMARCReportFrom;
     my $this = $Con{$fh};
     my $report_id = Time::HiRes::time;
     my $size = $this->{dmarc}->{rufSize} || 0;
@@ -31902,7 +31989,8 @@ EOT
         header_str => [ From => $mailFrom,
                         To => $this->{dmarc}->{ruf},
                         Subject => "Report Domain: $this->{dmarc}->{domain} Submitter: $this->{dmarc}->{toDomain} Report-ID: <$report_id>",
-                        'Message-ID' => $msgid
+                        'Message-ID' => $msgid,
+                        'X-ASSP-DMARC-Report' => "ruf; $this->{dmarc}->{ruf}"
                       ],
         parts      => [ @parts ],
     );
@@ -32618,6 +32706,7 @@ sub DKIMOK_Run {
   my $dkimwhy_a;
   my $dkimpolicy_s;
   my $dkimwhy_s;
+  my $skipcache;
 
   &sigoff(__LINE__);
   eval { $Mail::DKIM::DNS::RESOLVER = getDNSResolver(); };
@@ -32635,6 +32724,12 @@ sub DKIMOK_Run {
       $dkimwhy_a     = $dkimpolicy_a->apply($dkim);
       $dkimpolicy_s  = $dkim->fetch_sender_policy;
       $dkimwhy_s     = $dkimpolicy_s->apply($dkim);
+      if (! $DKIMCacheStrict) {
+          my @policies   = $dkim->fetch_author_domain_policies;
+          foreach my $policy (@policies) {
+              $skipcache = 1 if ($policy->policy eq 'unknown');
+          }
+      }
   };
   my $except = $@;
   &sigon(__LINE__);
@@ -32660,7 +32755,6 @@ sub DKIMOK_Run {
        }
   }
 
-  my $skipcache;
   if ($result ne 'pass' && $this->{dkim_arc} eq 'pass' && $this->{arcresult}->{trustedhost}) {
        $result = 'pass';
        $this->{dkimverified} = "verified-OK";
@@ -36556,6 +36650,28 @@ sub getbody {
         $this->{TestMessageScore} = 1;
         if (&MsgScoreTooHigh($fh,$doneToError)) {delete $this->{TestMessageScore};$this->{skipnotspam} = 0;return;}
 
+        # detect a bounce back local dmarc-report (NDR) and modify noDMARCReportDomain if possible
+        if (   $DMARCReportFrom    # we send DMARC-reports
+            && ! $this->{relayok}  # and this is an incoming
+            && $this->{isbounce}   # bounce/NDR
+            && $this->{subject3} !~ /$DMARCReportSubjectRe/io   # but not a DMARC-report itself
+            && $$dataref =~ /(?:^|\n)X-ASSP-DMARC-Report:\s*ru[af];\s*($EmailAdrRe\@$EmailDomainRe)/io  # a NDR for a sent ASSP DMARC-report
+            && (my $addr = $1)
+            && $$dataref =~ /(?:^|\n)Subject:\s*Report\s+Domain:\s+($EmailDomainRe)\s+Submitter:\s+($EmailDomainRe)\s+Report-ID:\s*(<\d{10,11}\.\d+>)/io  # parse the original report subject
+           )
+        {
+            my $reportdomain = '@'.$1;
+            my $submitterdomain = '@'.$2;
+            my $reportid = $3;
+            if (! localdomainsreal($reportdomain) && localdomainsreal($submitterdomain)) {
+                mlog($fh,"info: bounced DMARC-Report detected - DMARC-Report with ID $reportid failed to send to: $addr , submitter-domain: $submitterdomain , report-domain: $reportdomain");
+                if ($noDMARCReportDomain =~ /^\s*file:.+/io) {
+                    modifyList('noDMARCReportDomain' , 'add' ,'report delivery failed', $reportdomain );
+                    modifyList('noDMARCReportDomain' , 'add' ,'report delivery failed', $addr ) if $addr !~ /\Q$reportdomain\E$/i;
+                }
+            }
+        }
+
         delete $this->{TestMessageScore};
         $this->{skipnotspam} = 0;
         $utf8off->(\$this->{header});
@@ -38148,6 +38264,14 @@ sub reply {
                      )
                  );
 
+    #    provide confgured and not already seen or provided and SSL is active and end of EHLO reply and not here found
+    if ($enableREQUIRETLS && $provideREQUIRETLS && ! $Con{$cli}->{REQUIRETLS} && "$cli" =~ /ssl/oi && $l=~/250\s+/o && $l!~/REQUIRETLS/oi) {
+        $l = "250-REQUIRETLS\r\n".$l;      # provide REQUIRETLS
+        $Con{$cli}->{REQUIRETLS} = 1;      # set the flag at the client connection
+        $Con{$cli}->{REQUIRETLSfaked} = 1; # remember this flag was faked
+        mlog($cli,"info: provided REQUIRETLS in EHLO reply for $cliIP") if $ConnectionLog >= 2;
+    }
+
     if ($l=~/250\s+STARTTLS/io || $l=~/250-\s*STARTTLS/io) {
         $this->{donotfakeTLS} = 1;
         if ($this->{fakeTLS}) {
@@ -38216,6 +38340,9 @@ sub reply {
     if (! $Con{$cli}->{relayok} && $l =~ /^250[ \-]+(XCLIENT|XFORWARD) +(.+)\s*\r\n$/io) {
         $Con{$cli}->{uc $1} = uc $2;   # 250-XCLIENT/XFORWARD NAME ADDR PORT PROTO HELO IDENT SOURCE
         d("set client $1 to $2");
+    }
+    if($enableREQUIRETLS && $l=~/250[- ].*?REQUIRETLS/io) {
+        $Con{$cli}->{REQUIRETLS} = 1;  # set the flag at the client connection
     }
     if ($l=~/250-.*?($notAllowedSMTP|$BIT8)/i) {
         my $cmd = $1;
@@ -52431,9 +52558,9 @@ sub ConfigAnalyze {
             }
             if ($DoDKIM && $ValidateSPF && $Con{$tmpfh}->{dmarc} && $Con{$tmpfh}->{spf_result}) {
                 if ( DMARCok($tmpfh)) {
-                    $fm .= "<b><font color='green'>&bull;</font> DMARC-check returned OK</b><br />\n";
+                    $fm .= "<b><font color='green'>&bull;</font> DMARC-check returned OK - results:</b> dmarc: $Con{$tmpfh}->{dmarcresult} , spf: $Con{$tmpfh}->{dmarc}->{auth_results}->{spf} , dkim: $Con{$tmpfh}->{dmarc}->{auth_results}->{dkim}<br />\n";
                 } else {
-                    $fm .= "<b><font color='red'>&bull;</font> DMARC-check returned FAILED</b><br />\n";
+                    $fm .= "<b><font color='red'>&bull;</font> DMARC-check returned FAILED - results:</b> dmarc: $Con{$tmpfh}->{dmarcresult} , spf: $Con{$tmpfh}->{dmarc}->{auth_results}->{spf} , dkim: $Con{$tmpfh}->{dmarc}->{auth_results}->{dkim}<br />\n";
                 }
             }
             &MainLoop1(0);
@@ -54113,8 +54240,8 @@ $autoJS
                    '<span%%20%%style="color:white;%%20%%background-color:#886800">',
                    '<span%%20%%style="color:white;%%20%%background-color:#004699">',
                    '<span%%20%%style="color:white;%%20%%background-color:#990099">');
-   my $findExpr=join(' && ',((map{'$cur=~/'.quotemeta($_).'/io'} map {/^([^-].*)/o} split(/\s+/o,$pat)),
-                             (map{'$cur!~/'.quotemeta($_).'/io'} map {/^-(.*)/o} split(/\s+/o,$pat))));
+   my $findExpr=join(' && ',((map{'$cur=~/'.quotemeta($_).'/i'} map {/^([^-].*)/o} split(/\s+/o,$pat)),
+                             (map{'$cur!~/'.quotemeta($_).'/i'} map {/^-(.*)/o} split(/\s+/o,$pat))));
    my %replace = ();
    my $j=0;
    my $highlightExpr='=~s/(';
@@ -54124,7 +54251,7 @@ $autoJS
     $j++;
    }
    $highlightExpr=~s/\|$//o;
-   $highlightExpr.=')/$replace{lc $1}$1<\/span>/gio';
+   $highlightExpr.=')/$replace{lc $1}$1<\/span>/gi';
    my $loop=<<'LOOP';
    while (time < $maxsearchtime && $cur && !($maxmatches && $matches>=$maxmatches && $notmatched>$postcontext) && !($maxlines && $lines>=$maxlines)) {
     $maxsearchtime += &MainLoop1(0) unless ++$loopcount % $loopcheck;
@@ -54285,7 +54412,7 @@ LOOP
               $i++;
             }
         }
-        $hfile =~ s/\Q$base\E\///o;
+        $hfile =~ s/\Q$base\E\///;
 
         if (&existFile($file)) {
           $hfile = "<span\%\%20\%\%style=\"white-space:nowrap;\"\%\%20\%\%onclick=\"popFileEditor('" . &normHTML($hlfile) . "','m');\"\%\%20\%\%class=\"" . $span . "\"\%\%20\%\%onmouseover=\"fileBG=this.style.backgroundColor;\%\%20\%\%this.style.backgroundColor='#BBBBFF';\"\%\%20\%\%onmouseout=\"this.style.backgroundColor=fileBG;\"><b>" . $hfile . "<\/b><\/span>";
@@ -54384,19 +54511,39 @@ LOOP
  my $dir = $base;
  $dir .= "/$1" if $logfile =~ /^([^\/]+)\//o;
  my ($lf) = $logfile =~/([^\/]+)$/o;
- my $h3 = '<center><table BORDER CELLSPACING=2 CELLPADDING=4><tr><th></th><th>filename</th><th>size</th><th></th><th>filename</th><th>size</th></tr>';
- $h3 .= '<tr><td>01</td><td>' . $lf . '</td><td>' . formatDataSize( -s "$dir/$lf", 1 ) . '</td></tr>';
+ my $tlen = 4;
+ my $h3;
+ $h3 .= '<span onclick=hidetip();><center><b>maillog filelist</b></center><b>close</b><hr />';
+ $h3 .= '<center><table BORDER CELLSPACING=2 CELLPADDING=4><tr>';
+ $h3 .= '<th>nbr</th><th>filename</th><th>size</th><th></th>' for 1...($tlen-1);
+ $h3 .= '<th>nbr</th><th>filename</th><th>size</th>';
+ $h3 .= '</tr>';
  my @filelist = $unicodeDH->($dir);
  my $i = 0;
- foreach my $file (reverse sort @filelist) {
-     next if $file !~ /\.$lf$/;
-     $h3 .= '<tr>' unless $i % 2;
-     $h3 .= '<td>' . sprintf("%02d",($i + 2)) . '</td><td>' . $file . '</td><td>' . formatDataSize( -s "$dir/$file", 1 ) . '</td>';
-     $h3 .= '</tr>' if $i % 2;
+ @filelist = grep {/(?:^|\.)\Q$lf\E$/} reverse sort @filelist;
+ my $rows = int(scalar(@filelist) / $tlen);
+ my @sortfilelist;
+ my %sortfilelistnumber;
+ for my $col (0..($tlen - 1)) {
+     for my $row (0..$rows) {
+         my $file = shift(@filelist) || last;
+         $sortfilelist[$row * $tlen + $col] = $file;
+         $i++;
+         $sortfilelistnumber{$file} = $i;
+     }
+ }
+ $i = 0;
+ foreach my $file (@sortfilelist) {
+     $h3 .= '<tr>' unless $i % $tlen;
+     my $dspfile = $file;
+     $dspfile =~ s/^(\d\d-\d\d-\d\d)?(.+)$/$1?"<b>$1<\/b>$2":"<b>$2<\/b>"/oe;
+     $h3 .= '<td class=tdnumber><b>' . $sortfilelistnumber{$file} . '&nbsp;</b></td><td>' . $dspfile . '</td><td>' . formatDataSize( -s "$dir/$file", 1 ) . '</td>';
+     $h3 .= (($i % $tlen) == ($tlen - 1)) ? '</tr>' : '<th></th>';
      $i++;
  }
+ $rows += 1;
  $h3 .= '</tr>' if $h3 !~ /tr\>$/;
- $h3 .= '</table></center>';
+ $h3 .= '</table></center></span>';
  $maxsearchtime = int($maxsearchtime + 0.5 - $stime);
  $stime = time - $stime;
  if ($maxsearchtime > $stime && $maxsearchtime > $maxsearchsec) {
@@ -54414,6 +54561,7 @@ $headerDTDTransitional
 $$CMheaders
 <style type="text/css">
 .spampassed { color: #FFA500; }
+.tdnumber {color: #000000; text-align:right;}
 </style>
 <div id="cfgdiv" $content>
 $headline
@@ -54492,7 +54640,7 @@ function changeSpan(change) {
           <option value="all">all log files</option>
           <option value="ago">this file number(s)</option>
         </select>
-        <a href="javascript:void(0);" onmouseover="showhint('$h3', this, event, '450px', '1');return false;"><img height=12 width=12 src="$wikiinfo" /></a>
+        <a href="javascript:void(0);" onclick="showhint('$h3', this, event, ie ? document.body.offsetWidth / 2.1 + 'px' : window.innerWidth / 2.1 + 'px', '2');return false;"><img height=12 width=12 src="$wikiinfo" /> <small><small>show filelist</small></small></a>
       </td>
       <td align="left">
         <label>show </label>
@@ -54529,7 +54677,7 @@ function resetForm() {
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 <a href="javascript:void(0);" onclick="document.getElementById(\'LogLines\').scrollTop=0;return false;">Go to Top</a>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-<a href="javascript:void(0);" onmouseover="showhint('$h3', this, event, '450px', '1');return false;">show filelist</a>
+<a href="javascript:void(0);" onclick="showhint('$h3', this, event, ie ? document.body.offsetWidth / 2.1 + 'px' : window.innerWidth / 2.1 + 'px', '2');return false;">show filelist</a>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 <a href="javascript:void(0);" onmouseover="showhint('$h1<br /><br />$h2', this, event, ie ? document.body.offsetWidth / 2.1 + 'px' : window.innerWidth / 2.1 + 'px' , '');return false;">help</a>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -70535,7 +70683,12 @@ sub ThreadMaintMain {
         &cleanCacheEmergencyBlock();
         &cleanCacheRFC822();
         &cleanCacheLDAPNotFound();
-        &DMARCgenReport(0) if $ValidateSPF && $DoDKIM && $DMARCReportFrom;
+        if ($ValidateSPF && $DoDKIM && $DMARCReportFrom) {
+            &DMARCgenReport(0);
+        } else {
+            %DMARCpol = ();
+            %DMARCrec = ();
+        }
         &ThreadYield();
         $wasrun = 1;
     }
@@ -72722,12 +72875,13 @@ sub GPBSetup {
         mlog(0,"warning: config parameter '$parm' is not configured to use a file (file:...) - unable to $whattodo entry");
         return 0;
     }
-    $file="$base/$file" if $file!~/^(([a-z]:)?[\/\\]|\Q$base\E)/io;
+    $file = "$base/$file" if $file!~/^(([a-z]:)?[\/\\]|\Q$base\E)/io;
     # mlog(0,"info: $how $file case: $case");
-    return if ( !-e "$file");
-    (open ($GPBFILE, '<',$file)) or (mlog(0,"error: unable to read from file $file for '$parm' to '$whattodo' entry") and return 0);
-    @cont = <$GPBFILE>;
-    $GPBFILE->close;
+    if ( $eF->($file) ) {
+        ($open->($GPBFILE, '<',$file)) or (mlog(0,"error: unable to read from file $file for '$parm' to '$whattodo' entry") and return 0);
+        @cont = <$GPBFILE>;
+        $GPBFILE->close;
+    }
     my $hasNetIP;
     my $run = sub {
         my $s1 = NetAddr::IP::Lite->new(shift,(unpack("A1",${chr(ord("\026") << 2)})-1))+(shift);
@@ -72748,11 +72902,13 @@ sub GPBSetup {
     {
         my $ret = 0;
         if (!$skipbackup) {
-            unlink "$file.bak";
-            rename("$file","$file.bak");
+            eval{
+                $unlink->("$file.bak");
+                $rename->("$file","$file.bak");
+            };
         }
-        (open ($GPBFILE, '>',"$file")) or (mlog(0,"error: unable to write to file $file for '$parm' to '$whattodo' entry") and return 0);
-        binmode $GPBFILE;
+        ($open->($GPBFILE, '>',"$file")) or (mlog(0,"error: unable to write to file $file for '$parm' to '$whattodo' entry") and return 0);
+        $GPBFILE->binmode;
         my $valIP;
         my $valIsIP = $value =~ /^$IPRe(?:\/\d+)?$/o;
         mlog(0,"warning: to remove an IP-address or IP-address-range from a defined IP-address-range, you need to install the modules Net::IP and NetAddr::IP::Lite") if (!$hasNetIP && exists $MakeIPRE{$parm} && $valIsIP);
@@ -72829,12 +72985,17 @@ sub GPBSetup {
         return $ret;
     } elsif ($whattodo eq 'add' && ! grep {/(?$case:^\Q$value\E)/} @cont) {
         if (!$skipbackup) {
-            unlink "$file.bak";
-            copy("$file","$file.bak");
+            eval {
+                $unlink->("$file.bak");
+                $copy->("$file","$file.bak");
+            }
         }
-        (open ($GPBFILE, '>>',"$file")) or (mlog(0,"error: unable to write to file $file for '$parm' to '$whattodo' entry") and return 0);
-        binmode $GPBFILE;
-        print $GPBFILE "\n$value  # added by GUI action or email interface - $text";
+        $how = 'GUI Action' if lc($how) eq 'gui';
+        $how = 'Email Interface' if lc($how) eq 'email';
+        $how = 'Global-Penalty-Box Server' if lc($how) eq 'gpb';
+        ($open->($GPBFILE, '>>',"$file")) or (mlog(0,"error: unable to write to file $file for '$parm' to '$whattodo' entry") and return 0);
+        $GPBFILE->binmode;
+        print $GPBFILE ( ($cont[-1] =~ /\n$/os) ? '' : "\n" )."$value  # added by $how - $text";
         $GPBFILE->close;
         mlog(0,"$how: $value added to $parm - $text");
         $ConfigChanged = 1;
@@ -72901,30 +73062,22 @@ sub GPBSetup {
     return 0 unless $GPBautoLibUpdate;
     my ($name) = $file =~ /\/?([^\/]+)$/io;
     $file="$base/$file" if $file!~/^\Q$base\E/io;
-    if (-e "$base/download/$name") {
-        unlink("$base/tmp/$name.bak");
-        copy("$base/download/$name","$base/tmp/$name.bak");
+    if ($eF->("$base/download/$name")) {
+        $unlink->("$base/tmp/$name.bak");
+        $copy->("$base/download/$name","$base/tmp/$name.bak");
     }
     if (! downloadHTTP($url,"$base/download/$name",0,$name,24,24,2,1)) {
-        unlink("$base/tmp/$name.bak");
+        $unlink->("$base/tmp/$name.bak");
     }
-    return 0 unless -e "$base/download/$name";
-    if (-e $file) {
-        use File::Compare();
-        my $ret = File::Compare::compare("$base/download/$name",$file);
-        if ($ret == 0) { # files are equal - nothing to do
-            mlog(0,"info: the most recent version of $name is already installed") if $MaintenanceLog;
-            unlink("$base/tmp/$name.bak");
-            return 0;
-        } elsif (-e $file && $ret == -1) { # an error while compare
-            mlog(0,"warning: unable to compare $base/download/$name and $file");
-            unlink("$base/tmp/$name.bak");
-            return 0;
-        }
+    return 0 unless $eF->("$base/download/$name");
+    if ($eF->($file) && fsize("$base/download/$name") == fsize($file) && getSHAFile("$base/download/$name",'') eq getSHAFile($file,'')) { # files are equal - nothing to do
+        mlog(0,"info: the most recent version of $name is already installed") if $MaintenanceLog;
+        $unlink->("$base/tmp/$name.bak");
+        return 0;
     }
-    if (-e "$base/tmp/$name.bak") {
-        unlink("$base/download/$name.bak");
-        File::Copy::move("$base/tmp/$name.bak","$base/download/$name.bak");
+    if ($eF->("$base/tmp/$name.bak")) {
+        $unlink->("$base/download/$name.bak");
+        $move->("$base/tmp/$name.bak","$base/download/$name.bak");
     }
     
     if ($file =~ /\.p[lm]$/oi) {
@@ -72944,13 +73097,13 @@ sub GPBSetup {
             mlog(0,"info: GPB-autoupdate: syntax check for downloaded script '$base/download/$name' returned OK");
         } else {
             mlog(0,"warning: GPB-autoupdate: syntax error in '$base/download/$name' - skip update of '$file' - syntax error is: $res");
-            unlink("$base/download/$name");
-            File::Copy::move("$base/download/$name.bak","$base/download/$name");
+            $unlink->("$base/download/$name");
+            $move->("$base/download/$name.bak","$base/download/$name");
             return 0;
         }
     }
     my $newVer = $GPBCompLibVer->($file,"$base/download/$name");
-    if (! $newVer && -e $file && $forceinstall !~ /<force>/oi) {
+    if (! $newVer && $eF->($file) && $forceinstall !~ /<force>/oi) {
         mlog(0,"info: the installed version of file $name is equal to, or newer than the downloaded version") if $MaintenanceLog;
         return 0;
     }
@@ -72958,10 +73111,10 @@ sub GPBSetup {
     mlog(0,"info: GPB-autoaupdate: successfully downloaded and veryfied version ($newVer) $base/download/$name for target $file");
     return 1 if ($GPBautoLibUpdate == 1 && $forceinstall !~ /<force>/oi);
     return 1 if (! -e $file && $forceinstall !~ /<(?:force|install)>/oi);
-    unlink("$file.bak") if -e "$file.bak";
-    File::Copy::move($file,"$file.bak") if -e $file;
+    $unlink->("$file.bak") if $eF->("$file.bak");
+    $move->($file,"$file.bak") if $eF->($file);
     createFolder4File($file);
-    if (copy("$base/download/$name",$file)) {
+    if ($copy->("$base/download/$name",$file)) {
         if ($file =~ /^\Q$base\E\/(?:(?:lib|Plugins)\/)?.+\.p[ml]$/oi) {
             $Recommends{"updated $file"} = 'assp restart is required for activation';
             mlog(0,"info: GPB-autoupdate: new version ($newVer) of $file was installed - restart is required");
@@ -72970,7 +73123,7 @@ sub GPBSetup {
         }
     } else {
         mlog(0,"error: GPB-autoupdate: unable to copy new version ($newVer) $base/download/$name to $file - $!");
-        File::Copy::move("$file.bak",$file);
+        $move->("$file.bak",$file);
         return 0;
     }
     if ($file =~ /\.zip$/io && $forceinstall =~ /<unzip:\s*([^,\s>]*)\s*>/io) {
