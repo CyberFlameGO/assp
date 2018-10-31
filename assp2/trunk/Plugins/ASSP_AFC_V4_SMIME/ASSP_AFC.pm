@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 4.86 2018/09/10 06:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 4.87 2018/10/24 09:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -27,6 +27,7 @@ use Encode;
 use vars qw($VERSION);
 no warnings qw(uninitialized);
 
+our %LoadError;
 our $CanFileType;
 our $CanZIPCheck;
 our $CanRARCheck;
@@ -77,6 +78,21 @@ our $skipLockyCheck = 0;
 
 our $maxProcessTime = 40; # max 40 seconds to process the attachments
 
+sub validateModule {
+    my $module = shift;
+    $module =~ s/^\s*use\s+//o;
+    my $var; my $k;
+    ($module, $var) = split(/\s+/o,$module,2);
+    ($module, $k) = ($1,$2) if $module =~ /^([^\s()]+)(\(\))?$/o;
+    delete $LoadError{$module};
+    $k = '()' if (! $k && ! $var && $module !~ s/\+$//o);
+    local $@;
+    return 1 if (eval("use $module$k $var;1;"));
+    $LoadError{$module} = $@;
+    $main::ModuleError{$module} = $@ unless $^C;
+    return 0;
+}
+
 BEGIN {
   $main::ModuleList{'Archive::Zip'} = '/1.59';
   $main::ModuleList{'Archive::Extract'} = '/0.80';
@@ -101,23 +117,23 @@ BEGIN {
   $LibArchRe .= 'TAR|TBZ|TBZ2|UDF|';
   $LibArchRe .= 'WAR|XAR|Z|ZIP';
 
-  $CanOLE = eval('use OLE::Storage_Lite();OLE::Storage_Lite->VERSION;');
-  $CanEOM = eval('use Email::Outlook::Message();Email::Outlook::Message->VERSION;');
+  $CanOLE = validateModule('OLE::Storage_Lite()') ? OLE::Storage_Lite->VERSION : undef;
+  $CanEOM = validateModule('Email::Outlook::Message()') ? Email::Outlook::Message->VERSION : undef;
   
-  if ($CanSMIME = eval('use Crypt::SMIME();Crypt::SMIME->VERSION;')) {
-      $CanNetSSLeay = eval('use Net::SSLeay();1;');
-  }
-  if ($CanFileType = eval('use File::Type(); use MIME::Types(); 1;')) {
+  $CanSMIME = (validateModule('Crypt::SMIME()') + validateModule('Net::SSLeay()') == 2) ? Crypt::SMIME->VERSION : undef;
+
+  if ($CanFileType = validateModule('File::Type()') + validateModule('MIME::Types()') == 2 ) {
     $main::ModuleList{'File::Type'} = File::Type->VERSION.'/0.22';
 
-    $CanZIPCheck = eval('use Archive::Zip(); use Archive::Extract(); $Archive::Extract::WARN = 0; 1;');
+    $CanZIPCheck = validateModule('Archive::Zip()') + validateModule('Archive::Extract()') == 2;
     if ($CanZIPCheck) {
+        $Archive::Extract::WARN = 0;
         $formatsRe = 'TGZ|TAR|GZ|ZIP|BZ2|TBZ|Z|LZMA|XZ|TXZ';
         $main::ModuleList{'Archive::Zip'} = Archive::Zip->VERSION.'/1.59';
         $main::ModuleList{'Archive::Extract'} = Archive::Extract->VERSION.'/0.80';
     }
     
-    if (eval('use Archive::Rar::Passthrough(); 1;')) {
+    if (validateModule('Archive::Rar::Passthrough()')) {
         $CanRARCheck = eval('my $r = Archive::Rar::Passthrough->new( rar => \'rar\' );
                              $r->get_binary;
                             ')
@@ -162,7 +178,8 @@ BEGIN {
         $main::ModuleList{'Archive::Rar::Passthrough'} = Archive::Rar::Passthrough->VERSION.'/2.00' if ($CanRARCheck || $Can7zCheck);
     }
 
-    if (eval('use Archive::Libarchive::XS qw( :all ); $LibArchVer = ARCHIVE_VERSION_NUMBER; 1;')) {     # Libarchive
+    if (validateModule('Archive::Libarchive::XS qw( :all )')) {     # Libarchive
+        $LibArchVer = eval('ARCHIVE_VERSION_NUMBER');
         $LibArchVer =~ s/(\d+)(\d{3})(\d{3})$/$1.$2.$3/o;
         $LibArchVer =~ s/\.0{1,2}/./go;
         $CanLACheck = 1;
@@ -194,6 +211,7 @@ BEGIN {
         }
     }
   }
+  if ($^C) {print "WARNING in Plugins/ASSP_AFC.pm:\n$LoadError{$_}\n" for (keys(%LoadError));}
 }
 
 our $old_CheckAttachments;
@@ -206,7 +224,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.86 2018/09/10 06:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.87 2018/10/24 09:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -227,7 +245,7 @@ $main::reglic->{'100'} = {};
 
 sub new {
 ###################################################################
-# this lines should not (or only very carful) be changed          #
+# this lines should not (or only very carefully) be changed       #
 # they are for initializing the varables                          #
 ###################################################################
     my $class = shift;
