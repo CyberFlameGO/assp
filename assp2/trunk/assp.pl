@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18295';        # 22.10.2018 TE
+$build   = '18304';        # 31.10.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -215,8 +215,6 @@ $minCSSbuild = 17015;
 #
 &setVersion();
 
-
-our $utf8;
 our $open;
 our $unicodeFH;
 our $unicodeDH;
@@ -235,7 +233,6 @@ our $dF;
 our $unicodeName;
 
 sub disableUnicode {
-    $utf8 = sub {};
     $open = sub { open(shift,shift,shift); };    ## no critic
     $unicodeFH = sub {};
     $unicodeDH = sub { opendir(my $d,shift);my @l = readdir($d);closedir($d) if $d;return @l; };
@@ -369,8 +366,10 @@ our %maxStatsAndDwnlAge = (
 );
 
 # *********************************************************************************************************************************************
-# hidden config variables that could be changed using the module lib/CorrectASSPcfg.pm
-# or that could be changed using a commandline switch like --enableCrashAnalyzer:=1
+# hidden configuration variables:
+#    that can be changed using the module lib/CorrectASSPcfg.pm sub set
+# or that can be set using a commandline switch like: --enableCrashAnalyzer:=1
+# or that can be changed safely here, without violating the codeintegrity
 # *********************************************************************************************************************************************
 
 # CrashAnalyzer related
@@ -492,6 +491,10 @@ our $ignoreInvalidAddressNPWL = 3;       # (0/1/2/3) ignore invalid envelope rec
 our $DKIMCacheStrict = 1;                # (0/1) if a DKIM signature is found for a domain - all other mails from this domain will require a DKIM signature to pass the Pre-DKIM-Check
 # *********************************************************************************************************************************************
 
+# some not RFC conform DMARC record subjects - like Amazon SES
+our @DMARCReportAddSubjectRe = ('(?:Report\s*domain:\s*\{$EmailDomainRe\}\s+Submitter:\s*\{Amazon\s+SES\}\s+Date:\s*\S+\s+Report-ID:.{2,})' ,
+                                '(?:^\s*\[BETA\] DMARC Report for)');
+
 # comma separed list of host1,helo1,host2,helo2,.... for an exact host match in the first line of an X-Spam-Report: spamassassin header!
 our $trustedFWSF = 'mx.sourceforge.net,lists.sourceforge.net';
 
@@ -599,7 +602,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '42412BA7446A4BF99DA2518CA8D8BA5D11533A6A'; }
+sub __cs { $codeSignature = 'E4DA04F116236F56219C6557089E1AAF5A8C6828'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1132,7 +1135,10 @@ $punyRE = 'xn--[a-zA-Z0-9\-]+';
 $EmailAdrRe=qr/[\x21\x23-\x26\x2a-\x2b\x2d-\x39\x3d\x3f\x41-\x5a\x5c\x5e-\x7e][\x21\x23-\x27\x2a-\x2b\x2d-\x39\x3d\x3f\x41-\x5a\x5c\x5e-\x7e]*/o;
 #$EmailAdrRe=qr/[^()<>@,;:'"\[\]\000-\040\x7F-\xFF][^()<>@,;:"\[\]\000-\040\x7F-\xFF]*/o;  # 30% slower than the above
 $EmailDomainRe=qr/(?:[$w][$w\-]*(?:\.[$w][$w\-]*)*\.(?:$punyRE|[$w][$w]+)|\[[$d][$d\.]*\.[$d]+\])/o;
-$DMARCReportSubjectRe = qr/^\s*Report\s*domain:\s*$EmailDomainRe\s+Submitter:\s*$EmailDomainRe\s+Report-?ID:.{2,}|^\s*\[BETA\] DMARC Report for/oi;
+$DMARCReportSubjectRe = '(?:^\s*Report\s*domain:\s*'.$EmailDomainRe.'\s+Submitter:\s*'.$EmailDomainRe.'\s+Report-?ID:.{2,})' .  # the RFC conform format of a DMARC report subject
+                        (@DMARCReportAddSubjectRe ? '|' : '') .
+                        join('|', map {my $t = $_; $t =~ s/\$EmailDomainRe/$EmailDomainRe/go; $t; } @DMARCReportAddSubjectRe);  # add nonconform subjects regex
+$DMARCReportSubjectRe = qr/$DMARCReportSubjectRe/i;
 $HeaderNameRe=qr/[\x21-\x39\x3B-\x7E]+/o; # printable ASCII except SPACE(\x20) and colon(: \x3A)
 $HeaderValueRe=qr/[ \t]*[$NOCRLF]*(?:\r?\n[ \t]+\S[$NOCRLF]*)*(?:\r?\n)?/o;
 $HeaderRe=qr/(?:$HeaderNameRe:$HeaderValueRe)/o;
@@ -2545,7 +2551,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   <div class="cfgnotes">Notes On Validate Helo</div>
   <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/validatehelo.txt\',3);" />',undef,undef,'msg001650','msg001651'],
 
-[0,0,0,'heading','Validate Sender - Addresses, Domains, MsgID, PTR, MX and DKIM'],
+[0,0,0,'heading','Validate Sender - Addresses, Domains, Msg-ID, PTR, MX and DKIM'],
 
 ['DoBlackDomain','Do Blacklisted Addresses and Domains','0:disabled|1:block|2:monitor|3:score', \&listbox,1,'(\d*)',undef, '',undef,undef,'msg001660','msg001661'],
 ['DoBlackDomainWL','Do Blacklisting Addresses and Domains for White',0,\&checkbox,'1','(.*)',undef,
@@ -3300,7 +3306,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   'This regular expression is used to identify Level 1 attachments that should be blocked.<br />
   Separate entries with a pipe |. The dot . is assumed to precede these, so don\'t include it.<br />
   For example:<br />
-  ace|ad[ep]|asx|ba[st]|chm|cmd|com|cpl|crt|dbx|exe|exe\-bin|hlp|ht[ab]|in[fs]|isp|js|jse|lnk|md[abez]|mht|ms[cipt]|nch|pcd|pif|prf|ps1?|reg|sc[frt]|sh[bs]|vb|vb[es]|wms|ws[cfh]<br />
+  ace|ad[ep]|asx|ba[st]|chm|cmd|com|cpl|crt|dbx|exe|exe\-bin|hlp|ht[ab]|in[fs]|isp|jse?|li?nk|md[abez]|mht|ms[cipt]|nch|pcd|pif|prf|ps1?|reg|sc[frt]|sh[bs]?|vb[es]?|wms|ws[cfh]?<br />
   If you\'ve installed the ASSP_AFC Plugin (at least version 2.10) and \'exe-bin\' is defined (on any level), the Plugin will detect executable files based on their binary content. Detected will be all executables, libraries and scripts for DOS and Windows (except .com files), MS office macros(VBA), MAC-OS and linux ELF (for all processor architectures).<br />
   If you want to skip the detection for a specific executable type, define any combination of the tags below like: \'exe-bin|:WSH|:MSOM|:WIN\' - notice the leading collon for the exceptions!<br /><br />
  :WIN - windows executables<br />
@@ -3322,7 +3328,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   'This regular expression is used to identify Level 2 attachments that should be blocked.<br />
   Level 2 already includes all rejected extensions from Level 1. <br />
   For example:<br />
-  (ad[ep]|asx|ba[st]|chm|cmd|com|cpl|crt|dbx|exe|hlp|ht[ab]|in[fs]|isp|js|jse|lnk|md[abez]|mht|ms[cipt]|nch|pcd|pif|prf|reg|sc[frt]|sh[bs]|vb|vb[es]|wms|ws[cfh]).zip',undef,undef,'msg004130','msg004131'],
+  (ad[ep]|asx|ba[st]|chm|cmd|com|cpl|crt|dbx|exe|hlp|ht[ab]|in[fs]|isp|js|jse|lnk|md[abez]|mht|ms[cipt]|nch|pcd|pif|prf|reg|sc[frt]|sh[bs]|vb|vb[es]|wms|ws[cfh])\.zip',undef,undef,'msg004130','msg004131'],
 ['BadAttachL3','Level 3 rejected File Extensions',80,\&textinput,'','(.*)','updateBadAttachL3',
   'This regular expression is used to identify Level 3 attachments that should be blocked.<br />
   Level 3 includes Level 2 and Level 1.<br />
@@ -3331,7 +3337,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['GoodAttach','Level 4 Allowed File Extensions',80,\&textinput,'','(.*)','updateGoodAttach',
   'This regular expression is used to identify attachments that should be allowed. All others are blocked. Separate entries with a pipe |. The dot . is assumed to precede these, so don\'t include it.<br />
   For example:<br />
-  ai|asc|bhx|dat|docx?|eps|gif|htm|html|ics|jpg|jpeg|hqx|od[tsp]|pdf|p7[mscz]|ppt|rar|rpt|rtf|snp|txt|xls|zip|7z',undef,undef,'msg004150','msg004151'],
+  ai|asc|bhx|dat|docx?|eps|gif|gz(?:ip)|html?|hqx|ics|jpe?g|od[tsp]|pdf|p7[mscz]|ppt|rar|rpt|rtf|snp|tar|tgz|txt|xls|zip|7z',undef,undef,'msg004150','msg004151'],
 
 ['UserAttach','User based Good and Bad Attachments*',40,\&textinput,'','(file:.+|)','updateUserAttach',
   'This set of regular expression is used to identify attachments that should be allowed (good) or blocked (block) for specified users and/or domains. Separate entries with any of \'=&gt; , ; space\'. Separate multiple regex entries with pipe \'|\'. The dot . is assumed to precede the regex, so don\'t include it anywhere (except the user name).<br />
@@ -3679,6 +3685,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  'How are received mails processed, if they contain a valid local MessageID-Signature/Tag (eg. because it is an answer/reply to a tagged mail).<br />
  The default value is \'whitelisted\'. Notice that noprocessing and/or whitelisted may prevent those mails from being collected in the corpus folders - check noProcessingLog and NonSpamLog.',undef,undef,'msg010630','msg010631'],
 ['DoBATV','Do BATV Tagging and Validation','0:disabled|1:block|2:monitor|3:score|4:testmode',\&listbox,0,'(\d*)',undef,'If enabled any sender address of outgoing mails is mangled with a <a href="http://en.wikipedia.org/wiki/Bounce_Address_Tag_Validation" rel="external">BATV-Tag</a>. Any incoming bounced mail is checked for a valid BATV-Tag. All valid (local) BATV-Tags will be removed from incoming mails - so whitelisting, delaying and all other recipient and sender based checks will use the normal addresses. If the BATV-check is successful, no MSGID-signing-check and DNS-Backscatter-check will be done! If any BATVTag was removed, no DKIM-check will be done! BATV-address-replacement is done, before the recipient replacement rules are processed!<br />
+  <b>NOTICE:</b> Switch off all BATV-tagging on local MTA\'s before you enable this option!<br />
   This check requires an installed <a href="http://metacpan.org/search?q=Digest::SHA1" rel="external">Digest::SHA1</a> module in Perl.',undef,undef,'msg004840','msg004841'],
 ['BATVSec','BATV Secrets for BATV-TAG-generation*',80,\&textinput,'0=key0|1=key1|2=key2|3=key3|4=key4|5=key5|6=key6|7=key7|8=key8|9=key9','(\S*)','configChangeBATVSec','To use <a href="http://en.wikipedia.org/wiki/Bounce_Address_Tag_Validation" rel="external">BATV</a> and to create the BATV-Tags, at leased one secret key is needed, up to ten keys are possible.<br />
   The notation is : generationnumber[0-9]=secretKey. For example: 0=key0|1=KEYX45rt|....   . Multiple pairs are separated by pipes (|). Default is  0=key0|1=key1|2=key2|3=key3|4=key4|5=key5|6=key6|7=key7|8=key8|9=key9 . Do not defines spaces, tabs and \'=\' as part of the keys(secrets)! The secrets are use randomly to build the BATV-Tags.',undef,undef,'msg004850','msg004851'],
@@ -3701,7 +3708,8 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['noBackSctrRe','Regular Expression to Skip all BackScatter Checks*',80,\&textinput,'','(.*)','ConfigCompileRe',
   'If the contents of a mail matches these regular expressions, all BackScatter checks will be skipped.',undef,undef,'msg009240','msg009241'],
 ['noBackSctrAddresses','Do not any Backscatter detection for this Addresses *',80,\&textinput,'','(.*)','ConfigMakeSLRe',
-  'Mail to and from any of these addresses will not be tagged and checked by any backscatter option. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com).',undef,undef,'msg004960','msg004961'],
+ 'Mail to and from any of these addresses will not be tagged and checked by any backscatter option. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com).<br />
+ Notice: backscatter checks are skipped for regular incoming mails (not matching redRe) for local postmaster@ and webmaster@ addresses, even these addresses are listed in BounceSenders.',undef,undef,'msg004960','msg004961'],
 ['noBackSctrIP','Exclude these IP\'s from any Backscatter detection*',80,\&textinput,'','(\S*)','ConfigMakeIPRe','Enter IP\'s that you want to exclude from FBMTV and Backscatter check, separated by pipes (|). <br />
   <hr /><div class="cfgnotes">Notes On Backscatter Detection</div><input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/backscatter.txt\',3);" />',undef,'7','msg004970','msg004971'],
 
@@ -4933,7 +4941,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
   For "do TLS" a server-certificate-file " SSLCertFile " and a server-key-file " SSLKeyFile " must exist and must be valid!<br />
   If you do not have valid certificates, you may generate both files online with <a href="http://www.mobilefish.com/services/ssl_certificates/ssl_certificates.php" rel="external">www.mobilefish.com</a> or you may use OpenSSL to generate <a href="http://www.mobilefish.com/developer/openssl/openssl_quickguide_self_certificate.html" rel="external">Self-signed SSL certificates</a>! If you have installed OpenSSL (must be in PATH) and installed and enabled IO::Socket::SSL and ASSP is unable to find valid certificates - ASSP will try to create them at startup!<br />
   Before you enable this feature, make sure that sendNoopInfo is switched off! If sendNoopInfo is enabled, STARTTLS will possibly not work!<br />
-  If possible, you should consider to implement the \'SMTP MTA Strict Transport Security (MTA-STS)\' by following the instructions in <a href="https://tools.ietf.org/html/rfc8461" rel="external">RFC8461</a>. To get MTA-STS working for incoming mails, it may required to configure and to enable the SNI support (please read the complete SSL/TLS section). To use MTA-STS for outgoing mails, no special assp configuration is required - your outgoing MTA must support and implement MTA-STS.<br />
+  If possible, you should consider to implement the \'SMTP MTA Strict Transport Security (MTA-STS)\' by following the instructions in <a href="https://tools.ietf.org/html/rfc8461" rel="external">RFC8461</a>. To get MTA-STS working for incoming mails, it may be required to configure and to enable the SNI support (please read the complete SSL/TLS section). To use MTA-STS for outgoing mails, no special assp configuration is required - your outgoing MTA must support and implement MTA-STS.<br />
   <b>DO NOT</b> try to use the assp internal webserver to provide MTA-STS policy fetching (like: https://mta-sts.your-domain.tld/.well-known/mta-sts.txt - read <a href="https://tools.ietf.org/html/rfc8461#section-3.2" rel="external">RFC8461 section-3.2</a>)!<br />
   <input type="button" value="SSL-failed-Cache" onclick="javascript:popFileEditor(\'DB-SSLfailed\',\'1h\');" /><br />',undef,undef,'msg008210','msg008211'],
 ['SSL_version','SSL version used for transmission',80,\&textinput,'SSLv23:!SSLv3:!SSLv2','(\!?(?:SSLv2\/?3|SSLv2|SSLv3|TLSv1(_?[12])?)(?:\:\!?(SSLv2\/?3|SSLv2|SSLv3|TLSv1(_?[12])?))*)','ConfigChangeSSL',
@@ -5604,6 +5612,23 @@ sub getPluginCheck {
 EOT
   $ret =~ s/\r?\n//go;
   return $ret;
+}
+
+our %ModuleError; keys %ModuleError = 128;
+our %ModuleList; keys %ModuleList = 128;
+our %ModuleStat; keys %ModuleStat = 128;
+
+sub validateModule {
+    my $module = shift;
+    $module =~ s/^\s*use\s+//o;
+    my $var; my $k;
+    ($module, $var) = split(/\s+/o,$module,2);
+    ($module, $k) = ($1,$2) if $module =~ /^([^\s()]+)(\(\))?$/o;
+    delete $ModuleError{$module};
+    $k = '()' if (! $k && ! $var && $module !~ s/\+$//o);
+    return 1 if (eval("use $module$k $var;1;"));
+    $ModuleError{$module} = $@;
+    return 0;
 }
 
 sub loadPluginCfgBegin {
@@ -7232,8 +7257,35 @@ our $AvailWin32Daemon   :shared = $useWin32Daemon ? eval("use Win32::Daemon; 1")
 our $CanUseWin32Daemon  :shared = $AvailWin32Daemon;
 if ( $isWIN && $CanUseWin32Daemon) {
  print "\t\t\t\t\t[OK]\nservice check";
+
+ if (! defined &Win32::Daemon::AUTOLOAD) {    # fix for Win32::Daemon version '20181025'
+     eval(<<'EOTAUTOLOAD');
+     package Win32::Daemon;
+     sub AUTOLOAD {
+         our $AUTOLOAD;
+         my( $Constant ) = $AUTOLOAD;
+         my( $Result, $Value );
+         $Constant =~ s/.*:://;
+         $Result = Constant( $Constant, $Value );
+         if( 0 == $Result ) {
+             $AutoLoader::AUTOLOAD = $AUTOLOAD;
+             goto &AutoLoader::AUTOLOAD;
+             return;
+         } elsif( 1 == $Result ) {
+             my ($pack,$file,$line);
+             $pack = 0;
+             ($pack,$file,$line) = caller;
+             print "Your vendor has not defined 'Win32::Daemon' macro $Constant, used in $file at line $line.";
+         } elsif( 2 == $Result ) {
+             $Value = "'$Value'";
+         }
+         eval "sub $AUTOLOAD { return( $Value ); }";
+         goto &$AUTOLOAD;
+     }
+EOTAUTOLOAD
+ }
+
  eval(<<'EOT');
- use Win32::Daemon;
  use Win32::Console;
 
  my $cmdlin = Win32::Console::_GetConsoleTitle () ? 1 : 0;
@@ -7311,13 +7363,14 @@ EOT
  if ($@) {
      print STDERR "error: $@\n";
      print "error: $@\n";
+     writeExceptionLog("error: unable to register service in SCM - $@");
      $AsAService = 0;
  }
- mlog(0,'starting in console mode') unless $AsAService;
+ mlog(0,"starting in console mode - possible error: $@") unless $AsAService;
 
 } else {
      $AsAService = 0;
-     mlog(0,'starting in console mode');
+     mlog(0,'starting in console mode (requested)');
      eval(<<'EOT');
 sub serviceCheck {}
 EOT
@@ -7702,9 +7755,6 @@ our %MainLoopInWebFH;
 our %ManageActions;
 our %ManageAdminUser;
 our %ManagePerm;
-our %ModuleError; keys %ModuleError = 128;
-our %ModuleList; keys %ModuleList = 128;
-our %ModuleStat; keys %ModuleStat = 128;
 our %MEXH;
 our %MRSadr;
 our %MRSEadr;
@@ -10661,19 +10711,6 @@ return 1;
 
 no ASSP_DEF_VARS;
 
-sub validateModule {
-    my $module = shift;
-    $module =~ s/^\s*use\s+//o;
-    my $var; my $k;
-    ($module, $var) = split(/\s+/o,$module,2);
-    ($module, $k) = ($1,$2) if $module =~ /^([^\s()]+)(\(\))?$/o;
-    delete $ModuleError{$module};
-    $k = '()' if (! $k && ! $var && $module !~ s/\+$//o);
-    return 1 if (eval("use $module$k $var;1;"));
-    $ModuleError{$module} = $@;
-    return 0;
-}
-
 sub defineCanUseModules {
     print "\t\t\t\t\t[OK]\nloading modules";
     print '.';
@@ -10918,24 +10955,23 @@ EOT
            && require Win32::Unicode
           )
        {
-          $utf8 = sub {eval(\'$utf8on->(\$_[0]);\');};
           $unicodeFH = sub { $_[0] = Win32::Unicode::File->new; };
-          $unicodeDH = sub { my $d = Win32::Unicode::Dir->new;my $c=shift;return unless $c;$utf8->($c);$d->open($c);my @l = $d->readdir;$d->close;return @l;};
-          $open = sub {my @c=@_;return unless @c==3;$utf8->($c[2]);$unicodeFH->($_[0]);$_[0]->open($_[1],$c[2]);};
-          $unlink = sub { my $c=shift;return unless $c;$utf8->($c);Win32::Unicode::File::unlinkW($c); };
-          $move = sub { my @c=@_;return unless @c==2;for(@c){$utf8->($_);};Win32::Unicode::File::moveW(@c,1); };
-          $copy = sub { my @c=@_;return unless @c==2;for(@c){$utf8->($_);};Win32::Unicode::File::copyW(@c,1); };
-          $rename = sub { my @c=@_;return unless @c==2;for(@c){$utf8->($_);};Win32::Unicode::File::renameW(@c,1); };
-          $eF = sub { my $c=shift;return unless $c;$utf8->($c);eval{Win32::Unicode::File::file_type(e => $c);}; };
-          $dF = sub { my $c=shift;return unless $c;$utf8->($c);eval{Win32::Unicode::File::file_type(d => $c);}; };
-          $stat = sub { my $c=shift;return unless $c;return unless $eF->($c);$utf8->($c);my @st; eval{@st = Win32::Unicode::File::statW($c);}; if ($@) {eval{@st = stat($c);};} return @st;};
-          $mkdir = sub { my $c=shift; my $p=shift; return unless ($c && $p); return if $eF->($c); return if $dF->($c); $utf8->($c); Win32::Unicode::Dir::mkdirW($c)};
-          $rmdir = sub { my $c=shift; return unless $c; return if ! $dF->($c); return if $c =~ /^\Q$base\E\/?$/o; $utf8->($c); Win32::Unicode::Dir::rmdirW($c)};
-          $rmtree = sub { my $c=shift; return unless $c; return if ! $dF->($c); $utf8->($c); rmTree($c)};
+          $unicodeDH = sub { my $d = Win32::Unicode::Dir->new;my $c=shift;return unless $c;$utf8on->(\$c);$d->open($c);my @l = $d->readdir;$d->close;return @l;};
+          $open = sub {my @c=@_;return unless @c==3;$utf8on->(\$c[2]);$unicodeFH->($_[0]);$_[0]->open($_[1],$c[2]);};
+          $unlink = sub { my $c=shift;return unless $c;$utf8on->(\$c);Win32::Unicode::File::unlinkW($c); };
+          $move = sub { my @c=@_;return unless @c==2;for(@c){$utf8on->(\$_);};Win32::Unicode::File::moveW(@c,1); };
+          $copy = sub { my @c=@_;return unless @c==2;for(@c){$utf8on->(\$_);};Win32::Unicode::File::copyW(@c,1); };
+          $rename = sub { my @c=@_;return unless @c==2;for(@c){$utf8on->(\$_);};Win32::Unicode::File::renameW(@c,1); };
+          $eF = sub { my $c=shift;return unless $c;$utf8on->(\$c);eval{Win32::Unicode::File::file_type(e => $c);}; };
+          $dF = sub { my $c=shift;return unless $c;$utf8on->(\$c);eval{Win32::Unicode::File::file_type(d => $c);}; };
+          $stat = sub { my $c=shift;return unless $c;return unless $eF->($c);$utf8on->(\$c);my @st; eval{@st = Win32::Unicode::File::statW($c);}; if ($@) {eval{@st = stat($c);};} return @st;};
+          $mkdir = sub { my $c=shift; my $p=shift; return unless ($c && $p); return if $eF->($c); return if $dF->($c); $utf8on->(\$c); Win32::Unicode::Dir::mkdirW($c)};
+          $rmdir = sub { my $c=shift; return unless $c; return if ! $dF->($c); return if $c =~ /^\Q$base\E\/?$/o; $utf8on->(\$c); Win32::Unicode::Dir::rmdirW($c)};
+          $rmtree = sub { my $c=shift; return unless $c; return if ! $dF->($c); $utf8on->(\$c); rmTree($c)};
 
-          $unicodeName = sub {my $c=shift;return unless $c;$utf8->($c); eval(\'Win32::Unicode::File::CYGWIN\') ? Encode::encode_utf8($c) : Win32::Unicode::File::utf8_to_utf16(Win32::Unicode::File::catfile($c)) . "\x00";};
-#          $unicodeName = sub {my $c=shift;return unless $c;$utf8->($c); Win32::Unicode::File::utf8_to_utf16(Win32::Unicode::File::catfile($c)) . "\x00";};
-#          $unicodeName = sub {my $c=shift;return unless $c;$utf8->($c);Win32::Unicode::File::utf8_to_utf16(Win32::Unicode::File::catfile($c));};
+          $unicodeName = sub {my $c=shift;return unless $c;$utf8on->(\$c); eval(\'Win32::Unicode::File::CYGWIN\') ? Encode::encode_utf8($c) : Win32::Unicode::File::utf8_to_utf16(Win32::Unicode::File::catfile($c)) . "\x00";};
+#          $unicodeName = sub {my $c=shift;return unless $c;$utf8on->(\$c); Win32::Unicode::File::utf8_to_utf16(Win32::Unicode::File::catfile($c)) . "\x00";};
+#          $unicodeName = sub {my $c=shift;return unless $c;$utf8on->(\$c);Win32::Unicode::File::utf8_to_utf16(Win32::Unicode::File::catfile($c));};
           1;
        } else {
           0;
@@ -12467,7 +12503,7 @@ foreach (sort keys %Config1) {
     <a href="maillog"' . $maillogEnd . '" onmouseover="showhint(\'view or search in the Maillog\', this, event, \'500px\', \'1\');return false;"><img class="topIcon" src="get?file=images/log.jpg"></a>
 
     <a href="analyze" onmouseover="showhint(\'start the Mail Analyzer\', this, event, \'500px\', \'1\');return false;"><img class="topIcon" src="get?file=images/analyze.png"></a>
-    <a href="infostats" onmouseover="showhint(\'show the ASSP Server Information, Scoring and Blocking Statstic\', this, event, \'500px\', \'1\');return false;"><img class="topIcon" src="get?file=images/stats.jpg"></a>
+    <a href="infostats" onmouseover="showhint(\'show the ASSP Server Information and Download Links, Scoring and Blocking Statstic\', this, event, \'500px\', \'1\');return false;"><img class="topIcon" src="get?file=images/stats.jpg"></a>
 ';
  $headers .=
    '<a href="top10stats" target="_blank" onmouseover="showhint(\'show the Top Ten Statistic\', this, event, \'500px\', \'1\');return false;"><img class="topIcon" src="get?file=images/top10.jpg"/></a>' if $DoT10Stat;
@@ -14562,7 +14598,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.86;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.87;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.07;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -24158,8 +24194,40 @@ sub bodyWrap {
 # wrap long headers according to RFC822/1522
 sub headerWrap {
     my $header=shift;
-    $header=~s/(?:([$NOCRLF]{60,75}?;)|([$NOCRLF]{60,75}) ) {0,5}(?=[$NOCRLF]{10,})/$1$2\r\n\t/go;
+
+    $header=~s/
+
+              ([$NOCRLF]*?)(=\?[^\?]+\?[bq]\?[^\?]*\?=)  # any or no text followed by MIME-encoding                                                           $1 $2
+            | (?: ([$NOCRLF]{60,76}?;)                   # or      76 chars + ;                                                                               $3
+                | ([$NOCRLF]{60,76}?)(\x20+)             #     or  76 chars + space - space to next line                                                      $4 $5
+                | ([$NOCRLF]{77})                        #     or  any 77 chars                                                                               $6
+              )(?=[$NOCRLF]+)                            # and any chars left but not regex counted!
+
+             /headerWrapLine($1,$2,$3,$4,$5,$6)/goiex;
+
+#   $header=~s/(?:([$NOCRLF]{60,75}?;)|([$NOCRLF]{60,75}) ) {0,5}(?=[$NOCRLF]{10,})/$1$2\r\n\t/go;    # old regex
     return $header;
+}
+
+# wrap a line catched by the headerWrap regex content based
+sub headerWrapLine {
+    my ($one, $two, $three, $four, $five, $six) = @_;
+
+    # it may happen that we've expanded a headername field (e.g. Subject: -> X-Assp-Original-Subject:)
+    # and the resulting header line inclusive the MIME-encoded value field is longer than 77 charcters
+    # in this case we decode and reencode (base64) the line in to multiple lines
+    if ($two && (length($one) + length($two) > 77)) {
+        my $newtwo = eval { Email::MIME::Encode::mime_encode(d8(decodeMimeWords2UTF8($two)), 'UTF-8', length($one)); };
+        if (! $@)  {
+            $newtwo =~ s/\?= =\?/?=\r\n\t=?/go;  # mime_encode joins multiple MIME with a space
+            return "$one$newtwo\r\n\t";
+        }
+    }
+
+    return "$one$two$three$four$six\r\n\t$five" unless($one && $two);                       # no MIME encoding - trailing space ($five) to new line
+    return "$one$two\r\n\t" if $one =~ /^$HeaderNameRe:/oi;                                 # the first line of a header tag
+    return "$one\r\n\t$two\r\n\t" if $one && (length($one) + length($two)) > 77;            # any text followed by MIME encoding are together longer than 77 chars (the if - eval above has failed)
+    return "$one$two$three$four$six\r\n\t$five";                                            # just break the line - trailing space ($five) to new line
 }
 
 # unwrap long header (in place) according to RFC822[B.2. SEMANTICS] (one leading SPACE or HTAB)
@@ -24348,6 +24416,8 @@ sub stateReset {
     $this->{isbounce} = '';
     $this->{ispip} = '';
     $this->{isDKIM} = '';
+    $this->{isDMARCReportSubject} = '';
+    $this->{isDMARCReport} = '';
     $this->{ismaxsize} = '';
     $this->{lastwritten} = '';
     $this->{localSenderOK} = '';
@@ -27412,6 +27482,10 @@ sub makeSubject {
     $Con{$fh}->{subject} = e8($Con{$fh}->{subject});
     $Con{$fh}->{originalsubject} = e8($Con{$fh}->{originalsubject});
     $Con{$fh}->{subject3} = e8($Con{$fh}->{subject3});
+    if ($Con{$fh}->{subject3} =~ /$DMARCReportSubjectRe/i) {
+        $Con{$fh}->{isDMARCReportSubject} ||= 1;
+        $Con{$fh}->{isDMARCReport} ||= 1;
+    }
 }
 
 sub getOriginIPs {
@@ -28371,7 +28445,7 @@ sub headerAddrCheckOK_Run {
                 while ($bc =~ /($EmailAdrRe\@$EmailDomainRe)/igos) {
                     my $addr = $1;
                     if ($ReplaceRecpt) {
-                        my $newadr = RcptReplace($addr,batv_remove_tag('',$this->{mailfrom},0),'RecRepRegex');
+                        my $newadr = RcptReplace($addr,batv_remove_tag('',$this->{mailfrom},''),'RecRepRegex');
                         if (lc $newadr ne lc $addr) {
                             $this->{header} =~ s/((?:^|\n)$bcc:(?:$HeaderValueRe)*?)\Q$addr\E/$1$newadr/is;
                             mlog($fh,"$BCC: - recipient $addr replaced with $newadr") if $ValidateUserLog;
@@ -29075,6 +29149,7 @@ sub BackSctrCheckOK {
     return 1 if ($this->{whitelisted} && !$BackWL);
     return 1 if (($this->{noprocessing} & 1) && !$BackNP);
     return 1 if &matchIP($ip,'noBackSctrIP',$fh,0);
+    return 1 if ! $this->{redre} && $this->{rcpt} =~ /(?:post|web)master\@/io;
     return 1 if (&matchSL([$this->{rcpt},$this->{mailfrom}],'noBackSctrAddresses'));
     if ($noBackSctrRe && $this->{header} =~ /(noBackSctrReRE)/) {
        mlogRe($fh,($1||$2),'noBackSctrRe','nobackscatter');
@@ -29380,17 +29455,22 @@ sub MSGIDsigOK_Run {
     $this->{msgidsigdone} = 1;
 
     return 1 unless $CanUseSHA1;
-    return if ! $this->{isbounce};
+    return 1 if ! $this->{isbounce};
+    return 1 if $this->{msgidsigok};
     skipCheck($this,'co','sb','ro') && return 1;
     return 1 if ($this->{whitelisted} && !$BackWL) ;
     return 1 if (($this->{noprocessing} & 1) && !$BackNP);
     return 1 if &matchIP($this->{ip},'noBackSctrIP',$fh,0);
     return 1 if (! matchSLOnly($this->{rcpt},'MSGIDsigAddresses'));
+    return 1 if ! $this->{redre} && $this->{rcpt} =~ /(?:post|web)master\@/io;
     return 1 if ( matchSL([$this->{rcpt},$this->{mailfrom}],'noBackSctrAddresses'));
     if ($noBackSctrRe && $this->{header} =~ /(noBackSctrReRE)/) {
        mlogRe($fh,($1||$2),'noBackSctrRe','nobackscatter');
        return 1;
     }
+
+    # check if a bounce sender was used to send a DMARC-report - we need to skip the MSG-ID signature check in this case
+    return 1 if $this->{isDMARCReport};
 
     my $tlit = &tlit($DoMSGIDsig);
 
@@ -31543,7 +31623,7 @@ sub DMARCget_Run {
    skipCheck($this,'aa','ro','invalidSenderDomain') && return;
    return if $this->{noprocessing} & 1;
    # do not report to reports
-   return if $this->{subject3} =~ /$DMARCReportSubjectRe/io;
+   return if $this->{isDMARCReport};
    my $mfd;
    $mfd = $1 if $this->{mailfrom} =~ /\@($EmailDomainRe)/o;
    my $toDomain;
@@ -36651,13 +36731,13 @@ sub getbody {
         if (&MsgScoreTooHigh($fh,$doneToError)) {delete $this->{TestMessageScore};$this->{skipnotspam} = 0;return;}
 
         # detect a bounce back local dmarc-report (NDR) and modify noDMARCReportDomain if possible
-        if (   $DMARCReportFrom    # we send DMARC-reports
-            && ! $this->{relayok}  # and this is an incoming
-            && $this->{isbounce}   # bounce/NDR
-            && $this->{subject3} !~ /$DMARCReportSubjectRe/io   # but not a DMARC-report itself
-            && $$dataref =~ /(?:^|\n)X-ASSP-DMARC-Report:\s*ru[af];\s*($EmailAdrRe\@$EmailDomainRe)/io  # a NDR for a sent ASSP DMARC-report
+        if (   $DMARCReportFrom           # we send DMARC-reports
+            && ! $this->{relayok}         # and this is an incoming mail
+            && $this->{isbounce}          # and a bounce/NDR
+            && ! $this->{isDMARCReport}   # but not a DMARC-report itself
+            && $$dataref =~ /(?:^|\n)X-ASSP-DMARC-Report(?:\(d+\))?:\s*ru[af];\s*($EmailAdrRe\@$EmailDomainRe)/io  # a NDR for our sent ASSP DMARC-report
             && (my $addr = $1)
-            && $$dataref =~ /(?:^|\n)Subject:\s*Report\s+Domain:\s+($EmailDomainRe)\s+Submitter:\s+($EmailDomainRe)\s+Report-ID:\s*(<\d{10,11}\.\d+>)/io  # parse the original report subject
+            && $$dataref =~ /(?:^|\n)Subject:\s*Report\s+Domain:\s+($EmailDomainRe)\s+Submitter:\s+($EmailDomainRe)\s+Report-ID:\s*(<\d{10,11}(?:\.\d+)?>)/io  # parse our original report subject
            )
         {
             my $reportdomain = '@'.$1;
@@ -38264,7 +38344,7 @@ sub reply {
                      )
                  );
 
-    #    provide confgured and not already seen or provided and SSL is active and end of EHLO reply and not here found
+    # REQUIRETLS enabled and provide configured and not already seen or provided and SSL is active and end of EHLO reply and not found here
     if ($enableREQUIRETLS && $provideREQUIRETLS && ! $Con{$cli}->{REQUIRETLS} && "$cli" =~ /ssl/oi && $l=~/250\s+/o && $l!~/REQUIRETLS/oi) {
         $l = "250-REQUIRETLS\r\n".$l;      # provide REQUIRETLS
         $Con{$cli}->{REQUIRETLS} = 1;      # set the flag at the client connection
@@ -46796,7 +46876,8 @@ sub Perl_PPM_upgrade_install {
     local $| = 1;
 
     chdir "$base/tmp";
-    my $summary = $ppm->install(packages => \@_, area => $area, force => $force);
+    my @args = @_;
+    my $summary = $ppm->install(packages => \@args, area => $area, force => $force);
     if (my $count = $summary->{count}) {
     	for my $what (sort keys %$count) {
     	    my $n = $count->{$what} || 0;
@@ -47275,6 +47356,7 @@ sub Maillog {
         $parm = $p->{discc} if $Con{$fh}->{red} && $DoNotCollectRedList;
         $parm = $p->{discc} if $Con{$fh}->{messagelow};
         $parm = $p->{discc} if ($Con{$fh}->{redsl} & 1);
+        $parm = $p->{discc} if $Con{$fh}->{isDMARCReport};
     }
 
     if ($isnotcc && $parm == $p->{discc}) {
@@ -47620,7 +47702,8 @@ sub MaillogClose {
                 }
             }
         }
-    } elsif ($Con{$fh}->{isbounce} && $DoNotCollectBounces) {
+    }
+    if ($Con{$fh}->{maillogfilename} && $Con{$fh}->{isbounce} && $DoNotCollectBounces) {
         $unlink->($Con{$fh}->{maillogfilename});
         mlog($fh,"info: file ".de8($Con{$fh}->{maillogfilename})." was deleted - bounced mails are not collected (DoNotCollectBounces)",1);
         delete $Con{$fh}->{maillogfilename};
@@ -50309,7 +50392,7 @@ $ret .= <<EOT;
         <tbody>
           <tr>
             <td class="sectionHeader" onmousedown="toggleTbody('StatItem0')" colspan="5">
-              Server Information
+              Server Information and Download Links
             </td>
           </tr>
         </tbody>
@@ -50447,11 +50530,17 @@ $ret .= <<EOT;
             <td class="statsOptionValue" style="background-color: #FFFFFF">
               &nbsp;
             </td>
-            <td class="statsOptionValue" style="background-color: #FFFFFF" colspan="2">
+            <td class="statsOptionValue" style="background-color: #FFFFFF">
               &nbsp;
             </td>
-            <td class="statsOptionValueC" style="background-color: #FFFFFF" colspan="2">
-              <font size="1" color="#C0C0C0"><em>downloads</em></font>
+            <td class="statsOptionValue" style="background-color: #FFFFFF">
+              <font size="1" color="#00CD00"><em>download</em></font>
+            </td>
+            <td class="statsOptionValueC" style="background-color: #FFFFFF">
+              <font size="1" color="#00CD00"><em>download</em></font>
+            </td>
+            <td class="statsOptionValueC" style="background-color: #FFFFFF">
+              <font size="1" color="#00CD00"><em>download</em></font>
             </td>
           </tr>
         </tbody>
@@ -52013,6 +52102,7 @@ sub ConfigAnalyze {
     my $orgmail;
     my @sips;
     my $sub = undef;
+    my $isDMARCReportSubject;
     my $wildcardUser = lc $wildcardUser;
     my $headerLen = index($mail,"\015\012\015\012");
     if ($hasheader && $headerLen == -1) {
@@ -52029,12 +52119,13 @@ sub ConfigAnalyze {
             do {
                $fhh = rand(1000000);
             } while exists $Con{$fhh};
-            $mail = "subject: $xorgsub\r\n".$mail if ($xorgsub && $mail !~ /(?:^|\n)subject:/os );
+            $mail = "subject: $xorgsub\r\n".$mail if ($xorgsub && $mail !~ /(?:^|\n)subject:/ios );
             $Con{$fhh}->{header} = $mail;
             $Con{$fhh}->{headerpassed} = 1;
             &makeSubject($fhh);
             $sub = $Con{$fhh}->{subject3} if defined $Con{$fhh}->{subject3};
             headerUnwrap($sub) if (defined $sub);
+            $isDMARCReportSubject = $Con{$fhh}->{isDMARCReportSubject};
             delete $Con{$fhh};
         }
 
@@ -52055,11 +52146,13 @@ sub ConfigAnalyze {
                 headerSmartUnwrap($val);
                 push @recHeader, $val;
                 if ( ! $stop && $val =~ /from\s+[^\(]*\(\[($IPRe).{1,5}helo=([^\)]{0,64})\)(?:\s+by\s+($myName))?\s+with/is ) {
-                    mlog(0,"info: analyze detected: IP: '$1' , HELO: '$2' , assp-Host: '$3'");
-                    $ip = ipv6expand(ipv6TOipv4($1));
                     $helo = $2;
                     $foundReceived = -1;
-                    $stop = 1 if $3;    # we saw our own received line
+                    my $n = $3;
+                    $stop = 1 if $n;    # we saw our own received line
+                    my $t = $1;
+                    $ip = ipv6expand(ipv6TOipv4($t));
+                    mlog(0,"info: analyze detected: IP: '$t' , HELO: '$helo' , assp-Host: '$n'");
                 }
             }
         }
@@ -52220,6 +52313,8 @@ sub ConfigAnalyze {
 
         my $showsub = $sub ? eU($sub) : "<b><font color='red'>no subject found</font></b>";
         $fm .= "<br />\n<b><font color=\"#003366\">Subject: </font></b>$showsub<br />\n";
+
+        $fm .= "<b><font color=\"#003366\">DMARC-report subject found</font></b><br />\n" if $isDMARCReportSubject;
 
         if ($reportedBy && $mailfrom && $NotSpamTag) {
             $fm .= "<br />\n<b><font color=\"#003366\">NotSpamTag:</font></b><br />";
@@ -60282,8 +60377,9 @@ sub replaceHostByIP {
     return $ret;
 }
 
-sub create_iprange_regexp {   ##no critic (ArgUnpacking)
-   return _build_ip_regexp( \@_ );
+sub create_iprange_regexp {
+   my @args = @_;
+   return _build_ip_regexp( \@args );
 }
 
 sub _build_ip_regexp {

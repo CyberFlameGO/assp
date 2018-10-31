@@ -1,3 +1,27 @@
+2018-10-31
+fixed in assp 2.6.2 *Fortress* build 18304:
+
+- after upgrading the perl module Win32::Daemon to version 20181025 assp was no longer starting as a windoes service
+  this assp version contains a workaround for the buggy Win32::Daemon module
+  
+- a small memory leak is solved in unicode processing for perl 5.22 to 5.28
+
+- the detection of incoming DMARC-reports is improved
+
+- the not RFC conform DMARC-reports from "Amazon SES" are now correctly detected
+
+- perl module load errors in ASSP_AFC were not shown in the file moduleLoadErrors.txt - ASSP_AFC.pm is updated to version 4.87 to get this fix working
+
+- some of the X-ASSP-... headers were some times too long (RFC822, RFC 1522)
+
+
+changed:
+
+- backscatter checks are skipped for regular incoming mails (not matching redRe) for local postmaster@ and webmaster@ addresses, even these addresses are listed in BounceSenders
+  
+
+
+
 2018-10-22
 fixed in assp 2.6.2 *Fortress* build 18295:
 
