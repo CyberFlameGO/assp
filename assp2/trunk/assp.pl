@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18304';        # 31.10.2018 TE
+$build   = '18305';        # 01.11.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -602,7 +602,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'E4DA04F116236F56219C6557089E1AAF5A8C6828'; }
+sub __cs { $codeSignature = '58891AE151BF8AA9C5B2E93F7079FF639E5B9214'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -24195,17 +24195,17 @@ sub bodyWrap {
 sub headerWrap {
     my $header=shift;
 
-    $header=~s/
+#    $header=~s/
+#
+#              ([$NOCRLF]*?)(=\?[^\?]+\?[bq]\?[^\?]*\?=)  # any or no text followed by MIME-encoding                                                           $1 $2
+#            | (?: ([$NOCRLF]{60,76}?;)                   # or      76 chars + ;                                                                               $3
+#                | ([$NOCRLF]{60,76}?)(\x20+)             #     or  76 chars + space - space to next line                                                      $4 $5
+#                | ([$NOCRLF]{77})                        #     or  any 77 chars                                                                               $6
+#              )(?=[$NOCRLF]+)                            # and any chars left but not regex counted!
+#
+#             /headerWrapLine($1,$2,$3,$4,$5,$6)/goiex;
 
-              ([$NOCRLF]*?)(=\?[^\?]+\?[bq]\?[^\?]*\?=)  # any or no text followed by MIME-encoding                                                           $1 $2
-            | (?: ([$NOCRLF]{60,76}?;)                   # or      76 chars + ;                                                                               $3
-                | ([$NOCRLF]{60,76}?)(\x20+)             #     or  76 chars + space - space to next line                                                      $4 $5
-                | ([$NOCRLF]{77})                        #     or  any 77 chars                                                                               $6
-              )(?=[$NOCRLF]+)                            # and any chars left but not regex counted!
-
-             /headerWrapLine($1,$2,$3,$4,$5,$6)/goiex;
-
-#   $header=~s/(?:([$NOCRLF]{60,75}?;)|([$NOCRLF]{60,75}) ) {0,5}(?=[$NOCRLF]{10,})/$1$2\r\n\t/go;    # old regex
+    $header=~s/(?:([$NOCRLF]{60,75}?;)|([$NOCRLF]{60,75}) ) {0,5}(?=[$NOCRLF]{10,})/$1$2\r\n\t/go;    # old regex
     return $header;
 }
 
@@ -36896,15 +36896,11 @@ sub CheckAttachments {
     my $s; $s = 's' if ($numatt > 1);
     mlog($fh,"info: $numatt attachment$s found for Level-$block") if ($AttachmentLog && $numatt);
 
-    my $ext;
     my @attre;
     my $userbased = 0;
     my $bRE = $badattachRE[$block];
 
-    my $attRun = sub { return
-        ($block >= 1 && $block <= 3 && $ext =~ /$bRE/ ) ||
-        ($GoodAttach && $block == 4 && $ext !~ /$goodattachRE/);
-    };
+    my $attRun ;
 
     if (defined ${chr(ord(",") << 1)} and scalar keys %AttachRules) {
         my $rcpt = [split(/ /o,$this->{rcpt})]->[0];
@@ -36933,19 +36929,22 @@ sub CheckAttachments {
             $attre[0] = qq[\\.(?:$attre[0])\$] if $attre[0];
             $attre[1] = qq[\\.(?:$attre[1])\$] if $attre[1];
             $attRun = sub { return
-                ($attre[1] && $ext =~ /$attre[1]/i ) ||
-                ($attre[0] && $ext !~ /$attre[0]/i );
+                ($attre[1] && $_[0] =~ /$attre[1]/i ) ||
+                ($attre[0] && $_[0] !~ /$attre[0]/i );
             };
             mlog($fh,"info: using user based attachment check") if $AttachmentLog;
             $userbased = 1;
         }
     }
 
+    $attRun ||= sub { return
+        ($block >= 1 && $block <= 3 && $_[0] =~ /$bRE/ ) ||
+        ($GoodAttach && $block == 4 && $_[0] !~ /$goodattachRE/);
+    };
+
     while (my $name = shift @name) {
-        $ext = undef;
-        eval{$ext = $1 if $name =~ /(\.[^\.]+)$/o;};
-        next unless $ext;
-        if ( $attRun->() ) {
+        next if $name !~ /\.[^\.]+$/o;
+        if ( $attRun->($name) ) {
             $this->{attachdone} = 1;
 
             $this->{prepend} = "[Attachment]";
