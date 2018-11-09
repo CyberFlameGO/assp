@@ -1,3 +1,21 @@
+2018-11-09
+fixed in assp 2.6.2 *Fortress* build 18313:
+
+- reduced memory footprint for GUI request handling
+
+- a SMTP worker was in rare cases dieing, because syswrite was unable to process wrong encoded emails or attachments
+
+
+changed:
+
+- 'DoNoFrom' now also checks for multiple FROM: or SENDER: email addresses in a single header tag
+
+- the default value for 'DoNoFromWL' and 'DoNoFromNP' is change to 1 (checked)
+
+- the internal attachment blocking feature (without using the ASSP_AFC plugin) now allows to detect extended file extensions, like .... .tar.gz or .... .tar.gz.aes 
+  (ASSP_AFC was and is able to handle those file extensions)
+
+
 2018-10-31
 fixed in assp 2.6.2 *Fortress* build 18304:
 

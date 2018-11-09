@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18305';        # 01.11.2018 TE
+$build   = '18313';        # 08.11.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -602,7 +602,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '58891AE151BF8AA9C5B2E93F7079FF639E5B9214'; }
+sub __cs { $codeSignature = 'EBD7044AA0119E5331E4CDDFACD2150EA0C02895'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -2624,11 +2624,15 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   'IP\'s in cache will be removed after this interval in days. 0 will disable the cache.<input type="button" value=" Show MX Cache" onclick="javascript:popFileEditor(\''.$newDB.'pb/pbdb.mxa.db\',5);" />',undef,undef,'msg001880','msg001881'],
 ['DoNoFrom','Check for Existing and Valid From: and Sender: Header Tag and Address','0:disabled|2:monitor|3:score',\&listbox,3,'(.*)',undef,
   'If enabled, the MIME header is checked for valid From: and Sender: header tags.<br />
-  This header check fails and faults are counted, if both headers (From: and Sender:) are missing - or if any of these headers contains not a valid email address - or if multiple of the same headers are found.<br />
+  This header check fails and faults are counted if :<br /><br />
+  - both headers (From: and Sender:) are missing<br />
+  - any of these headers contains not a valid email address<br />
+  - multiple of the same headers are found<br />
+  - multiple email addresses are found in one header.<br /><br />
   The scoring value nofromValencePB is added for each detected fault.',undef,undef,'msg001890','msg001891'],
-['DoNoFromWL','Do DoNoFrom for Whitelisted',0,\&checkbox,'','(.*)',undef,
+['DoNoFromWL','Do DoNoFrom for Whitelisted',0,\&checkbox,'1','(.*)',undef,
   'Check for existing From: or Sender: header and address for whitelisted emails.',undef,undef,'msg001900','msg001901'],
-['DoNoFromNP','Do DoNoFrom for NoProcessing',0,\&checkbox,'','(.*)',undef,
+['DoNoFromNP','Do DoNoFrom for NoProcessing',0,\&checkbox,'1','(.*)',undef,
   'Check for existing From: or Sender: header and address for noprocessing emails.',undef,undef,'msg001910','msg001911'],
 ['removeDispositionNotification','Remove Disposition Notification Headers',80,\&textinput,'','((?:Disposition-Notification-To|Return-Receipt-To|ReturnReceipt)(?:\|(?:Disposition-Notification-To|Return-Receipt-To|ReturnReceipt)){0,2}|)',undef,
   'To remove any headers : "ReturnReceipt: , Return-Receipt-To: and Disposition-Notification-To:" from not whitelisted and not noprocessing incoming mails, define the unwanted headers as regular expression.<br />
@@ -11939,7 +11943,7 @@ function popFileEditor(filename,note)
   newwindow=window.open(
     \'edit?file=\'+filename+\'&note=\'+note,
     \'FileEditor\',
-    \'width=720,height=\'+height+\',overflow=scroll,toolbar=yes,menubar=yes,location=no,personalbar=yes,scrollbars=yes,status=no,directories=no,resizable=yes\'
+    \'width=720,height=\'+height+\',overflow=scroll,toolbar=yes,menubar=yes,location=yes,personalbar=yes,scrollbars=yes,status=no,directories=no,resizable=yes\'
   );
   	// this puts focus on the popup window if we open a new popup without closing the old one.
   	if (window.focus) {newwindow.focus()}
@@ -12503,7 +12507,7 @@ foreach (sort keys %Config1) {
     <a href="maillog"' . $maillogEnd . '" onmouseover="showhint(\'view or search in the Maillog\', this, event, \'500px\', \'1\');return false;"><img class="topIcon" src="get?file=images/log.jpg"></a>
 
     <a href="analyze" onmouseover="showhint(\'start the Mail Analyzer\', this, event, \'500px\', \'1\');return false;"><img class="topIcon" src="get?file=images/analyze.png"></a>
-    <a href="infostats" onmouseover="showhint(\'show the ASSP Server Information and Download Links, Scoring and Blocking Statstic\', this, event, \'500px\', \'1\');return false;"><img class="topIcon" src="get?file=images/stats.jpg"></a>
+    <a href="infostats" onmouseover="showhint(\'show the ASSP Server Information and Download Links, Scoring and Blocking Statistic\', this, event, \'500px\', \'1\');return false;"><img class="topIcon" src="get?file=images/stats.jpg"></a>
 ';
  $headers .=
    '<a href="top10stats" target="_blank" onmouseover="showhint(\'show the Top Ten Statistic\', this, event, \'500px\', \'1\');return false;"><img class="topIcon" src="get?file=images/top10.jpg"/></a>' if $DoT10Stat;
@@ -21203,8 +21207,7 @@ sub setmodcol {
 
 sub WebTraffic {
   my $fh=shift;
-  my $buf = $WebCon{$fh};
-  $WebCon{$fh} = '';
+  my $buf;
   my $done;
   my $haswritten = 1;
   my $hasread;
@@ -21216,21 +21219,22 @@ sub WebTraffic {
   my $maxbuf = ("$fh" =~ /SSL/io) ? $maxTCPRCVbufSSL || 16384 : $maxTCPRCVbuf || 16384 ;
   &ThreadMonitorMainLoop('MainLoop WebTraffic start');
   $fh->blocking($blocking) if ! $buf;
-  $hasread = $fh->sysread($WebCon{$fh},$maxbuf);
+  $hasread = $fh->sysread($buf,$maxbuf);
 
   if ("$fh" =~ /SSL/io && $hasread > 0) {
-      while ($hasread && ($pending = $fh->pending())) {
+      my $hread = $hasread;
+      while ($hread && ($pending = $fh->pending())) {
           mlog(0,"warning: there are $pending byte pending in SSL Web buffer - this should not happen");
           my $buff;
-          $hasread = $fh->sysread($buff, $maxbuf);
-          $WebCon{$fh} .= $buff;
+          $hread = $fh->sysread($buff, $maxbuf);
+          $buf .= $buff if $buff;
+          $hasread += $hread if $hread > 0;
       }
   }
 
   if ($hasread == 0 && "$fh" =~ /SSL/io && ($IO::Socket::SSL::SSL_ERROR eq eval('SSL_WANT_READ') || $IO::Socket::SSL::SSL_ERROR eq eval('SSL_WANT_WRITE'))) {
       mlog(0,"WebTraffic: SSL socket is not ready - will retry") if $ConnectionLog > 2 && ! $WebIP{$ActWebSess}->{sslerror};
       ThreadYield();
-      $WebCon{$fh} = $buf;
       $WebIP{$ActWebSess}->{sslerror} ||= time;
       if (time - $WebIP{$ActWebSess}->{sslerror} > $SSLtimeout) {
           delete $WebIP{$ActWebSess}->{sslerror};
@@ -21239,19 +21243,28 @@ sub WebTraffic {
       return;
   }
   delete $WebIP{$ActWebSess}->{sslerror};
-  if($hasread > 0 or length($WebCon{$fh}) > 0) {
-    local $_=$WebCon{$fh}=$buf.$WebCon{$fh};
-    if(length($_) > 20600000) {
-# throw away connections longer than 20M to prevent flooding
-      WebDone($fh);
-      return;
-    }
-    if(/Content-length: (\d+)/io) {
-# POST request
-      my $l=$1;
-      if (/(.*?\n)\r?\n\r?(.*)/so && length($2) >= $l) {
+
+  if ($hasread > 0) {
+    $WebCon{$fh} .= $buf;
+    my $length = length($WebCon{$fh});
+
+    if($WebCon{$fh} =~ /(?:^|\n)Content-Length: (\d+)/io) {  # a POST request
+      return if $length <= $1;
+      my $l = $1;
+
+      if ($WebCon{$fh} =~ /(.*?\n)\r?\n\r?(.*)/so && length($2) >= $l) {
         my $reqh=$1;
         my $reqb=$2;
+        if ($reqh) {
+            my $i=0;
+            my (%head)=map{++$i % 2 ? lc $_ : $_} map{/^([^ :]*)[: ]{0,2}(.*)/o} split(/\r\n/o,$reqh);
+            my ($page)=$head{post}=~/^([^\? ]+)/o;
+                    # max    100MB for analyze and edit                         20MB for all other
+            if (($length > 104857600 && $page =~ /analyze|edit/o) || ($length > 20971520 && $page !~ /analyze|edit/o)) {
+                WebDone($fh);
+                return;
+            }
+        }
         my $resp;
         my $tempfh;
         open($tempfh,'>',\$resp);
@@ -21298,7 +21311,7 @@ EOT
           $time=~s/(...) (...) +(\d+) (........) (....)/$1, $3 $2 $5 $4 GMT/o;
           $resph.="\nServer: ASSP/$version$modversion";
           $resph.="\nDate: $time";
-          if ($EnableHTTPCompression && $CanUseHTTPCompression && /Accept-Encoding: ([^\n]*)\n/io && $1=~/(gzip|deflate)/io) {
+          if ($EnableHTTPCompression && $CanUseHTTPCompression && $WebCon{$fh} =~ /Accept-Encoding: ([^\n]*)\n/io && $1=~/(gzip|deflate)/io) {
             my $enc=$1;
             if ($enc=~/gzip/io) {
 # encode with gzip
@@ -21321,12 +21334,17 @@ EOT
             $WebCon{$fh} = '';
         }
       }
-    } elsif(/\n\r?\n/o) {
+    } elsif($WebCon{$fh} =~ /\n\r?\n/o) {
+      if($length > 20971520) {
+# throw away connections longer than 20M to prevent flooding
+        WebDone($fh);
+        return;
+      }
       my $resp;
       my $tempfh;
       open($tempfh,'>',\$resp);
       binmode $tempfh;
-      $done=webRequest($tempfh,$fh,\$_,undef);
+      $done=webRequest($tempfh,$fh,\$WebCon{$fh},undef);
       $tempfh->close if $tempfh;
       &ThreadMonitorMainLoop('MainLoop WebRequest 2');
       &WebPermission(\$resp);
@@ -21338,7 +21356,7 @@ EOT
         $time=~s/(...) (...) +(\d+) (........) (....)/$1, $3 $2 $5 $4 GMT/o;
         $resph.="\nServer: ASSP/$version$modversion";
         $resph.="\nDate: $time";
-        if ($EnableHTTPCompression && $CanUseHTTPCompression && /Accept-Encoding: ([^\n]*)\n/io && $1=~/(gzip|deflate)/io) {
+        if ($EnableHTTPCompression && $CanUseHTTPCompression && $WebCon{$fh} =~ /Accept-Encoding: ([^\n]*)\n/io && $1=~/(gzip|deflate)/io) {
           my $enc=$1;
           if ($enc=~/gzip/io) {
 # encode with gzip
@@ -21363,6 +21381,7 @@ EOT
     }
   } elsif ($hasread == 0) {
         my $error = $!;
+        $WebCon{$fh} = '';
         if ($error =~ /Resource temporarily unavailable/io) {
             d("WebTraffic - no more data - $error - pending: $pending");
             return ;
@@ -24194,40 +24213,9 @@ sub bodyWrap {
 # wrap long headers according to RFC822/1522
 sub headerWrap {
     my $header=shift;
-
-#    $header=~s/
-#
-#              ([$NOCRLF]*?)(=\?[^\?]+\?[bq]\?[^\?]*\?=)  # any or no text followed by MIME-encoding                                                           $1 $2
-#            | (?: ([$NOCRLF]{60,76}?;)                   # or      76 chars + ;                                                                               $3
-#                | ([$NOCRLF]{60,76}?)(\x20+)             #     or  76 chars + space - space to next line                                                      $4 $5
-#                | ([$NOCRLF]{77})                        #     or  any 77 chars                                                                               $6
-#              )(?=[$NOCRLF]+)                            # and any chars left but not regex counted!
-#
-#             /headerWrapLine($1,$2,$3,$4,$5,$6)/goiex;
-
-    $header=~s/(?:([$NOCRLF]{60,75}?;)|([$NOCRLF]{60,75}) ) {0,5}(?=[$NOCRLF]{10,})/$1$2\r\n\t/go;    # old regex
+    $header =~ s/(?:([$NOCRLF]*?=\?[^\?]+\?[BbQq]\?[^\?]*\?=)|([$NOCRLF]{60,75};)|([$NOCRLF]{60,76})( ))(?=[$NOCRLF]{1,})/$1$2$3\r\n\t$4/go;
+#    $header =~ s/(?:([$NOCRLF]{60,75}?;)|([$NOCRLF]{60,75}) ) {0,5}(?=[$NOCRLF]{10,})/$1$2\r\n\t/go;  # old regex
     return $header;
-}
-
-# wrap a line catched by the headerWrap regex content based
-sub headerWrapLine {
-    my ($one, $two, $three, $four, $five, $six) = @_;
-
-    # it may happen that we've expanded a headername field (e.g. Subject: -> X-Assp-Original-Subject:)
-    # and the resulting header line inclusive the MIME-encoded value field is longer than 77 charcters
-    # in this case we decode and reencode (base64) the line in to multiple lines
-    if ($two && (length($one) + length($two) > 77)) {
-        my $newtwo = eval { Email::MIME::Encode::mime_encode(d8(decodeMimeWords2UTF8($two)), 'UTF-8', length($one)); };
-        if (! $@)  {
-            $newtwo =~ s/\?= =\?/?=\r\n\t=?/go;  # mime_encode joins multiple MIME with a space
-            return "$one$newtwo\r\n\t";
-        }
-    }
-
-    return "$one$two$three$four$six\r\n\t$five" unless($one && $two);                       # no MIME encoding - trailing space ($five) to new line
-    return "$one$two\r\n\t" if $one =~ /^$HeaderNameRe:/oi;                                 # the first line of a header tag
-    return "$one\r\n\t$two\r\n\t" if $one && (length($one) + length($two)) > 77;            # any text followed by MIME encoding are together longer than 77 chars (the if - eval above has failed)
-    return "$one$two$three$four$six\r\n\t$five";                                            # just break the line - trailing space ($five) to new line
 }
 
 # unwrap long header (in place) according to RFC822[B.2. SEMANTICS] (one leading SPACE or HTAB)
@@ -30480,14 +30468,17 @@ sub RBLok_Run {
             $_ .= '{' . $rbl->{results}->{$_} . '}';
             $_ .= "[$dhofact]" if ($_ =~ /dnsbl\.httpbl\.org/io);
         }
-        chop($received_rbl) if @temp;
+        if (@temp) {
+            chop($received_rbl);
+            chop($received_rbl);
+        }
         $received_rbl .= ")";
         RBLCacheAdd( $ip,  "1", "@temp" ) if $RBLCacheExp > 0;
     } else {
         RBLCacheAdd( $ip,  "2") if $RBLCacheExp > 0;
         return 1;
     }
-    mlog( $fh, "$tlit ($received_rbl)" ) if $received_rbl ne "DNSBL: pass" && ($RBLLog >= 2 || $RBLLog && $ValidateRBL >= 2 );
+    mlog( $fh, "$tlit $received_rbl" ) if $received_rbl ne "DNSBL: pass" && ($RBLLog >= 2 || $RBLLog && $ValidateRBL >= 2 );
 
     return 1 if $ValidateRBL == 2;
 
@@ -30579,7 +30570,7 @@ sub RBLCacheOK_Run {
                 next;
             }
         }
-        $rbllists .= "$_, ";
+        $rbllists .= "$_; ";
         $rbls_returned++;
     }
     delete $this->{rblweight} if $fh;
@@ -30589,7 +30580,7 @@ sub RBLCacheOK_Run {
         return 1;
     }
 
-    $rbllists =~ s/, $//o;
+    $rbllists =~ s/; $//o;
 
     $rblweight = ${'rblValencePB'}[0];
     $rblweightn = ${'rblnValencePB'}[0];
@@ -30604,12 +30595,12 @@ sub RBLCacheOK_Run {
     
     if ( $rbls_returned >= $RBLmaxhits && ! $rblweighttotal || $rblweighttotal >= $RBLmaxweight) {
         pbWhiteDelete( $fh, $ip ) if $fh;
-        $this->{messagereason} = "DNSBLcache: failed, $ip listed in $rbllists";
+        $this->{messagereason} = "DNSBLcache: failed, $ip listed in ($rbllists)";
         pbAdd( $fh, $ip, ($this->{rblweight}->{result} = calcValence($rblweight,'rblValencePB')), "DNSBLfailed" )
           if $ValidateRBL != 2;
     } else {
         pbWhiteDelete( $fh, $ip ) if $fh;
-        $this->{messagereason} = "DNSBLcache: neutral, $ip listed in $rbllists";
+        $this->{messagereason} = "DNSBLcache: neutral, $ip listed in ($rbllists)";
         mlog( $fh, "[scoring] $this->{messagereason}" )
           if ( $RBLLog && $ValidateRBL == 1 );
         pbAdd( $fh, $ip, ($this->{rblweight}->{result} = calcValence($rblweightn,'rblnValencePB')), "DNSBLneutral" )
@@ -33461,7 +33452,7 @@ sub FromStrictOK_Run {
     return 1 if $ip =~ /$IPprivate/o;
     return 1 if $this->{whitelisted} && !$DoNoFromWL;
     return 1 if (($this->{noprocessing} & 1) && !$DoNoFromNP);
-    return 1 if $this->{mailfrom} =~ /news/io;
+#    return 1 if $this->{mailfrom} =~ /news/io;
 
     my $tlit = tlit($DoNoFrom);
 
@@ -33469,38 +33460,48 @@ sub FromStrictOK_Run {
     my %fail;
     my %seenok;
     my %seenfail;
+    my %domains;
     $this->{prepend} = '[FromMissing]';
-    for my $tag (qw(from sender)) {
-        pos($this->{header}) = 0;
-        while ( $this->{header} =~ /($HeaderNameRe):($HeaderValueRe)/ig) {
-            next if lc($1) ne $tag;
-            my $val = $2;
-            headerUnwrap($val);
-            $count{$tag}++;
-            my ($addr,$domain);
-            ($addr,$domain) = (lc($1),lc($2)) if $val =~ /($EmailAdrRe\@($EmailDomainRe))/oi;
-            if (! $addr) {     # there is do emailaddress
-                $fail{$tag}++;
-                next;
-            } elsif ($seenok{$domain}) {  # the domain was OK before
+    while ( $this->{header} =~ /($HeaderNameRe):($HeaderValueRe)/igo) {
+        my $tag = lc $1;
+        next if $tag ne 'from' && $tag ne 'sender';
+        my $val = $2;
+        headerUnwrap($val);
+        $count{$tag}++;
+        my $intag = 0;
+        while ( $val =~ /($EmailAdrRe\@($EmailDomainRe))/igo) {
+            my ($addr,$domain) = (lc($1),lc($2));
+            $count{$tag}++ if $intag++ > 0;  # there is more than one sender in this tag
+            if ($domain =~ /([^\.]+(?:$URIBLCCTLDSRE|\.$TLDSRE))$/i) {  # ignore subdomains
+                $domain = $1;
+            }
+            $domains{$domain}++;
+            if ($seenok{$domain}) {  # the domain was OK before
                 next;
             } elsif ($seenfail{$domain}) {  # the domain failed before
                 $fail{$tag}++;
                 next;
-            } elsif ($DoRFC822 && exists $RFC822dom{$domain}) {   # the domain was already in RFC822dom hash
+            }
+            my $error;
+            if ($DoRFC822 && exists $RFC822dom{$domain}) {   # the domain was already in RFC822dom hash
                 $fail{$tag}++;
                 $seenfail{$domain}++;
-                next;
-            } elsif (! is_7bit_clean(\$addr) || $addr !~ /$RFC822RE/o ) {
+                $error = 1;
+            }
+            if (! is_7bit_clean(\$addr) || $addr !~ /$RFC822RE/o ) {
                 $fail{$tag}++;
                 $seenfail{$domain}++;
                 $RFC822dom{$domain} ||= time if $DoRFC822;
-                next;
-            } elsif ($domain !~ /([^\.]+(?:$URIBLCCTLDSRE|\.$TLDSRE))$/i) {   # the domain is not valid domain
+                $error = 1;
+            }
+            if ($domain !~ /([^\.]+(?:$URIBLCCTLDSRE|\.$TLDSRE))$/i) {   # the domain is not a valid domain
                 $fail{$tag}++;
                 $seenfail{$domain}++;
-                next;
-            } else {      # check DNS of the domain
+                $error = 1;
+            }
+            $seenok{$domain}++ unless $error;
+
+#            {      # check DNS of the domain
 #                my $highdomain = $1; # $1 from the elsif before
 #                # check the domain nearest to the TLD of the host or the host if host and domain are the same
 #                my $res;
@@ -33521,16 +33522,24 @@ sub FromStrictOK_Run {
 #                    next;
 #                }
                 # its OK
-                $seenok{$domain}++;
-            }
+#            }
+        }
+        if (! $intag) {     # there is no emailaddress in the tag
+            $fail{$tag}++;
+            next;
         }
     }
     my $error = 0;
     if (! keys(%count)) {
         $this->{messagereason} = 'missing \'From:\' and \'Sender:\' header tag ( DoNoFrom )';
         mlog( $fh, "$tlit $this->{messagereason}" );
-        $error = 1;
+        $error += 1;
     } else {
+        if (keys(%domains) > 1) {
+            $this->{messagereason} = 'found ('.keys(%domains).') different sender domains in \'From:\' and \'Sender:\' header tags ( DoNoFrom )';
+            $error += (keys(%domains) - 1);
+            mlog( $fh, "$tlit $this->{messagereason}" );
+        }
         if ($count{from} > 1) {
             $this->{messagereason} = "multiple ($count{from}) 'From:' header tags found ( DoNoFrom )";
             $error += ($count{from} - 1);
@@ -47455,7 +47464,7 @@ sub Maillog {
                         if $myheader !~ /X-Assp-8BITMIME:/o && $Con{$fh}->{IS8BITMIME};
                     $myheader =~ s/[\r\n]+$/\r\n/o;
                     $myheader = headerFormat($myheader);
-                    my $written = $FH->syswrite($myheader,length($myheader));
+                    my $written = eval{$FH->syswrite($myheader,length($myheader));};
                     $Con{$fh}->{mailloglength} = $written;
                 }
             } else {
@@ -47514,18 +47523,18 @@ sub Maillog {
 
     if (my $h = $Con{$fh}->{maillogfh}) {
         if (! $Con{$fh}->{spambuf}) {
-            my $written = $h->syswrite($text,min(length($text),$Con{$fh}->{storecompletemail}));
+            my $written = eval{$h->syswrite($text,min(length($text),$Con{$fh}->{storecompletemail}));};
             $Con{$fh}->{mailloglength} = $Con{$fh}->{spambuf} = ($written || 0);
             $Con{$fh}->{maillogbuf} = $text;
         } else {
             if ( $Con{$fh}->{spambuf} < $Con{$fh}->{storecompletemail}) {
-                my $written = $h->syswrite($text,min(length($text),($Con{$fh}->{storecompletemail} - $Con{$fh}->{spambuf})));
+                my $written = eval{$h->syswrite($text,min(length($text),($Con{$fh}->{storecompletemail} - $Con{$fh}->{spambuf})));};
                 $Con{$fh}->{spambuf} += ($written || 0);
             } else {
                 my $mlen = $MaxBytes + $Con{$fh}->{headerlength};
                 if ($Con{$fh}->{spambuf} < $mlen) {
                     $mlen -= $Con{$fh}->{spambuf};
-                    my $written = $h->syswrite($text,min(length($text),$mlen));
+                    my $written = eval{$h->syswrite($text,min(length($text),$mlen));};
                     $Con{$fh}->{spambuf} += ($written || 0);
                 }
             }
@@ -47607,14 +47616,16 @@ sub MaillogStart {
         my $cipher = $Con{$fh}->{sslcipher};
         $cipher = '' unless $cipher;
         ($sslv || $cipher) and $cipher = '('.$sslv.$cipher.')';
+        headerUnwrap($Con{$fh}->{rcvd});
         $Con{$fh}->{rcvd} =~ s/(with\sE?SMTP)S?(A?)(?:\Q$cipher\E)?/$1S$2$cipher/os if $Con{$fh}->{chainMailInSession} < 1;
+        $Con{$fh}->{rcvd} = headerWrap($Con{$fh}->{rcvd});
     }
     $utf8off->(\$Con{$fh}->{rcvd});
     $Con{$fh}->{maillogbuf} = $Con{$fh}->{header} = $Con{$fh}->{rcvd};
     if ($Con{$fh}->{crashfh}) {
         my $rcvd = $Con{$fh}->{rcvd};
         headerUnwrap($rcvd);
-        $rcvd =~ s/by\s?\Q$myName\E .+$/\r\n/os;
+        $rcvd =~ s/by\s*\Q$myName\E .+$/\r\n/os;
         $Con{$fh}->{crashbuf} .= $rcvd;
         my $crashfh = $Con{$fh}->{crashfh};
         $crashfh->print($rcvd);
@@ -48828,9 +48839,7 @@ self.close();
 }
 
 sub webRequest {
-    my ($tempfh,$fh,$h,$d)=@_;
-    my $data; $data = $$d if $d;
-    my $head; $head = $$h if $h;
+    my ($tempfh,$fh,$header,$data)=@_;
     my $k;
     my $v;
     my %webRequests = %webRequests;
@@ -48838,7 +48847,7 @@ sub webRequest {
 
     my $i=0;
     # %head -- public hash
-    (%head)=map{++$i % 2 ? lc $_ : $_} map{/^([^ :]*)[: ]{0,2}(.*)/o} split(/\r\n/o,$head);
+    (%head)=map{++$i % 2 ? lc $_ : $_} map{/^([^ :]*)[: ]{0,2}(.*)/o} split(/\r\n/o,$$header);
 #$head{'user-agent'};
 
     if (   $head{'user-agent'} =~ m/android.+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|meego.+mobile|midp|mmp|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows (ce|phone)|xda|xiino/io
@@ -48859,9 +48868,9 @@ sub webRequest {
     $currentPage = 'Config' unless $currentPage;
     $currentPage = ucfirst($currentPage);
     $headers =~ s/<title>\S+ ASSP/<title>$currentPage ASSP/o if $page ne '/get' && exists $webRequests{$page};
-    if(defined $data) { # GET, POST order
+    if(defined $$data) { # GET, POST order
         $qs.='&' if ($qs ne '');
-        $qs.=$data;
+        $qs.=$$data;
     }
     $qs=~y/+/ /;
     $i=0;
@@ -49181,7 +49190,7 @@ Content-type: text/html
 </body></html>\n";
         } else {
             if ($user eq 'root' or &canUserDo($user,'action',lc($page))) {
-                print $tempfh ((defined ($v=$webRequests{lc $page}))? $v->(\$head,\$qs): webConfig(\$head,\$qs));
+                print $tempfh ((defined ($v=$webRequests{lc $page}))? $v->($header,\$qs): webConfig($header,\$qs));
             } else {
                 return &webBlock($tempfh);
             }
@@ -56366,7 +56375,7 @@ function popFileEditor(filename,note)
   newwindow=window.open(
     \'edit?file=\'+filename+\'&note=\'+note,
     \'FileEditorM\',
-    \'width=720,height=\'+height+\',overflow=scroll,toolbar=yes,menubar=yes,location=no,personalbar=yes,scrollbars=yes,status=no,directories=no,resizable=yes\'
+    \'width=720,height=\'+height+\',overflow=scroll,toolbar=yes,menubar=yes,location=yes,personalbar=yes,scrollbars=yes,status=no,directories=no,resizable=yes\'
   );
   	// this puts focus on the popup window if we open a new popup without closing the old one.
   	if (window.focus) {newwindow.focus()}
