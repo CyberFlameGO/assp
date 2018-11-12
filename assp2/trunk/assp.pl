@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18313';        # 08.11.2018 TE
+$build   = '18316';        # 12.11.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -602,7 +602,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'EBD7044AA0119E5331E4CDDFACD2150EA0C02895'; }
+sub __cs { $codeSignature = '143BC11EDCC2775A636333223DF144476BDAF26F'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -2846,7 +2846,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['maxDampingTime','Max time Used for Damping',4,\&textinput,30,'(\d?\d?\d?)',undef,
   'The maximum time in second, that is used for one damping cycle if DoDamping is not set to 0, even if the calculated value caused by DoDamping is higher. For example: 30',undef,undef,'msg002380','msg002381'],
 ['spamtrapaddresses','PenaltyBox Trap Addresses *',80,\&textinput,'put|your@penaltytrap.com|addresses|@here.org','(.*)','ConfigMakeSLRe',
-  'Mail to any of these addresses will be blocked and the scoring value is added. Whitelist and noPenaltyMakeTraps will be ignored. Nothing will be stored in the Spam Collection, if these addresses are not checked for validity. TO: and CC: addresses will be also checked - BCC: addresses only, if \'removeForeignBCC\' is not set. If you want to use these addresses as permanent honeypott addresses (with collection), it is better to define them in spamaddresses and to enable DoNotBlockCollect . Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com).',undef,undef,'msg002390','msg002391'],
+  'Mail to any of these addresses will be blocked and the scoring value is added. Whitelist and noPenaltyMakeTraps will be ignored. Nothing will be stored in the Spam Collection, if these addresses are not checked for validity. TO: and CC: addresses will be also checked - BCC: addresses only, if \'removeForeignBCC\' is not set. If you want to use these addresses as permanent honeypot addresses (with collection), it is better to define them in spamaddresses and to enable DoNotBlockCollect . Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com).',undef,undef,'msg002390','msg002391'],
 ['PenaltyTrapPolite','PenaltyTrap Reply',80,\&textinput,'550 5.1.1 User unknown: EMAILADDRESS','^([542]\d\d .+)',undef,'SMTP reply for invalid Users. Default: \'550 5.1.1 User unknown: EMAILADDRESS\' <br />
  The literal EMAILADDRESS (case sensitive) is replaced by the fully qualified SMTP recipient (e.g., thisuser@example.com).',undef,undef,'msg002400','msg002401'],
 ['DoPenaltyMakeTraps','Do Heavy Used Invalid Addresses as PenaltyBox Trap Addresses','0:disabled|1:make traps and block them|2:make traps, only collect them|3:do not make them but block',\&listbox,2,'(.*)',undef,
@@ -4083,7 +4083,7 @@ For example: mysql/dbimport<br />
 
 [0,0,0,'heading','Collecting SPAM and HAM'],
 ['spamaddresses','Spam Collect Addresses*',80,\&textinput,'','(.*)','ConfigMakeSLRe',
-  'Mail to any of these addresses are always spam and will contribute to the spam-collection unless from someone on the whitelist - for example honeypott addresses. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com). The addresses are not validated, they  are readdressed to sendAllSpam, however you can supersede this by putting a valid address into sendAllCollect below.',undef,undef,'msg005990','msg005991'],
+  'Mail to any of these addresses are always spam and will contribute to the spam-collection unless from someone on the whitelist - for example honeypot addresses. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com). The addresses are not validated, they  are readdressed to sendAllSpam, however you can supersede this by putting a valid address into sendAllCollect below.',undef,undef,'msg005990','msg005991'],
 ['sendAllCollect','Catchall Address for Collect Addresses',20,\&textinput,'','(.*)',undef,
   'ASSP will readdress messages addressed to Collect Addresses to this address.<br />
   For example: collect@mydomain.com',undef,undef,'msg006000','msg006001'],
@@ -11440,7 +11440,7 @@ For removal of entries from WhiteBox (PBWhite)  use <a onmousedown="showDisp(\'$
 $lngmsg{'msg500086'} = 'CacheEntry: IP/Domain \'11\' CacheIntervalStart 1=fail/2=pass Result/Comment';
 
 $lngmsg{'msg500090'} = 'To take an action, select the action and click "Do It!". To move a file to another location, just copy and delete the file!';
-$lngmsg{'msg500091'} = '<br /> For "resend file" action install Email::Send  modules!';
+$lngmsg{'msg500091'} = '<br /> For "resend file" action install the Email::Send module!';
 
 $lngmsg{'msg500092'} = 'IP ranges can be defined as: 182.82.10. ';
 
@@ -11450,6 +11450,9 @@ $lngmsg{'msg500094'} = 'records) to save it from GUI!';
 
 $lngmsg{'msg500095'} = 'Please close this window, and wait until import has finished.';
 $lngmsg{'msg500096'} = "This file was trunked to (MaxBytes) $MaxBytes byte. If you resend this file, the resulting view and/or attachments would be destroyed!";
+
+$lngmsg{'msg500097'} = '<br />Using the left mouse button at "show email in browser sandbox" will show the email in a secured browser sandbox <a href="https://en.wikipedia.org/wiki/Content_Security_Policy" target="_blank">(Content Security Policy)</a> - using the right mouse button, images will be show in addition. <span class="negative">Showing images can be a risk, if they contain malicious code!</span>';
+$lngmsg{'msg500098'} = '<br />To download an attachment (e.g. to check it), click at the attachment name.';
 
 $lngmsghint{'msg500100'} = '# SMTP-Connection - link - hintbox';
 $lngmsg{'msg500100'} = 'Click here to open a SMTP-Connections-Window that never stops refreshing. Do not make any changes in the main window, while this SMTP-Connections-Window is still opened! A SMTP-Connections-Window which is started with the default (left beside) link, will stop refreshing if it is not in forground.';
@@ -44782,6 +44785,80 @@ sub assp_extract_ct_attribute_value {
     return $value;
 }
 
+sub extractAttachmentNames {
+    my $m = shift;
+    my $msg = ref($m) ? $m : \$m;
+    return unless $$msg;
+    my @names;
+
+    eval {
+        my $email = Email::MIME->new($$msg);
+        fixUpMIMEHeader($email);
+        my @parts = parts_subparts($email);
+        my $i = 0;
+        foreach my $part ( @parts ) {
+            my ($type, $cid, $name);
+            $type = lc $1 if $part->header("Content-Disposition") =~ /(attachment|inline)/io;
+            $cid = $part->header("Content-ID") unless $type;
+            $name =   attrHeader($part,'Content-Type','filename','name')
+                   || attrHeader($part,'Content-Disposition','filename','name');
+            next if !($type || $cid || $name);
+
+            $type ||= 'inline';
+
+            if ($CanUseMTY && $name !~ /\.\w+$/o && $part->header('Content-Type') =~ /^\s*([^;\s]+)/io) {
+                my $ct = lc $1;
+                if ($ct ne 'application/octet-stream') {
+                    if (my $t = eval{MIME::Types->new()->type($ct);}) {
+                        my @ext = map {my $e = '.'.$_;$e;} eval{$t->extensions;};
+                        $name ||= $type.'_'.$i;
+                        $name = $ext[0] ? $name . $ext[0] : '';
+                    }
+                }
+            }
+            if ($CanUseMTY && $name !~ /\.\w+$/o && defined *{'ASSP_AFC::detectFileType'}) {
+                my $self = {};
+                my @ext = ASSP_AFC::detectFileType($self, \$part->body);
+                $name ||= $type.'_'.$i;
+                $name = $ext[0] ? $name . $ext[0] : '';
+            }
+            push @names, $name;
+            $i++;
+        }
+    };
+    return \@names;
+}
+
+sub extractAttachment {
+    my $m = shift;
+    my $num = shift;
+    return unless defined $num;
+    my $msg = ref($m) ? $m : \$m;
+    return unless $$msg;
+    my $attachment;
+
+    eval {
+        my $email = Email::MIME->new($$msg);
+        fixUpMIMEHeader($email);
+        my @parts = parts_subparts($email);
+        my $i = 0;
+        foreach my $part ( @parts ) {
+            my ($type, $cid, $name);
+            $type = lc $1 if $part->header("Content-Disposition") =~ /(attachment|inline)/io;
+            $cid = $part->header("Content-ID") unless $type;
+            $name =   attrHeader($part,'Content-Type','filename','name')
+                   || attrHeader($part,'Content-Disposition','filename','name');
+            next if !($type || $cid || $name);
+            if ($i == $num) {
+                $attachment = \$part->body;
+                last;
+            }
+            $i++;
+        }
+    };
+    return $attachment;
+}
+
 sub ImageMD5Part { AttachMD5Part(@_); };
 sub AttachMD5Part {
     my $part = shift;
@@ -44794,14 +44871,13 @@ sub AttachMD5Mail {
     my $m = shift;
     my $msg = ref($m) ? $m : \$m;
     return unless $$msg;
-    return unless eval('$main::ASSP_AFCDetectSpamAttachRe');
+    return unless (my $re = ${'main::ASSP_AFCDetectSpamAttachRe'});
     my %md5;
     my $t = Time::HiRes::time() + 3;
 
     $o_EMM_pm = 1;
     eval {
         $Email::MIME::ContentType::STRICT_PARAMS=0;      # no output about invalid CT
-        my $re = ${'main::ASSP_AFCDetectSpamAttachReRE'};
         my $email = Email::MIME->new($$msg);
         fixUpMIMEHeader($email);
 
@@ -54986,6 +55062,7 @@ sub de8 {
     return $str;
 }
 
+# encode a string to html unicode
 sub eU {
     my $str = shift;
     return unless defined $str;
@@ -54994,6 +55071,19 @@ sub eU {
     eval{
          $utf8on->(\$str);
          eval{$ret = join('',map{my $t=sprintf("\&#x%2.2x;", unpack("U0U*",$_));$t='&#x2209;' if lc($t) eq '&#xfffd;';$t;} split(//o,$str));};
+    };
+    return ($ret) ? $ret : $str;
+}
+
+# encode non basic ASCII characters in a string to html unicode
+sub eUnP {
+    my $str = shift;
+    return unless defined $str;
+    my $ret;
+    local $@;
+    eval{
+         $utf8on->(\$str);
+         eval{$ret = join('',map{my $t = (ord($_)<127) ? $_ : sprintf("\&#x%2.2x;", unpack("U0U*",$_));$t='&#x2209;' if lc($t) eq '&#xfffd;';$t;} split(//o,$str));};
     };
     return ($ret) ? $ret : $str;
 }
@@ -55785,6 +55875,8 @@ sub ConfigEdit {
  my ($cidr,$regexp1,$regexp2);
  my ($s1,$s2,$editButtons,$option, $ishash, $hash);
  my $noLineNum = '';
+ my $attachment;
+ my $attachNames = [];
 
  $cidr=$regexp1=$regexp2=q{};
  
@@ -55826,6 +55918,7 @@ sub ConfigEdit {
         $fil="$base/$fil" if $fil!~/^\Q$base\E/io;
         $option  = "<option value=\"0\">select action</option>";
         $option .= "<option value=\"1\">copy file to resendmail</option>" if($CanUseEMS && $resendmail && $fil !~/\/$resendmail\//);
+        $option .= "<option value=\"10\" style=\"color:red\">copy file to resendmail and force attachments</option>" if($CanUseEMS && $resendmail && $fil !~/\/$resendmail\//);
         $option .= "<option value=\"2\">save file</option>";
         $option .= "<option value=\"3\">copy file to notspamlog</option>" if ($fil !~/\/$notspamlog\//);
         $option .= "<option value=\"4\">copy file to spamlog</option>" if ($fil !~/\/$spamlog\//);
@@ -55838,6 +55931,7 @@ sub ConfigEdit {
         $note = '<div class="note" id="notebox">';
         $note .= $WebIP{$ActWebSess}->{lng}->{'msg500090'} || $lngmsg{'msg500090'};
         $note .= $WebIP{$ActWebSess}->{lng}->{'msg500091'} || $lngmsg{'msg500091'} if !($CanUseEMS && $resendmail && $fil !~/\/$resendmail\//);
+        $note .= $WebIP{$ActWebSess}->{lng}->{'msg500097'} || $lngmsg{'msg500097'};
  }
 
 #$regexp1 = $WebIP{$ActWebSess}->{lng}->{'msg500011'} || $lngmsg{'msg500011'} if !$CanMatchCIDR;
@@ -55979,8 +56073,10 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
          $s1 =~ s/([^\r])\n/$1\r\n/go;
          $s1 .= "\r\n";
          my $action = $qs{fileaction};
-         if ($action eq '1') {    # resend
-             $s1 = "\r\n" . $s1;
+         if ($action eq '1' or $action eq '10') {    # resend
+             my $force = $action eq '10' ? "X-ASSP-ForceResend: by $WebIP{$ActWebSess}->{user}\r\n" : '';
+             $s1 = "\r\n" . $force . $s1;
+             $force = ' - attachments are forced' if $force;
              my $rfil = $fil;
              $rfil =~ s/^(\Q$base\E\/).+(\/.+\Q$maillogExt\E)$/$1$resendmail$2/i;
              my ($to) = $s1 =~ /\nX-Assp-Intended-For:[^\<]*?<?($EmailAdrRe\@$EmailDomainRe)>?/sio;
@@ -56010,8 +56106,8 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
                      $CE->binmode;
                      $CE->print($s1);
                      $CE->close;
-                     $s2 .= '<span class="positive">File copied to resendmail folder</span>';
-                     mlog(0,"info: request to create file: $rfil");
+                     $s2 .= '<span class="positive">File copied to resendmail folder'.$force.'</span>';
+                     mlog(0,"info: request by $WebIP{$ActWebSess}->{user} to create file: $rfil$force");
                      $nextResendMail = $nextResendMail < time + 3 ? $nextResendMail: time + 3;
                  } else {
                      $s2 .= '<span class="negative">unable to create file in resendmail folder - $!</span>';
@@ -56221,19 +56317,71 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
   } else {
     if($open->(my $CE,'<',$fil)) {
      $CE->read($s1,fsize($fil));
+     $CE->close;
 #dencrypt if to do
      if (exists $CryptFile{$fil} && $s1 =~ /^(?:[a-zA-Z0-9]{2}){5,}$/o) {
          my $enc = ASSP::CRYPT->new($webAdminPassword,0);
          $s1 = $enc->DECRYPT($s1);
      }
-     $CE->close;
-     if ($qs{note} eq '9') {
+     if ($qs{note} =~ /^s(x)?$/o) {    # show mail
+         my $showimage = $1 ? 'img-src *;' : '';
+         my @body = cleanMIMEBody2UTF8(\$s1);
+         if (! $body[1]) {
+             $body[0] =~ s/(?:\r?\n|\r)/<br \/>\n/go;
+             $body[0] = eUnP($body[0]) unless is_7bit_clean(\$body[0]);
+             $body[0] = <<EOT;
+$headerDTDStrict
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+  <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+</head>
+<body>
+$body[0]
+</body>
+</html>
+EOT
+             $body[0] =~ s/(?:\r?\n|\r)/\n/go;
+         }
+         $body[1] =~ s/(;\s*charset\s*=\s*)[^ \"\'\>]+/$1utf-8/ios if $body[1];
+         $s1 = $body[1] ? eUnP($body[1]) : $body[0];
+         my $h = $headerHTTP;
+         $h =~ s/\s+$//o;
+         return <<EOT;
+$h
+Content-Security-Policy: default-src 'self'; script-src 'none'; connect-src 'none'; frame-ancestors 'none'; $showimage sandbox
+X-Content-Security-Policy: default-src 'self'; script-src 'none'; connect-src 'none'; frame-ancestors 'none'; $showimage sandbox
+X-WebKit-CSP: default-src 'self'; script-src 'none'; connect-src 'none'; frame-ancestors 'none'; $showimage sandbox
+X-Frame-Options: DENY
+
+$s1
+EOT
+     } elsif ($qs{note} eq '9') {    # view decoded MIME
          my $body = cleanMIMEBody2UTF8(\$s1);
          $body ||= 'decoding error';
          $s1 = cleanMIMEHeader2UTF8(\$s1,0) . $body;
-         $s1 = encodeHTMLEntities($s1);
+         $s1 = eU($s1);
+#         $s1 = encodeHTMLEntities($s1);
          $s1 =~ s/(?:\r?\n|\r)/\n/go;
+     } elsif ($qs{note} =~ /^a(\d+)$/o) {  # download attachment
+         my $attachNames = extractAttachmentNames(\$s1);
+         my $name = $attachNames->[$1];
+         $name ||= "no_name_$1";
+         $attachment = extractAttachment(\$s1,$1);
+         return <<EOT;
+HTTP/1.1 200 OK
+Pragma: public
+Expires: 0
+Cache-Control: must-revalidate, post-check=0, pre-check=0
+Content-Type: application/force-download
+Content-type: application/octet-stream
+Content-Type: application/download
+Content-Disposition: Attachment; filename="$name"
+
+$$attachment
+EOT
      } else {
+         $attachNames = extractAttachmentNames(\$s1) if $qs{note} eq 'm';
+         $note .= ($WebIP{$ActWebSess}->{lng}->{'msg500098'} || $lngmsg{'msg500098'}) if @$attachNames;
          $s1 =~ s/(?:\r?\n|\r)/\n/go;
          $s1= encodeHTMLEntities($s1);
      }
@@ -56277,7 +56425,17 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
           $editButtons .='<div><input type="submit" name="B1" value="Do It!" />&nbsp;&nbsp;<input type="submit" name="B1" value="Delete file" onclick="return confirmDelete(\''.$fil.'\');"/>';
           my $nf = normHTML($fil);
 
-          $editButtons .='&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="button" value="view decoded MIME" onclick="return popFileEditor(\''. $nf .'\',9);"/>&nbsp;&nbsp;<input type="button" value="analyze" onclick="return window.open(\'analyze?file='. $nf .'\',\'ASSP Analyze\',\'\');"/> &nbsp;&nbsp;<input type="button" value="Close" onclick="javascript:window.close();"/>'.$slo.'</div>';
+          $editButtons .= '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="button" value="view decoded MIME" onclick="return popFileEditor(\''. $nf .'\',9);"/>&nbsp;&nbsp;<input type="button" value="show email in browser sandbox" title="click LEFT for a secured view'."\n\n".'click RIGHT to include images'."\n".'!!! this can be a risk !!!" onmousedown="var withimg = (event.button == 2) ? \'sx\' : \'s\';return popFileEditor(\''. $nf .'\',withimg);"/>&nbsp;&nbsp;<input type="button" value="analyze" onclick="return window.open(\'analyze?file='. $nf .'\',\'ASSP Analyze\',\'\');"/> &nbsp;&nbsp;<input type="button" value="Close" onclick="javascript:window.close();"/>'.$slo;
+          if (@$attachNames) {
+              $editButtons .= "<br /><br /><span class=\"negative\"><b>attachments:</b></span> <small>click to download</small><br /><br />\n";
+              my $i = 0;
+              for (@$attachNames) {
+                  $_ ||= "no_name_$i";
+                  $editButtons .= '<a href="javascript:void()" onclick="return popFileEditor(\''. $nf .'\',\'a'.$i.'\');" title="download this attachment">'.eU($_).'</a>&nbsp;&nbsp;';
+                  $i++;
+              }
+          }
+          $editButtons .= '</div>';
       } else {
           my $disabled = ($qs{B1}=~/Save to Importfile/io) ? 'disabled="disabled"' : '';
           my $fn = $hash ? 'list' : 'file';
@@ -56371,11 +56529,15 @@ function confirmDelete(FileName)
 
 function popFileEditor(filename,note)
 {
-  var height = (note == 0) ? 500 : (note == \'m\') ? 580 : 550;
+  if(typeof note == 'number'){
+      note = note.toString();
+  }
+  var height = (note == '0') ? 500 : (note == \'m\') ? 800 : (note.substring(0, 1) == \'a\') ? 100 : 550;
+  var width  = (note.substring == \'a\') ? 100 : 800;
   newwindow=window.open(
     \'edit?file=\'+filename+\'&note=\'+note,
     \'FileEditorM\',
-    \'width=720,height=\'+height+\',overflow=scroll,toolbar=yes,menubar=yes,location=yes,personalbar=yes,scrollbars=yes,status=no,directories=no,resizable=yes\'
+    \'width=\'+width+\',height=\'+height+\',overflow=scroll,toolbar=yes,menubar=yes,location=yes,personalbar=yes,scrollbars=yes,status=no,directories=no,resizable=yes\'
   );
   	// this puts focus on the popup window if we open a new popup without closing the old one.
   	if (window.focus) {newwindow.focus()}
@@ -56448,7 +56610,7 @@ function sortDown() {
             <div id="divlines">
             </div>
           </div>
-          <textarea id="contents" name="contents" rows="15" style="max-width:90%;max-height:75%;width:100%;overflow:scroll;align: right;font-size: 14px; font-family: 'Courier New',Courier,monospace; " wrap="off">$s1
+          <textarea id="contents" name="contents" rows="15" style="max-width:90%;max-height:50%;width:100%;overflow:scroll;align: right;font-size: 14px; font-family: 'Courier New',Courier,monospace; " wrap="off">$s1
           </textarea>
 <script type="text/javascript">
 var lines = document.getElementById("divlines");

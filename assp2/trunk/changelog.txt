@@ -1,3 +1,23 @@
+2018-11-12
+fixed in assp 2.6.2 *Fortress* build 18316:
+
+
+changed:
+
+The .eml file editor dialog got some new options
+
+- the action pulldown menu got an option to force the resend of the email including ALL attachments 'copy file to resendmail and force attachments' (shown in red color !) 
+
+- an action button "show email in browser sandbox" is added
+ Using the left mouse button at "show email in browser sandbox" will show the email in a secured browser sandbox "https://en.wikipedia.org/wiki/Content_Security_Policy" (Content Security Policy),
+ using the right mouse button, images will be show in addition. Showing images can be a risk, if they contain malicious code!
+
+- If the email contains attachments or includes, a hint is given and the attachments are listed as links. Clicking on such a link will download the attachment to the local machine.
+  This may be used to check attachments for malicious content before a resend is requested. 
+
+
+
+
 2018-11-09
 fixed in assp 2.6.2 *Fortress* build 18313:
 
