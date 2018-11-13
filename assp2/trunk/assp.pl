@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18316';        # 12.11.2018 TE
+$build   = '18317';        # 13.11.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -602,7 +602,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '143BC11EDCC2775A636333223DF144476BDAF26F'; }
+sub __cs { $codeSignature = '6A5F0E13FA8498D8E63F79D95728EBB53F45DB6F'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -10158,7 +10158,7 @@ sub rb_add {
         my $sub = $1;
         &main::headerUnwrap($sub);
         $sub =~ s/\r|\n|\t//go;
-        $sub = &main::decodeMimeWords($sub);
+        $sub = &main::decodeMimeWords2UTF8($sub);
         if ($sub =~ /$main::DMARCReportSubjectRe/io) {
             rb_d("file '$fn' was skipped - it is a DMARC report" );
             return;
@@ -11451,7 +11451,7 @@ $lngmsg{'msg500094'} = 'records) to save it from GUI!';
 $lngmsg{'msg500095'} = 'Please close this window, and wait until import has finished.';
 $lngmsg{'msg500096'} = "This file was trunked to (MaxBytes) $MaxBytes byte. If you resend this file, the resulting view and/or attachments would be destroyed!";
 
-$lngmsg{'msg500097'} = '<br />Using the left mouse button at "show email in browser sandbox" will show the email in a secured browser sandbox <a href="https://en.wikipedia.org/wiki/Content_Security_Policy" target="_blank">(Content Security Policy)</a> - using the right mouse button, images will be show in addition. <span class="negative">Showing images can be a risk, if they contain malicious code!</span>';
+$lngmsg{'msg500097'} = '<br />Using the left mouse button at "show email in browser sandbox" will show the email in a secured browser sandbox <a href="https://en.wikipedia.org/wiki/Content_Security_Policy" target="_blank">(Content Security Policy)</a> - using the right mouse button, images will be show in addition (except in MS-Internet-Explorer). <span class="negative">Showing images can be a risk, if they contain malicious code!</span>';
 $lngmsg{'msg500098'} = '<br />To download an attachment (e.g. to check it), click at the attachment name.';
 
 $lngmsghint{'msg500100'} = '# SMTP-Connection - link - hintbox';
@@ -22659,7 +22659,8 @@ if ((! $friend->{noprocessing} || $convertNP) && $convert && ! $friend->{signed}
           $newchrset = $oldchrset{$name};
           $newchrset = 'UTF-8' if ($newchrset =~ /utf8|utf-8/io);
           d("org $name head: $mimestr");
-          $newmimestr = decodeMimeWords($mimestr);
+          $newmimestr = decodeMimeWords2UTF8($mimestr);
+          $newmimestr = d8($newmimestr);
           d('dec native head: hex '.unpack( "H*", $newmimestr));
           $newmimestr=Encode::encode($newchrset,$newmimestr);
           d("enc native $newchrset head: hex ".unpack( "H*", $newmimestr));
@@ -36885,10 +36886,8 @@ sub CheckAttachments {
         }
         my @parts = parts_subparts($email);
         foreach my $part ( @parts ) {
-            my $name =   attrHeader($part,'Content-Type','filename')
-                      || attrHeader($part,'Content-Disposition','filename')
-                      || attrHeader($part,'Content-Type','name')
-                      || attrHeader($part,'Content-Disposition','name');
+            my $name =   attrHeader($part,'Content-Type','filename','name')
+                      || attrHeader($part,'Content-Disposition','filename','name');
             if ($name && isAttachment($part) ) {
                 mlog($fh,"info: attachment $name found for Level-$block") if ($AttachmentLog >= 2);
                 (my $ext, $name) = attachmentExtension($fh, $name ,$part);
@@ -39100,10 +39099,8 @@ sub SpamReportBody {
                 fixUpMIMEHeader($email);
                 my @parts = parts_subparts($email);
                 foreach my $part ( @parts ) {
-                    my $name =   attrHeader($part,'Content-Type','filename')
-                              || attrHeader($part,'Content-Disposition','filename')
-                              || attrHeader($part,'Content-Type','name')
-                              || attrHeader($part,'Content-Disposition','name');
+                    my $name =   attrHeader($part,'Content-Type','filename','name')
+                              || attrHeader($part,'Content-Disposition','filename','name');
                     if (isAttachment($part) && $name =~ /\Q$maillogExt\E$/i) {
                         $numparts++;
                         d("SpamReportBody - processing attached email $name");
@@ -39460,10 +39457,8 @@ sub AnalyzeReportBody {
                 fixUpMIMEHeader($email);
                 my @parts = parts_subparts($email);
                 foreach my $part ( @parts ) {
-                    my $name =   attrHeader($part,'Content-Type','filename')
-                              || attrHeader($part,'Content-Disposition','filename')
-                              || attrHeader($part,'Content-Type','name')
-                              || attrHeader($part,'Content-Disposition','name');
+                    my $name =   attrHeader($part,'Content-Type','filename','name')
+                              || attrHeader($part,'Content-Disposition','filename','name');
                     if (isAttachment($part) && $name =~ /\Q$maillogExt\E$/i) {
                         my $body = $part->body;
                         $body =~ s/\.(?:\r?\n)+$//o;
@@ -39546,10 +39541,8 @@ sub ReportBodyUnZip {
         mlog(0,'info: Email::Outlook::Message is '.($canEOM ? '' : 'not ' ).'available') if ($ReportLog > 2);
         my @parts = parts_subparts($email);
         foreach my $part ( @parts ) {
-            my $name =   attrHeader($part,'Content-Type','filename')
-                      || attrHeader($part,'Content-Disposition','filename')
-                      || attrHeader($part,'Content-Type','name')
-                      || attrHeader($part,'Content-Disposition','name');
+            my $name =   attrHeader($part,'Content-Type','filename','name')
+                      || attrHeader($part,'Content-Disposition','filename','name');
             my $extRe = quotemeta($maillogExt);
             # uncompress and push compressed attachments in @unzipped
             if ($canzip && isAttachment($part) && $name =~ /\.(?:zip|gz(?:ip)?|bz(?:ip)?2|lz(?:op|f|ma)?|xz)$/io) {
@@ -42651,7 +42644,7 @@ sub BlockReportBody {
             my $email = Email::MIME->new($this->{header});
 
             $sub = $email->header("Subject") || '';    # get the subject of the email
-            $sub = decodeMimeWords($sub);
+            $sub = d8(decodeMimeWords2UTF8($sub));
             $sub =~ s/\r?\n//go;
             $sub =~ s/\s+/ /go;
 
@@ -45002,10 +44995,8 @@ sub cleanMIMEBody2UTF8 {
             my ($cs, $dis, $odis);
             $dis = $odis = $part->header("Content-Type") || '';
             next if $part->header("Content-ID") && $dis !~ /text/oi;    # no inline images / app's
-            my $name =   attrHeader($part,'Content-Type','filename')
-                      || attrHeader($part,'Content-Disposition','filename')
-                      || attrHeader($part,'Content-Type','name')
-                      || attrHeader($part,'Content-Disposition','name');
+            my $name =   attrHeader($part,'Content-Type','filename','name')
+                      || attrHeader($part,'Content-Disposition','filename','name');
             $cs = attrHeader($part,'Content-Type','charset');
             $cs{uc $cs} = "charset=$cs" if $cs;
 #print $F '<charset>'.$cs."<charset>\n" if $cs;
@@ -45029,10 +45020,10 @@ sub cleanMIMEBody2UTF8 {
             my $bd;
 #mlog(0,"info: addCharsets:$addCharsets , name:$name , $odis, $dis, $o_EMM_pm , ". \&parts_multipart .' '. \&Email::MIME::parts_multipart);
             if (! $addCharsets) {
-                if ($name) {
-                    $bd = "\r\nattachment:$name\r\n";
-                    $bd .= eval {$part->body;} if $odis =~ /text/oi;
-                } else {
+                if ($name && $odis =~ /text/oi) {     # it is a text attachment
+                    $bd = eval {$part->body;};
+                    if ($@) { $error .= $error ? "\n$@" : $@ };
+                } elsif (! $name) {                   # a text part
                     $bd = eval {$part->body;};
                     if ($@) { $error .= $error ? "\n$@" : $@ };
                 }
@@ -45044,6 +45035,7 @@ sub cleanMIMEBody2UTF8 {
                     };
                     if ($@) { $error .= $error ? "\n$@" : $@ };
                 }
+                $bd = e8("\r\nattachment:$name\r\n") . $bd if $name;
             }
             $body .= "\r\n" if ! $addCharsets && $body && $bd && $body !~ /\r?\n$/o && $bd !~ /^\r?\n/o;
             $body .= $bd;
@@ -45508,7 +45500,7 @@ sub decodeMimeWord {
 sub decodeMimeWords {
     my $s = shift;
     headerUnwrap($s);
-    $s =~ s/(=\?([^?]+)\?(b|q)\?([^?]*)\?=)/decodeMimeWord($1,$2,$3,$4)/gieo;
+    $s =~ s/(=\?([^?]*)\?(b|q)\?([^?]+)\?=(?:\s*=\?\g2\?(?:b|q)\?[^?]+\?=)*)/decodeMimeWord($1,$2,$3,$4)/gieo;
     return $s;
 }
 
@@ -52951,10 +52943,8 @@ sub ConfigAnalyze {
                 my ($domain) = $reportedBy =~ /$EmailAdrRe(\@$EmailDomainRe)/io;
                 my $re = ${'ASSP_AFCDetectSpamAttachReRE'};
                 foreach my $part ( @parts ) {
-                    my $filename =   attrHeader($part,'Content-Type','filename')
-                                || attrHeader($part,'Content-Disposition','filename')
-                                || attrHeader($part,'Content-Type','name')
-                                || attrHeader($part,'Content-Disposition','name');
+                    my $filename =   attrHeader($part,'Content-Type','filename','name')
+                                || attrHeader($part,'Content-Disposition','filename','name');
                     my $orgname = $filename;
                     my ($imghash,$imgprob);
                     if (   $orgname
@@ -53005,10 +52995,8 @@ sub ConfigAnalyze {
                     &MainLoop1(0);
                 }
 
-                my $filename =   attrHeader($part,'Content-Type','filename')
-                              || attrHeader($part,'Content-Disposition','filename')
-                              || attrHeader($part,'Content-Type','name')
-                              || attrHeader($part,'Content-Disposition','name');
+                my $filename =   attrHeader($part,'Content-Type','filename','name')
+                              || attrHeader($part,'Content-Disposition','filename','name');
                 (my $ext, $filename) = attachmentExtension(0, $filename ,$part) if ($filename && isAttachment($part) );
                 my $orgname = $filename;
 
@@ -55017,6 +55005,7 @@ sub d8 {
     my $str = shift;
     return unless defined $str;
     local $@;
+    $utf8off->(\$str);
     my $ret = eval{Encode::decode('UTF-8',$str);};
     return ($ret) ? $ret : $str;
 }
@@ -55025,6 +55014,7 @@ sub e8 {
     my $str = shift;
     return unless defined $str;
     local $@;
+    $utf8on->(\$str);
     my $ret = eval{Encode::encode('UTF-8',$str);};
     return ($ret) ? $ret : $str;
 }
@@ -55100,8 +55090,12 @@ sub decodeMimeWord2UTF8 {
     if (! $@ && $CanUseEMM && $charset && $fulltext) {
         $fulltext =~ s/\*[^?]+(\?[bq]\?)/$1/oi;  # remove language tag '*en-en', '*DE-DE' allowedby RFC 2231
         eval{ $ret = MIME::Words::decode_mimewords($fulltext);
-              $ret = Encode::decode($charset, $ret) if $ret;
-              $ret = e8($ret) if $ret;
+              if ($charset =~ /^UTF-?8$/o) {
+                  $utf8off->(\$ret);
+              } else {
+                  $ret = Encode::decode($charset, $ret) if $ret;
+                  $ret = e8($ret) if $ret;
+              }
         };
         return $ret unless $@;
     }
@@ -55115,14 +55109,14 @@ sub decodeMimeWord2UTF8 {
     eval{
         $text = Encode::decode($charset, $text);
         $text = e8($text) if $text;
-    } if $text;
+    } if $text && $charset !~ /^UTF-?8$/o;
     return $text;
 }
 
 sub decodeMimeWords2UTF8 {
     my $s = shift;
     headerUnwrap($s);
-    $s =~ s/(=\?([^?]*)\?(b|q)\?([^?]+)\?=)/decodeMimeWord2UTF8($1,$2,$3,$4)/gieo;
+    $s =~ s/(=\?([^?]*)\?(b|q)\?([^?]+)\?=(?:\s*=\?\g2\?(?:b|q)\?[^?]+\?=)*)/decodeMimeWord2UTF8($1,$2,$3,$4)/gieo;
     return $s;
 }
 
@@ -56348,9 +56342,9 @@ EOT
          $h =~ s/\s+$//o;
          return <<EOT;
 $h
-Content-Security-Policy: default-src 'self'; script-src 'none'; connect-src 'none'; frame-ancestors 'none'; $showimage sandbox
-X-Content-Security-Policy: default-src 'self'; script-src 'none'; connect-src 'none'; frame-ancestors 'none'; $showimage sandbox
-X-WebKit-CSP: default-src 'self'; script-src 'none'; connect-src 'none'; frame-ancestors 'none'; $showimage sandbox
+Content-Security-Policy: default-src 'self'; script-src 'none'; connect-src 'none'; frame-ancestors 'none'; $showimage sandbox;
+X-Content-Security-Policy: sandbox;
+X-WebKit-CSP: default-src 'self'; script-src 'none'; connect-src 'none'; frame-ancestors 'none'; $showimage sandbox;
 X-Frame-Options: DENY
 
 $s1
@@ -56359,7 +56353,7 @@ EOT
          my $body = cleanMIMEBody2UTF8(\$s1);
          $body ||= 'decoding error';
          $s1 = cleanMIMEHeader2UTF8(\$s1,0) . $body;
-         $s1 = eU($s1);
+         $s1 = eUnP($s1);
 #         $s1 = encodeHTMLEntities($s1);
          $s1 =~ s/(?:\r?\n|\r)/\n/go;
      } elsif ($qs{note} =~ /^a(\d+)$/o) {  # download attachment

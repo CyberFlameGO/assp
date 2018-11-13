@@ -1,3 +1,15 @@
+2018-11-13
+fixed in assp 2.6.2 *Fortress* build 18317:
+
+
+- bad MIME encoded multiline headers were some times wrong decoded
+  (in some mails, header lines were broken in to multiple MIME encodings at any byte instead at a character)
+
+- the "secured browser sandbox" introduced in build 18316 was not working in MS Internet Explorer
+  For security reasons images are never shown in MS Internet Explorer, when "show email in browser sandbox" is requested.
+
+
+
 2018-11-12
 fixed in assp 2.6.2 *Fortress* build 18316:
 
