@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18326';        # 22.11.2018 TE
+$build   = '18328';        # 24.11.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -604,7 +604,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'EC2E89B20E3B95E57921AF36227DB9A8FBFCE1D8'; }
+sub __cs { $codeSignature = '17FE27C473008932CC5CE4BAB7DE8CE5BA6358A4'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -35080,6 +35080,7 @@ sub BombWeight_Run {
         $utf8on->(\$text[-1]);
     }
     my $text;
+    my $skipNullMatch = $re ne 'bombSubjectRe';
     eval {
       local $SIG{ALRM} = sub { die "__alarm__\n"; };
       alarm($maxBombSearchTime + 10);
@@ -35091,11 +35092,12 @@ sub BombWeight_Run {
                   my $subre = $1||$2;
                   my $matchlength = length($subre);
                   last if time - $itime >= $maxBombSearchTime;
+                  next if (! defined($subre) && $skipNullMatch);
                   my $w = &weightRe($WeightedRe{$re},$re,\$subre,$fh);
                   &sigonTry(__LINE__);
                   next if ! $w && $fh;
                   $subre = substr($subre,0,$RegExLength < 5 ? 5 : $RegExLength) if $subre;
-                  $subre = '[!empty string!]' unless $subre;
+                  $subre = '[!empty string!]' unless defined $subre;
                   if ($subre =~ /^\s+$/o) {
                       my $spcount = length($subre);
                       $subre = "[!$spcount spaces only!]";

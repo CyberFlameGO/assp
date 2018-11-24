@@ -1,3 +1,10 @@
+2018-11-24
+fixed in assp 2.6.2 *Fortress* build 18328:
+
+- it was possible that bomb.. checks were matching with an empty string result - now only bombSubjectRe can match on an empty string
+
+
+
 2018-11-22
 fixed in assp 2.6.2 *Fortress* build 18326:
 
