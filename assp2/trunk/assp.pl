@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18328';        # 24.11.2018 TE
+$build   = '18337';        # 03.12.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -490,7 +490,6 @@ our $ignoreInvalidAddressNPWL = 3;       # (0/1/2/3) ignore invalid envelope rec
 
 our $DKIMCacheStrict = 1;                # (0/1) if a DKIM signature is found for a domain - all other mails from this domain will require a DKIM signature to pass the Pre-DKIM-Check
 
-our $DoNoFromDomainCHK = 1;              # (0/1) enable the domain check for DoNoFrom (different domains in FROM: and SENDER: header are a fault)
 # *********************************************************************************************************************************************
 
 # some not RFC conform DMARC record subjects - like Amazon SES
@@ -604,7 +603,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '17FE27C473008932CC5CE4BAB7DE8CE5BA6358A4'; }
+sub __cs { $codeSignature = 'ABD2DC05050F1077054252B9417C99AF881ABD8D'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1644,7 +1643,7 @@ sub assp_socket_blocking {
 }
 
 sub defConfigArray {
- # last used msg number 010741
+ # last used msg number 010751
 
  # still unused msg numbers
  #
@@ -2627,12 +2626,23 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['DoNoFrom','Check for Existing and Valid From: and Sender: Header Tag and Address','0:disabled|2:monitor|3:score',\&listbox,3,'(.*)',undef,
   'If enabled, the MIME header is checked for valid From: and Sender: header tags.<br />
   This header check fails and faults are counted if :<br /><br />
-  - both headers (From: and Sender:) are missing<br />
-  - any of these headers contains not a valid email address<br />
-  - multiple of the same headers are found<br />
-  - addresses in the From: and Sender: headers contain different domains (subdomains are ignored)<br />
-  - multiple email addresses are found in one header.<br /><br />
-  The scoring value nofromValencePB is added for each detected fault.',undef,undef,'msg001890','msg001891'],
+  - from: and sender: header tag are both missing<br />
+  - different domains found in from: and sender: email addresses<br />
+  - multiple from: addresses or from: header tags found <br />
+  - multiple sender: addresses or sender: header tags found <br />
+  - no or an invalid email address found in from: header tag<br />
+  - no or an invalid email address found in sender: header tag<br /><br />
+  The scoring value nofromValencePB is added for each detected fault.<br />
+  Use DoNoFromSelect to select which faults should be detected by assp.',undef,undef,'msg001890','msg001891'],
+['DoNoFromSelect','Select Checks for From: and Sender: Header',4,\&textinput,63,'^([0-9]|[1-5][0-9]|6[0-3]|)$',undef,
+ 'Select which check should be done in DoNoFrom .<br /><br />
+ 1 - from: and sender: header tag are both missing<br />
+ 2 - different domains found in from: and sender: email addresses<br />
+ 4 - multiple from: addresses or from: header tags found <br />
+ 8 - multiple sender: addresses or sender: header tags found <br />
+ 16 - no or an invalid email address found in from: header tag<br />
+ 32 - no or an invalid email address found in sender: header tag<br /><br />
+ Simply form the sum of the numbers in front of the checks you want to select (0...63). Default vaule is 63 (1+2+4+8+16+32) - all checks are selected.',undef,undef,'msg010750','msg010751'],
 ['DoNoFromWL','Do DoNoFrom for Whitelisted',0,\&checkbox,'1','(.*)',undef,
   'Check for existing and valid From: or Sender: header and address for whitelisted emails.',undef,undef,'msg001900','msg001901'],
 ['DoNoFromNP','Do DoNoFrom for NoProcessing',0,\&checkbox,'1','(.*)',undef,
@@ -3632,7 +3642,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  'Mail from any of these local addresses are ignored by Bayesian- and HMM checks, mails will not be stored in spam/notspam collection. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com)',undef,undef,'msg009570','msg009571'],
 ['Bayesian_localOnly','Do Bayesian and HMM Check ONLY for this local senders*',60,\&textinput,'','(.*)','ConfigMakeSLRe',
  'Only mail from any of these local addresses are processed by the Bayesian- and HMM checks, except they are also defined in noBayesian_local . BayesLocal must be switched on to make this option working. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com)',undef,undef,'msg009010','msg009011'],
-['maxBayesValues','Maximum most significant results used per mail to calculate Bayesian- and HMM-Probability',3,\&textinput,'60','([3-9]\d|\d{3})',undef,'Maximum count of most significant values used to calculate the Bayesian/HMM-Spam-Probability and the confidence of that probability.<br />
+['maxBayesValues','Maximum most significant results used per mail to calculate Bayesian- and HMM-Probability',3,\&textinput,'60','([1-9]\d{2}|[3-9]\d)',undef,'Maximum count of most significant values used to calculate the Bayesian/HMM-Spam-Probability and the confidence of that probability.<br />
  The Bayesian/HMM Spam probability will be fine with 30 and will get more exact, than higher this value is - until a value of 60.<br />
  The confidence of the Bayesian/HMM Spam probability will get better, than higher this value is.<br />
  Values above 60 are possible, but could lead in to a performance penalty, without getting a better spam detection.<br />
@@ -5487,7 +5497,7 @@ To prevent permantly copying the changed mib/ASSP-MIB file to your net-snmp deam
   <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/pop3collect.txt\',3);" />',undef,undef,'msg009090','msg009091']
 );
 
- # last used msg number 010741
+ # last used msg number 010751
 
  &loadModuleVars;
  -d "$base/language" or mkdirOP("$base/language",'0755');
@@ -33441,7 +33451,7 @@ sub formatTimeInterval {
 
 sub FromStrictOK {
     my $fh = shift;
-    return 1 if ! $DoNoFrom;
+    return 1 if ! $DoNoFrom || ! $DoNoFromSelect;
     return FromStrictOK_Run($fh);
 }
 sub FromStrictOK_Run {
@@ -33473,11 +33483,11 @@ sub FromStrictOK_Run {
         my $tag = lc $1;
         next if $tag ne 'from' && $tag ne 'sender';
         my $val = $2;
-        headerUnwrap($val);
+        $val = decodeMimeWords2UTF8($val);
         $count{$tag}++;
         my $intag = 0;
         my %tagAddrList;
-        while ( $val =~ /[\s<]($EmailAdrRe\@($EmailDomainRe))/igo) {
+        while ( $val =~ /(?:\"[^\"]*\")?(?:\s*<|\s*)($EmailAdrRe\@($EmailDomainRe))/igo) {
             my ($addr,$domain) = (lc($1),lc($2));
             next if $tagAddrList{$addr};
             $tagAddrList{$addr} = 1;
@@ -33540,38 +33550,40 @@ sub FromStrictOK_Run {
         }
     }
     my $error = 0;
-    if (! keys(%count)) {
+    if (($DoNoFromSelect & 1) && ! keys(%count)) {
         $this->{messagereason} = 'missing \'From:\' and \'Sender:\' header tag ( DoNoFrom )';
-        mlog( $fh, "$tlit $this->{messagereason}" );
+        mlog( $fh, "$tlit $this->{messagereason}" ) if $ValidateSenderLog;
         $error += 1;
     } else {
-        if ($DoNoFromDomainCHK && keys(%domains) > 1) {
+        if (($DoNoFromSelect & 2) && keys(%domains) > 1) {
             $this->{messagereason} = 'found ('.keys(%domains).') different sender domains in \'From:\' and \'Sender:\' header tags ( DoNoFrom )';
             $error += (keys(%domains) - 1);
-            mlog( $fh, "$tlit $this->{messagereason}" );
+            mlog( $fh, "$tlit $this->{messagereason}" ) if $ValidateSenderLog;
         }
-        if ($count{from} > 1) {
-            $this->{messagereason} = "multiple ($count{from}) 'From:' header tags found ( DoNoFrom )";
+        if (($DoNoFromSelect & 4) && $count{from} > 1) {
+            $this->{messagereason} = "multiple From: addresses ($count{from}) or 'From:' header tags found ( DoNoFrom )";
             $error += ($count{from} - 1);
-            mlog( $fh, "$tlit $this->{messagereason}" );
+            mlog( $fh, "$tlit $this->{messagereason}" ) if $ValidateSenderLog;
         }
-        if ($count{sender} > 1) {
-            $this->{messagereason} = "multiple ($count{sender}) 'Sender:' header tags found ( DoNoFrom )";
+        if (($DoNoFromSelect & 8) && $count{sender} > 1) {
+            $this->{messagereason} = "multiple Sender: addresses ($count{sender}) or 'Sender:' header tags found ( DoNoFrom )";
             $error += ($count{sender} - 1);
-            mlog( $fh, "$tlit $this->{messagereason}" );
+            mlog( $fh, "$tlit $this->{messagereason}" ) if $ValidateSenderLog;
         }
-        if ($fail{from}) {
-            $this->{messagereason} = "missing or invalid address in ($fail{from}) 'From:' header tag(s) ( DoNoFrom )";
+        if (($DoNoFromSelect & 16) && $fail{from}) {
+            $this->{messagereason} = "missing or invalid address ($fail{from}) in 'From:' header tag(s) ( DoNoFrom )";
             $error += $fail{from};
-            mlog( $fh, "$tlit $this->{messagereason}" );
-        } elsif ($fail{sender}) {
-            $this->{messagereason} = "missing or invalid address in ($fail{sender}) 'Sender:' header tag(s) ( DoNoFrom )";
+            mlog( $fh, "$tlit $this->{messagereason}" ) if $ValidateSenderLog;
+        }
+        if (($DoNoFromSelect & 32) && $fail{sender}) {
+            $this->{messagereason} = "missing or invalid address ($fail{sender}) in 'Sender:' header tag(s) ( DoNoFrom )";
             $error += $fail{sender};
-            mlog( $fh, "$tlit $this->{messagereason}" );
+            mlog( $fh, "$tlit $this->{messagereason}" ) if $ValidateSenderLog;
         }
     }
     if ($error && $DoNoFrom >= 2) {
         $this->{frommissingerror} = $error unless $fh;
+        mlog( $fh, "info: DoNoFrom - DoNoFromSelect is set to $DoNoFromSelect" ) if $ValidateSenderLog > 1;
         for (1...$error) {
             pbAdd( $fh, $this->{ip}, 'nofromValencePB', 'From-missing' ) if $fh && $DoNoFrom == 3;
         }
@@ -41156,7 +41168,13 @@ sub BlockedMailResend {
     return unless ($CanUseEMS);
 
     $special =~ s/[(\[][^(\[)\]]*[)\]]//io;
-    my ($resfile) = $filename =~ /([^\\\/]+\Q$maillogExt\E)$/i;
+    my $resfile;
+    if ($filename =~ /([^\\\/]+\Q$maillogExt\E)$/i) {
+        $resfile = $1;
+    } else {
+        mlog( 0, "error: resend blocked mail - unable to parse for file name (using:$maillogExt)in '".de8($filename)."'" ) if $ReportLog;
+        return;
+    }
     my $fname = $resfile;
     my $corrNotSpamFile = "$base/$correctednotspam/$resfile";
     $resfile = "$base/$resendmail/$resfile";

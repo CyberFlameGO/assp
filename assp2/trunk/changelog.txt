@@ -1,3 +1,34 @@
+2018-12-03
+fixed in assp 2.6.2 *Fortress* build 18337:
+
+- DoNoFrom detected email addresses in the text part of the header text - like: "do not detect this address user@domain.com but the next one" <other.user@other-domain.org>
+
+- under rare conditions the file name in a blocked mail resend request was wrong parsed, the file was'nt found and the resend failed
+
+
+added:
+
+- 'DoNoFromSelect','Select Checks for From: and Sender: Header'
+ Select which check should be done in DoNoFrom .
+ 
+ 1 - from: and sender: header tag are both missing
+ 2 - different domains found in from: and sender: email addresses
+ 4 - multiple from: addresses or from: header tags found
+ 8 - multiple sender: addresses or sender: header tags found
+ 16 - no or an invalid email address found in from: header tag
+ 32 - no or an invalid email address found in sender: header tag
+ 
+ Simply form the sum of the numbers in front of the checks you want to select (0...63). Default vaule is 63 (1+2+4+8+16+32) - all checks are selected.'
+
+
+changed:
+
+
+- $DoNoFromDomainCHK is removed - use DoNoFromSelect instead
+
+
+
+
 2018-11-24
 fixed in assp 2.6.2 *Fortress* build 18328:
 
