@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18337';        # 03.12.2018 TE
+$build   = '18339';        # 05.12.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -490,6 +490,7 @@ our $ignoreInvalidAddressNPWL = 3;       # (0/1/2/3) ignore invalid envelope rec
 
 our $DKIMCacheStrict = 1;                # (0/1) if a DKIM signature is found for a domain - all other mails from this domain will require a DKIM signature to pass the Pre-DKIM-Check
 
+our $DoNoFromRemovesNPWL = 0;            # (0/1/2/3) DoNoFrom removes if more than one hit: 0 - no action, 1 - whitelisted, 2 - noprocessing, 3 - whitelisted and noprocessing --- noprocessing by size will be keeped
 # *********************************************************************************************************************************************
 
 # some not RFC conform DMARC record subjects - like Amazon SES
@@ -603,7 +604,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'ABD2DC05050F1077054252B9417C99AF881ABD8D'; }
+sub __cs { $codeSignature = '45F9B8B116245D31006B2EE39D726D443373EA9C'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -14138,7 +14139,7 @@ sub init {
     $ver=eval('BerkeleyDB->VERSION'); $VerBerkeleyDB=$ver; $ver=" version $ver" if $ver;
     $BDBver = eval('$BerkeleyDB::db_version;');
     $BDBverStr = eval('BerkeleyDB->DB_VERSION_STRING');
-    if ($BDBver lt '4.5') {
+    if ($BDBver < 4.5) {
         $AvailBerkeleyDB = $CanUseBerkeleyDB = 0;
         mlog(0,"warning: BerkeleyDB database version $BDBver / $BDBverStr installed - but at least version 4.5 is required - Berkeley database usage not available");
         $fail = 1;
@@ -33584,8 +33585,19 @@ sub FromStrictOK_Run {
     if ($error && $DoNoFrom >= 2) {
         $this->{frommissingerror} = $error unless $fh;
         mlog( $fh, "info: DoNoFrom - DoNoFromSelect is set to $DoNoFromSelect" ) if $ValidateSenderLog > 1;
-        for (1...$error) {
-            pbAdd( $fh, $this->{ip}, 'nofromValencePB', 'From-missing' ) if $fh && $DoNoFrom == 3;
+        if ($fh && $DoNoFrom == 3) {
+           for (1...$error) {
+               pbAdd( $fh, $this->{ip}, 'nofromValencePB', 'From-missing' );
+           }
+        }
+        my $is = ($DoNoFrom == 3 && $fh) ? 'is' : 'would be';
+        if ((! $fh || $this->{whitelisted}) && $error > 1 && ($DoNoFromRemovesNPWL & 1)) {
+            $this->{whitelisted} = '' if ($DoNoFrom == 3);
+            mlog($fh,"info: got $error hits in DoNoFrom ($tlit) - this mail $is no longer processed as whitelisted") if $ValidateSenderLog;
+        }
+        if ((! $fh || ($this->{noprocessing} & 1)) && $error > 1 && ($DoNoFromRemovesNPWL & 2)) {
+            $this->{noprocessing} &= 2 if ($DoNoFrom == 3); # keep noprocessing by size
+            mlog($fh,"info: got $error hits in DoNoFrom ($tlit) - this mail $is no longer processed as noprocessing") if $ValidateSenderLog;
         }
     }
     $this->{prepend} = '';

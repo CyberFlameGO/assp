@@ -1,3 +1,23 @@
+2018-12-05
+fixed in assp 2.6.2 *Fortress* build 18339:
+
+- BerkeleyDB engine version 18.1 was detected as too old
+
+added:
+
+- It is now possible to remove the whitelisted and/or the noprocessing flag from a mail, if DoNoFrom gets more than one hit
+ Notice: DoNoFromWL and/or DoNoFromNP have to be enabled to be able to remove the flags
+
+our $DoNoFromRemovesNPWL = 0;            # (0/1/2/3) DoNoFrom removes if more than one hit: 
+0 - no action, 
+1 - whitelisted, 
+2 - noprocessing, 
+3 - whitelisted and noprocessing 
+
+--- noprocessing by size will be keeped
+
+
+
 2018-12-03
 fixed in assp 2.6.2 *Fortress* build 18337:
 
