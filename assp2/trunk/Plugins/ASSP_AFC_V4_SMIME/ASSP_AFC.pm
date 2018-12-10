@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 4.87 2018/10/24 09:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 4.88 2018/12/10 20:30:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -224,7 +224,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.87 2018/10/24 09:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.88 2018/12/10 20:30:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -2310,6 +2310,7 @@ sub detectFileType {
     } else {
         $mimetype = check_type_contents(\substr($file,0,512)) if !$mimetype || $mimetype eq 'application/octet-stream';
     }
+    mlog(0,"info: MIME-type '$mimetype' detected") if $main::AttachmentLog > 1 && $mimetype;
     return () if !$mimetype || $mimetype eq 'application/octet-stream';
     my $t = eval{MIME::Types->new()->type($mimetype);};
     return () unless $t;
@@ -2321,9 +2322,10 @@ sub detectFileType {
     }
     if (! @ext && $mimetype eq 'application/encrypted') {
         push(@ext,'.encrypt');
-        push(@{$self->{isEncrypt}},$file) unless $isFile;
+        push(@{$self->{isEncrypt}},$file) if $isFile;
     }
-    $self->{fileList}->{$file} = \@ext unless $isFile;
+    $self->{fileList}->{$file} = \@ext if $isFile;
+    mlog(0,"info: file-extensions for $mimetype: @ext") if $main::AttachmentLog > 1 && @ext;
     return @ext;
 }
 
