@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18339';        # 05.12.2018 TE
+$build   = '18351';        # 17.12.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -604,7 +604,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '45F9B8B116245D31006B2EE39D726D443373EA9C'; }
+sub __cs { $codeSignature = '7DAC8774EA388110CB7DA87E081149A3819F2ECC'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -2638,9 +2638,9 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['DoNoFromSelect','Select Checks for From: and Sender: Header',4,\&textinput,63,'^([0-9]|[1-5][0-9]|6[0-3]|)$',undef,
  'Select which check should be done in DoNoFrom .<br /><br />
  1 - from: and sender: header tag are both missing<br />
- 2 - different domains found in from: and sender: email addresses<br />
- 4 - multiple from: addresses or from: header tags found <br />
- 8 - multiple sender: addresses or sender: header tags found <br />
+ 2 - different domains found in from: and sender: email addresses - or multiple addresses in a single header (FROM: or SENDER:) of different domains are found<br />
+ 4 - multiple from: addresses or from: header tags found (potential 2x score if option 2 is also enabled)<br />
+ 8 - multiple sender: addresses or sender: header tags found (potential 2x score if option 2 is also enabled)<br />
  16 - no or an invalid email address found in from: header tag<br />
  32 - no or an invalid email address found in sender: header tag<br /><br />
  Simply form the sum of the numbers in front of the checks you want to select (0...63). Default vaule is 63 (1+2+4+8+16+32) - all checks are selected.',undef,undef,'msg010750','msg010751'],
@@ -3489,7 +3489,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  If a virus is found, the file/mail is not (re)sent (it will get the extension \'.virus\') and a notification mail will be sent to local users. Infected collected files are moved in to the SpamVirusLog folder.<br />
  To force the resend of a virus infected mail, the header tag \'X-ASSP-ForceResend:\' must be added to the file!<br />
  If \'scan resend folder and collected files\' is selected, it could be possible, that the virus scanner ( FileScanCMD ) forces a very high system workload.<br />
- If you are not sure what to set here, leave the setting at the default \'scan resend folder only\'!<br />
+ If you are not sure what to set here, leave the setting at the default \'scan resend folder and collected files\'!<br />
  If the ASSP_AFC Plugin is installed and configured to be used, the files in the resend folder will be scanned by FileScan and ClamAV if any of FileLogScan or ClamAVLogScan is configured.<br />
  Under normal conditions the scan will be done by the SMTP-worker, if assp is under a heavy workload, the scan request will be transfered to the High-Workers (10000/10001).',undef,undef,'msg009760','msg009761'],
 ['UseAvClamd','Use ClamAV',0,\&checkbox,0,'(.*)',undef,
@@ -4147,7 +4147,8 @@ For example: mysql/dbimport<br />
 ['MaxFileAgeSchedule','Runtime for MaintBayesCollection and MaxNoBayesFileAge <sup>s</sup>',40,\&textinput,'1',$ScheduleGUIRe,'configChangeSched',
   'Runtime hour for deleting old collected files (bayes and non bayes). Set a number between 0 and 23. 0 means midnight, 1 is default. If empty a cleanup will not be scheduled. This could be fine, if a rebuildspamdb is scheduled, which will also do the cleanup based on the settings of MaintBayesCollection , MaxBayesFileAge and MaxCorrectedDays - but it will not maintain incomingOkMail , discarded and viruslog based on MaxNoBayesFileAge !',undef,undef,'msg006170','msg006171'],
 ['MaxBytes','Max Bytes',10,\&textinput,4000,'(\d+)',undef,
-  'How many bytes of the message body will ASSP look at - the message header is always included in all checks? Mails stored in the collecting folders will be truncated to this size, if StoreCompleteMail is disabled. The average of Ham messages (message body) is 6K, the average of Spam messages is 3K. Usually the spam folder will be filled quicker than the notspam folder, therefore set this value to 4000 to get more wordpairs per Ham Message. When both folders are close to the maxfiles limit, reduce it to 3000.',undef,undef,'msg006180','msg006181'],
+  'How many bytes of the message body will ASSP look at - the message header is always included in all checks? Mails stored in the collecting folders will be truncated to this size, if StoreCompleteMail is disabled. The average of Ham messages (message body) is 6K, the average of Spam messages is 3K. Usually the spam folder will be filled quicker than the notspam folder, therefore set this value to 4000 to get more wordpairs per Ham Message. When both folders are close to the maxfiles limit, reduce it to 3000.<br />
+  If your system is fast enough and has enough RAM multiply all the above recommendations and the default value by ten.',undef,undef,'msg006180','msg006181'],
 ['StoreCompleteMail','Store the Complete Mail','0:disabled|100000:up to 100 kByte|500000:up to 500 kByte|1000000:up to 1 MByte|10000000:up to 10 MByte|999999999:no limit',\&listbox,999999999,'(\d*)',undef,
   'If set, ASSP will look at MaxBytes, but if possible it will store the complete mail up to the number of bytes configured. This could be useful for example, if you want resend blocked messages. Be careful using this option, your disk could be filled up very fast!',undef,undef,'msg006190','msg006191'],
 ['NonSpamLog','Non Spam','0:no collection|2:notspam folder',\&listbox,2,'(\d*)',undef,'Where to store whitelisted/local non spam messages. Default: notspam folder ( notspamlog ).',undef,undef,'msg006210','msg006211'],
@@ -14619,7 +14620,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.87;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.88;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.07;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -42777,6 +42778,7 @@ sub BlockReportBody {
                         $sp = substr($sp,0,50);
                         mlog( 0,"info: got resend blocked mail request from $this->{mailfrom} for $rfile$sp")
                           if $ReportLog >= 2;
+                        mlog(0,"warning: resend blocked mail request contains an invalid file name '$rfile' - file name contains no path") if $ReportLog && $rfile !~ /\/|\\/o;
                         &BlockedMailResend( $fh, $rfile , $resendfile{$rfile});
                     } elsif ( (! $host || ( lc($myName) eq lc($host) )) && ! $resendmail ) {
                         mlog( 0,"error: resendmail is not configured - cancel local resend request for $rfile") if $ReportLog;
@@ -55957,7 +55959,8 @@ sub ConfigEdit {
  my $noLineNum = '';
  my $attachment;
  my $attachNames = [];
-
+ my $andResend;
+ 
  $cidr=$regexp1=$regexp2=q{};
  
  my $hashnote = '<div class="note" id="notebox">';
@@ -55995,6 +55998,13 @@ sub ConfigEdit {
   $note = '<div class="note" id="notebox"></div>';
  }
  elsif ($qs{note} eq 'm'){                          # mail file
+        if (exists $qs{andResend}) {
+            $andResend = $AdminUsersRight{"$WebIP{$ActWebSess}->{user}.user.andResend"} = $qs{andResend};
+        } elsif (exists $AdminUsersRight{"$WebIP{$ActWebSess}->{user}.user.andResend"}) {
+            $andResend = $AdminUsersRight{"$WebIP{$ActWebSess}->{user}.user.andResend"};
+        }
+        $qs{andResend} = $andResend;
+
         $fil="$base/$fil" if $fil!~/^\Q$base\E/io;
         $option  = "<option value=\"0\">select action</option>";
         $option .= "<option value=\"1\">copy file to resendmail</option>" if($CanUseEMS && $resendmail && $fil !~/\/$resendmail\//);
@@ -56150,10 +56160,17 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
         }
       }
     } else {      # to take actions on a mailfile
-         $s1 =~ s/([^\r])\n/$1\r\n/go;
-         $s1 .= "\r\n";
-         my $action = $qs{fileaction};
-         if ($action eq '1' or $action eq '10') {    # resend
+       $s1 =~ s/([^\r])\n/$1\r\n/go;
+       $s1 .= "\r\n";
+       my @actions;
+       if ($qs{fileaction}) {
+           push @actions, $qs{fileaction};
+           push @actions, '8' if ($andResend && ($qs{fileaction} eq '1' || $qs{fileaction} eq '10'));
+       }
+       my $orgs1 = $s1;
+       while (@actions) {
+         my $action = shift @actions;
+         if ($action eq '1' || $action eq '10') {    # resend
              my $force = $action eq '10' ? "X-ASSP-ForceResend: by $WebIP{$ActWebSess}->{user}\r\n" : '';
              $s1 = "\r\n" . $force . $s1;
              $force = ' - attachments are forced' if $force;
@@ -56299,6 +56316,7 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
                  mlog(0,"error: unable to create file in correctedspam folder - $!");
              }
          } elsif ($action eq '8') {    # correctednotspam
+             $s2 .= "<br />\n" if $s2;
              my $rfil = $fil;
              $rfil =~s/^(\Q$base\E\/).+(\/.+\Q$maillogExt\E)$/$1$correctednotspam$2/i;
              if ($open->(my $CE,'>',$rfil)) {
@@ -56350,7 +56368,9 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
                  mlog(0,"error: unable to create file in rebuild_error folder - $!");
              }
          }
-         $qs{fileaction} = '0';
+         $s1 = $orgs1;
+       } # end while   actions
+       $qs{fileaction} = '0';
     }
    }
   }
@@ -56489,13 +56509,14 @@ EOT
           $note .= '</div>';
 
           $editButtons="
+ <br />
  <div style=\"align: left\">
   <div class=\"shadow\">
    <div class=\"option\">
     <div class=\"optionValue\">
-     <select size=\"1\" name=\"fileaction\">" .
+     <select size=\"1\" name=\"fileaction\" onchange=\"checkSelectChanged(this.value); return false;\">" .
       $option . "
-     </select>
+     </select><span id=\"andResendText\" style=\"display:none\"><input type=\"checkbox\" name=\"andResend\" id=\"andResend\" value=\"checked\" $andResend />&nbsp;&nbsp;and copy the file to correctednotspam folder</span>
     </div>
    </div>
   </div>
@@ -56657,6 +56678,15 @@ function sortUp() {
 function sortDown() {
     setOutput(getInput().split("\\n").sort().reverse().join("\\n"));
 }
+
+function checkSelectChanged(sel) {
+    if (sel == '1' || sel == '10') {
+        document.getElementById("andResendText").style.display = 'block';
+    } else {
+        document.getElementById("andResendText").style.display = 'none';
+    }
+}
+
       //-->
     //]]>
     </script>
@@ -74318,6 +74348,7 @@ sub cleanUpMaxFiles {
     return $info if (! $percent && $filecount <= $MaxFiles);
     
     my %filelist = ();
+    my $mintime = time + 7205;
     while (@files) {
         &ThreadMaintMain2() if $WorkerNumber == 10000 && ! $count % 100;
         last if $doShutdown > 0 || $doShutdownForce;
@@ -74330,7 +74361,7 @@ sub cleanUpMaxFiles {
             next;
         }
         my $ft = ftime($file);
-        $ft = $ft - (60 * 24 * 3600) if $ft > time;
+        $ft = $ft - (60 * 24 * 3600) if $ft > $mintime;
         while (exists $filelist{$ft}) {
             $ft++;
         }
@@ -74343,6 +74374,7 @@ sub cleanUpMaxFiles {
     my $filenum;
     $mindays = 14 if $mindays < 1;
     my $time = time - ($mindays * 24 * 3600);   # two weeks ago
+    my $t5d = time - (5 * 24 * 3600);   # keep files for five days at least
     $minfiles = 4000 if $minfiles < 4000;    # kepp at least 4000 files in the folder
     if ($percent) {
         return $info if $filecount < $minfiles;
@@ -74359,6 +74391,7 @@ sub cleanUpMaxFiles {
         last if $doShutdown > 0 || $doShutdownForce;
         last if --$filecount < $toFilenumber;
         last if $percent && $filetime > $time;
+        last if $filetime > $t5d;
         if ($unlink->($filelist{$filetime})) {
             ++$count;
             mlog(0,"info: deleted $filelist{$filetime}") if $MaintenanceLog > 2;
@@ -74846,7 +74879,7 @@ END1
 select $self->{'key'},$self->{'value'} from $self->{table}
 END2
     if ($sth) {
-        $sth->execute() || ($error = "error: FIRSTKEY (".$self->{table}."): Can't execute select statement: $DBI::errstr");
+        defined($sth->execute()) || ($error = "error: FIRSTKEY (".$self->{table}."): Can't execute select statement: $DBI::errstr");
         $r = $sth->fetch();
         my $value = ($r->[2] ? thaw($r->[1]) : $r->[1]);
         $self->{nextvalue}{$r->[0]} = $value if defined($value) && defined $r->[0];  # cache the value for the next fetch
