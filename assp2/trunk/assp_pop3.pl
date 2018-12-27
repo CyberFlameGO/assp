@@ -1,8 +1,8 @@
 #!/usr/local/bin/perl
-# $Id: assp_pop3.pl,v 1.16 2017/01/31 10:00:00 TE Exp $
+# $Id: assp_pop3.pl,v 1.17 2018/12/27 11:00:00 TE Exp $
 #
 # perl pop3 collector for assp
-# (c) Thomas Eckardt 2010 under the terms of the GPL
+# (c) Thomas Eckardt since 2010 under the terms of the GPL
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@ use re 'eval';
 
 STDOUT->autoflush;
 STDERR->autoflush;
-our $VERSION = $1 if('$Id: assp_pop3.pl,v 1.16 2017/01/31 10:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+our $VERSION = $1 if('$Id: assp_pop3.pl,v 1.17 2018/12/27 11:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 
 ##############################################################################
 # set the next values to 1 if you want to test your POP3 collection externaly
@@ -84,6 +84,7 @@ if ($Config{adminusersdbpass} && $Config{adminusersdbpass} =~ /^(?:[a-fA-F0-9]{2
 # possible config file content
 # COMMON:=POP3password=common_pass,POP3server=common_PO3server:port,SMTPsender=common_Address,SMTPsendto=common_Address,SMTPserver=common_SMTP-server:port,SMTPHelo=myhelo,SMTPAUTHuser=common-smtpuser,SMTPAUTHpassword=common-smtppass,POP3SSL=0/1,SIZElimit=number_of_bytes
 # POP3username<num>:=POP3password=pop3_pass,POP3server=mail.gmail.com,SMTPsender=addr@domain,SMTPsendto=demo@demo_exchange.local,SMTPserver=localhost,SMTPHelo=myhelo,SMTPAUTHuser=smtpuser,SMTPAUTHpassword=smtppass,POP3SSL=0/1,SIZElimit=number_of_bytes
+#             <num> (e.g. <1> <2> ... <n>) is used if the same POP3username is used for multiple POP3 accounts - <num> is removed for the POP3-authentication
 
 # resulting accounts hash
 # our %accounts = (
@@ -133,10 +134,14 @@ if (my $loadRE = &loadexportedRE('LocalAddresses_Flat')) {
     $LAFL = qr/^(?!)/;
 }
 
+my %retry;
+my %failedDelete;
 my $count = 0;
-foreach my $accnt (keys %accounts)
+
+ACCNT: foreach my $accnt (keys %accounts)
 {
-    $accnt =~ s/\<\d+\>\:/:/;
+    my $user = $accnt;
+    $user =~ s/\<\d+\>\:/:/;
     my @TO;
     my $SkipBad = 0;
     print "POP3: collecting messages for user $accnt to <$accounts{$accnt}->{'SMTPsendto'}> from host $accounts{$accnt}->{'POP3server'}\n" if $Config{MaintenanceLog};
@@ -159,14 +164,14 @@ foreach my $accnt (keys %accounts)
     my $POP3serverip = inet_ntoa( scalar( gethostbyname($POP3Host) ) );
     my $pop = Net::POP3->new($accounts{$accnt}->{'POP3server'},Timeout => 60, Debug => $debug);
     my $loginres;
-    if ($pop && ($loginres = $pop->login($accnt, $accounts{$accnt}->{'POP3password'})) > 0)
+    if ($pop && ($loginres = $pop->login($user, $accounts{$accnt}->{'POP3password'})) > 0)
     {
         my $msgnums = $pop->list;
-        foreach my $msgnum (sort keys %$msgnums)
+MSGNUM: foreach my $msgnum (sort keys %$msgnums)
         {
             if ($accounts{$accnt}->{'SIZElimit'} && $msgnums->{$msgnum} > $accounts{$accnt}->{'SIZElimit'}) {
                 print "POP3: message number($msgnum) for user $accnt has a size of $msgnums->{$msgnum} byte, which exceeds the size limit. This messages keeps untouched.\n" ;
-                next unless $accounts{$accnt}->{'SMTPsendto'};
+                next MSGNUM unless $accounts{$accnt}->{'SMTPsendto'};
 
                 if (my $smtp = Net::SMTP->new($accounts{$accnt}->{'SMTPserver'},
                                               Hello => $accounts{$accnt}->{'SMTPHelo'},
@@ -211,16 +216,40 @@ EOT
                         print "POP3: notification email was sent to $mf\n" ;
                     }
                 }
-                next;
+                next MSGNUM;
             }
 
+            if (exists($failedDelete{$msgnum}) && $failedDelete{$msgnum} == $msgnums->{$msgnum}) {   # we were unable to delete the message, becaused of a closed connection - try now
+                delete $failedDelete{$msgnum};
+                unless ($pop->delete($msgnum)) {
+                    print "POP3: ERROR: unable to delete message nbr($msgnum) for user $accnt from POP3-Server $accounts{$accnt}->{'POP3server'}\n";
+                    next MSGNUM;
+                }
+            }
+            
             eval{
             my $msg = $pop->get($msgnum);
-            unless (ref($msg) eq 'ARRAY' && join('',@$msg)) {
-                print "POP3: message nbr($msgnum) for user $accnt has no content\n";
-                $pop->delete($msgnum);
-                next;
+            unless (ref($msg) eq 'ARRAY' && join('',@$msg)) {  # there was no message retrieved - try to find out why
+                if (defined(fileno($pop))) {
+                   print "POP3: message nbr($msgnum) for user $accnt has no content\n";
+                   $pop->delete($msgnum);
+                   next MSGNUM;
+                }
+                print "POP3: POP3-Server '$POP3Host' unexpected closed the POP3-connection for user $accnt on message nbr($msgnum)\n";
+                undef $pop;               # the connection was unexpected closed by the server - restart pop3 for this account
+                if ($popPOP3ISA) {        # revert the changes of the @ISA
+                    eval('no IO::Socket::SSL ;');
+                    pop @Net::POP3::ISA;
+                    push @Net::POP3::ISA,'IO::Socket::INET';
+                }
+                unless ($retry{$accnt}++) {   # repeat the connection for this POP3-account one time
+                    print "POP3: retry message nbr($msgnum) for user $accnt one time\n";
+                    redo ACCNT;
+                }
+                delete $retry{$accnt};        # repeat failed - itterate to the next POP3-account
+                next ACCNT;
             }
+            delete $retry{$accnt};
             my $mf = $accounts{$accnt}->{'SMTPsender'};
             my $to = $accounts{$accnt}->{'SMTPsendto'};
             if (! $mf) {
@@ -235,7 +264,7 @@ EOT
                   $mf =~ s/.*?($EmailAdrRe\@$EmailDomainRe).*/$1/;
               }
             }
-            $mf ||= $accnt;
+            $mf ||= $user;
 
             if ($to =~ /<TO:(.+)?>/i) {
               my $wilde = $1;
@@ -270,7 +299,7 @@ EOT
             if (! @TO) {
                 print "POP3: no recipients left for user $accnt\n";
                 $pop->delete($msgnum);
-                next;
+                next MSGNUM;
             }
             
             my $time=$Config{UseLocalTime} ? localtime() : gmtime();
@@ -320,8 +349,20 @@ EOT
                     }
                 } else {
                     $mf =~ s/\r|\n//go;
-                    print "sent message $msgnum from $mf to @TO\n";
-                    $pop->delete($msgnum);
+                    print "POP3: sent message nbr($msgnum) for user $accnt - from $mf to @TO\n";
+                    unless ($pop->delete($msgnum)) {
+                        print "POP3: unable to delete message nbr($msgnum) for user $accnt from POP3-Server $accounts{$accnt}->{'POP3server'}\n";
+                        unless (defined(fileno($pop))) {
+                            $failedDelete{$msgnum} = $msgnums->{$msgnum};
+                            undef $pop;               # the connection was unexpected closed by the server - restart pop3 for this account
+                            if ($popPOP3ISA) {        # revert the changes of the @ISA
+                                eval('no IO::Socket::SSL ;');
+                                pop @Net::POP3::ISA;
+                                push @Net::POP3::ISA,'IO::Socket::INET';
+                            }
+                            redo ACCNT;
+                        }
+                    }
                 }
             }
             };
