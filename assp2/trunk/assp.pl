@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18351';        # 17.12.2018 TE
+$build   = '18361';        # 27.12.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -490,7 +490,7 @@ our $ignoreInvalidAddressNPWL = 3;       # (0/1/2/3) ignore invalid envelope rec
 
 our $DKIMCacheStrict = 1;                # (0/1) if a DKIM signature is found for a domain - all other mails from this domain will require a DKIM signature to pass the Pre-DKIM-Check
 
-our $DoNoFromRemovesNPWL = 0;            # (0/1/2/3) DoNoFrom removes if more than one hit: 0 - no action, 1 - whitelisted, 2 - noprocessing, 3 - whitelisted and noprocessing --- noprocessing by size will be keeped
+our $checkLinuxENV = 0;                  # (0/1/2) check ulimit (1) on nix and selinux (2) on linux systems
 # *********************************************************************************************************************************************
 
 # some not RFC conform DMARC record subjects - like Amazon SES
@@ -604,7 +604,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '7DAC8774EA388110CB7DA87E081149A3819F2ECC'; }
+sub __cs { $codeSignature = '4C9CEFD8848F23466D6B4D5B7CC0E72176FCB09B'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1644,7 +1644,7 @@ sub assp_socket_blocking {
 }
 
 sub defConfigArray {
- # last used msg number 010751
+ # last used msg number 010761
 
  # still unused msg numbers
  #
@@ -2648,6 +2648,11 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   'Check for existing and valid From: or Sender: header and address for whitelisted emails.',undef,undef,'msg001900','msg001901'],
 ['DoNoFromNP','Do DoNoFrom for NoProcessing',0,\&checkbox,'1','(.*)',undef,
   'Check for existing and valid From: or Sender: header and address for noprocessing emails.',undef,undef,'msg001910','msg001911'],
+['DoNoFromRemovesNPWL','DoNoFrom Removes NP, WL Flag','0:disabled|1:whitelisted|2:noprocessing|3:both',\&listbox,3,'(.*)',undef,
+ 'If the combination of DoNoFrom , DoNoFromSelect , DoNoFromWL and DoNoFromNP gives more than one hit, the whitelisted and/or the noprocessing flag will be removed from the message.<br />
+ For example: if the FROM: and /or SENDER: address fakes a whitelisted and/or noprocessing address or domain.<br />
+ Default setting is both.<br />
+ The noprocessing by size flag ( npSize ) will be keeped.',undef,undef,'msg010760','msg010761'],
 ['removeDispositionNotification','Remove Disposition Notification Headers',80,\&textinput,'','((?:Disposition-Notification-To|Return-Receipt-To|ReturnReceipt)(?:\|(?:Disposition-Notification-To|Return-Receipt-To|ReturnReceipt)){0,2}|)',undef,
   'To remove any headers : "ReturnReceipt: , Return-Receipt-To: and Disposition-Notification-To:" from not whitelisted and not noprocessing incoming mails, define the unwanted headers as regular expression.<br />
   for example: Disposition-Notification-To<br />
@@ -5499,7 +5504,7 @@ To prevent permantly copying the changed mib/ASSP-MIB file to your net-snmp deam
   <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/pop3collect.txt\',3);" />',undef,undef,'msg009090','msg009091']
 );
 
- # last used msg number 010751
+ # last used msg number 010761
 
  &loadModuleVars;
  -d "$base/language" or mkdirOP("$base/language",'0755');
@@ -13619,9 +13624,93 @@ sub init {
            $Recommends{'WinENV'} = "startup - unable to analyse windows system environment - $@";
            print "\t\t\t\t\t[ERROR]";
        }
+  } elsif ($checkLinuxENV) {
+       # checking ulimit
+       my $cmd;
+       my $out;
+       my @error;
+       mlog(0,'info: analysing nix system environment');
+       my $whichlimit;
+       my $canFW;
+       if ($canFW = eval('use File::Which();1;')) {
+           $whichlimit = File::Which::which('ulimit');
+       }
+       # try to find out how unlimit can be called on this system
+       for my $trycmd ($whichlimit.' -a 2>/dev/null',                        # ulimit possibly found by File::Which
+                       'ulimit -a 2>/dev/null',                              # use the command if available
+                       '/bin/ulimit -a 2>/dev/null',                         # use the command if available
+                       '/sbin/ulimit -a 2>/dev/null',                        # use the command if available
+                       '/usr/bin/ulimit -a 2>/dev/null',                     # use the command if available
+                       '/usr/sbin/ulimit -a 2>/dev/null',                    # use the command if available
+                       '/bin/echo `ulimit -a 2>/dev/null`',                  # invoke the default shell and execute the command
+                       '/bin/bash -c "ulimit -a 2>/dev/null" 2>/dev/null',   # invoke bash - ulimit may be bash included - or command is executed
+                       '/bin/sh -c "ulimit -a 2>/dev/null" 2>/dev/null',     # invoke sh - command is executed
+                       '/bin/csh -c "ulimit -a 2>/dev/null" 2>/dev/null',    # invoke csh - command is executed
+                       '/bin/ksh -c "ulimit -a 2>/dev/null" 2>/dev/null',    # invoke ksh - command is executed
+                       '/bin/tcsh -c "ulimit -a 2>/dev/null" 2>/dev/null',   # invoke tcsh - command is executed
+                       '/bin/zsh -c "ulimit -a 2>/dev/null" 2>/dev/null',    # invoke ksh - command is executed
+                      )
+       {
+           next if $trycmd !~ /ulimit/;
+           $out = eval{ qx($trycmd) };
+           if ($out) {
+               $cmd = $trycmd;
+               mlog(0,"info: ulimit called using: $cmd");
+               last;
+           }
+       }
+       if ($cmd) {
+           my %limits = (
+                        '-t' => ['unlimited', 'cpu time'],
+                        '-f' => ['unlimited', 'file size'],
+                        '-m' => ['unlimited', 'max memory size'],
+                        '-l' => ['unlimited', 'locked memory'],
+                        '-u' => [1024, 'max user processes'],
+                        '-n' => [8192, 'open files'],
+                        '-v' => ['unlimited', 'virtual mem size'],
+                        '-w' => ['unlimited', 'swap limit'],
+                        '-b' => ['unlimited', 'socket buffer size'],
+                        );
+           for my $switch (keys(%limits)) {
+               $cmd =~ s/ulimit -./ulimit $switch/;
+               my $out;
+               if (defined($out = eval{ lc(qx($cmd)) } )) {
+                   $out =~ s/\s//go;
+                   $out ||= 0;
+                   next if $out =~ /unlimited/;
+                   if ($limits{$switch}->[0] eq 'unlimited') {
+                       mlog(0,"warning: ulimit $switch (for '$limits{$switch}->[1]') - expected 'unlimited' got '$out'");
+                       push @error, "warning: ulimit $switch (for '$limits{$switch}->[1]') - expected 'unlimited' got '$out'"
+                   } elsif ($limits{$switch}->[0] < $out) {
+                       mlog(0,"error: ulimit $switch (for '$limits{$switch}->[1]') - expected at least '$limits{$switch}->[0]' got '$out'");
+                       push @error, "error: ulimit $switch (for '$limits{$switch}->[1]') - expected at least '$limits{$switch}->[0]' got '$out'"
+                   }
+               } else {
+                   mlog(0,"error: 'ulimit $switch' (for '$limits{$switch}->[1]') failed");
+                   push @error , "error: 'ulimit $switch' (for '$limits{$switch}->[1]') failed";
+               }
+           }
+       } else {
+           mlog(0,"error: unable to execute 'ulimit -a' on this system");
+           push @error , "error: unable to execute 'ulimit -a' on this system";
+       }
+       # checking selinux
+       $cmd = '';
+       if ($canFW && $checkLinuxENV > 1 && ($cmd = File::Which::which('getenforce'))) {
+          $cmd .= ' 2>/dev/null';
+          my $out = eval{ lc(qx($cmd)) };
+          $out =~ s/\s//go;
+          mlog(0,"info: getenforce called using: $cmd") if $out;
+          if ($out =~ 'enforced') {
+              mlog(0,"warning: selinux is set to 'Enforced' - assp may get runtime problems on this system");
+              push @error, "warning: selinux is set to 'Enforced' - assp may get runtime problems on this system";
+          }
+       }
+       my $error = 'WARNING';
+       $error = 'ERROR' if grep {/error/i} @error;
+       print "\t\t\t\t\t".(@error ? "[$error]\n".join("\n",@error)."\n" : 'OK' );
   } else {
-
-       print "\t\t\t\t\t[SKIP]";
+      print "\t\t\t\t\t[SKIP]"
   }
   if ( $perlver > "5.999999") {
        mlog(0,"Perl version $perlver is not supported for ASSP Version 2.x.x!");
@@ -33594,11 +33683,11 @@ sub FromStrictOK_Run {
         my $is = ($DoNoFrom == 3 && $fh) ? 'is' : 'would be';
         if ((! $fh || $this->{whitelisted}) && $error > 1 && ($DoNoFromRemovesNPWL & 1)) {
             $this->{whitelisted} = '' if ($DoNoFrom == 3);
-            mlog($fh,"info: got $error hits in DoNoFrom ($tlit) - this mail $is no longer processed as whitelisted") if $ValidateSenderLog;
+            mlog($fh,"info: got $error hits in DoNoFrom ($tlit) - this mail $is no longer processed as whitelisted ( DoNoFromRemovesNPWL )") if $ValidateSenderLog;
         }
         if ((! $fh || ($this->{noprocessing} & 1)) && $error > 1 && ($DoNoFromRemovesNPWL & 2)) {
             $this->{noprocessing} &= 2 if ($DoNoFrom == 3); # keep noprocessing by size
-            mlog($fh,"info: got $error hits in DoNoFrom ($tlit) - this mail $is no longer processed as noprocessing") if $ValidateSenderLog;
+            mlog($fh,"info: got $error hits in DoNoFrom ($tlit) - this mail $is no longer processed as noprocessing ( DoNoFromRemovesNPWL )") if $ValidateSenderLog;
         }
     }
     $this->{prepend} = '';
@@ -46580,10 +46669,16 @@ sub Perl_no_test {
         'Crypt::SMIME' => 1,
         'Convert::TNEF' => 1,
         'DBD::mysql' => 1,
+        'DBD::mysqlx' => 1,
+        'DBD::MariaDB' => 1,
         'DBD::ODBC' => 1,
+        'DBD::oracle' => 1,
         'DBD::ADO' => 1,
         'LWP::Protocol::GHTTP' => 1,
         'Net::Ping' => 1,
+        'Mo' => 1,
+        'Moo' => 1,
+        'Moos' => 1,
         'Moose' => 1,
         'JSON::PP::Boolean' => 1,
         'Math::Int64::die_on_overflow' => 1,
@@ -74375,7 +74470,7 @@ sub cleanUpMaxFiles {
     $mindays = 14 if $mindays < 1;
     my $time = time - ($mindays * 24 * 3600);   # two weeks ago
     my $t5d = time - (5 * 24 * 3600);   # keep files for five days at least
-    $minfiles = 4000 if $minfiles < 4000;    # kepp at least 4000 files in the folder
+    $minfiles = 4000 if $minfiles < 4000;    # keep at least 4000 files in the folder
     if ($percent) {
         return $info if $filecount < $minfiles;
         $filenum = int($filecount * $percent);

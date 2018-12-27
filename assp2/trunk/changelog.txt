@@ -1,3 +1,31 @@
+2018-12-27
+fixed in assp 2.6.2 *Fortress* build 18361:
+
+- assp_pop3.pl version 1.17 is released
+  this release contains some small bug fixes and a POP3-connection retry, in case the POP3-server closed the connection unexpected
+  
+
+added:
+ 
+- using the command line switch 'checkLinuxENV:=n' or setting $main::checkLinuxENV=n; in 'lib/CorrectASSPcfg.pm', assp will the ulimit settings and the selinux state on nix systems
+  in case any settings seems to be too less, warnings or errors are shown at startup
+
+our $checkLinuxENV = 0;   # (0/1/2) check ulimit (1) on nix and selinux (2) on linux systems
+
+
+changed:
+
+- 'DoNoFromRemovesNPWL' is now moved to the GUI
+
+'DoNoFromRemovesNPWL','DoNoFrom Removes NP, WL Flag','0:disabled|1:whitelisted|2:noprocessing|3:both'
+ 'If the combination of DoNoFrom , DoNoFromSelect , DoNoFromWL and DoNoFromNP gives more than one hit, the whitelisted and/or the noprocessing flag will be removed from the message.
+ For example: if the FROM: and /or SENDER: address fakes a whitelisted and/or noprocessing address or domain.
+ Default setting is both.
+ The noprocessing by size flag ( npSize ) will be keeped.'
+
+
+
+
 2018-12-17
 fixed in assp 2.6.2 *Fortress* build 18351:
 
