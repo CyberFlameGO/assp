@@ -141,7 +141,7 @@ my $count = 0;
 ACCNT: foreach my $accnt (keys %accounts)
 {
     my $user = $accnt;
-    $user =~ s/\<\d+\>\:/:/;
+    $user =~ s/\s*\<\s*\d+\s*\>\s*$//;
     my @TO;
     my $SkipBad = 0;
     print "POP3: collecting messages for user $accnt to <$accounts{$accnt}->{'SMTPsendto'}> from host $accounts{$accnt}->{'POP3server'}\n" if $Config{MaintenanceLog};
