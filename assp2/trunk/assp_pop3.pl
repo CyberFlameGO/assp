@@ -53,7 +53,7 @@ print "POP3: using debug mode\n" if $debug;
 
 our $NOCRLF = '\x00-\x09\x0b-\x0c\x0e-\xff';
 our $EmailAdrRe=qr/[\x21\x23-\x26\x2a-\x2b\x2d-\x39\x3d\x3f\x41-\x5a\x5c\x5e-\x7e][\x21\x23-\x27\x2a-\x2b\x2d-\x39\x3d\x3f\x41-\x5a\x5c\x5e-\x7e]*/o;
-our $EmailDomainRe=qr/(?:(?:(?=[a-zA-Z0-9-]{1,63}\.)(?:xn--)?[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,63})/o;
+our $EmailDomainRe=qr/(?:(?:(?=[a-zA-Z0-9-]{1,63}\.)(?:xn--)?[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\.)+(?=[a-zA-Z0-9-]{2,64}(?:[^a-zA-Z0-9-]|$))(?:xn--)?[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+?)*[a-zA-Z0-9])/o;
 our $HeaderNameRe=qr/[\x21-\x39\x3B-\x7E]+/o; # printable ASCII except SPACE(\x20) and colon(: \x3A)
 our $HeaderValueRe=qr/[ \t]*[$NOCRLF]*(?:\r?\n[ \t]+\S[$NOCRLF]*)*(?:\r?\n)?/o;
 our $HeaderRe=qr/(?:$HeaderNameRe:$HeaderValueRe)/o;
