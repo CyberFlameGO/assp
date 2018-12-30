@@ -1,5 +1,5 @@
 #!/usr/local/bin/perl
-# $Id: assp_pop3.pl,v 1.17 2018/12/27 11:00:00 TE Exp $
+# $Id: assp_pop3.pl,v 1.20 2018/12/30 10:00:00 TE Exp $
 #
 # perl pop3 collector for assp
 # (c) Thomas Eckardt since 2010 under the terms of the GPL
@@ -14,15 +14,14 @@
 # GNU General Public License for more details.
 
 use strict;
-use Net::POP3;
+use Net::POP3 3.07;
 use Net::SMTP;
 use IO::Socket;
 use Time::Local;
-use re 'eval';
 
 STDOUT->autoflush;
 STDERR->autoflush;
-our $VERSION = $1 if('$Id: assp_pop3.pl,v 1.17 2018/12/27 11:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+our $VERSION = $1 if('$Id: assp_pop3.pl,v 1.20 2018/12/30 10:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 
 ##############################################################################
 # set the next values to 1 if you want to test your POP3 collection externaly
@@ -52,14 +51,13 @@ $asspCfgVersion =~ s/^(\d+\.\d+\.\d+).*/$1/;
 $debug = $debug || $Config{debug} || $Config{POP3debug};
 print "POP3: using debug mode\n" if $debug;
 
-my $w = 'a-zA-Z0-9_';
-my $d = '0-9';
-our $punyRE = 'xn--[a-zA-Z0-9\-]+';
-our $EmailAdrRe=qr/[^()<>@,;:"\[\]\000-\040\x7F-\xFF]+/o;
-our $EmailDomainRe=qr/(?:[$w][$w\-]*(?:\.[$w][$w\-]*)*\.(?:$punyRE|[$w][$w]+)|\[[$d][$d\.]*\.[$d]+\])/o;
-our $HeaderNameRe=qr/\S[^\r\n]*/o;
-our $HeaderValueRe=qr/[ \t]*[^\r\n]*(?:\r?\n[ \t]+\S[^\r\n]*)*(?:\r?\n)?/o;
+our $NOCRLF = '\x00-\x09\x0b-\x0c\x0e-\xff';
+our $EmailAdrRe=qr/[\x21\x23-\x26\x2a-\x2b\x2d-\x39\x3d\x3f\x41-\x5a\x5c\x5e-\x7e][\x21\x23-\x27\x2a-\x2b\x2d-\x39\x3d\x3f\x41-\x5a\x5c\x5e-\x7e]*/o;
+our $EmailDomainRe=qr/(?:(?:(?=[a-zA-Z0-9-]{1,63}\.)(?:xn--)?[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,63})/o;
+our $HeaderNameRe=qr/[\x21-\x39\x3B-\x7E]+/o; # printable ASCII except SPACE(\x20) and colon(: \x3A)
+our $HeaderValueRe=qr/[ \t]*[$NOCRLF]*(?:\r?\n[ \t]+\S[$NOCRLF]*)*(?:\r?\n)?/o;
 our $HeaderRe=qr/(?:$HeaderNameRe:$HeaderValueRe)/o;
+
 our %accounts;
 
 # -- check and set the used or available encryption engine
@@ -108,11 +106,11 @@ if ($Config{adminusersdbpass} && $Config{adminusersdbpass} =~ /^(?:[a-fA-F0-9]{2
 #
 
 if (! $preventFORK && ($asspCfgVersion =~ /^1/ or $Config{POP3fork})) {  # assp V1 will report what to do and fork and exit
-    foreach my $accnt (keys %accounts) {                                 # V2 will fork if configured
-        $accnt =~ s/\<\d+\>\:/:/;
+    foreach my $accnt (sort { lc($a) cmp lc($b) } keys(%accounts)) {                                 # V2 will fork if configured
+        $accnt =~ s/\s*\<\s*\d+\s*\>\s*$//o;
         print "POP3: will collect messages for user $accnt to <$accounts{$accnt}->{'SMTPsendto'}> from host $accounts{$accnt}->{'POP3server'}\n" if $Config{MaintenanceLog};
     }
-    print "POP3: collection process will start now\n";
+    print "POP3: collection process will start now in background\n";
     fork() and exit 0;
     close STDOUT;
     close STDERR;
@@ -134,25 +132,24 @@ if (my $loadRE = &loadexportedRE('LocalAddresses_Flat')) {
     $LAFL = qr/^(?!)/;
 }
 
+my %uidlOK;
 my %retry;
-my %failedDelete;
 my $count = 0;
 
 ACCNT: foreach my $accnt (keys %accounts)
 {
     my $user = $accnt;
-    $user =~ s/\s*\<\s*\d+\s*\>\s*$//;
+    $user =~ s/\s*\<\s*\d+\s*\>\s*$//o;
     my @TO;
     my $SkipBad = 0;
     print "POP3: collecting messages for user $accnt to <$accounts{$accnt}->{'SMTPsendto'}> from host $accounts{$accnt}->{'POP3server'}\n" if $Config{MaintenanceLog};
-    local @Net::POP3::ISA = @Net::POP3::ISA;      # localize the @ISA from Net::POP3
-    my $popPOP3ISA;
+    my %args;
     if ($accounts{$accnt}->{'POP3SSL'}) {
-        if (eval('use IO::Socket::SSL \'inet4\';1;')) {
-            $IO::Socket::SSL::DEBUG = $Config{SSLDEBUG};
-            pop @Net::POP3::ISA;                     # remove the IO::Socket::INET
-            push @Net::POP3::ISA,'IO::Socket::SSL';  # add the IO::Socket::SSL
-            $popPOP3ISA = 'S';                       # set the sign to revert this changes at the end
+        if (eval('use IO::Socket::SSL();1;')) {
+            $IO::Socket::SSL::DEBUG = $Config{SSLDEBUG} || ($debug ? 3 : undef);
+            $args{SSL} = 1;
+            $args{SSL_verifycn_scheme} = 'pop3';
+            print "POP3: using SSL connection to host $accounts{$accnt}->{'POP3server'}\n" if $Config{MaintenanceLog};
         } else {
             print "POP3: IO::Socket::SSL not available for user $accnt on host $accounts{$accnt}->{'POP3server'} - entry has been ignored\n";
             next;
@@ -160,18 +157,25 @@ ACCNT: foreach my $accnt (keys %accounts)
     }
     eval{
     my $POP3Host = $accounts{$accnt}->{'POP3server'};
-    $POP3Host =~ s/:\s*\d+\s*$//o,
-    my $POP3serverip = inet_ntoa( scalar( gethostbyname($POP3Host) ) );
-    my $pop = Net::POP3->new($accounts{$accnt}->{'POP3server'},Timeout => 60, Debug => $debug);
+    $args{Port} = $1 if $POP3Host =~ s/:\s*(\d+)\s*$//o;
+    if (! $args{Port}) {
+        $args{Port} = $accounts{$accnt}->{'POP3SSL'} ? 995 : 110;
+        print "POP3: connecting to host $accounts{$accnt}->{'POP3server'} at port $args{Port}\n";
+    }
+    my $POP3serverip = eval{ inet_ntoa( scalar( gethostbyname($POP3Host) ) ); };
+    my $pop = Net::POP3->new($POP3Host,Timeout => 60, Debug => $debug, %args);
     my $loginres;
     if ($pop && ($loginres = $pop->login($user, $accounts{$accnt}->{'POP3password'})) > 0)
     {
         my $msgnums = $pop->list;
-MSGNUM: foreach my $msgnum (sort keys %$msgnums)
+MSGNUM: foreach my $msgnum (sort { $a <=> $b } keys(%$msgnums))
         {
+            my $uidl = $pop->uidl($msgnum);
             if ($accounts{$accnt}->{'SIZElimit'} && $msgnums->{$msgnum} > $accounts{$accnt}->{'SIZElimit'}) {
                 print "POP3: message number($msgnum) for user $accnt has a size of $msgnums->{$msgnum} byte, which exceeds the size limit. This messages keeps untouched.\n" ;
                 next MSGNUM unless $accounts{$accnt}->{'SMTPsendto'};
+                next MSGNUM if exists $uidlOK{$accnt}->{$uidl};
+                $uidlOK{$accnt}->{$uidl} = $msgnum;
 
                 if (my $smtp = Net::SMTP->new($accounts{$accnt}->{'SMTPserver'},
                                               Hello => $accounts{$accnt}->{'SMTPHelo'},
@@ -219,29 +223,28 @@ EOT
                 next MSGNUM;
             }
 
-            if (exists($failedDelete{$msgnum}) && $failedDelete{$msgnum} == $msgnums->{$msgnum}) {   # we were unable to delete the message, becaused of a closed connection - try now
-                delete $failedDelete{$msgnum};
+            if (exists($uidlOK{$accnt}->{$uidl})) {   # the mail was already processed and we were unable to delete the message, becaused of a closed connection - try now
                 unless ($pop->delete($msgnum)) {
                     print "POP3: ERROR: unable to delete message nbr($msgnum) for user $accnt from POP3-Server $accounts{$accnt}->{'POP3server'}\n";
-                    next MSGNUM;
                 }
+                next MSGNUM;
             }
             
             eval{
             my $msg = $pop->get($msgnum);
             unless (ref($msg) eq 'ARRAY' && join('',@$msg)) {  # there was no message retrieved - try to find out why
-                if (defined(fileno($pop))) {
+                if (defined(fileno($pop)) && ${*$pop}{'net_cmd_resp'} !~ /timeout/io) {
                    print "POP3: message nbr($msgnum) for user $accnt has no content\n";
                    $pop->delete($msgnum);
+                   $uidlOK{$accnt}->{$uidl} = $msgnum;
                    next MSGNUM;
+                } elsif (${*$pop}{'net_cmd_resp'} =~ /timeout/io) {
+                   print "POP3: POP3-Server '$POP3Host' - TIMEOUT in POP3-connection for user $accnt on message nbr($msgnum)\n";
+                } else {
+                   print "POP3: POP3-Server '$POP3Host' unexpected closed the POP3-connection for user $accnt on message nbr($msgnum)\n";
                 }
-                print "POP3: POP3-Server '$POP3Host' unexpected closed the POP3-connection for user $accnt on message nbr($msgnum)\n";
+                $pop->quit if $pop && defined(fileno($pop));  # force the UPDATE on the POP3 server
                 undef $pop;               # the connection was unexpected closed by the server - restart pop3 for this account
-                if ($popPOP3ISA) {        # revert the changes of the @ISA
-                    eval('no IO::Socket::SSL ;');
-                    pop @Net::POP3::ISA;
-                    push @Net::POP3::ISA,'IO::Socket::INET';
-                }
                 unless ($retry{$accnt}++) {   # repeat the connection for this POP3-account one time
                     print "POP3: retry message nbr($msgnum) for user $accnt one time\n";
                     redo ACCNT;
@@ -299,6 +302,7 @@ EOT
             if (! @TO) {
                 print "POP3: no recipients left for user $accnt\n";
                 $pop->delete($msgnum);
+                $uidlOK{$accnt}->{$uidl} = $msgnum;
                 next MSGNUM;
             }
             
@@ -307,7 +311,7 @@ EOT
             $time=~s/... (...) +(\d+) (........) (....)/$2 $1 $4 $3/;
             my $helo = $accounts{$accnt}->{'POP3server'};
             $helo =~ s/:\d+$//o;
-            unshift @$msg, &headerWrap("Received: from $POP3Host ([$POP3serverip] helo=$helo) by $Config{myName} with *POP3$popPOP3ISA* ($asspCfgVersion); $time $tz\r\n");
+            unshift @$msg, &headerWrap("Received: from $POP3Host ([$POP3serverip] helo=$helo) by $Config{myName} with *POP3".($args{SSL} ? 'S' : '')."* ($asspCfgVersion); $time $tz\r\n");
             if (my $smtp = Net::SMTP->new($accounts{$accnt}->{'SMTPserver'},
                                           Hello => $accounts{$accnt}->{'SMTPHelo'},
                                           Timeout => 120,
@@ -343,23 +347,20 @@ EOT
                             close $FM;
                             print "POP3: message nbr($msgnum) for user $accnt was stored in file $base/POP3error/$accnt.$msgnum.".time.".eml\n";
                             $pop->delete($msgnum);
+                            $uidlOK{$accnt}->{$uidl} = $msgnum;
                         } else {
                             print "POP3: message nbr($msgnum) for user $accnt could not be stored in file $base/POP3error/$accnt.$msgnum.".time.".eml - $!\n";
                         }
                     }
                 } else {
+                    $uidlOK{$accnt}->{$uidl} = $msgnum;
                     $mf =~ s/\r|\n//go;
                     print "POP3: sent message nbr($msgnum) for user $accnt - from $mf to @TO\n";
                     unless ($pop->delete($msgnum)) {
                         print "POP3: unable to delete message nbr($msgnum) for user $accnt from POP3-Server $accounts{$accnt}->{'POP3server'}\n";
-                        unless (defined(fileno($pop))) {
-                            $failedDelete{$msgnum} = $msgnums->{$msgnum};
+                        if (! defined(fileno($pop)) || ${*$pop}{'net_cmd_resp'} =~ /timeout/io) {
+                            $pop->quit if $pop && defined(fileno($pop));  # force the UPDATE on the POP3 server
                             undef $pop;               # the connection was unexpected closed by the server - restart pop3 for this account
-                            if ($popPOP3ISA) {        # revert the changes of the @ISA
-                                eval('no IO::Socket::SSL ;');
-                                pop @Net::POP3::ISA;
-                                push @Net::POP3::ISA,'IO::Socket::INET';
-                            }
                             redo ACCNT;
                         }
                     }
@@ -373,17 +374,16 @@ EOT
             }
         }
     } elsif (! $loginres) {
-        print "POP3: login not successful for user $accnt at POP3-server $accounts{$accnt}->{'POP3server'}\n";
+        print "POP3: login not successful for user $accnt at POP3-server $accounts{$accnt}->{'POP3server'}\n" if $pop;
+        print "POP3: unable to connect to POP3-server $accounts{$accnt}->{'POP3server'} at port $args{Port}".($args{SSL} ? ' using SSL' : '')."\n" unless $pop;
     } else {
         print "POP3: no messages found for user $accnt at POP3-server $accounts{$accnt}->{'POP3server'}\n" if $Config{MaintenanceLog};
     }
-    $pop->quit if $pop;
-    undef $pop;
-    if ($popPOP3ISA) {        # revert the changes of the @ISA
-        eval('no IO::Socket::SSL ;');
-        pop @Net::POP3::ISA;
-        push @Net::POP3::ISA,'IO::Socket::INET';
+
+    if ($pop && defined(fileno($pop))) {       # force the UPDATE on the POP3 server
+        $pop->quit;
     }
+    undef $pop;
     };
     print "warning: unable to process pop3 message - $@\n" if $@;
 }
