@@ -1,5 +1,5 @@
 #!/usr/local/bin/perl
-# $Id: assp_pop3.pl,v 1.20 2018/12/30 10:00:00 TE Exp $
+# $Id: assp_pop3.pl,v 1.21 2018/12/31 08:00:00 TE Exp $
 #
 # perl pop3 collector for assp
 # (c) Thomas Eckardt since 2010 under the terms of the GPL
@@ -21,7 +21,7 @@ use Time::Local;
 
 STDOUT->autoflush;
 STDERR->autoflush;
-our $VERSION = $1 if('$Id: assp_pop3.pl,v 1.20 2018/12/30 10:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+our $VERSION = $1 if('$Id: assp_pop3.pl,v 1.21 2018/12/31 08:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 
 ##############################################################################
 # set the next values to 1 if you want to test your POP3 collection externaly
@@ -51,9 +51,13 @@ $asspCfgVersion =~ s/^(\d+\.\d+\.\d+).*/$1/;
 $debug = $debug || $Config{debug} || $Config{POP3debug};
 print "POP3: using debug mode\n" if $debug;
 
+our $w = 'a-zA-Z0-9_';
+our $d = '0-9';
+our $punyRE = 'xn--[a-zA-Z0-9\-]{1,59}';
 our $NOCRLF = '\x00-\x09\x0b-\x0c\x0e-\xff';
 our $EmailAdrRe=qr/[\x21\x23-\x26\x2a-\x2b\x2d-\x39\x3d\x3f\x41-\x5a\x5c\x5e-\x7e][\x21\x23-\x27\x2a-\x2b\x2d-\x39\x3d\x3f\x41-\x5a\x5c\x5e-\x7e]*/o;
-our $EmailDomainRe=qr/(?:(?:(?=[a-zA-Z0-9-]{1,63}\.)(?:xn--)?[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\.)+(?=[a-zA-Z0-9-]{2,64}(?:[^a-zA-Z0-9-]|$))(?:xn--)?[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+?)*[a-zA-Z0-9])/o;
+our $EmailDomainRe=qr/(?:[$w][$w\-]{0,62}(?:\.[$w][$w\-]{0,62})*\.(?:$punyRE|[$w][$w]{1,62})|\[[$d][$d\.]*\.[$d]+\])/o;
+#our $EmailDomainRe=qr/(?:(?:(?=[a-zA-Z0-9-]{1,63}\.)(?:xn--)?[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\.)+(?=[a-zA-Z0-9-]{2,64}(?:[^a-zA-Z0-9-]|$))(?:xn--)?[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+?)*[a-zA-Z0-9])/o;
 our $HeaderNameRe=qr/[\x21-\x39\x3B-\x7E]+/o; # printable ASCII except SPACE(\x20) and colon(: \x3A)
 our $HeaderValueRe=qr/[ \t]*[$NOCRLF]*(?:\r?\n[ \t]+\S[$NOCRLF]*)*(?:\r?\n)?/o;
 our $HeaderRe=qr/(?:$HeaderNameRe:$HeaderValueRe)/o;
