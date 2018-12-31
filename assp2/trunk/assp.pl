@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18361';        # 27.12.2018 TE
+$build   = '18365';        # 31.12.2018 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -604,7 +604,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '4C9CEFD8848F23466D6B4D5B7CC0E72176FCB09B'; }
+sub __cs { $codeSignature = '60B2C70B5125553D36ACAC8A3B834CFF30A4CED1'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1132,11 +1132,16 @@ $ScheduleGUIRe = '^('.$ScheduleRe.'(?:\|'.$ScheduleRe.")*|[$d]+|)\$";
 $neverMatch = '^(?!)';
 $neverMatchRE = quotemeta($neverMatch).'\)?\$?\)*$';
 $ExchangeBannerRe = qr/M(?:icro)?S(?:oft)?\s*(?:E?SMTPS? MAIL|Exchange)/i; # check if we connected to MS exchange
-$punyRE = 'xn--[a-zA-Z0-9\-]+';
+$punyRE = 'xn--[a-zA-Z0-9\-]{1,59}';
 # ignore the first possible single quote in the user part of an address  (x27)
+
 $EmailAdrRe=qr/[\x21\x23-\x26\x2a-\x2b\x2d-\x39\x3d\x3f\x41-\x5a\x5c\x5e-\x7e][\x21\x23-\x27\x2a-\x2b\x2d-\x39\x3d\x3f\x41-\x5a\x5c\x5e-\x7e]*/o;
 #$EmailAdrRe=qr/[^()<>@,;:'"\[\]\000-\040\x7F-\xFF][^()<>@,;:"\[\]\000-\040\x7F-\xFF]*/o;  # 30% slower than the above
-$EmailDomainRe=qr/(?:[$w][$w\-]*(?:\.[$w][$w\-]*)*\.(?:$punyRE|[$w][$w]+)|\[[$d][$d\.]*\.[$d]+\])/o;
+
+#$EmailDomainRe=qr/(?:[$w][$w\-]*(?:\.[$w][$w\-]*)*\.(?:$punyRE|[$w][$w]+)|\[[$d][$d\.]*\.[$d]+\])/o; # old variant
+$EmailDomainRe=qr/(?:[$w][$w\-]{0,62}(?:\.[$w][$w\-]{0,62})*\.(?:$punyRE|[$w][$w]{1,62})|\[[$d][$d\.]*\.[$d]+\])/o;  # with length restriction
+#$EmailDomainRe=qr/(?:(?:(?=[a-zA-Z0-9-]{1,63}\.)(?:xn--)?[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\.)+(?=[a-zA-Z0-9-]{2,63}(?:[^a-zA-Z0-9-]|$))(?:xn--)?[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+?)*[a-zA-Z0-9])/o;
+
 $DMARCReportSubjectRe = '(?:^\s*Report\s*domain:\s*'.$EmailDomainRe.'\s+Submitter:\s*'.$EmailDomainRe.'\s+Report-?ID:.{2,})' .  # the RFC conform format of a DMARC report subject
                         (@DMARCReportAddSubjectRe ? '|' : '') .
                         join('|', map {my $t = $_; $t =~ s/\$EmailDomainRe/$EmailDomainRe/go; $t; } @DMARCReportAddSubjectRe);  # add nonconform subjects regex
@@ -21750,7 +21755,7 @@ sub ConDone {
             ! $Con{$con}->{pbwhite}
         ) {
             if (! $Con{$con}->{damping}) {
-                mlog($con,"info: start damping on closing connection ($damptime)",1) if $ConnectionLog ;
+                mlog($con,"info: start damping on closing connection ($damptime s)",1) if $ConnectionLog ;
                 $Stats{damping}++;
                 $Con{$con}->{damping} = 1;
             }
@@ -27763,6 +27768,7 @@ sub getheader {
         my $decHeader = $this->{header};
         $decHeader = decodeMimeWords2UTF8($decHeader);
         unicodeNormalize(\$decHeader);
+        my $ddecHeader = d8($decHeader);
         
         my $slok;
 
@@ -27854,7 +27860,7 @@ sub getheader {
             return;
         }
         d('contentonly');
-        if(!$this->{contentonly} && $contentOnlyRe && $decHeader=~/($contentOnlyReRE)/) {
+        if(!$this->{contentonly} && $contentOnlyRe && ($decHeader=~/($contentOnlyReRE)/ || ($uniRegex{contentOnlyRe} && $ddecHeader =~ /($contentOnlyReRE)/))) {
             mlogRe($fh,($1||$2),'contentOnlyRe','contentonly');
             pbBlackDelete($fh,$this->{ip});
             $this->{contentonly} = 1;
@@ -27863,7 +27869,7 @@ sub getheader {
         d('allLogReRE');
         if ( $allLogRe
              && ! $this->{alllog}
-             && $decHeader=~ /$allLogReRE/ )
+             && ($decHeader=~ /$allLogReRE/ || ($uniRegex{allLogRe} && $ddecHeader =~ /$allLogReRE/)))
         {
             $this->{alllog}=1;
         }
@@ -27878,7 +27884,7 @@ sub getheader {
         d('isred redReRE');
         if ( ! $this->{red}
             && $redRe
-            && $decHeader =~ /($redReRE)/ ) {
+            && ($decHeader =~ /($redReRE)/ || ($uniRegex{redRe} && $ddecHeader =~ /($redReRE)/))) {
 
             mlogRe( $fh, ($1||$2), 'redRe','redlisting' );
             $this->{redre} = $this->{red} = ($1||$2);
@@ -27887,15 +27893,15 @@ sub getheader {
         NotSpamTagCheck($fh);
 
         my $onwhite = onwhitelist( $fh, \$this->{header} );
-        if (!$this->{whitelisted} && $whiteRe && $decHeader=~/($whiteReRE)/) {
+        if (!$this->{whitelisted} && $whiteRe && ($decHeader=~/($whiteReRE)/ || ($uniRegex{whiteRe} && $ddecHeader =~ /($whiteReRE)/))) {
             mlogRe($fh,($1||$2),'whiteRe','whitelisting');
             $this->{whitelisted}=1;
         }
-        if(!$this->{ccnever} && $ccSpamNeverRe && $decHeader=~/($ccSpamNeverReRE)/) {
+        if(!$this->{ccnever} && $ccSpamNeverRe && ($decHeader=~/($ccSpamNeverReRE)/ || ($uniRegex{ccSpamNeverRe} && $ddecHeader =~ /($ccSpamNeverReRE)/))) {
             mlogRe($fh,($1||$2),'ccSpamNeverRe','CCnever');
             $this->{ccnever}=1;
         }
-        if(! $this->{noprocessing} && $npRe && $decHeader=~/($npReRE)/)
+        if(! $this->{noprocessing} && $npRe && ($decHeader=~/($npReRE)/ || ($uniRegex{npRe} && $ddecHeader =~ /($npReRE)/)))
         {
             mlogRe($fh,($1||$2),'npRe','noprocessing');
             pbBlackDelete($fh,$this->{ip});

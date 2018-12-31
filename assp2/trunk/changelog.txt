@@ -1,3 +1,17 @@
+2018-12-31
+fixed in assp 2.6.2 *Fortress* build 18365:
+
+- specific unicode regular expressions like \p{Yi} and others - were not working for the MIME header under certain conditions (spam bomb definitions were not affected by this issue)
+
+- improved domain name parsing - the length restiction (63 bytes) for each label is now checked
+
+- assp_pop3.pl version 1.21 is released
+  - the SSL mode workaround for old Net::POP versions is removed - at least version 3.07 of Net::POP3 is now required
+  - in some exceptional cases it was possible, that an email was retrieved and delivered multiple times
+
+
+  
+
 2018-12-27
 fixed in assp 2.6.2 *Fortress* build 18361:
 
