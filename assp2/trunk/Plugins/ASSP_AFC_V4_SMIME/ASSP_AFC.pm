@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 4.88 2018/12/10 20:30:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 4.89 2019/01/01 17:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -36,7 +36,6 @@ our $CanLACheck;
 our $CanSMIME;
 our $CanOLE;
 our $CanEOM;
-our $CanNetSSLeay;
 our $ZIPLevel;
 our $formatsRe;
 our $z7zRe;
@@ -224,7 +223,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.88 2018/12/10 20:30:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 4.89 2019/01/01 17:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -557,10 +556,6 @@ sub configChangeSMIME {
         $ret .= &main::ConfigShowError(1,"$name: missing Perl module Crypt::SMIME - SMIME processing is not available") if $main::WorkerNumber == 0;
         return $ret;
     }
-    if (! $CanNetSSLeay) {
-        $ret .= &main::ConfigShowError(1,"$name: missing Perl module Net::SSLeay - SMIME processing is not available") if $main::WorkerNumber == 0;
-        return $ret;
-    }
     s/^\s+//o for @new;
     @new = reverse sort @new;
     while ( @new ) {
@@ -800,7 +795,6 @@ sub process {
 
         }
         mlog($fh,"warning: SMIME processing is disabled because the following Perl module is missing: Crypt::SMIME") unless $CanSMIME;
-        mlog($fh,"warning: SMIME configuration will extensively call the openssl binary because the following Perl module is missing: Net::SSLeay") if $CanSMIME && ! $CanNetSSLeay;
         $old_CheckAttachments = \&main::CheckAttachments;
         *{"main::haveToScan"} = \&haveToScan;
         *{"main::haveToFileScan"} = \&haveToFileScan;
