@@ -9,6 +9,7 @@ package ASSP_RSS;
 use strict qw(vars subs);
 use vars qw($VERSION);
 use File::Copy;
+use Storable();
 no warnings qw(uninitialized);
 
 use constant RSS_XML_BASE   => "http://example.com";
@@ -18,6 +19,8 @@ $VERSION = $1 if('$Id: ASSP_RSS.pm,v 1.09 2019/01/02 09:00:00 TE Exp $' =~ /,v (
 our $MINBUILD = '(18128)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our %Con;
+${'Storable::Deparse'} = 1;
+${'Storable::Eval'} = 1;
 
 ##################################################################
 # some default values - if needed, change them                   #
