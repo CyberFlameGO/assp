@@ -447,10 +447,13 @@ sub genRSS {
                 }
                 my $link = '<![CDATA['.'mailto:'.$main::EmailBlockReport.$main::EmailBlockReportDomain.'?subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$main::myName.'&body=%23%23%23'.$filename.'%23%23%23'.$addWhiteHint.$addFileHint.$addScanHint.'%0D%0A'.']]>';
                 my $subject = eU($this->{subject3});
-                my $time = $main::UseLocalTime ? localtime(&main::ftime($this->{maillogfilename})) : gmtime(&main::ftime($this->{maillogfilename}));
-                $time =~ s/(...) (...) +(\d+) (........) (....)/$1, $3 $2 $5 $4/o;
+                my $time = $main::UseLocalTime ? localtime() : gmtime();
+                my $ftime = $main::UseLocalTime ? localtime(&main::ftime($this->{maillogfilename})) : gmtime(&main::ftime($this->{maillogfilename}));
+                $time  =~ s/(...) (...) +(\d+) (........) (....)/$1, $3 $2 $5 $4/o;
+                $ftime =~ s/(...) (...) +(\d+) (........) (....)/$1, $3 $2 $5 $4/o;
                 my $tz = $main::UseLocalTime ? &main::tzStr() : '+0000';
                 $time = "$time $tz";
+                $ftime = "$ftime $tz";
                 my $reason = eU($this->{messagereason});
                 my $item = $itemCB->(
                     {
@@ -459,7 +462,7 @@ sub genRSS {
                         'link'      => $link,
                         isPermaLink => 'false',
                         guid        => $this->{hasmallogname},
-                        description => '<![CDATA['.($this->{relayok} ? "from: $self->{from}<br />\nto: $self->{rcpt}" : "to: $addr<br />\nfrom: <a href=\"mailto:$main::EmailWhitelistAdd$main::EmailBlockReportDomain?subject=add\%20to\%20whitelist&body=$self->{from}\%0D\%0A\" title=\"add $self->{from} to the assp whitelist\">$self->{from}</a>")."<hr />\nsubject: $subject<br />\nblock reason: $reason<br />\ndate: $time<hr />\nfilter host: $main::myName$showOpenMail$showOpenLog".']]>',
+                        description => '<![CDATA['.($this->{relayok} ? "from: $self->{from}<br />\nto: $self->{rcpt}" : "to: $addr<br />\nfrom: <a href=\"mailto:$main::EmailWhitelistAdd$main::EmailBlockReportDomain?subject=add\%20to\%20whitelist&body=$self->{from}\%0D\%0A\" title=\"add $self->{from} to the assp whitelist\">$self->{from}</a>")."<hr />\nsubject: $subject<br />\nblock reason: $reason<br />\ndate: $ftime<hr />\nfilter host: $main::myName$showOpenMail$showOpenLog".']]>',
                         pubDate     => $time,
                     },
                     $self,$fh);
