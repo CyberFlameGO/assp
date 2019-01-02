@@ -1,5 +1,5 @@
 #!/usr/local/bin/perl
-# $Id: assp_pop3.pl,v 1.21 2018/12/31 08:00:00 TE Exp $
+# $Id: assp_pop3.pl,v 1.22 2019/01/02 14:00:00 TE Exp $
 #
 # perl pop3 collector for assp
 # (c) Thomas Eckardt since 2010 under the terms of the GPL
@@ -21,7 +21,7 @@ use Time::Local;
 
 STDOUT->autoflush;
 STDERR->autoflush;
-our $VERSION = $1 if('$Id: assp_pop3.pl,v 1.21 2018/12/31 08:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+our $VERSION = $1 if('$Id: assp_pop3.pl,v 1.22 2019/01/02 14:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 
 ##############################################################################
 # set the next values to 1 if you want to test your POP3 collection externaly
@@ -111,8 +111,9 @@ if ($Config{adminusersdbpass} && $Config{adminusersdbpass} =~ /^(?:[a-fA-F0-9]{2
 
 if (! $preventFORK && ($asspCfgVersion =~ /^1/ or $Config{POP3fork})) {  # assp V1 will report what to do and fork and exit
     foreach my $accnt (sort { lc($a) cmp lc($b) } keys(%accounts)) {                                 # V2 will fork if configured
-        $accnt =~ s/\s*\<\s*\d+\s*\>\s*$//o;
-        print "POP3: will collect messages for user $accnt to <$accounts{$accnt}->{'SMTPsendto'}> from host $accounts{$accnt}->{'POP3server'}\n" if $Config{MaintenanceLog};
+        my $user = $accnt;
+        $user =~ s/\s*\<\s*\d+\s*\>\s*$//o;
+        print "POP3: will collect messages for user $user to <$accounts{$accnt}->{'SMTPsendto'}> from host $accounts{$accnt}->{'POP3server'}\n" if $Config{MaintenanceLog};
     }
     print "POP3: collection process will start now in background\n";
     fork() and exit 0;
@@ -140,7 +141,7 @@ my %uidlOK;
 my %retry;
 my $count = 0;
 
-ACCNT: foreach my $accnt (keys %accounts)
+ACCNT: foreach my $accnt (sort { lc($a) cmp lc($b) } keys(%accounts))
 {
     my $user = $accnt;
     $user =~ s/\s*\<\s*\d+\s*\>\s*$//o;
