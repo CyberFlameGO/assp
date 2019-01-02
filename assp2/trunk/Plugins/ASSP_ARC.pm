@@ -1,4 +1,4 @@
-# $Id: ASSP_ARC.pm,v 2.07 2018/09/09 17:00:00 TE Exp $
+# $Id: ASSP_ARC.pm,v 2.08 2019/01/01 16:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is an archive Plugin. Desinged for ASSP v 2.1.1(12030) and above
@@ -9,9 +9,10 @@ package ASSP_ARC;
 use strict qw(vars subs);
 use vars qw($VERSION);
 use File::Copy;
+use Storable();
 no warnings qw(uninitialized);
 
-$VERSION = $1 if('$Id: ASSP_ARC.pm,v 2.07 2018/09/09 17:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_ARC.pm,v 2.08 2019/01/01 16:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(12030)';
 our $MINASSPVER = '2.0.1'.$MINBUILD;
 our %Con;
@@ -19,6 +20,8 @@ our %dvmap;
 our %vdmap;
 $main::PluginFiles{__PACKAGE__ . 'fieldMap'} = 1;
 $main::ModuleList{'Plugins::ASSP_ARC'} = $VERSION.'/'.$VERSION;
+${'Storable::Deparse'} = 1;
+${'Storable::Eval'} = 1;
 
 &createDefaultMapFile();
 
@@ -228,7 +231,8 @@ sub setvars {
     my $val;
     my $mlfn = $main::Con{$fh}->{maillogfilename};
     $mlfn =~ s/\'//g;
-    my $parm = '$fh=\''.$mlfn.'\';';
+    my $parm = {};
+    $parm->{fh} = $mlfn;
     my $len = $main::maxBytes ? $main::maxBytes : 10000;
     while (my ($p,$v) = each %{$main::Con{$fh}}) {
         next if $p eq '';
@@ -236,7 +240,9 @@ sub setvars {
         next if $p eq 'contimeoutdebug';
         next if $p eq 'maillogbuf';
         next if $p eq 'header';
+        next if $p =~ /=GLOB\(0x/i;
         next if $v =~ /^IO::Socket::/i;
+        next if $v =~ /=GLOB\(0x/i;
         next if $v =~ /^ARRAY\(0x/i;
         next if $v =~ /^CODE\(0x/i;
         next if $v =~ /^HASH\(0x/i;
@@ -247,18 +253,16 @@ sub setvars {
         } else {
             $val = $v;
         }
-        $val =~ s/([^\\]?)(['])/$1\\$2/g;
-        $parm .= '$Con{$fh}->{q('.$p.')}=\''.$val.'\';';
+        $parm->{$p} = $val;
     }
-    &main::cmdToThread('ASSP_ARC::archive',\$parm);
+    &main::cmdToThread('ASSP_ARC::archive',Storable::nfreeze($parm));
 }
 
 sub archive {
- my $parm = shift;
- my $fh;
- eval($parm);
- my $this = $Con{$fh};
- if (! $this or ! $fh or ! $this->{maillogfilename}) {
+ my %parms = %{ Storable::thaw(shift) };
+ my $fh = delete($parms{fh}) || return 1;
+ my $this = $Con{$fh} = \%parms;
+ if (! $this || ! $this->{maillogfilename}) {
      undef $this;
      delete $Con{$fh};
      return 1;
@@ -365,7 +369,7 @@ sub archive {
  my $sfile = $this->{maillogfilename};
  my $failed;
  
- if (($self->{Zip} and $main::CanUseHTTPCompression and &main::zipgz("$sfile", "$file.gz")) or $main::copy->("$sfile", "$file")) {
+ if (($self->{Zip} and $main::CanUseHTTPCompression and &main::zipgz($sfile, $file.'.gz')) or $main::copy->($sfile, $file)) {
      $file .= '.gz' if $self->{Zip} and $main::CanUseHTTPCompression;
      mlog(0,"$self->{myName}: message archived to - $file") if $self->{Log};
      $failed = 0;
