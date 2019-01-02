@@ -1,4 +1,4 @@
-# $Id: ASSP_RSS.pm,v 1.08 2018/06/02 07:00:00 TE Exp $
+# $Id: ASSP_RSS.pm,v 1.09 2019/01/02 09:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is an RSS feed Plugin for blocked mails. Designed for ASSP v 2.6.1(18128) and above
@@ -14,7 +14,7 @@ no warnings qw(uninitialized);
 use constant RSS_XML_BASE   => "http://example.com";
 use constant RSS_VERSION    => "2.0";
 
-$VERSION = $1 if('$Id: ASSP_RSS.pm,v 1.08 2018/06/02 07:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_RSS.pm,v 1.09 2019/01/02 09:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18128)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our %Con;
@@ -219,15 +219,18 @@ sub setvars {
     my $val;
     my $mlfn = $main::Con{$fh}->{maillogfilename};
     $mlfn =~ s/\'//g;
-    my $parm = '$fh=\''.$mlfn.'\';';
+    my $parm = {};
+    $parm->{fh} = $mlfn;
     my $len = $main::maxBytes ? $main::maxBytes : 10000;
     while (my ($p,$v) = each %{$main::Con{$fh}}) {
         next if $p eq '';
         next if $p eq '_';
         next if $p eq 'contimeoutdebug';
         next if $p eq 'maillogbuf';
-        next if ($p eq 'header');
+        next if $p eq 'header';
+        next if $p =~ /=GLOB\(0x/i;
         next if $v =~ /^IO::Socket::/i;
+        next if $v =~ /=GLOB\(0x/i;
         next if $v =~ /^ARRAY\(0x/i;
         next if $v =~ /^CODE\(0x/i;
         next if $v =~ /^HASH\(0x/i;
@@ -238,10 +241,9 @@ sub setvars {
         } else {
             $val = $v;
         }
-        $val =~ s/([^\\]?)(['])/$1\\$2/g;
-        $parm .= '$Con{$fh}->{q('.$p.')}=\''.$val.'\';';
+        $parm->{$p} = $val;
     }
-    &main::cmdToThread('ASSP_RSS::genRSS',\$parm);
+    &main::cmdToThread('ASSP_RSS::genRSS',Storable::nfreeze($parm));
 }
 
 sub setWeb {
@@ -266,11 +268,10 @@ sub setWeb {
 }
 
 sub genRSS {
-    my $parm = shift;
-    my $fh;
-    eval($parm);
-    my $this = $Con{$fh};
-    if (! $this or ! $fh or ! $this->{maillogfilename} or ! $CanXMLRSS) {
+    my %parms = %{ Storable::thaw(shift) };
+    my $fh = delete($parms{fh}) || return 1;
+    my $this = $Con{$fh} = \%parms;
+    if (! $this || ! $this->{maillogfilename} || ! $CanXMLRSS) {
         undef $this;
         delete $Con{$fh};
         return 1;
