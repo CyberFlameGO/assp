@@ -449,9 +449,9 @@ sub genRSS {
                     $showOpenLog = ($showOpenMail ? '' : "<hr />\n" ) . "<a href=\"$self->{webprot}://$self->{webhost}:$self->{webAdminPort}/maillog?search=$search&size=1&files=files&limit=50\" target=\"_blank\" title=\"show the maillog.txt for this email\">show the log for this email</a>";
                 }
                 my $link = '<![CDATA['.'mailto:'.$main::EmailBlockReport.$main::EmailBlockReportDomain.'?subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$main::myName.'&body=%23%23%23'.$filename.'%23%23%23'.$addWhiteHint.$addFileHint.$addScanHint.'%0D%0A'.']]>';
-                my $subject = eU($this->{subject3});
+                my $subject = eU(&main::d8($this->{subject3}));
                 my $time = $main::UseLocalTime ? localtime() : gmtime();
-                my $ftime = $main::UseLocalTime ? localtime(&main::ftime($this->{maillogfilename})) : gmtime(&main::ftime($this->{maillogfilename}));
+                my $ftime = $main::eF->($this->{maillogfilename}) ? ($main::UseLocalTime ? localtime(&main::ftime($this->{maillogfilename})) : gmtime(&main::ftime($this->{maillogfilename}))) : $time;
                 $time  =~ s/(...) (...) +(\d+) (........) (....)/$1, $3 $2 $5 $4/o;
                 $ftime =~ s/(...) (...) +(\d+) (........) (....)/$1, $3 $2 $5 $4/o;
                 my $tz = $main::UseLocalTime ? &main::tzStr() : '+0000';
