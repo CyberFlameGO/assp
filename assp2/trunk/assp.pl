@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.2';
-$build   = '18365';        # 31.12.2018 TE
+$build   = '19007';        # 07.01.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -604,7 +604,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '60B2C70B5125553D36ACAC8A3B834CFF30A4CED1'; }
+sub __cs { $codeSignature = '07984AF2CB805FEB2C534DA7A8C7924F956D45E6'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -14714,11 +14714,11 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.88;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
-  $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.07;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.89;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.08;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
-  $ModuleList{'Plugins::ASSP_RSS'}    =~ s/([0-9\.\-\_]+)$/$v=1.08;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_RSS'};
+  $ModuleList{'Plugins::ASSP_RSS'}    =~ s/([0-9\.\-\_]+)$/$v=1.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_RSS'};
   $ModuleList{'Plugins::ASSP_Razor'}  =~ s/([0-9\.\-\_]+)$/$v=1.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_Razor'};
   $ModuleList{'Plugins::ASSP_FakeMX'} =~ s/([0-9\.\-\_]+)$/$v=1.02;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_FakeMX'};
 
@@ -23878,7 +23878,9 @@ sub resend_mail {
   return unless($maillogExt);
   my @filelist;
   my @list = $unicodeDH->("$base/$resendmail");
-  while ( my $file = shift @list) {
+  while (@list) {
+      my $file = shift @list;
+      next unless $file;
       next if $dF->( "$base/$resendmail/$file" );
       next if ($file !~ /\Q$maillogExt\E$/i);
       push(@filelist, "$base/$resendmail/$file");
