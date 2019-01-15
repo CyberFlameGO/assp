@@ -1,5 +1,5 @@
 2019-01-07
-fixed in assp 2.6.4 *SPAM-Evaporator* build 19007:
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19015:
 
 added:
 
