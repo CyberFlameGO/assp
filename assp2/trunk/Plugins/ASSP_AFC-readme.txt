@@ -34,7 +34,7 @@ To support decompression of various formats you need to
 - install Archive::Rar
 - install a 7z or 7za or 7zip or p7zip executable (already included in the ppm for windows)
 
-Version 4.xx supports corporate and privat SMIME signing and the RAR and 7z decompression.
+Version 5.xx supports corporate and privat SMIME signing and the RAR and 7z decompression.
 The SMIME signing feature requires a nonpublic license! It is safe to leave the SMIME feature unconfigured.
 
-The version 4.xx is available in the 'ASSP_AFC_V4_SMIME' folder.
+The version 5.xx is available in the 'ASSP_AFC_V5_SMIME' folder.
