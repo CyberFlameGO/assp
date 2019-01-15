@@ -194,8 +194,8 @@ our %WebConH;
 
 #
 sub setVersion {
-$version = '2.6.2';
-$build   = '19007';        # 07.01.2019 TE
+$version = '2.6.4';
+$build   = '19015';        # 15.01.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -203,7 +203,7 @@ $requiredSelfLoaderVersion = '2.03';
 ($subversion) = $version =~ /\d+\.\d+\.(\d+)/o;
 
 #$codename = 'Fritz&nbsp;&dagger;&nbsp;';
-$codename = '<b>*Fortress*</b>';
+$codename = '<b>*SPAM-Evaporator*</b>';
 
 # the database versions build and required by this release
 $requiredDBVersion{'Spamdb'} = $MajorVersion.'_14315';
@@ -604,7 +604,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '07984AF2CB805FEB2C534DA7A8C7924F956D45E6'; }
+sub __cs { $codeSignature = 'E28243D709A8C6E062B2ACBE30F941F51CCF9BE2'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -2640,7 +2640,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   - no or an invalid email address found in sender: header tag<br /><br />
   The scoring value nofromValencePB is added for each detected fault.<br />
   Use DoNoFromSelect to select which faults should be detected by assp.',undef,undef,'msg001890','msg001891'],
-['DoNoFromSelect','Select Checks for From: and Sender: Header',4,\&textinput,63,'^([0-9]|[1-5][0-9]|6[0-3]|)$',undef,
+['DoNoFromSelect','Select Checks for From: and Sender: Header',4,\&textinput,59,'^([0-9]|[1-5][0-9]|6[0-3]|)$',undef,
  'Select which check should be done in DoNoFrom .<br /><br />
  1 - from: and sender: header tag are both missing<br />
  2 - different domains found in from: and sender: email addresses - or multiple addresses in a single header (FROM: or SENDER:) of different domains are found<br />
@@ -14714,7 +14714,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=4.89;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.08;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -53146,6 +53146,8 @@ sub ConfigAnalyze {
                 my $self;
                 if ($orgname && ${'DoASSP_AFC'} && $ASSP_AFC::VERSION >= '3.08' && eval{$self = ASSP_AFC->new()} ) {
                     my $ualink = linkToConfig('UserAttach');
+                    my $shalink;
+                    $shalink = linkToConfig('ASSP_AFCKnownGoodEXE') if defined ${'ASSP_AFCKnownGoodEXE'};
 
                     $Con{$tmpfh} = {};
                     $Con{$tmpfh}->{relayok} = $reportedBy ? 0 : 1;
@@ -53163,15 +53165,39 @@ sub ConfigAnalyze {
                     $Con{$tmpfh}->{signed} = $sigok;
 
                     @ASSP_AFC::attZipre = ();
+                    $self->{NOskipBinEXE} = 1;
                     if (my $exetype = $self->isAnEXE( \$part->body) ) {
                         $fm .= "<b><font color='orange'>&bull; attachment $orgname is or contains an executable - $exetype</font></b> (see $ualink)<br />";
+                        $fm .= "<b><font color='orange'>&bull; the SHA256_HEX ( see $shalink ) value of the executable is:</font></b> $self->{sha}<br />" if $self->{sha};
                     }
+                    if ($self->{sha} && exists($ASSP_AFC::knownGoodSHA{$self->{sha}})) {
+                        my $comment = $ASSP_AFC::knownGoodSHA{$self->{sha}} == 1 ? '' : " ($ASSP_AFC::knownGoodSHA{$self->{sha}})";
+                        $fm .= "<b><font color='green'>&bull; the SHA256_HEX ( see $shalink ) value $self->{sha} is well known good</font></b>$comment<br />";
+                    }
+                    delete $self->{sha};
                     delete $self->{exetype};
+                    delete $self->{NOskipBinEXE};
                     &MainLoop1(0);
                     
                     if (scalar keys %AttachZipRules) {
+                        $self->{NOskipBinEXE} = 1;
                         if (! $self->isZipOK( $Con{$tmpfh}, \$part->body, $orgname )) {
-                            $fm .= "<b><font color='orange'>&bull; attachment : $self->{exetype}</font></b> (see $ualink)<br />";
+                            $fm .= "<b><font color='orange'>&bull; ZIP: attachment : $self->{exetype}</font></b> (see $ualink)<br />";
+                            $fm .= "<b><font color='orange'>&bull; the SHA256_HEX ( see $shalink ) value of the executable in the ZIP is:</font></b> $self->{sha}<br />" if $self->{sha};
+                        }
+                        if ($self->{sha} && exists($ASSP_AFC::knownGoodSHA{$self->{sha}})) {
+                            my $comment = $ASSP_AFC::knownGoodSHA{$self->{sha}} == 1 ? '' : " ($ASSP_AFC::knownGoodSHA{$self->{sha}})";
+                            $fm .= "<b><font color='green'>&bull; the SHA256_HEX ( see $shalink ) value $self->{sha} is well known good</font></b>$comment<br />";
+                        }
+
+                        delete $self->{sha};
+                        delete $self->{NOskipBinEXE};
+                        $self->setSkipExe('attZipRun','skipZipBinEXE');
+                        if ($self->{skipZipBinEXE}) {
+                            $self->{skipZipBinEXE} =~ s/:/ :/go;
+                            $fm .= "<b><font color='blue'>&bull; ZIP: executable : the following exceptions are accepted</font></b> by $ualink : $self->{skipZipBinEXE}<br />";
+                        } else {
+                            $fm .= "<b><font color='blue'>&bull; ZIP: executable : no exceptions are accepted</font></b> by $ualink<br />";
                         }
 
                         my @att = @ASSP_AFC::attZipre;
@@ -53234,6 +53260,16 @@ sub ConfigAnalyze {
                                 ($attre[1] && $_[0] =~ /$attre[1]/i ) ||
                                 ($attre[0] && $_[0] !~ /$attre[0]/i );
                             };
+
+                            $self->{skipBinEXE} = undef;
+                            eval{ $self->setSkipExe('attRun','skipBinEXE'); };
+                            if ($self->{skipBinEXE}) {
+                                $self->{skipBinEXE} =~ s/:/ :/go;
+                                $fm .= "<b><font color='blue'>&bull; executable : the following exceptions are accepted</font></b> by $ualink : $self->{skipBinEXE}<br />";
+                            } else {
+                                $fm .= "<b><font color='blue'>&bull; executable : no exceptions are accepted</font></b> by $ualink<br />";
+                            }
+
                             $self->{skipBinEXE} = undef;
                             $self->{exetype} = '';
                             delete $self->{typemismatch};
