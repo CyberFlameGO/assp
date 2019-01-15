@@ -1,0 +1,17 @@
+# this file (assp/Plugins/file_types.txt) is used by the ASSP_AFC.pm Plugin to detect
+# MIME types by file-content in addition to File::Type
+#
+# lines starting with (#) are comments - comments are not allowed within a definition line
+# leading and trailing whitespaces are ignored
+#
+# the syntax of a line is as follows:
+#
+# regex => mime_type  
+#
+# for example: 
+#
+# ^\xFFLZMA\x00 => application/x-lzma
+#
+##########################################################################################
+
+^\{\\rtf1\\ => application/rtf
