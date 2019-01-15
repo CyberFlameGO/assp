@@ -1,4 +1,4 @@
-# $Id: ASSP_RSS.pm,v 1.09 2019/01/02 09:00:00 TE Exp $
+# $Id: ASSP_RSS.pm,v 1.10 2019/01/15 16:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is an RSS feed Plugin for blocked mails. Designed for ASSP v 2.6.1(18128) and above
@@ -15,7 +15,7 @@ no warnings qw(uninitialized);
 use constant RSS_XML_BASE   => "http://example.com";
 use constant RSS_VERSION    => "2.0";
 
-$VERSION = $1 if('$Id: ASSP_RSS.pm,v 1.09 2019/01/02 09:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_RSS.pm,v 1.10 2019/01/15 16:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18128)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our %Con;
@@ -446,7 +446,7 @@ sub genRSS {
                     $search ||= &main::timestring(&main::ftime($this->{maillogfilename}));
                     $search = &main::normHTML($search);
                     $showOpenMail = "<hr />\n<a href=\"$self->{webprot}://$self->{webhost}:$self->{webAdminPort}/edit?file=$filename&note=m&showlogout=1\" target=\"_blank\" title=\"open the blocked mail in the assp fileeditor\">work with this email</a>&nbsp;&nbsp;&nbsp;" unless $Con{$fh}->{deletemaillog};
-                    $showOpenLog = ($showOpenMail ? '' : "<hr />\n" ) . "<a href=\"$self->{webprot}://$self->{webhost}:$self->{webAdminPort}/maillog?search=$search&size=1&files=files&limit=50\" target=\"_blank\" title=\"show the maillog.txt for this email\">show the log for this email</a>";
+                    $showOpenLog = ($showOpenMail ? '' : "<hr />\n" ) . "<a href=\"$self->{webprot}://$self->{webhost}:$self->{webAdminPort}/maillog?search=$search&size=2&files=files&limit=50\" target=\"_blank\" title=\"show the maillog.txt for this email\">show the log for this email</a>";
                 }
                 my $link = '<![CDATA['.'mailto:'.$main::EmailBlockReport.$main::EmailBlockReportDomain.'?subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$main::myName.'&body=%23%23%23'.$filename.'%23%23%23'.$addWhiteHint.$addFileHint.$addScanHint.'%0D%0A'.']]>';
                 my $subject = eU(&main::d8($this->{subject3}));
