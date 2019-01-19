@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.01 2019/01/15 12:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.02 2019/01/19 15:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -37,12 +37,14 @@ our $CanSMIME;
 our $CanSHA;
 our $CanOLE;
 our $CanEOM;
+our $CanCAMPDF;
 our $ZIPLevel;
 our $formatsRe;
 our $z7zRe;
 our $LibArchRe;
 our $LibArchVer;
 our %knownGoodSHA;      # a hash of known good files (sha256)
+our %GoodSHALevel;      # zip level validation hash for known good files
 our $SkipExeTags = [];  # customized skip tags for external executable checks defined in lib/CorrectASSPcfg.pm
 our $checkExeExternal;  # custom subroutine to check executables external (eg. lib/CorrectASSPcfg.pm) - $ASSP_AFC::checkExeExternal->($self,\$sk,\$buff,$raf,\$pdf) if the internal check has not found an executable
                             # self - the ASSP_AFC object for this mail
@@ -78,6 +80,14 @@ our $skipLockyCheck = 0;
 # *************************************************************************************************
 
 our $maxProcessTime = 40; # max 40 seconds to process the attachments
+
+our @PDFsum;
+our %PDFtags = (          # PDF objects to analyze
+#  'StreamData' => '4-StreamData ',
+    'JS' =>         '3-JavaScript ',
+    'Sig' =>        '2-Signature  ',
+    'Cert' =>       '1-Certificate',
+);
 
 sub validateModule {
     my $module = shift;
@@ -119,6 +129,7 @@ BEGIN {
   $LibArchRe .= 'WAR|XAR|Z|ZIP';
 
   $CanSHA = validateModule('Digest::SHA()') ? Digest::SHA->VERSION : undef;
+  $CanCAMPDF = validateModule('CAM::PDF()') ? CAM::PDF->VERSION : undef;
   $CanOLE = validateModule('OLE::Storage_Lite()') ? OLE::Storage_Lite->VERSION : undef;
   $CanEOM = validateModule('Email::Outlook::Message()') ? Email::Outlook::Message->VERSION : undef;
   
@@ -226,7 +237,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.01 2019/01/15 12:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.02 2019/01/19 15:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -409,23 +420,36 @@ sub get_config {
  Notice: you need to restart assp after installing any perl module and/or exexutable, to get them activated!<br />'.
  ($f ? '<input type="button" value="User-Attach-File" onclick="javascript:popFileEditor(\''.$f.'\',1);" />' : '' ),undef,undef,'msg100120','msg100121'],
 [$self->{myName}.'MaxZIPLevel','Maximum Decompression Level',10,\&main::textinput,10,'([1-9]\d*)',undef,
- 'The maximum decompression cycles use on a compressed attachment (eg: zip in zip in zip ...). Default value is 10 - zero is not allowed to be used!',undef,undef,'msg100130','msg100131'],
+ 'The maximum decompression cycles used on a compressed attachment (eg: zip in zip in zip ...). Default value is 10 - zero is not allowed to be used!',undef,undef,'msg100130','msg100131'],
 [$self->{myName}.'extractAttMail','Extract Attached Emails','0:disabled|1:MIME-Mail(.eml)|2:Outlook Mail(.msg)|3:both',\&main::listbox,3,'(\d*)',undef,
  'If enabled, the selected attachments will be extracted and their MIME parts will be analyzed! If such a MIME part contains not allowed content and attachment replacement is enabled for the fault, the complete attachment will be replaced!<br />
  To extract MS-Outlook .msg files, in addition an installed <a href="http://search.cpan.org/search?query=Email::Outlook::Message" rel="external">Email::Outlook::Message</a> module in PERL is needed.',undef,undef,'msg100150','msg100151'],
 
 [$self->{myName}.'KnownGoodEXE','Well Known Good Executable Files',80,\&main::textinput,'file:files/knowngoodattach.txt','(file:.+|)',\&configChangeKnownGood,
  'Put the SHA256_HEX hash of all well known good executables in to this file (one per line). If the SHA256_HEX hash (not case sensitive) of an attachment or a part of a compressed attachment (e.g. exe, *.bin MS-Macro or OLE) is equal to a line in this file, the attachment passes the attachment check for all mails (regardless its extension and the settings in UserAttach).<br />
- Comments are allowed after the hash and at the begin of a line.<br />
- If configured, the analyzer and the maillog.txt will show the SHA256_HEX hash and the optional defined comment for all detected executables.<br />
+ The same applies to the following ojects in a PDF file: Certificate, Signature, JavaScript . If the SHA256_HEX hash of any of these PDF objects matches, the PDF will pass the attachment check.<br />
+ Comments are allowed after the hash and at the begin of a line (recommended).<br />
+ If configured, the analyzer and the maillog.txt will show the SHA256_HEX hash and the optional defined comment for all detected executables and PDF objects.<br />
  For security reasons, virus scanning is not skipped.<br />
  <b>Notice:</b> this feature is mainly created for executable files, but it will work for every attachment and every part of a compressed attachment.<br />
  For example - this can be usefull, if clients regular sending or receiving documents or excel sheets, which contains every time the same MS-Macro/MS-OLE (e.g. executable). In this case, decompress the doc[xm] and calculate the SHA256_HEX hash for the vbaProject.bin or the vbaProjectSignature.bin file and register the hash here.<br />
  examples:<br /><br />
  # sales documents<br />
- a704ebf55efa5bb8079bb2ea1de54bfd5e9a0f7ed3a38867759b81bfc7b2cc9c # sales price_list.pdf - contains Java-Script<br />
- 08d5518ef129ba1a992f5eb5c25e497cf886556710ffebe7cfb6aedf9d5727c9 # VBA Macrco vbaProject.bin in sales info.docm<br /><br />
- To show the SHA256_HEX value for a file at the command line, execute :&gt;shasum -a 256 the_file_name',undef,undef,'msg100160','msg100161'],
+ a704ebf55efa5bb8079bb2ea1de54bfd5e9a0f7ed3a38867759b81bfc7b2cc9c # sales price_list.pdf - contains well known good Java-Script<br />
+ 96c4e6976d16b424ff02d7ef3fdabf41262d3ffc6a191431dc77176a814c1256 # sales sales_report.pdf - contains known Certificate<br />
+ 08d5518ef129ba1a992f5eb5c25e497cf886556710ffebe7cfb6aedf9d5727c9 # VBA Macro signature vbaProjectSignature.bin in sales info.docm<br /><br />
+ In addition to the SHA256_HEX hash, you can define at which compression level the hash should be valid. Compression levels are comma separated numerical values or ranges - like 0,1,2 or 0-2 or 0...8 or 0-2,4...6 or 1 .<br />
+ The compression level zero is the not decompressed attachment itself. To include all compression levels, define a single asterix * or no level definition.<br />
+ examples:<br /><br />
+ # sales documents<br />
+ a704ebf55efa5bb8079bb2ea1de54bfd5e9a0f7ed3a38867759b81bfc7b2cc9c 0,1 # sales price_list.pdf - contains well known good Java-Script - valid at zip level 0 and 1<br />
+ 96c4e6976d16b424ff02d7ef3fdabf41262d3ffc6a191431dc77176a814c1256 *   # sales sales_report.pdf - contains known Certificate - valid at any zip level<br />
+ 08d5518ef129ba1a992f5eb5c25e497cf886556710ffebe7cfb6aedf9d5727c9 1   # VBA Macro signature vbaProjectSignature.bin in sales info.docm - only valid in the .docm itself (which is a zip) - .docm in a zip is not valid<br />
+ 08d5518ef129ba1a992f5eb5c25e497cf886556710ffebe7cfb6aedf9d5727c9 0   # VBA Macro signature vbaProjectSignature.bin in sales info.docm - <b>this will not work, because a .docm is a compressed file</b><br /><br />
+ To show the SHA256_HEX value for a file at the command line, execute :&gt;shasum -a 256 -b the_file_name<br />
+ To show the SHA256_HEX values for all relevant PDF-objects in a PDF file, change in to the assp folder and execute :&gt;perl getpdfsha.pl the_PDF_file_name .<br />
+ You may also compose and send a mail with the files in question attached to the analyze email-interface - EmailAnalyze . The log output of the analyzer will show all SHA256_HEX hashes (if AttachmentLog is enabled).<br />
+ Notice: different PDF creator applications may store the same PDF-object (Cert, Sig, JS) in different ways, which will result in different SHA256_HEX hashes for the same PDF-object! If this happens, you need to calculate the SHA256_HEX hash for each different occurence of the PDF-object.',undef,undef,'msg100160','msg100161'],
 
 [$self->{myName}.'ReplBadAttach','Replace Bad Attachments',0,\&main::checkbox,0,'(.*)',undef,
  'If set and AttachmentBlocking is set to block, the mail will not be blocked but the bad attachment will be replaced with a text!',undef,undef,'msg100030','msg100031'],
@@ -569,19 +593,56 @@ sub configChangeKnownGood {
     }
 
     %knownGoodSHA = ();
+    %GoodSHALevel = ();
     my $count = 0;
     my $ret;
     while (@new) {
         my $h = uc(shift @new);
         my $comment;
         $comment = $1 if $h =~ s/\s*[#;](.*)//o;
-        $h =~ s/[^A-F0-9]//go;
-        next unless $h;
-        if ($h !~ /^[A-F0-9]{64}$/o) {
-            $ret .= &main::ConfigShowError(1,"$name: invalid attachment SHA256_HEX hash: $h is ignored") if $main::WorkerNumber == 0;
+        if ($h !~ /^([A-F0-9]{64})(.*)$/o) {
+            $ret .= &main::ConfigShowError(1,"$name: invalid attachment SHA256_HEX definition - hash: $h is ignored") if $main::WorkerNumber == 0;
             next;
         }
-        $knownGoodSHA{$h} = $comment || 1;
+        my $sha = $1;
+        my $level = my $olevel = $2;
+        $knownGoodSHA{$sha} = $comment || 1;
+        if ($level) {
+            $level =~ s/\s//go;
+            if ($level =~ /\*/o) {
+                $GoodSHALevel{$sha} = '*';
+                $count++;
+                next;
+            }
+            $level =~ s/-/.../go;
+            $level =~ s/\.+/.../go;
+            $level =~ s/[^\d\.,]//go;
+            my @v = split(/,/,$level);
+            my @l;
+            for my $k (@v) {
+                next unless defined $k;
+                if ($k =~ /^(\d+)\.\.\.(\d+)$/o) {
+                    if ($1 >= $2) {
+                        $ret .= &main::ConfigShowError(1,"$name: invalid zip level definition '$k $1 >= $2' for attachment SHA256_HEX hash: $h") if $main::WorkerNumber == 0;
+                        next;
+                    }
+                } elsif ($k !~ /^\d+$/o) {
+                    $ret .= &main::ConfigShowError(1,"$name: invalid zip level definition '$k is not numeric' for attachment SHA256_HEX hash: $h") if $main::WorkerNumber == 0;
+                    next;
+                }
+                push @l, $k;
+            }
+            if (! @l) {
+                $count++;
+                next;
+            }
+            $level = join(',',@l);
+            if( @v = eval($level)) {
+                $GoodSHALevel{$sha} = $level;
+            } else {
+                $ret .= &main::ConfigShowError(1,"$name: invalid zip level definition '$olevel' for attachment SHA256_HEX hash: $h is ignored") if $main::WorkerNumber == 0;
+            }
+        }
         $count++;
     }
     $ret .= &main::ConfigShowError(0,"$name: $count well known good SHA256_HEX attachment hashes registered") if $main::WorkerNumber == 0;
@@ -1027,7 +1088,9 @@ sub process {
             $self->{exetype} = undef;
             $self->{skipBinEXE} = undef;
             $self->{skipZipBinEXE} = undef;
+            @PDFsum = ();
             delete $self->{attname};
+            delete $self->{showattname};
             @attre = ();
             @attZipre = ();
             $plScan = 1;
@@ -1046,7 +1109,7 @@ sub process {
                 ($ext, $filename) = &main::attachmentExtension($fh, $filename, $part);
             }
             
-            my $orgname = $filename;
+            my $orgname = $self->{showattname} = $filename;
 
             my ($imghash,$imgprob);
             if (   $main::ASSP_AFCDetectSpamAttachRe
@@ -1766,13 +1829,29 @@ sub isAnEXE {
         $raf = \join('',<$ZH>);
         eval{$ZH->close;};
     }
+    my $lvl = my $l = $self->{MaxZIPLevel} - $ZIPLevel;
+    if ($l == 0) {
+        $l = '';
+    } else {
+        $l = " at zip-level $l";
+    }
     my $sha;
     $sha = uc(Digest::SHA::sha256_hex($$raf)) if $self->{KnownGoodEXE} && $CanSHA;
-    if ($CanSHA && $self->{KnownGoodEXE} && ! $self->{NOskipBinEXE} && exists $knownGoodSHA{$sha}) {
+    if ($CanSHA && $self->{KnownGoodEXE} && goodSHAZipLevelOK($sha)) {
         my $comment = $knownGoodSHA{$sha} == 1 ? '' : " - ($knownGoodSHA{$sha})";
-        mlog(0,"info: found known good attached content - SHA256_HEX: $sha$comment - skip executable detection") if $main::AttachmentLog;
-        $self->{SHAisKnownGood} = 1;
-        return;
+        mlog(0,"info: found known good attached content$l - SHA256_HEX: $sha$comment - skip executable detection") if $main::AttachmentLog;
+        if (! $self->{NOskipBinEXE}) {
+            $self->{SHAisKnownGood} = 1;
+            return;
+        }
+    } elsif ($CanSHA && $self->{KnownGoodEXE} && exists $knownGoodSHA{$sha}) {
+        my $comment = $knownGoodSHA{$sha} == 1 ? '' : " - ($knownGoodSHA{$sha})";
+        $l =~ s/at/at disallowed/o;
+        mlog(0,"info: found known good attached content$l - SHA256_HEX: $sha$comment") if $main::AttachmentLog;
+        push @{$self->{knowgooddisallowed}}, {'sha' => $sha, 'ziplevel' => $lvl, 'allowedziplevel' => $GoodSHALevel{$sha}, 'comment' => $comment};
+    } elsif ($CanSHA && $self->{KnownGoodEXE} && ! $self->{NOskipBinEXE} && ! exists $knownGoodSHA{$sha}) {
+        my $fname = $self->{showattachname} . ($self->{attachname} ? " : $self->{attachname}" : '');
+        mlog(0,"info: SHA256_HEX: $sha - in $fname$l") if $main::AttachmentLog > 1;
     }
 
     $self->{detectBinEXE} or return;
@@ -1918,7 +1997,7 @@ sub isAnEXE {
 # detect malicious executable code in PDF files
 #
     my $pdf;
-    if ($buff =~ /^\%PDF-/oi) {                                           # a PDF file tag followed anywhere by
+    if ($buff =~ /^\%PDF-/oi && ! $self->getPDFSum($raf)) {                                           # a PDF file tag followed anywhere by
         $pdf = substr($$raf,0,min($maxPDFscanSize,length($$raf))); # we need to copy the content for later manipulation but limit is 1MB
 # deobviuscate the PDF - https://blog.didierstevens.com/2008/04/29/pdf-let-me-count-the-ways/
         $pdf =~ s{\\\n}{\n}goi;   # remove line continuation
@@ -1926,7 +2005,7 @@ sub isAnEXE {
         my $tochr = sub {return join('',map{$_ ?pack 'H*',$_:''}split(/\s+/o,shift));};   # sub to convert hex + spaces to char
         $pdf =~ s/\<\s*((?:[0-9a-f]{2}\s*)+)\>/'('.$tochr->($1).')'/goie;                # convert hex + spaces to char
 
-        return if $sk =~ /:(?:CERT)?PDF/oi && $pdf =~ m{/CERT\s*\[\s*\(}ios;        # a certificate in the PDF (so skip all)
+        return if $sk =~ /:(?:CERT)?PDF/oi && ((grep {$_->[0] =~ /Cert|Sig/o} @PDFsum) || $pdf =~ m{/CERT\s*\[\s*\(}ios);        # a certificate or signature in the PDF (so skip all)
 
         my $ft = qr/
                    (?:
@@ -1973,7 +2052,9 @@ sub isAnEXE {
             $type = "malicious executable code or JavaScript and MS-office macro object in PDF file";
         } elsif ( $sk !~ /:(?:JS)?PDF/oi  # JavaScript check
                  &&
-                 $pdf =~ m{(?:\n\x20*\d+\s+\d+\s+obj\x20*\n[^\n]*?/            # object definitons with the following content
+                  (  (grep {$_->[0] eq 'JS'} @PDFsum)
+                   ||
+                     $pdf =~ m{(?:\n\x20*\d+\s+\d+\s+obj\x20*\n[^\n]*?/            # object definitons with the following content
                               (?:
                                  Type/\s*Filespec/[^\n]*?\.                       # the object contains the 'type filespec' tag
                                    (?:
@@ -1986,6 +2067,7 @@ sub isAnEXE {
                                 /S\s*/JavaScript\s*/JS
                             )
                           }xios
+                  )
                 )
         {
             $type = "prohibited JavaScript in PDF file";
@@ -2282,6 +2364,16 @@ sub getDirContent {
     return @files;
 }
 
+sub goodSHAZipLevelOK {
+    my $sha = shift;
+    return 0 unless exists $knownGoodSHA{$sha};
+    return 1 unless exists $GoodSHALevel{$sha};
+    return 1 if $GoodSHALevel{$sha} eq '*';
+    my $l = $main::ASSP_AFCMaxZIPLevel - $ZIPLevel;
+    my @levels = eval($GoodSHALevel{$sha}) || return 0;
+    return grep {$_ == $l} @levels;
+}
+
 sub get_zip_filelist {
     my ($self,$file) = @_;
     no warnings qw(recursion);
@@ -2300,7 +2392,12 @@ sub get_zip_filelist {
     my $tmpdir;
     $tmpdir = $1 if $file =~ /^(.+[\/\\])[^\/\\]+$/o;
     return unless $tmpdir;
-    $tmpdir .= ".$ZIPLevel";
+    $tmpdir .= '.'.($self->{MaxZIPLevel} - $ZIPLevel);
+    if ($main::dF->($tmpdir)) {
+        my $c = 1;
+        while ($main::dF->($tmpdir.".$c")) {$c++;};
+        $tmpdir .= ".$c";
+    }
     my @extension = @{$self->{fileList}->{$file}} ? @{$self->{fileList}->{$file}} : ($file);
     mlog(0,"info: looking for filetype in: @extension") if $main::AttachmentLog > 1;
 
@@ -2316,14 +2413,27 @@ sub get_zip_filelist {
     my @files = getDirContent($tmpdir);  # we don't trust $ae->files because of unicode mistakes - we read the extracted folder content
     return unless scalar(@files);
 
-    if ($CanSHA && $self->{KnownGoodEXE} && ! $self->{NOskipBinEXE} && keys(%knownGoodSHA)) {
+    if ($CanSHA && $self->{KnownGoodEXE}) {
         for my $f (@files) {
-            my $sha = uc(Digest::SHA::sha256_hex($f));
-            if (exists $knownGoodSHA{$sha}) {
+            my $sha = uc(Digest::SHA->new(256)->addfile($f, 'b')->hexdigest);
+            my $zf = $file;
+            my $cf = $f;
+            $zf =~ s/^\Q$tmpdir\E\///o;
+            $cf =~ s/^\Q$tmpdir\E//o;
+            my $l = $self->{MaxZIPLevel} - $ZIPLevel;
+            if (goodSHAZipLevelOK($sha)) {
                 my $comment = $knownGoodSHA{$sha} == 1 ? '' : " - ($knownGoodSHA{$sha})";
-                mlog(0,"info: found known good attached content in ZIP ($f) - SHA256_HEX: $sha$comment - skip executable detection") if $main::AttachmentLog;
-                $self->{SHAisKnownGood} = 1;
-                return;
+                mlog(0,"info: found known good attached content in ZIP ($zf : $cf) at zip-level $l - SHA256_HEX: $sha$comment - skip executable detection") if $main::AttachmentLog;
+                if (! $self->{NOskipBinEXE}) {
+                    $self->{SHAisKnownGood} = 1;
+                    return;
+                }
+            } elsif (exists $knownGoodSHA{$sha}) {
+                my $comment = $knownGoodSHA{$sha} == 1 ? '' : " - ($knownGoodSHA{$sha})";
+                mlog(0,"info: found known good attached content in ZIP ($zf : $cf) at disallowed zip-level $l - SHA256_HEX: $sha$comment") if $main::AttachmentLog;
+                push @{$self->{knowgooddisallowed}}, {'sha' => $sha, 'ziplevel' => $l, 'allowedziplevel' => $GoodSHALevel{$sha}, 'comment' => $comment};
+            } else {
+                mlog(0,"info: attached content in ZIP ($zf : $cf) at zip-level $l - SHA256_HEX: $sha") if $main::AttachmentLog > 1 || ($main::AttachmentLog && $self->{NOskipBinEXE});
             }
         }
     }
@@ -2890,6 +3000,83 @@ sub copy_data {
     }
   }
   return;
+}
+
+# PDF processing
+sub pdfsum {
+    my $self =shift;
+    return @PDFsum;
+}
+
+sub getPDFSum {
+   my ($self, $pdf) = @_;
+   return 0 unless ($CanSHA && $CanCAMPDF);
+   return 0 if ! $self->{KnownGoodEXE};
+
+   my $doc = CAM::PDF->new((ref($pdf) ? $$pdf : $pdf) , {'prompt_for_password' => 0, 'fault_tolerant' => 1}) || return 0;
+
+   my $attachname = $self->{showattname} . ($self->{attname} ? " : $self->{attname}" : '');
+
+   foreach my $objnum (keys %{$doc->{xref}}) {
+       my $objnode = $doc->dereference($objnum);
+       denode($objnode);
+   }
+   @PDFsum = sort {$PDFtags{$a->[0]} cmp $PDFtags{$b->[0]}} @PDFsum;
+   my $res = 0;
+   my $lvl = my $l = $self->{MaxZIPLevel} - $ZIPLevel;
+   if ($l == 0) {
+       $l = '';
+   } else {
+       $l = " at zip-level $l";
+   }
+   for (@PDFsum) {
+       if (goodSHAZipLevelOK($_->[1])) {
+           my $comment = $knownGoodSHA{$_->[1]} == 1 ? '' : " - ($knownGoodSHA{$_->[1]})";
+           mlog(0,"info: found known good PDF content $PDFtags{$_->[0]} (length $_->[2]$l) - SHA256_HEX: $_->[1]$comment - skip executable detection in PDF $attachname") if $main::AttachmentLog;
+           $self->{SHAisKnownGood} = 1;
+           $res = 1 if ! $self->{NOskipBinEXE};
+       } elsif (exists $knownGoodSHA{$_->[1]}) {
+           my $comment = $knownGoodSHA{$_->[1]} == 1 ? '' : " - ($knownGoodSHA{$_->[1]})";
+           $l =~ s/at/at disallowed/o;
+           mlog(0,"info: found known good PDF content $PDFtags{$_->[0]} (length $_->[2]$l) - SHA256_HEX: $_->[1]$comment - skip executable detection in PDF $attachname") if $main::AttachmentLog;
+           push @{$self->{knowgooddisallowed}}, {'sha' => $_->[1], 'ziplevel' => $lvl, 'allowedziplevel' => $GoodSHALevel{$_->[1]}, 'comment' => $comment};
+       } else {
+           mlog(0,"info: found PDF content $PDFtags{$_->[0]} (length $_->[2]$l) - SHA256_HEX: $_->[1] in PDF $attachname") if $main::AttachmentLog > 1 || ($main::AttachmentLog && $self->{NOskipBinEXE});
+       }
+   }
+   return $res;
+}
+
+sub denode {
+    my $node = shift;
+    if (ref($node) eq 'HASH') {
+        while( my ($k,$v) = each(%{$node})) {
+            next if (! exists $PDFtags{$k});
+            my @val = denode($v);
+            push @PDFsum, [ $k, @val] if $val[1];
+        }
+    } elsif (ref($node) eq 'ARRAY') {
+        my @res;
+        my $l = 0;
+        for (@$node) {
+            my @val = denode($_);
+            next unless $val[0] && $val[1];
+            push @res, $val[0];
+            $l += $val[1];
+        }
+        return if $l == 0 || length("@res") == 0;
+        return (uc(Digest::SHA::sha256_hex(join('',@res))) , $l);
+    } elsif (ref($node)) {
+        if (exists $node->{value}) {
+#            $doc->decodeOne($node->{value}) if (ref($node->{value}) ne 'ARRAY' && $node->{value}->{type} eq 'dictionary');
+            return denode($node->{value});
+        } else {
+            return;
+        }
+    } else {
+        return (uc(Digest::SHA::sha256_hex($node)) , length($node));
+    }
+    return;
 }
 
 1;
