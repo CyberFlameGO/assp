@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19015';        # 15.01.2019 TE
+$build   = '19019';        # 19.01.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -604,7 +604,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'E28243D709A8C6E062B2ACBE30F941F51CCF9BE2'; }
+sub __cs { $codeSignature = 'EDC6216896ACAD385FDB88CE7B3B4D032D49F38D'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -14714,7 +14714,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.02;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.08;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -53125,6 +53125,7 @@ sub ConfigAnalyze {
 
             mlog(0,"info: analyzing attachments in $direction email");
             foreach my $part ( @parts ) {
+                @ASSP_AFC::PDFsum = ();
                 $Con{$tmpfh} = {};
                 if ($UseAvClamd && $CanUseAvClamd) {
                     ClamScanOK($tmpfh,\$part->body);
@@ -53149,6 +53150,8 @@ sub ConfigAnalyze {
                     my $shalink;
                     $shalink = linkToConfig('ASSP_AFCKnownGoodEXE') if defined ${'ASSP_AFCKnownGoodEXE'};
 
+                    $self->{showattname} = $orgname;
+                    
                     $Con{$tmpfh} = {};
                     $Con{$tmpfh}->{relayok} = $reportedBy ? 0 : 1;
                     $Con{$tmpfh}->{self} = $tmpfh;
@@ -53168,12 +53171,37 @@ sub ConfigAnalyze {
                     $self->{NOskipBinEXE} = 1;
                     if (my $exetype = $self->isAnEXE( \$part->body) ) {
                         $fm .= "<b><font color='orange'>&bull; attachment $orgname is or contains an executable - $exetype</font></b> (see $ualink)<br />";
-                        $fm .= "<b><font color='orange'>&bull; the SHA256_HEX ( see $shalink ) value of the executable is:</font></b> $self->{sha}<br />" if $self->{sha};
+                        $fm .= "<b><font color='orange'>&bull; the SHA256_HEX ( see $shalink ) value of the executable $orgname is:</font></b> $self->{sha}<br />" if $self->{sha};
                     }
                     if ($self->{sha} && exists($ASSP_AFC::knownGoodSHA{$self->{sha}})) {
                         my $comment = $ASSP_AFC::knownGoodSHA{$self->{sha}} == 1 ? '' : " ($ASSP_AFC::knownGoodSHA{$self->{sha}})";
-                        $fm .= "<b><font color='green'>&bull; the SHA256_HEX ( see $shalink ) value $self->{sha} is well known good</font></b>$comment<br />";
+                        $fm .= "<b><font color='green'>&bull; the SHA256_HEX ( see $shalink ) value $self->{sha} in $orgname is well known good</font></b>$comment<br />";
                     }
+                    if (@ASSP_AFC::PDFsum) {
+                        for (@ASSP_AFC::PDFsum) {
+                            if (exists($ASSP_AFC::knownGoodSHA{$_->[1]})) {
+                                my $comment = $ASSP_AFC::knownGoodSHA{$_->[1]} == 1 ? '' : " ($ASSP_AFC::knownGoodSHA{$_->[1]})";
+                                $fm .= "<b><font color='green'>&bull; the SHA256_HEX ( see $shalink ) value $_->[1] (type $ASSP_AFC::PDFtags{$_->[0]} , length $_->[2]) in PDF $orgname is well known good</font></b>$comment<br />";
+                            } else {
+                                $fm .= "<b><font color='orange'>&bull; the SHA256_HEX ( see $shalink ) value $_->[1] (type $ASSP_AFC::PDFtags{$_->[0]} , length $_->[2]) was found in PDF $orgname</font></b><br />";
+                            }
+                        }
+                    }
+                    if ($self->{knowgooddisallowed}) {
+                        my $count = 0;
+                        my %seen;
+                        my $tfm;
+                        for ( @{$self->{knowgooddisallowed}} ) {
+                            next if exists $seen{$_->{sha}};
+                            $seen{$_->{sha}} = 1;
+                            $tfm .= "&nbsp;&nbsp;<b>&bull;</b> SHA256_HEX: $_->{sha} , at zip-level: $_->{ziplevel} , allowed zip-level: $_->{allowedziplevel} , comment: $_->{comment}<br />";
+                            $count++;
+                        }
+                        $fm .= "<b><font color='orange'>&bull;</font></b> found $count know good files at disallowed compression level<br />";
+                        $fm .= $tfm;
+                    }
+                    @ASSP_AFC::PDFsum = ();
+                    delete $self->{knowgooddisallowed};
                     delete $self->{sha};
                     delete $self->{exetype};
                     delete $self->{NOskipBinEXE};
@@ -53183,13 +53211,39 @@ sub ConfigAnalyze {
                         $self->{NOskipBinEXE} = 1;
                         if (! $self->isZipOK( $Con{$tmpfh}, \$part->body, $orgname )) {
                             $fm .= "<b><font color='orange'>&bull; ZIP: attachment : $self->{exetype}</font></b> (see $ualink)<br />";
-                            $fm .= "<b><font color='orange'>&bull; the SHA256_HEX ( see $shalink ) value of the executable in the ZIP is:</font></b> $self->{sha}<br />" if $self->{sha};
+                            $fm .= "<b><font color='orange'>&bull; the SHA256_HEX ( see $shalink ) value $self->{sha} calculated for this executable in the ZIP $orgname</font></b><br />" if $self->{sha};
                         }
                         if ($self->{sha} && exists($ASSP_AFC::knownGoodSHA{$self->{sha}})) {
                             my $comment = $ASSP_AFC::knownGoodSHA{$self->{sha}} == 1 ? '' : " ($ASSP_AFC::knownGoodSHA{$self->{sha}})";
-                            $fm .= "<b><font color='green'>&bull; the SHA256_HEX ( see $shalink ) value $self->{sha} is well known good</font></b>$comment<br />";
+                            $fm .= "<b><font color='green'>&bull; the SHA256_HEX ( see $shalink ) value $self->{sha} in ZIP $orgname is well known good</font></b>$comment<br />";
                         }
 
+                        if (@ASSP_AFC::PDFsum) {
+                            for (@ASSP_AFC::PDFsum) {
+                                if (exists($ASSP_AFC::knownGoodSHA{$_->[1]})) {
+                                    my $comment = $ASSP_AFC::knownGoodSHA{$_->[1]} == 1 ? '' : " ($ASSP_AFC::knownGoodSHA{$_->[1]})";
+                                    $fm .= "<b><font color='green'>&bull; the SHA256_HEX ( see $shalink ) value $_->[1] (type $ASSP_AFC::PDFtags{$_->[0]} , length $_->[2]) in PDF $orgname : $self->{attachname} is well known good</font></b>$comment<br />";
+                                } else {
+                                    $fm .= "<b><font color='orange'>&bull; the SHA256_HEX ( see $shalink ) value $_->[1] (type $ASSP_AFC::PDFtags{$_->[0]} , length $_->[2]) was found in PDF $orgname : $self->{attachname}</font></b><br />";
+                                }
+                           }
+                        }
+                        if ($self->{knowgooddisallowed}) {
+                            my $count = 0;
+                            my %seen;
+                            my $tfm;
+                            for ( @{$self->{knowgooddisallowed}} ) {
+                                next if exists $seen{$_->{sha}};
+                                $seen{$_->{sha}} = 1;
+                                $tfm .= "&nbsp;&nbsp;<b>&bull;</b> SHA256_HEX: $_->{sha} , at zip-level: $_->{ziplevel} , allowed zip-level: $_->{allowedziplevel} , comment: $_->{comment}<br />";
+                                $count++;
+                            }
+                            $fm .= "<b><font color='orange'>&bull;</font></b> found $count know good files at disallowed compression level<br />";
+                            $fm .= $tfm;
+                        }
+                        @ASSP_AFC::PDFsum = ();
+
+                        delete $self->{knowgooddisallowed};
                         delete $self->{sha};
                         delete $self->{NOskipBinEXE};
                         $self->setSkipExe('attZipRun','skipZipBinEXE');

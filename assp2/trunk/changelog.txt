@@ -1,4 +1,53 @@
-2019-01-07
+2019-01-19
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19019:
+
+- the analyzer got changes to fully support ASSP_AFC 5.02 
+
+changed:
+
+- ASSP_AFC 5.02 is released - it contains fixes and extensions for 'ASSP_AFCKnownGoodEXE','Well Known Good Executable Files'
+
+[ASSP_AFCKnownGoodEXE,'Well Known Good Executable Files'
+ 'Put the SHA256_HEX hash of all well known good executables in to this file (one per line). If the SHA256_HEX hash (not case sensitive) of an attachment or a part of a compressed attachment
+ (e.g. exe, *.bin MS-Macro or OLE) is equal to a line in this file, the attachment passes the attachment check for all mails (regardless its extension and the settings in UserAttach).
+ The same applies to the following ojects in a PDF file: Certificate, Signature, JavaScript . If the SHA256_HEX hash of any of these PDF objects matches, the PDF will pass the attachment check.
+ Comments are allowed after the hash and at the begin of a line (recommended).
+ If configured, the analyzer and the maillog.txt will show the SHA256_HEX hash and the optional defined comment for all detected executables and PDF objects.
+ For security reasons, virus scanning is not skipped.
+ <b>Notice:</b> this feature is mainly created for executable files, but it will work for every attachment and every part of a compressed attachment.
+ For example - this can be usefull, if clients regular sending or receiving documents or excel sheets, which contains every time the same MS-Macro/MS-OLE (e.g. executable).
+ In this case, decompress the doc[xm] and calculate the SHA256_HEX hash for the vbaProject.bin or the vbaProjectSignature.bin file and register the hash here.
+ examples:
+ 
+ # sales documents
+ a704ebf55efa5bb8079bb2ea1de54bfd5e9a0f7ed3a38867759b81bfc7b2cc9c # sales price_list.pdf - contains well known good Java-Script
+ 96c4e6976d16b424ff02d7ef3fdabf41262d3ffc6a191431dc77176a814c1256 # sales sales_report.pdf - contains known Certificate
+ 08d5518ef129ba1a992f5eb5c25e497cf886556710ffebe7cfb6aedf9d5727c9 # VBA Macro signature vbaProjectSignature.bin in sales info.docm
+ 
+ In addition to the SHA256_HEX hash, you can define at which compression level the hash should be valid. Compression levels are comma separated numerical values or ranges
+ - like 0,1,2 or 0-2 or 0...8 or 0-2,4...6 or 1 .
+ The compression level zero is the not decompressed attachment itself. To include all compression levels, define a single asterix * or no level definition.
+ examples:
+ 
+ # sales documents
+ a704ebf55efa5bb8079bb2ea1de54bfd5e9a0f7ed3a38867759b81bfc7b2cc9c 0,1 # sales price_list.pdf - contains well known good Java-Script - valid at zip level 0 and 1
+ 96c4e6976d16b424ff02d7ef3fdabf41262d3ffc6a191431dc77176a814c1256 *   # sales sales_report.pdf - contains known Certificate - valid at any zip level
+ 08d5518ef129ba1a992f5eb5c25e497cf886556710ffebe7cfb6aedf9d5727c9 1   # VBA Macro signature vbaProjectSignature.bin in sales info.docm - only valid in the .docm itself (which is a zip) - .docm in a zip is not valid
+ 08d5518ef129ba1a992f5eb5c25e497cf886556710ffebe7cfb6aedf9d5727c9 0   # VBA Macro signature vbaProjectSignature.bin in sales info.docm - this will not work, because a .docm is a compressed file
+ 
+ To show the SHA256_HEX value for a file at the command line, execute :>shasum -a 256 -b the_file_name
+ To show the SHA256_HEX values for all relevant PDF-objects in a PDF file, change in to the assp folder and execute :>perl getpdfsha.pl the_PDF_file_name .
+ You may also compose and send a mail with the files in question attached to the analyze email-interface - EmailAnalyze . 
+ The log output of the analyzer will show all SHA256_HEX hashes (if AttachmentLog is enabled).
+ Notice: different PDF creator applications may store the same PDF-object (Cert, Sig, JS) in different ways, which will result in different SHA256_HEX hashes for the same PDF-object!
+ If this happens, you need to calculate the SHA256_HEX hash for each different occurence of the PDF-object.'
+
+
+
+
+
+
+2019-01-15
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19015:
 
 added:
