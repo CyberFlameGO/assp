@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.02 2019/01/19 15:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.03 2019/01/30 09:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -237,7 +237,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.02 2019/01/19 15:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.03 2019/01/30 09:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -425,7 +425,7 @@ sub get_config {
  'If enabled, the selected attachments will be extracted and their MIME parts will be analyzed! If such a MIME part contains not allowed content and attachment replacement is enabled for the fault, the complete attachment will be replaced!<br />
  To extract MS-Outlook .msg files, in addition an installed <a href="http://search.cpan.org/search?query=Email::Outlook::Message" rel="external">Email::Outlook::Message</a> module in PERL is needed.',undef,undef,'msg100150','msg100151'],
 
-[$self->{myName}.'KnownGoodEXE','Well Known Good Executable Files',80,\&main::textinput,'file:files/knowngoodattach.txt','(file:.+|)',\&configChangeKnownGood,
+[$self->{myName}.'KnownGoodEXE','Well Known Good Executable Files *',80,\&main::textinput,'file:files/knowngoodattach.txt','(file:.+|)',\&configChangeKnownGood,
  'Put the SHA256_HEX hash of all well known good executables in to this file (one per line). If the SHA256_HEX hash (not case sensitive) of an attachment or a part of a compressed attachment (e.g. exe, *.bin MS-Macro or OLE) is equal to a line in this file, the attachment passes the attachment check for all mails (regardless its extension and the settings in UserAttach).<br />
  The same applies to the following ojects in a PDF file: Certificate, Signature, JavaScript . If the SHA256_HEX hash of any of these PDF objects matches, the PDF will pass the attachment check.<br />
  Comments are allowed after the hash and at the begin of a line (recommended).<br />
@@ -3013,13 +3013,13 @@ sub getPDFSum {
    return 0 unless ($CanSHA && $CanCAMPDF);
    return 0 if ! $self->{KnownGoodEXE};
 
-   my $doc = CAM::PDF->new((ref($pdf) ? $$pdf : $pdf) , {'prompt_for_password' => 0, 'fault_tolerant' => 1}) || return 0;
+   my $doc = eval{ CAM::PDF->new((ref($pdf) ? $$pdf : $pdf) , {'prompt_for_password' => 0, 'fault_tolerant' => 1}) } || return 0;
 
    my $attachname = $self->{showattname} . ($self->{attname} ? " : $self->{attname}" : '');
 
    foreach my $objnum (keys %{$doc->{xref}}) {
-       my $objnode = $doc->dereference($objnum);
-       denode($objnode);
+       my $objnode = eval{$doc->dereference($objnum);};
+       eval{ denode($objnode) } if $objnode;
    }
    @PDFsum = sort {$PDFtags{$a->[0]} cmp $PDFtags{$b->[0]}} @PDFsum;
    my $res = 0;
@@ -3052,14 +3052,16 @@ sub denode {
     if (ref($node) eq 'HASH') {
         while( my ($k,$v) = each(%{$node})) {
             next if (! exists $PDFtags{$k});
-            my @val = denode($v);
+            local $@;
+            my @val = eval{ denode($v) };
             push @PDFsum, [ $k, @val] if $val[1];
         }
     } elsif (ref($node) eq 'ARRAY') {
         my @res;
         my $l = 0;
         for (@$node) {
-            my @val = denode($_);
+            local $@;
+            my @val = eval{ denode($_) };
             next unless $val[0] && $val[1];
             push @res, $val[0];
             $l += $val[1];
@@ -3068,12 +3070,13 @@ sub denode {
         return (uc(Digest::SHA::sha256_hex(join('',@res))) , $l);
     } elsif (ref($node)) {
         if (exists $node->{value}) {
+            local $@;
 #            $doc->decodeOne($node->{value}) if (ref($node->{value}) ne 'ARRAY' && $node->{value}->{type} eq 'dictionary');
-            return denode($node->{value});
+            return eval{ denode($node->{value}) };
         } else {
             return;
         }
-    } else {
+    } elsif (length($node)) {
         return (uc(Digest::SHA::sha256_hex($node)) , length($node));
     }
     return;
