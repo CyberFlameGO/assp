@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19019';        # 19.01.2019 TE
+$build   = '19084';        # 25.03.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -604,7 +604,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'EDC6216896ACAD385FDB88CE7B3B4D032D49F38D'; }
+sub __cs { $codeSignature = '7F4513B113B893234635CEB3EDCD4A0B8BCBE5AB'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -3470,6 +3470,8 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['EmailVirusReportsHeader','Add Full Header To Virus Report To Mail Address Above',0,\&checkbox,'','(.*)',undef,'If set the full message headers will also be added to Virus Reports.',undef,undef,'msg004290','msg004291'],
 ['EmailVirusReportsToRCPT','Send Virus Report To Recipient','0:disabled|1:in any case|2:for HAM only',\&listbox,0,'(\d)',undef,'If set the intended recipient of the message will be sent a copy of the Virus Report. If "for HAM only" is selected, the report will only be sent, in case the mail is not detected as SPAM before the virus check is done.
   <hr />',undef,undef,'msg004300','msg004301'],
+['ClamAVBytes','ClamAV Bytes',8,\&textinput,60000,'(\d*)',undef,
+  'The number of bytes per message or file that will be submited to ClamAV and FileScan for virus scanning. Values of 100000 or larger are not recommended, because while a thread is waiting for the scanner result, it could not get new connections.',undef,undef,'msg004390','msg004391'],
 ['DoFileScan','Use File System Virus Scanner','0:disabled|1:block|2:monitor',\&listbox,0,'(\d)',undef,
  'If activated, the message is written to a file inside the \'FileScanDir\' with an extension of \'maillogExt\'. After that ASSP will call \'FileScanCMD\' to detect if the temporary file is infected or not. The temporary created file(s) will be removed.<br />
  The infected file will be stored in a special folder, if the SpamVirusLog is set to \'quarantine\' and the filepath to the viruslog is set.<br />
@@ -3511,8 +3513,6 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  For remote host TCP connections define the hostname or IP-address in front of the port definition - example: clamhost:3310 or 192.168.0.1:3310 . If the hostname is not defined, localhost will be used as default.<br />
  It is possible to define multiple hosts to balance the workload - define them separated by pipe (|) - example: clamhost:3310|192.168.0.1:3310<br />
  If multiple hosts are defined, they are used in a random round-robin mode.',undef,undef,'msg004380','msg004381'],
-['ClamAVBytes','ClamAV Bytes',8,\&textinput,60000,'(\d*)',undef,
-  'The number of bytes per message or file that will be submited to ClamAV and FileScan for virus scanning. Values of 100000 or larger are not recommended, because while a thread is waiting for the scanner result, it could not get new connections.',undef,undef,'msg004390','msg004391'],
 ['ClamAVLogScan','Scan Resent and Stored Files for Virus with ClamAV','0:no scan|1:scan resend folder only|2:scan resend folder and collected files',\&listbox,2,'(\d*)',undef,'If virus check is enabled ( UseAvClamd ), every file/mail (except reports - eg. n10000123456$maillogExt) in the \'resendmail\' folder and if selected, every collected file is scanned for virus before it is sent or stored.<br />
  If a virus is found, the file/mail is not (re)sent (it will get the extension \'.virus\') and a notification mail will be sent to local users. Infected collected files are moved in to the SpamVirusLog folder.<br />
  To force the resend of a virus infected mail, the header tag \'X-ASSP-ForceResend:\' must be added to the file!<br />
@@ -14714,7 +14714,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.02;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.04;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.08;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -42861,7 +42861,7 @@ sub BlockReportBody {
             {
                 my $rfile = $2;
                 mlog(0,"warning: the recipient address '$this->{rcpt}' was changed to lower case - this is a wrong behavior - assp will be possibly unable to find the requested file on nix systems") if $1 eq 'rsbm' && $ReportLog >= 2;
-                $rfile =~ s/x([0-9a-fA-F]{2})X/pack('C',hex($1))/geoi;
+                $rfile =~ s/x([0-9a-fA-F]{2})X/pack('C',hex($1))/geo;
                 $rfile = "$base/$rfile$maillogExt";
                 $resendfile{$rfile} = $rsbm_special;
                 $sub .= ' resend ' if $sub !~ /resend/io;
@@ -48661,7 +48661,7 @@ sub ClamScanScan {
  
  my @return;
  if($response =~ /^PORT (\d+)/o){
-	if((my $c = $self->_get_tcp_connection($1))){
+	if((my $c = ($self->{port} =~ /\D/o) ? $self->_get_unix_connection($1) : $self->_get_tcp_connection($1))){
         my $stream = IO::Select->new();
         $stream->add($c);
         my $st = Time::HiRes::time();
@@ -48746,7 +48746,7 @@ sub ClamScanOK_Run {
                 $host = 'localhost';
             }
             $av = $pingOK = undef;
-            $pingOK = $av->ping() if ($av = File::Scan::ClamAV->new( host => $host , port => $port ));
+            $pingOK = $av->ping() if ($av = eval{File::Scan::ClamAV->new( host => $host , port => $port )});
             if ($pingOK == 1 && $ScanLog > 2) {
                 mlog(0,"info: connected to ClamAV daemon at $host:$port");
             } elsif ($pingOK != 1 && $ScanLog > 1) {
@@ -53071,6 +53071,7 @@ sub ConfigAnalyze {
 
         {
             $Email::MIME::ContentType::STRICT_PARAMS=0;
+            my $enabledATA;
             my $oem = $o_EMM_pm;
             my $tspecials = quotemeta('()<>@,;:\\"/[]?=')."\r\n";
             $o_EMM_pm = 1 if $completeMail =~ /[\r\n]\.[\r\n]+$/os ||
@@ -53167,6 +53168,10 @@ sub ConfigAnalyze {
                     $Con{$tmpfh}->{dkimresult} = $dkimok;
                     $Con{$tmpfh}->{signed} = $sigok;
 
+                    if (! $Con{$tmpfh}->{relayok} && $self->{enableATA} && $self->{ATAHeaderTag}) {
+                        $enabledATA = 1;
+                    }
+                    
                     @ASSP_AFC::attZipre = ();
                     $self->{NOskipBinEXE} = 1;
                     if (my $exetype = $self->isAnEXE( \$part->body) ) {
@@ -53358,6 +53363,9 @@ sub ConfigAnalyze {
                     }
                 }
                 &MainLoop1(0);
+            }
+            if ($enabledATA) {
+                $fm .= " <b><font color='blue'>&bull;</font></b> advanced thread analyzing tagging is enabled in ASSP_AFC<br />";
             }
             delete $Con{$tmpfh};
             $o_EMM_pm = $oem;
@@ -76438,7 +76446,7 @@ sub new {
             unlink $self->{chains_file};
             unlink $self->{totals_file};
             if ($self->{simple} && (my $initcount = delete $args{initcount})) {
-                $initcount ||= 2;
+                $initcount = 2 if $initcount < 2;
                 $initcount = (2 << log($initcount - 1) / log(2));     # next power of two - to preallocate hash buckets
                 $self->{chains} = {};
                 $self->{totals} = {};
@@ -76453,7 +76461,7 @@ sub new {
         }
         $self->{HMMFile} = $args{HMMFile};
         if (my $initcount = delete $args{initcount}) {
-            $initcount ||= 2;
+            $initcount = 2 if $initcount < 2;
             $initcount = (2 << log($initcount - 1) / log(2));     # next power of two - to preallocate hash buckets
             $self->{chains} = {};
             $self->{totals} = {};

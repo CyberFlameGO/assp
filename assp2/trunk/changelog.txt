@@ -1,3 +1,30 @@
+2019-03-25
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19084:
+
+- the resend from block report using the right button failed, if the subject of the mail contained 'x' followed by two digits (eg: x30)
+
+- using the unix socket for the ClamAV communication failed on some systems
+
+- assp has thrown an error if the ClamAV, configuration was anyway invalid or not working, but UseAvClamd was disabled
+
+- the rebuildspamdb task crashed, if the HMMdb contained only one record
+
+- ASSP_AFC.pm version 5.04 is released
+
+  ASSP_AFC.pm is now able to tell a local mail server or andvanced thread analyzer, if the attached files may need some further investigation or analysis
+  This is done by adding a special (hiddenly configurable) MIME header tag.
+
+# advanced thread analyzing or deep thread inspection for incoming mails
+$ASSP_AFC::enableATA = 0;         # 1- check ATA if an attachment failed, 2- check if any attachment is found, 3- check every mail
+$ASSP_AFC::ATAHeaderTag = "X-ASSP-Require-ATA: YES; RESENDLINK;SHOWMAIL;SHOWLOG\r\n"; # the literal RESENDLINK will be replaced by a mailto resendlink, which may be shown by an ATA report mail
+                                                                                # SHOWMAIL offers the link to open the file in the assp file editor
+                                                                                # SHOWLOG offers the link to show the log for the mail in maillogtail (an optional trailing number defines the days in the past e.g. SHOWLOG2 for example - two days is default and used if no number is given)
+                                                                                # every link is preceeded by \r\n\t 
+
+
+
+
+
 2019-01-19
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19019:
 
