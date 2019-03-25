@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.03 2019/01/30 09:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.04 2019/03/23 11:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -43,6 +43,13 @@ our $formatsRe;
 our $z7zRe;
 our $LibArchRe;
 our $LibArchVer;
+# advanced thread analyzing or deep thread inspection for incoming mails
+our $enableATA;         # 1- check ATA if an attachment failed, 2- check if any attachment is found, 3- check every mail
+our $ATAHeaderTag = "X-ASSP-Require-ATA: YES; RESENDLINK;SHOWMAIL;SHOWLOG\r\n"; # the literal RESENDLINK will be replaced by a mailto resendlink, which is shown by an ATA report mail
+                                                                                # SHOWMAIL offers the link to open the file in the assp file editor
+                                                                                # SHOWLOG offers the link to show the log for the mail in maillogtail (an optional trailing number defines the days in the past e.g. SHOWLOG2 for example - two days is default and used if no number is given)
+                                                                                # every link is preceeded by \r\n\t
+
 our %knownGoodSHA;      # a hash of known good files (sha256)
 our %GoodSHALevel;      # zip level validation hash for known good files
 our $SkipExeTags = [];  # customized skip tags for external executable checks defined in lib/CorrectASSPcfg.pm
@@ -78,6 +85,14 @@ our $maxArcNameLength = 255;
 # *************************************************************************************************
 our $skipLockyCheck = 0;
 # *************************************************************************************************
+
+##################################################################
+# this callback can be overwritten to make your own changes      #
+# e.g.abs in lib/CorrectASSPcfg.pm                               #
+# the callback has to return the related configuration HASH      #
+##################################################################
+our $setWeb = sub {my ($self,$fh) = @_;};                          # callback to configure the weblink parameters (webprot, webhost, webadminport) - called once for each created item
+##################################################################
 
 our $maxProcessTime = 40; # max 40 seconds to process the attachments
 
@@ -237,7 +252,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.03 2019/01/30 09:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.04 2019/03/23 11:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -325,6 +340,9 @@ sub new {
     $self->{insize} *= 1024;
     $self->{script} =~ s/^\s+//o;
     $self->{script} =~ s/\s+$//o;
+
+    $self->{enableATA} = $enableATA;
+    $self->{ATAHeaderTag} = $ATAHeaderTag;
 
     $userbased = 0;
     return $self;  # do not change this line!
@@ -940,6 +958,7 @@ sub process {
 
     $this->{prepend} = '';
     $this->{attachcomment}="no bad attachments";
+    $self->{SHAAllKnownGood} = 1;
 
     $main::o_EMM_pm = 1;
     $this->{clamscandone}=0;
@@ -960,6 +979,34 @@ sub process {
     $this->{filescandone}=1 if( ! &haveToFileScan($fh) );
     $plScan = 0;
     
+    if (! $this->{relayok}) {
+        if ($this->{maillogfilename} && $self->{enableATA} && $self->{ATAHeaderTag}) {
+            my $filename = $this->{maillogfilename};
+            $filename =~ s/^\Q$main::base\E\///o;
+            $filename = &main::normHTML($filename);
+
+            $self->setWeb($fh);
+            my $search = $this->{msgtime};
+            $search ||= &main::timestring(&main::ftime($this->{maillogfilename}));
+            $search = &main::normHTML($search);
+
+            $self->{ATAHeaderTag} =~ s/RESENDLINK(;)?/
+                                      "\r\n\t".'resend mail= "mailto:'.$main::EmailBlockReport.$main::EmailBlockReportDomain.'?subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$main::myName.'&body=%23%23%23'.$filename.'%23%23%23%5Bno%5D%20scan%20%0D%0A"'.$1
+                                      /ex;
+
+            $self->{ATAHeaderTag} =~ s/SHOWMAIL(;)?/
+                                      "\r\n\t".'show mail= "'.$self->{webprot}.':\/\/'.$self->{webhost}.':'.$self->{webAdminPort}.'\/edit?file='.$filename.'&note=m&showlogout=1"'.$1
+                                      /ex;
+
+            $self->{ATAHeaderTag} =~ s/SHOWLOG(\d*)(;)?/
+                                      "\r\n\t".'show log= "'.$self->{webprot}.':\/\/'.$self->{webhost}.':'.$self->{webAdminPort}.'\/maillog?search='.$search.'&size='.($1?$1:'2').'&files=files&limit=50"'.$2
+                                      /ex;
+        }
+    } else {
+        delete $self->{enableATA};
+        delete $self->{ATAHeaderTag};
+    }
+
     my @name;
     my $ext;
     my $modified = 0;
@@ -1019,7 +1066,7 @@ sub process {
     my $emailRawHeader = substr($this->{header},0,&main::getheaderLength($fh));
     if ($emailRawHeader && $self->{select} != 1 && !(&main::ClamScanOK($fh,\$emailRawHeader) && &main::FileScanOK($fh,\$emailRawHeader))) {
         if ($self->{rv}) {     # replace the complete mail, because the header is NOT OK
-            $modified = 2;
+            $modified = $modified | 2;
             my $text = $self->{rvtext};
             $text =~ s/FILENAME/MIME-TEXT.eml/g;
             $Email::MIME::ContentType::STRICT_PARAMS=0;      # no output about invalid CT
@@ -1109,6 +1156,7 @@ sub process {
                 ($ext, $filename) = &main::attachmentExtension($fh, $filename, $part);
             }
             
+            $self->{hasAttachment} = 1 if $filename;
             my $orgname = $self->{showattname} = $filename;
 
             my ($imghash,$imgprob);
@@ -1253,7 +1301,7 @@ sub process {
                 delete $self->{typemismatch};
                 delete $self->{fileList};
                 delete $self->{isEncrypt};
-                delete $self->{SHAisKnownGood};
+                $self->{SHAisKnownGood} = 0;
                 my $blockEncryptedZIP = $self->{blockEncryptedZIP}; # remember the config setting
                 $self->{skipBin} = $self->{skipBinEXE};
                 
@@ -1262,6 +1310,7 @@ sub process {
                     || ! isZipOK($self, $this, \$part->body, $attname)
                    )
                 {
+                    $self->{SHAAllKnownGood} &= $self->{SHAisKnownGood};
                     $orgname =~ /(\.[^\.]*)$/o;
                     $ext = $1;
                     $self->{blockEncryptedZIP} = $blockEncryptedZIP;  # reset to config value
@@ -1293,7 +1342,7 @@ sub process {
                     next if ($main::DoBlockExes == 3);
 
                     if ($self->{ra}) {
-                        $modified = 1 unless $modified == 2;
+                        $modified = $modified | 1;
                         my $text = $self->{ratext};
                         $text =~ s/FILENAME/$orgname/go;
                         $text =~ s/REASON/$exetype/go;
@@ -1354,11 +1403,13 @@ sub process {
                         return 0;
                     }
                 }
+                $self->{SHAAllKnownGood} &= $self->{SHAisKnownGood};
                 $self->{blockEncryptedZIP} = $blockEncryptedZIP; # reset to config value
                 next if ($self->{select} == 1);
                 next if (&main::ClamScanOK($fh,\$part->body) && &main::FileScanOK($fh,\$part->body));
+                $self->{SHAAllKnownGood} = 0;
                 if ($self->{rv}) {
-                    $modified = 2;
+                    $modified = $modified | 2;
                     my $text = $self->{rvtext};
                     $text =~ s/FILENAME/$orgname/g;
                     $text =~ s/VIRUS/$this->{messagereason}/g;
@@ -1409,7 +1460,7 @@ sub process {
             next if ($self->{select} == 1);
             next if (&main::ClamScanOK($fh,\$part->body) && &main::FileScanOK($fh,\$part->body));
             if ($self->{rv}) {
-                $modified = 2;
+                $modified = $modified | 2;
                 my $text = $self->{rvtext};
                 $text =~ s/FILENAME/MIME-TEXT.eml/g;
                 while (exists $addPartsParent->{$part}) {$part = $addPartsParent->{$part};} # replace the parent .eml or .msg attachment
@@ -1429,6 +1480,9 @@ sub process {
             alarm(0);
             return 0;
         }
+        if ($self->{enableATA} && $self->{hasAttachment} && ! $self->{SHAAllKnownGood}) {
+            $self->setATA();
+        }
         correctHeader($this);
         alarm(0);
         return 1;
@@ -1444,6 +1498,11 @@ sub process {
         } else {
             mlog( $fh, "error: unable to parse message for attachments - $@ - in package - $package, file - $file, line - $line.");
         }
+
+        if ($self->{enableATA}) {
+            $self->setATA();
+        }
+        
         correctHeader($this);
         return 1;
     }
@@ -1485,11 +1544,15 @@ HeaderIsNotOK:
     } else {
             mlog( $fh, "local ($this->{attachcomment})", 0, 2 ) if $this->{relayok};
     }
-    if ($modified) {
+
+    if (   ($modified & 2)                         # virus found
+        || (! $self->{enableATA} && ($modified & 1))         # Advanced Thread Analysis is not enabled and bad attachment found
+       )
+    {
         $setParts->(\@parts);
 
         $this->{logalldone} = &main::MaillogRemove($this) if ($this->{maillogfilename});
-        my $fn = &main::Maillog($fh,'', ($modified == 2) ? $virilog : $attlog); # tell maillog what this is.
+        my $fn = &main::Maillog($fh,'', ($modified & 2) ? $virilog : $attlog); # tell maillog what this is.
         delete $this->{logalldone};
         $fn=' -> '.$fn if $fn ne '';
         $fn='' if ! $main::fileLogging;
@@ -1497,14 +1560,22 @@ HeaderIsNotOK:
         my $logsub =
         ( $main::subjectLogging ? " $main::subjectStart$this->{originalsubject}$main::subjectEnd" : '' );
         mlog( $fh, "file path changed to ".&main::de8($fn), 0, 2 ) if $fn;
-        my $reason =  ($modified == 2) ? $this->{messagereason} : $this->{attachcomment};
+        my $reason =  ($modified & 2) ? $this->{messagereason} : $this->{attachcomment};
         mlog( $fh, "[spam found] $reason $logsub".&main::de8($fn), 0, 2 );
         $this->{sayMessageOK} = 'already';
 
         $this->{header} = $email->as_string;
         correctHeader($this);
         mlog($fh,"info: sending modified message") if ($main::AttachmentLog == 2);
+    } elsif ($self->{enableATA} && ($modified & 1)) {        # Advanced Thread Analysis is enabled and bad attachment found
+                                                     # leave the attachments unmodified and trust the ATA
+        $self->setATA();
+    } elsif ($self->{enableATA} == 2 && $self->{hasAttachment}) {
+        $self->setATA();
+    } elsif ($self->{enableATA} == 3) {
+        $self->setATA();
     }
+    
     if ($self->{script} && (($this->{relayok} && $self->{outsize}) || (! $this->{relayok} && $self->{insize}))) {
         my $changed;
         foreach my $part (@parts) {
@@ -1594,6 +1665,42 @@ HeaderIsNotOK:
     }
     correctHeader($this);
     return 1;
+}
+
+sub setWeb {
+    my ($self, $fh) = @_;
+    $setWeb->($self, $fh);
+    return if ($self->{webprot} && $self->{webhost} && $self->{webAdminPort});
+    my $webprot = $self->{webprot} || ($main::enableWebAdminSSL && $main::CanUseIOSocketSSL ? 'https' : 'http');
+    my $webhost = $self->{webhost} || ($main::BlockReportHTTPName ? $main::BlockReportHTTPName : $main::localhostname ? $main::localhostname : 'please_define_BlockReportHTTPName');
+    my $webAdminPort;
+    if (! $self->{webAdminPort}) {
+        my @webAdminPort = map {my $t = $_; $t =~ s/\s//go; $t;} split(/\s*\|\s*/o,$main::webAdminPort);
+        for my $web (@webAdminPort) {
+            if ($web =~ /^(SSL:)?(?:$main::HostPortRe\s*:\s*)?(\d+)/io) {
+                $webprot = 'https' if $1;
+                $webAdminPort = $2;
+                last;
+            }
+        }
+        $webAdminPort = $1 if !$webAdminPort && $webAdminPort[0] =~ /^(?:SSL:)?(?:$main::HostPortRe\s*:\s*)?(\d+)/oi;
+    }
+    ($self->{webprot}, $self->{webhost}, $self->{webAdminPort}) = ($webprot, $webhost, $webAdminPort);
+}
+
+sub setATA {
+    my $self = shift;
+    return unless $self->{enableATA};
+    return unless $self->{ATAHeaderTag};
+    return if $self->{isATA};
+    $self->{isATA} = 1;
+    delete $self->{script};                      # leave the attachments unmodified and trust the ATA
+    $self->{this}->{myheader} =~ s/^[\r\n]+//o;
+    $self->{this}->{myheader} =~ s/[\r\n]*$/\r\n/o;
+    $self->{this}->{myheader} .= $self->{ATAHeaderTag};   # tell ATA to run for this mail
+    $self->{this}->{myheader} =~ s/[\r\n]*$/\r\n/o;
+    &main::addMyheader($self->{this}->{self});
+    mlog(0,"info: mail is forced to be analyzed by Avanced-Thread-Analyzer") if $main::AttachmentLog;
 }
 
 sub checkSMTPKeepAlive {
