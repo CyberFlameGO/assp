@@ -1,3 +1,12 @@
+2019-03-26
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19085:
+
+- Several domains provide their SPF-record (and possibly other DNS-records) as wildcard records (for each possible subdomain).
+  This caused the DKIM-preCheck to detect a (possible) provided DKIM-DNS-configuration, because it got a TXT record (the wildcard-record) for _domainkey.domain.tld and/or _adsp._domainkey.domain.tld.
+  Not DKIM related DNS TXT answers are now ignored by the DKIM-preCheck to prevent false positives.
+
+
+
 2019-03-25
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19084:
 

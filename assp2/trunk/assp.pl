@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19084';        # 25.03.2019 TE
+$build   = '19085';        # 26.03.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -604,7 +604,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '7F4513B113B893234635CEB3EDCD4A0B8BCBE5AB'; }
+sub __cs { $codeSignature = '045424A9EE679A9A8C84EA21D4D0CA4D6A37E09D'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -31370,6 +31370,12 @@ sub DKIMCacheFind {
     return exists $DKIMCache{$domain};
 }
 
+sub DKIMTXTclean {
+    my $txt = shift;
+    # check for valid _domainkey or _adsp._domainkey entries
+    return $txt =~ /"\s*(?:dkim|o|n|r|t)\s*=[^"]+"/oi ? $txt : undef;
+}
+
 sub DKIMpreCheckOK {
    my $fh = shift;
    return 1 if (! $CanUseDKIM);
@@ -31463,7 +31469,7 @@ sub DKIMpreCheckOK_Run {
    my $qstxt;
    &sigoff(__LINE__);
 
-   if ( ! ($qdtxt = getRRData($qp,'TXT'))) { # try to get a TXT for _adsp._domainkey.domain.toplevel
+   if ( ! ($qdtxt = DKIMTXTclean(getRRData($qp,'TXT')))) { # try to get a TXT for _adsp._domainkey.domain.toplevel
        $qdsoa = getRRData($qd,'SOA');   # try to get a SOA for _domainkey.domain.toplevel
        d("DKIM: SOAd: $qd - $qdsoa");
        $qssoa = getRRData($qs,'SOA');   # try to get a SOA for *.domain.toplevel
@@ -31475,9 +31481,9 @@ sub DKIMpreCheckOK_Run {
 
        if (! $qdsoa || $qdsoa eq $qssoa) {
            $qdsoa = '';
-           $qstxt = getRRData($qs,'TXT');   # try to get a TXT for *.domain.toplevel
+           $qstxt = DKIMTXTclean(getRRData($qs,'TXT'));   # try to get a TXT for *.domain.toplevel
            d("DKIM: TXTs: $qs - $qstxt");
-           $qdtxt = getRRData($qd,'TXT');   # try to get a TXT for _domainkey.domain.toplevel
+           $qdtxt = DKIMTXTclean(getRRData($qd,'TXT'));   # try to get a TXT for _domainkey.domain.toplevel
            d("DKIM: TXTd: $qd - $qdtxt");
        }
    } else {
@@ -31492,7 +31498,7 @@ sub DKIMpreCheckOK_Run {
            $topdom = $entry.'.'.$topdom;                    # we are checking all sub domain levels
            $qd = '_domainkey.'. $topdom;
            $qp = '_adsp._domainkey.'. $topdom;
-           if ( ! ($qdtxt = getRRData($qp,'TXT'))) {   # try to get a TXT for _adsp._domainkey.domain.toplevel
+           if ( ! ($qdtxt = DKIMTXTclean(getRRData($qp,'TXT')))) {   # try to get a TXT for _adsp._domainkey.domain.toplevel
                $qdsoa = getRRData($qd,'SOA');   # try to get a SOA for subdomain
                d("DKIM2: SOAd: $qd - $qdsoa");
                if (! $qdsoa || $qdsoa eq $qssoa) {
@@ -31503,7 +31509,7 @@ sub DKIMpreCheckOK_Run {
                    $dkimdomain = 1;
                    last;
                }
-               $qdtxt = getRRData($qd,'TXT');   # try to get a TXT for subdomain
+               $qdtxt = DKIMTXTclean(getRRData($qd,'TXT'));   # try to get a TXT for subdomain
                d("DKIM2: TXTd: $qd - $qdtxt");
            } else {
                d("DKIM2: TXTp: $qp - $qdtxt");
