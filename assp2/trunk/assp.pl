@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19085';        # 26.03.2019 TE
+$build   = '19086';        # 27.03.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -604,7 +604,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '045424A9EE679A9A8C84EA21D4D0CA4D6A37E09D'; }
+sub __cs { $codeSignature = '1C46618CD3FF6053C633D3AFC3D39B5C86EFF4B8'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -3520,8 +3520,8 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  If you are not sure what to set here, leave the setting at the default \'scan resend folder only\'!<br />
  If the ASSP_AFC Plugin is installed and configured to be used, the files in the resend folder will be scanned by FileScan and ClamAV if any of FileLogScan or ClamAVLogScan is configured.<br />
  Under normal conditions the scan will be done by the SMTP-worker, if assp is under a heavy workload, the scan request will be transfered to the High-Workers (10000/10001).',undef,undef,'msg010400','msg010401'],
-['ClamAVtimeout','ClamAV Timeout',3,\&textinput,10,'(\d+)',undef, 'ClamAV will timeout after this many seconds.<br />
- default: 10 seconds.
+['ClamAVtimeout','ClamAV Timeout',3,\&textinput,30,'(\d+)',undef, 'ClamAV will timeout after this many seconds.<br />
+ default: 30 seconds.
  <hr /><div class="cfgnotes">Notes On Virus Control</div><input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/viruscontrol.txt\',3);" />',undef,undef,'msg004400','msg004401'],
 
 [0,0,0,'heading','Perl Regular Expression Filter and Spambomb Detection <a href="http://sourceforge.net/p/assp/wiki/Regular_Expressions" target=wiki><img height=12 width=12 src="' . $wikiinfo . '" alt="bombRe" /></a>'],
@@ -48608,96 +48608,99 @@ sub haveToScan {
 
 # substitutes File::Scan::ClamAV::ping
 sub ClamScanPing {
- my $self = shift;
- my $response;
- my $timeout = $ClamAVtimeout / 2;
- $timeout = 2 if $timeout < 2;
- d('ClamScanPing - maxwait ' . $timeout * 2 . ' seconds');
+    my $self = shift;
+    my $response;
+    my $timeout = $ClamAVtimeout / 2;
+    $timeout = 2 if $timeout < 2;
+    d('ClamScanPing - maxwait ' . $timeout * 2 . ' seconds');
 
- my $conn = $self->_get_connection || return;
- my $select = IO::Select->new();
- $select->add($conn);
+    my $conn = $self->_get_connection || return;
+    my $select = IO::Select->new();
+    $select->add($conn);
 
- my @canwrite = $select->can_write(int($timeout));
- if (@canwrite) {
-     $self->_send($conn, "PING\n");
+    my @canwrite = $select->can_write(int($timeout));
+    if (@canwrite) {
+        $self->_send($conn, "PING\n");
 
-     my @canread = $select->can_read(int($timeout) || 1);
+        my @canread = $select->can_read(int($timeout) || 1);
 
-     if (@canread) {
-         chomp($response = $conn->getline);
+        if (@canread) {
+            chomp($response = $conn->getline);
 
-     # Run out the buffer?
-         1 while (<$conn>);
-     } else {
-         $response = 'unable to read from Socket';
-     }
- } else {
-     $response = 'unable to write to Socket';
- }
- $select->remove($conn);
- $conn->close;
+        # Run out the buffer?
+            1 while (<$conn>);
+        } else {
+            $response = 'unable to read from Socket';
+        }
+    } else {
+        $response = 'unable to write to Socket';
+    }
+    $select->remove($conn);
+    $conn->close;
 
- return 1 if ($response eq 'PONG');
- $self->_seterrstr("Unknown reponse from ClamAV service: $response");
- return 0;
+    return 1 if ($response eq 'PONG');
+    $self->_seterrstr("Unknown reponse from ClamAV service: $response");
+    return 0;
 }
 
 # substitutes File::Scan::ClamAV::streamscan
 sub ClamScanScan {
- my ($self) = shift;
- my $response;
- my $timeout = $ClamAVtimeout / 2;
- $timeout = 2 if $timeout < 2;
- d('ClamScanScan - maxwait ' . ($timeout + $ClamAVtimeout) . ' seconds');
+    my ($self) = shift;
+    my $response;
+    my @return;
+    my $timeout = int($ClamAVtimeout);
+    $timeout = 2 if $timeout < 2;
+    d('ClamScanScan - maxwait ' . ($timeout) . ' seconds');
 
- my $data = join '', @_;
+    my $data = join '', @_;
 
- $self->_seterrstr;
+    $self->_seterrstr;
 
- my $conn = $self->_get_connection || return;
- my $select = IO::Select->new();
- $select->add($conn);
+    my $conn = $self->_get_connection || return;
+    my $select = IO::Select->new();
+    $select->add($conn);
 
- my @canwrite = $select->can_write(int($timeout));
- if (@canwrite) {
-     $self->_send($conn, "STREAM\n");
-     chomp($response = $conn->getline);
- }
- 
- my @return;
- if($response =~ /^PORT (\d+)/o){
-	if((my $c = ($self->{port} =~ /\D/o) ? $self->_get_unix_connection($1) : $self->_get_tcp_connection($1))){
-        my $stream = IO::Select->new();
-        $stream->add($c);
-        my $st = Time::HiRes::time();
-        my @cwrite = $stream->can_write(int($timeout));
-        $main::ThreadIdleTime{$main::WorkerNumber} += Time::HiRes::time() - $st;
-        if (@cwrite) {
-            $self->_send($c, $data);
-            $stream->remove($c);
-            $c->close;
-            my $st = Time::HiRes::time();
-            my @canread = $select->can_read(int($ClamAVtimeout) || 1);
-            $main::ThreadIdleTime{$main::WorkerNumber} += Time::HiRes::time() - $st;
-            if (@canread) {
-		        chomp(my $r = $conn->getline);
-		        if($r =~ /stream: (.+) FOUND/io){
-    		   	    @return = ('FOUND', $1);
-		        } else {
-    			    @return = ('OK');
-		        }
-            }
-        }
-	} else {
+    my $st = Time::HiRes::time();
+    my @canwrite = $select->can_write($timeout);
+    my $timeused = Time::HiRes::time() - $st;
+    $main::ThreadIdleTime{$main::WorkerNumber} += $timeused;
+    $timeout = int($timeout - $timeused);
+    if ($timeout <= 0) {
+        @return = ('TIMEOUT',int($timeused));
         $select->remove($conn);
         $conn->close;
-        return;
-	}
- }
- $select->remove($conn);
- $conn->close;
- return @return;
+        return @return;
+    }
+
+    if (@canwrite) {
+        $self->_send($conn, "nINSTREAM\n");
+        $self->_send($conn, pack("N", length($data)));
+        $self->_send($conn, $data);
+        $self->_send($conn, pack("N", 0));
+    } else {
+        $select->remove($conn);
+        $conn->close;
+        return @return;
+    }
+
+    $st = Time::HiRes::time();
+    my @canread = $select->can_read($timeout);
+    $main::ThreadIdleTime{$main::WorkerNumber} += Time::HiRes::time() - $st;
+
+    if (@canread) {
+        chomp($response = $conn->getline);
+        if ($response =~ /stream: (.+) FOUND/io){
+ 	        @return = ('FOUND', $1);
+        } else {
+            @return = ('OK');
+        }
+    } else {
+        @return = ('TIMEOUT',int($ClamAVtimeout));
+    }
+
+    $select->remove($conn);
+    $conn->close;
+    return @return;
 }
 
 # return the defined ClamAV hosts in random order
@@ -48735,13 +48738,10 @@ sub ClamScanOK_Run {
     $mtype = "local message"         if $this->{relayok};
     $mtype = "file $this->{scanfile}" if $this->{scanfile};
 
-    my $timeout = $ClamAVtimeout;
     my ( $code, $virus, $host, $port );
 
     &sigoffTry(__LINE__);
     eval {
-        local $SIG{ALRM} = sub { die "__alarm__\n" };
-     	alarm($timeout) if $timeout;
         my @hosts = &ClamHostsGet();
         my $pingOK;
         my $av;
@@ -48771,15 +48771,9 @@ sub ClamScanOK_Run {
             $errstr = ref($av) ? $av->errstr() : 'no configured ClamAV host available - ClamAV Down';
             $AvailAvClamd = 0;
         }
-        alarm(0);
     };
-    alarm(0);
     if ($@) {
-        if ( $@ =~ /__alarm__/o ) {
-            mlog( $fh, "ClamAV: streamscan timed out after $timeout secs at $host:$port.", 1 );
-        } else {
-            mlog( $fh, "ClamAV: streamscan failed at $host:$port : $@", 1 );
-        }
+        mlog( $fh, "ClamAV: streamscan failed at $host:$port : $@", 1 );
         undef $av;
         &sigonTry(__LINE__);
         return 1;
@@ -48789,10 +48783,16 @@ sub ClamScanOK_Run {
         &sigonTry(__LINE__);
         return 1;
     }
+    if ($code eq 'TIMEOUT') {
+        mlog( $fh, "ClamAV: streamscan timed out after $virus seconds at $host:$port.", 1 );
+        undef $av;
+        &sigonTry(__LINE__);
+        return 1;
+    }
+    &sigonTry(__LINE__);
     undef $av;
     mlog($fh,"ClamAV: scanned $lb bytes in $mtype - $code $virus",1)
         if((!( $virus eq '') || !($code eq 'OK')) && $ScanLog ) || $ScanLog >= 2;
-    &sigonTry(__LINE__);
     if($code eq 'OK'){
         return 1;
     } elsif ($SuspiciousVirus && $virus=~/($SuspiciousVirusRE)/i) {
