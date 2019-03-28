@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.04 2019/03/23 11:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.05 2019/03/27 10:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -252,7 +252,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.04 2019/03/23 11:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.05 2019/03/27 10:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -1336,12 +1336,10 @@ sub process {
                     $this->{messagereason} = "bad attachment '$attname'$self->{exetype}".($self->{sha} ? " - SHA256: $self->{sha}" : '');
                     $this->{attachcomment} = $this->{messagereason};
                     mlog( $fh, "$tlit $this->{messagereason}" ) if ($main::AttachmentLog);
-                    next if ($main::DoBlockExes == 2);
 
                     &main::pbAdd( $fh, $this->{ip}, (defined($main::baValencePB[0]) ? 'baValencePB' : $main::baValencePB), 'BadAttachment' ) if ($main::DoBlockExes != 2 && ! $userbased);
-                    next if ($main::DoBlockExes == 3);
 
-                    if ($self->{ra}) {
+                    if ($main::DoBlockExes == 1 && $self->{ra}) {
                         $modified = $modified | 1;
                         my $text = $self->{ratext};
                         $text =~ s/FILENAME/$orgname/go;
@@ -1377,7 +1375,7 @@ sub process {
                         mlog( $fh, "$tlit replaced $this->{messagereason} with '$attname'" ) if ($main::AttachmentLog);
                         $badimage-- if $foundBadImage;
                         next;
-                    } else {
+                    } elsif ($main::DoBlockExes == 1) {
                         my $reply = $main::AttachmentError;
                         $orgname = &main::encodeMimeWord($orgname,'Q','UTF-8') unless &main::is_7bit_clean($orgname);
                         $reply =~ s/FILENAME/$orgname/g;
