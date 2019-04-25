@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.05 2019/03/27 10:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.06 2019/04/01 12:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -45,6 +45,7 @@ our $LibArchRe;
 our $LibArchVer;
 # advanced thread analyzing or deep thread inspection for incoming mails
 our $enableATA;         # 1- check ATA if an attachment failed, 2- check if any attachment is found, 3- check every mail
+our $skipATARE = $main::neverMatch;  # regex with domains/users '\@(?:domain1\.tld|domain2\.tld)(?: |$)' for which enabaleATA is disabled (set to 0)
 our $ATAHeaderTag = "X-ASSP-Require-ATA: YES; RESENDLINK;SHOWMAIL;SHOWLOG\r\n"; # the literal RESENDLINK will be replaced by a mailto resendlink, which is shown by an ATA report mail
                                                                                 # SHOWMAIL offers the link to open the file in the assp file editor
                                                                                 # SHOWLOG offers the link to show the log for the mail in maillogtail (an optional trailing number defines the days in the past e.g. SHOWLOG2 for example - two days is default and used if no number is given)
@@ -252,7 +253,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.05 2019/03/27 10:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.06 2019/04/01 12:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -979,7 +980,7 @@ sub process {
     $this->{filescandone}=1 if( ! &haveToFileScan($fh) );
     $plScan = 0;
     
-    if (! $this->{relayok}) {
+    if (! $this->{relayok} && $this->{rcpt} !~ /$skipATARE/i) {
         if ($this->{maillogfilename} && $self->{enableATA} && $self->{ATAHeaderTag}) {
             my $filename = $this->{maillogfilename};
             $filename =~ s/^\Q$main::base\E\///o;
