@@ -1,3 +1,12 @@
+2019-04-25
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19115:
+
+- the post virusscan for the stored corpus files, scored for the already finished mail - this was confusing for some users and id removed
+
+- HTML-comments are now removed from resend request emails, because there content may has affected the resend processing 
+
+
+
 2019-03-27
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19086:
 

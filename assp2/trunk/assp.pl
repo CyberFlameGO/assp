@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19086';        # 27.03.2019 TE
+$build   = '19115';        # 25.04.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -604,7 +604,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '1C46618CD3FF6053C633D3AFC3D39B5C86EFF4B8'; }
+sub __cs { $codeSignature = 'DA08D9F29D8E71FFD289BA23ABB153F2DD6066CA'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -2448,7 +2448,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['LocalAddresses_Flat','Lookup valid Local Addresses from here*',80,\&textinput,'','(.*)','ConfigMakeSLRe',
  'These email addresses are the list of your local addresses. You can list specific addresses (user@mydomain.com), addresses at any local domain (user), or entire domains (@mydomain.com).  Wildcards are supported (fribo*@domain.com). (|).<br />
  For example: fribo@thisdomain.com|jhanna|@sillyguys.org or place them in a plain ASCII file one address per line - file:files/localuser.txt.<br />
- <b>NOTICE: The VRFY definition described below is depricated in this configuration parameter - use localDomains instead!</b><br />
+ <b>NOTICE: The VRFY definition described below is deprecated in this configuration parameter - use localDomains instead!</b><br />
  You can use entries like @mydomain.com=>[SSL:]vrfyhost:port to VRFY users on your MTA, for more information read localDomains. You can use an entry like ALL=>vrfyhost:port to define a VRFY host for all domain entries ( better use Groups ).<br />
  If the port :465 is defined for VRFY-MTA, or "SSL:" is prepended to the VRFY-MTA, a SSL connection will be used ( read DoVRFY ).<br />
  Notice: If an equal domain entry is defined in localDomains , the entry in localDomains will be used!<br />
@@ -2469,7 +2469,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  If you have configured LDAP and enabled DoLDAP and ASSP finds a VRFY entry for a domain, LDAP search will be done first and if this fails, the VRFY will be used. So VRFY could be used for LDAP backup/fallback/failover!<br />
  It is recommended to configure \'ldaplistdb\' in the \'File Paths and Database\' section when using this verify extension - so ASSP will store all verified recipients addresses there to minimize the queries on MTA\'s. There is no need to configure LDAP, but both VRFY and LDAP are using ldaplistdb. Please go to the \'LDAP setup\' section to configure MaxLDAPlistDays and LDAPcrossCheckInterval or start a crosscheck now with forceLDAPcrossCheck. This three parameters belong also to VRFY.<br />
  <b>If \'ldaplistdb\' is configured and an entry is <span class="negative">removed from localdomains</span>, force a LDAPcrosscheck ( forceLDAPcrossCheck ) to <span class="negative">remove outdated no longer local addresses</span> from ldaplistdb!</b><br />
- Notice: if an equal domain entry is defined in LocalAddresses_Flat (depricated !!!), the entry in localDomains will be used!','Basic',undef,'msg001330','msg001331'],
+ Notice: if an equal domain entry is defined in LocalAddresses_Flat (deprecated !!!), the entry in localDomains will be used!','Basic',undef,'msg001330','msg001331'],
 ['DoVRFY','Verify Recipients with SMTP-VRFY',0,\&checkbox,1,'(.*)',undef,
  'If activated and the format \'Domain=>MTA:Port\' is encountered in localDomains and/or LocalAddresses_Flat, recipient addresses will be verified with SMTP-VRFY (if VRFY is not supported \'MAIL FROM:\' and \'RCPT TO:\' will be used).
  If you know that VRFY is not supported with a MTA, you may put the MTA into VRFYforceRCPTTO. Don\'t forget to configure LDAPFail (belongs also to VRFY) to your needs!<br />
@@ -15048,7 +15048,8 @@ EOT3
   }
 
   my $unclean = (exists $Config{clearBerkeleyDBEnv} || -e "$base/$pidfile");
-  mlog(0,'error: unclean shutdown of ASSP detected') if $unclean;
+  mlog(0,'error: unclean shutdown of ASSP detected') if -e "$base/$pidfile";
+  mlog(0,'info: cleanup BerkeleyDB environment') if exists $Config{clearBerkeleyDBEnv};
   foreach my $dir ( Glob("$base/tmpDB/*")) {
       if (-d $dir) {
           my $del;
@@ -42807,6 +42808,7 @@ sub BlockReportBody {
                     mlog(0,"warning: no valid charset found in MIME part") if $ReportLog > 1;
                 }
                 #           mlog(0,"BODY:\n$body\n");
+                $body =~ s/<!--.*?-->//gos;  # remove HTML comments
                 my $preline;
                 foreach my $line ( split( /\n/o, $body ) ) {
                     $line =~ s/\r?\n//go;
@@ -48287,6 +48289,7 @@ sub scanFile4VirusOK {
 
     if ($buf) {
         $Con{$fh}->{scanfile} = de8($Con{$fh}->{maillogfilename});
+        mlog(($fh =~ /^\d+$/o ? 0 : $fh),'info: scanning stored file '.$Con{$fh}->{scanfile}.' for virus ( forced by ClamAVLogScan and/or FileLogScan )') if $ScanLog > 1 && ($ClamAVLogScan > 1 || $FileLogScan   > 1);
         if (    ( $ClamAVLogScan > 1 && ! ClamScanOK_Run($fh, bodyWrap(\$buf,length($buf))) )
              || ( $FileLogScan   > 1 && ! FileScanOK_Run($fh, bodyWrap(\$buf,length($buf))) ) )
         {
@@ -48563,7 +48566,9 @@ sub FileScanOK_Run {
         $Stats{viridetected}++ if $fh && ! $this->{scanfile};
         delayWhiteExpire($fh);
         $this->{messagereason}="virus detected: 'FileScan' - $res";
-        pbAdd($fh,$this->{ip},'vdValencePB',"virus-FileScan:$res");
+
+        my $flag = $this->{scanfile} ? 3 : 0;      # prevent message-scoring and header-add if scanfile is defined (eg: post-scan)
+        pbAdd($fh,$this->{ip},'vdValencePB',"virus-FileScan:$res",(2 & $flag),(1 & $flag));
 
         return 0;
     } else {
@@ -48862,7 +48867,8 @@ sub ClamScanOK_Run {
         $Stats{viridetected}++ if $fh && ! $this->{scanfile};
         delayWhiteExpire($fh);
         $this->{messagereason}="virus detected: '$virus'";
-        pbAdd($fh,$this->{ip},'vdValencePB',"virus-ClamAV:$virus");
+        my $flag = $this->{scanfile} ? 3 : 0;      # prevent message-scoring and header-add if scanfile is defined (eg: post-scan)
+        pbAdd($fh,$this->{ip},'vdValencePB',"virus-ClamAV:$virus",(2 & $flag),(1 & $flag));
 
         return 0;
     }
