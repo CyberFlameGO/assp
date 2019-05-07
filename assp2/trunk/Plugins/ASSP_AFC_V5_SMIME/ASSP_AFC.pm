@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.07 2019/05/07 09:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.07 2019/05/07 10:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -253,7 +253,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.07 2019/05/07 09:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.07 2019/05/07 10:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -959,7 +959,7 @@ sub process {
 
     $this->{prepend} = '';
     $this->{attachcomment}="no bad attachments";
-    $self->{SHAAllKnownGood} = 1;
+    $self->{SHAAllKnownGood} = keys(%knownGoodSHA) ? 1 : 0;
 
     $main::o_EMM_pm = 1;
     $this->{clamscandone}=0;
@@ -1066,6 +1066,7 @@ sub process {
     # check the header of the email for virus
     my $emailRawHeader = substr($this->{header},0,&main::getheaderLength($fh));
     if ($emailRawHeader && $self->{select} != 1 && !(&main::ClamScanOK($fh,\$emailRawHeader) && &main::FileScanOK($fh,\$emailRawHeader))) {
+        $self->{SHAAllKnownGood} = 0;
         if ($self->{rv}) {     # replace the complete mail, because the header is NOT OK
             $modified = $modified | 2;
             my $text = $self->{rvtext};
@@ -1566,7 +1567,7 @@ HeaderIsNotOK:
     } elsif ($self->{enableATA} && ($modified & 1)) {        # Advanced Thread Analysis is enabled and bad attachment found
                                                      # leave the attachments unmodified and trust the ATA
         $self->setATA();
-    } elsif ($self->{enableATA} == 2 && $self->{hasAttachment}) {
+    } elsif ($self->{enableATA} == 2 && $self->{hasAttachment} && ! $self->{SHAAllKnownGood}) {
         $self->setATA();
     } elsif ($self->{enableATA} == 3) {
         $self->setATA();
