@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.06 2019/04/01 12:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.07 2019/05/07 09:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -253,7 +253,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.06 2019/04/01 12:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.07 2019/05/07 09:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -1478,9 +1478,6 @@ sub process {
             correctHeader($this);
             alarm(0);
             return 0;
-        }
-        if ($self->{enableATA} && $self->{hasAttachment} && ! $self->{SHAAllKnownGood}) {
-            $self->setATA();
         }
         correctHeader($this);
         alarm(0);
