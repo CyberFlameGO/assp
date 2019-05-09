@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.07 2019/05/07 10:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.08 2019/05/09 15:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -253,7 +253,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.07 2019/05/07 10:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.08 2019/05/09 15:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -2113,9 +2113,11 @@ sub isAnEXE {
 
         my $ft = qr/
                    (?:
-                       doc[mxt]?
-                     | xls[mxt]?
-                     | ppd[mxt]?
+                       do[ct][mxt]?
+                     | xl[ast][bmx]?
+                     | potm?
+                     | pp[dtsa][mx]?
+                     | od[pst]
                      | vs[dst][xm]?
                      | ad[pn]
                      | laccdb
@@ -2129,23 +2131,31 @@ sub isAnEXE {
                      | dll
                      | scr
                      | ps\d
-                     | wsh
+                     | w?sh
                      | vba?
-                     | java
+                     | ja?va
                      | class
-                     | jar
-                   )
+                     | cls
+                     | [jpw]ar
+                   )[^a-zA-Z0-9]
                    /x;
         
         if ( $sk !~ /:PDF/oi  # general malicious checks
              &&
-             $pdf =~ m{(?:\n\x20*\d+\s+\d+\s+obj\x20*\n[^\n]*?/              # object definitons with the following content
+             $pdf =~ m{(?:\n\x20*\d+\s+\d+\s+obj\x20*\n[^\n]*?               # PDF object definiton with the following content
                           (?:
-                             Type/\s*Filespec/[^\n]*?\.                         # the object contains the 'type filespec' tag
-                             $ft                                                # see above
+                            (?:
+                              /Type/\s*Filespec[^\n]*?\.                     # the object contains the 'type filespec' tag
+                              $ft                                            # followed by a file name - see above
+                            )
+                          |
+                            (?:
+                              \.$ft[^\n]*?                                   # a file name - see above
+                              /Type/\s*Filespec                              # followed by the 'type filespec' tag
+                            )
                           )
                         )
-                      |                                                        # or has the following content anywhere
+                      |                                                      # or has the following content anywhere
                         (?:
                             /EmbeddedFile\s*/.+?\.$ft\)?/.*?\<\<\s*/JavaScript.*?/OpenAction     # or bad action
                           | /Producer\s*\(?evalString\.fromCharCod
@@ -2158,15 +2168,25 @@ sub isAnEXE {
                  &&
                   (  (grep {$_->[0] eq 'JS'} @PDFsum)
                    ||
-                     $pdf =~ m{(?:\n\x20*\d+\s+\d+\s+obj\x20*\n[^\n]*?/            # object definitons with the following content
+                     $pdf =~ m{(?:\n\x20*\d+\s+\d+\s+obj\x20*\n[^\n]*?       # PDF object definiton with the following content
+                             (?:
                               (?:
-                                 Type/\s*Filespec/[^\n]*?\.                       # the object contains the 'type filespec' tag
-                                   (?:
-                                       js                                         # a JavaScript file
-                                   )
+                                 /Type/\s*Filespec/[^\n]*?\.                 # the object contains the 'type filespec' tag
+                                 (?:
+                                     js[^a-zA-Z0-9]                          # followed by a JavaScript file
+                                 )
                               )
+                              |
+                              (?:
+                                 \.
+                                 (?:
+                                     js[^a-zA-Z0-9]                          # a JavaScript file
+                                 )
+                                 [^\n]*?/Type/\s*Filespec                    # followed by the 'type filespec' tag
+                              )
+                             )
                             )
-                          |                                                    # or has the following content anywhere
+                          |                                                  # or has the following content anywhere
                             (?:
                                 /S\s*/JavaScript\s*/JS
                             )
