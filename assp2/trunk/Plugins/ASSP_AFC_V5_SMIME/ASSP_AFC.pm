@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.08 2019/05/09 15:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.09 2019/05/12 10:30:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -253,7 +253,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.08 2019/05/09 15:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.09 2019/05/12 10:30:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -1129,7 +1129,12 @@ sub process {
                push @parts,$part;
            }
         }
-        foreach my $part ( @parts, @addparts ) {
+        my $iterateParts = 0;
+        while (my @tempParts = (@parts, @addparts)) {   # the array @addparts may be expanded while parts are processed
+            last if $iterateParts > $#tempParts;        # all parts were processed
+            my $part = $tempParts[$iterateParts++];     # iterate through all elements (eg. parts)
+            @tempParts = ();
+
             checkSMTPKeepAlive($main::Con{$this->{friend}}) if $this->{friend} && $main::Con{$this->{friend}};
             $this->{clamscandone}=0;
             $this->{filescandone}=0;
@@ -1237,6 +1242,44 @@ sub process {
                 mlog(0,"info: attachment $filename is splitted in to its MIME parts") if $main::AttachmentLog > 1;
                 };
                 $_ = undef;
+            }
+
+            # extract TNEF to MIME parts
+            if ($main::CanUseTNEF && (lc($filename) eq 'winmail.dat' || $part->header("Content-Type")=~/\/ms-tnef/io)) {
+                my $name = &main::attrHeader($part,'Content-Type','charset');
+                $name = Encode::resolve_alias(uc($name)) if $name;
+                my $body = $part->body;
+                $body = Encode::decode($name,$body) if $name;
+                my @TNEFparts;
+                my @tmpparts;
+                eval{
+                    @TNEFparts = &main::getTNEFparts($body);
+                    while (@TNEFparts) {
+                        push(@tmpparts,
+                              Email::MIME->create(
+                                  attributes => shift @TNEFparts,
+                                  body => shift @TNEFparts,
+                              )
+                        );
+                    }
+                };
+                foreach my $spart (@tmpparts) {
+                   $addPartsParent->{$spart} = $part;
+                   if ($spart->parts > 1 || $spart->subparts) {
+                       eval{get_MIME_parts($spart, sub {my $p = shift;
+                                                   push @addparts, $p;
+                                                   my @sp = $p->subparts;
+                                                   return unless @sp;
+                                                   push @addparts,@sp;
+                                                   $addPartsParent->{$_} = $part for @sp;
+                                                  })};
+                       push @addparts,$spart if $@;
+                   } else {
+                       push @addparts,$spart;
+                   }
+                }
+
+                mlog(0,"info: TNEF attachment $filename is splitted in to its MIME parts") if $main::AttachmentLog > 1 && @tmpparts;
             }
 
             if ($main::DoBlockExes &&
