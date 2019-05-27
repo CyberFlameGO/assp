@@ -12,7 +12,7 @@ use JSON qw(from_json);
 use HTTP::Request::Common;
 use LWP::UserAgent();
 
-our $VERSION = '1.00';
+our $VERSION = '1.01';
 
 sub new {
     croak('Options to API should be key/value pairs, not HASH reference') if ref($_[1]) eq 'HASH';
@@ -28,6 +28,7 @@ sub new {
     $self->{file_scan_url} = delete $opts{file_scan_url} || 'https://www.virustotal.com/vtapi/v2/file/scan';
     $self->{url_report_url} = delete $opts{url_report_url} || 'https://www.virustotal.com/vtapi/v2/url/report';
     $self->{url_scan_url} = delete $opts{url_scan_url} || 'https://www.virustotal.com/vtapi/v2/url/scan';
+    $self->{domain_report_url} = delete $opts{domain_report_url} || 'https://www.virustotal.com/vtapi/v2/domain/report';
 
     my $ua = delete $opts{ua} || {};
 
@@ -48,8 +49,8 @@ sub get_file_report {
 
     $self->{res} = $self->{ua}->request(
         POST $self->{file_report_url}, [
-            resource => $resource,
-            key      => $self->{key},
+            resource    => $resource,
+            apikey      => $self->{key},
         ],
     );
 
@@ -65,8 +66,8 @@ sub scan_file {
         POST $self->{file_scan_url},
         Content_Type => 'form-data',
         Content      => [
-            file => [$file],
-            key  => $self->{key},
+            file    => [$file],
+            apikey  => $self->{key},
         ],
     );
 
@@ -81,7 +82,7 @@ sub get_url_report {
     $self->{res} = $self->{ua}->request(
         POST $self->{url_report_url}, [
             resource => $resource,
-            key      => $self->{key},
+            apikey   => $self->{key},
         ],
     );
 
@@ -96,9 +97,23 @@ sub scan_url {
 
     $self->{res} = $self->{ua}->request(
         POST $self->{url_scan_url}, [
-            url => $url,
-            key => $self->{key},
+            url    => $url,
+            apikey => $self->{key},
         ],
+    );
+
+    return $self->_parse_json();
+}
+
+sub get_domain_report {
+    my ($self, $resource) = @_;
+
+    croak('You have not specified a resource (URL or permalink identifier') if !defined $resource;
+
+    $self->{res} = $self->{ua}->get(
+            $self->{domain_report_url},
+            domain   => $resource,
+            apikey   => $self->{key}
     );
 
     return $self->_parse_json();
@@ -111,7 +126,6 @@ sub _parse_json {
     my $parsed;
     if ($self->{res}->is_success()) {
         undef $self->{errstr};
-
         eval { $parsed = from_json($self->{res}->content()) };
         if ($@) {
             $@ =~ s/ at .*//;
@@ -150,7 +164,7 @@ sub is_file_bad {
     } else {
         $result = $self->get_file_report(lc Digest::SHA->new(256)->add($file)->hexdigest);
     }
-    return -1 unless ref $result;
+    return -1 unless ref $result eq 'HASH';
     if ($result->{response_code} == 1) {
         if ($result->{positives} > 0) {
             $self->{report} = $result;
@@ -174,12 +188,36 @@ sub is_url_bad {
     while (@url) {
         my $url = shift @url;
         my $result = $self->get_url_report($url);
-        next unless ref $result;
+        next unless ref $result eq 'HASH';
         next if ($result->{response_code} == -1);
         next if ($result->{response_code} != 1);
         if ($result->{positives} > 0) {
-            $self->{report} = $result;
+            $self->{report} ||= $result;
             return 1 if ++$hits == $maxhits;
+        }
+    }
+    $self->{report} = {};
+    return 0;
+}
+
+sub is_domain_bad {
+    my ($self,$url,$maxhits) = @_;
+    my @url = ref($url) ? @$url : ($url);
+    $maxhits = 1 if $maxhits <= 0;
+    my $hits = 0;
+
+    while (@url) {
+        my $url = shift @url;
+        my $result = $self->get_domain_report($url);
+        next unless ref $result eq 'HASH';
+        next if ($result->{response_code} == -1);
+        next if ($result->{response_code} != 1);
+        next unless eval { @{$result->{detected_urls}} };
+        for (@{$result->{detected_urls}}) {
+            if ($_->{positives} > 0) {
+                $self->{report} ||= $result;
+                return 1 if ++$hits == $maxhits;
+            }
         }
     }
     $self->{report} = {};
