@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.09 2019/05/12 10:30:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.10 2019/05/31 09:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -12,7 +12,7 @@ package ASSP_AFC;
 use threads 1.69 ('yield');
 use threads::shared 1.18;
 
-our $maxPDFscanSize = 1048576;    # 1MB - may be changed in 'lib/CorrectASSPcfg.pm' as $ASSP_AFC::maxPDFscanSize
+our $maxPDFscanSize = 10485760;    # 10MB - may be changed in 'lib/CorrectASSPcfg.pm' as $ASSP_AFC::maxPDFscanSize
 
 our $VSTR;
 BEGIN {
@@ -38,6 +38,7 @@ our $CanSHA;
 our $CanOLE;
 our $CanEOM;
 our $CanCAMPDF;
+our $CanVT;
 our $ZIPLevel;
 our $formatsRe;
 our $z7zRe;
@@ -66,10 +67,10 @@ our $checkExeExternalForce; # same as $checkExeExternal - but called weather the
                               # ....
                               # type - contains the previous detected executable type description or undef
 
-our $VBAcheck = 0;     # enable(1)/disable(0) the executable VBA script check
+our $VBAcheck = 1;     # enable(1)/disable(0) the executable VBA script check
 
 our %libarchiveFatal = (                   # if these FATAL values are returned by libachive, try to use the next decompression engine instead detecting a wrong attachment
--30 => 'Unrecognized archive format',      # first the error number
+-30 => 'Unrecognized archive format|can\'t set extraction path for entry',      # first the error number
 -25 => 'Unsupported.+?method'              # second a regex for the error text
 );
 
@@ -149,6 +150,8 @@ BEGIN {
   $CanOLE = validateModule('OLE::Storage_Lite()') ? OLE::Storage_Lite->VERSION : undef;
   $CanEOM = validateModule('Email::Outlook::Message()') ? Email::Outlook::Message->VERSION : undef;
   
+  $CanVT = validateModule('ASSP_VirusTotal_API()') ? ASSP_VirusTotal_API->VERSION : undef;
+
   $CanSMIME = (validateModule('Crypt::SMIME()') + validateModule('Net::SSLeay()') == 2) ? Crypt::SMIME->VERSION : undef;
 
   if ($CanFileType = validateModule('File::Type()') + validateModule('MIME::Types()') == 2 ) {
@@ -253,7 +256,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.09 2019/05/12 10:30:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.10 2019/05/31 09:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -333,6 +336,10 @@ sub new {
     $mainVarName   = 'main::'.$self->{myName}.'KnownGoodEXE';
     eval{$self->{KnownGoodEXE} = $$mainVarName};
 
+    $mainVarName   = 'main::'.$self->{myName}.'DoVirusTotalVirusScan';
+    eval{$self->{DoVirusTotalVirusScan} = $$mainVarName};
+
+
     $self->{outsize} =~ s/^\s+//o;
     $self->{outsize} =~ s/\s+$//o;
     $self->{outsize} *= 1024;
@@ -345,6 +352,29 @@ sub new {
     $self->{enableATA} = $enableATA;
     $self->{ATAHeaderTag} = $ATAHeaderTag;
 
+    my $key;
+    if (exists $main::Config{VirusTotalAPIKey} && $CanVT) {
+        $key = defined $main::VirusTotalAPIKey ? $main::VirusTotalAPIKey : undef;
+        $key ||= ($main::globalClientName && $main::globalClientPass) ? sprintf("%016x%016x%016x%016x",($main::char4vt[0] << 1)+1,$main::char4vt[1] << 2,$main::char4vt[2] << 1,$main::char4vt[3] << 3) : undef;
+    }
+    $self->{vtapi} = ASSP_VirusTotal_API->new(key => $key, timeout => 10) if $CanVT && $key && ($main::ASSP_AFCDoVirusTotalVirusScan); #  || $main::ASSP_AFCDoVirusTotalURLScan
+    if ($self->{vtapi}) {
+        push @{ $self->{vtapi}->{ua}->requests_redirectable }, 'POST';
+        if ($main::proxyserver) {
+            my $user = $main::proxyuser ? "http://$main::proxyuser:$main::proxypass\@": "http://";
+            $self->{vtapi}->{ua}->proxy( 'http', $user . $main::proxyserver );
+            mlog( 0, "VirusTotal uses HTTP proxy: $main::proxyserver" )
+              if $main::MaintenanceLog;
+            my $la = &main::getLocalAddress('HTTP',$main::proxyserver);
+            $self->{vtapi}->{ua}->local_address($la) if $la;
+        } else {
+            mlog( 0, "VirusTotoal uses direct HTTP connection" ) if $main::MaintenanceLog;
+            my $host = $self->{vtapi}->{file_report_url} =~ /^\w+:\/\/([^\/]+)/o;
+            my $la = &main::getLocalAddress('HTTP',$host);
+            $self->{vtapi}->{ua}->local_address($la) if $la;
+        }
+    }
+    
     $userbased = 0;
     return $self;  # do not change this line!
 }
@@ -388,6 +418,9 @@ sub get_config {
  'If you enable one or both options of this plugin, the complete mail will be scanned for bad attachments and/or viruses!',undef,undef,'msg100010','msg100011'],
 [$self->{myName}.'Priority','the priority of the Plugin',5,\&main::textinput,'6','(\d+)',undef,
  'Sets the priority of this Plugin within the call/run-level '.$self->{runlevel}.'. The Plugin with the lowest priority value is processed first!',undef,undef,'msg100020','msg100021'],
+
+[$self->{myName}.'DoVirusTotalVirusScan','Enable VirusTotal Virus Scan',0,\&main::checkbox,0,'(.*)',undef,
+'If a VirusTotalAPIKey is provided and this option is enabled, all MIME-parts will be (in addition to ClamAV and/or FileScan) checked by www.virustotal.com.',undef,undef,'msg100170','msg100171'],
 
 [$self->{myName}.'blockEncryptedZIP','Block Encrypted Compressed Attachments',0,\&main::checkbox,0,'(.*)',undef,
  'If set, encrypted or password protected compressed attachments will be blocked or replaced according to ASSP_AFCSelect and ASSP_AFCReplBadAttach . This setting is a general switch - an override can be done using UserAttach !<br />
@@ -964,22 +997,26 @@ sub process {
     $main::o_EMM_pm = 1;
     $this->{clamscandone}=0;
     $this->{filescandone}=0;
+    $this->{vtscandone}=0;
     $plScan = 1;
     if(   ! &haveToScan($fh)
        && ! &haveToFileScan($fh)
+       && ! &haveToVirusTotalScan($fh)
        && ! $main::DoBlockExes
        && ! ($self->{script} && (($this->{relayok} && $self->{outsize}) || (! $this->{relayok} && $self->{insize})))
        && ! scalar keys(%SMIMEcfg)
     ){
         $this->{clamscandone}=1;
         $this->{filescandone}=1;
+        $this->{vtscandone}=1;
         $plScan = 0;
         return 1;
     }
     $this->{clamscandone}=1 if( ! &haveToScan($fh) );
     $this->{filescandone}=1 if( ! &haveToFileScan($fh) );
+    $this->{vtscandone}=1   if( ! &haveToVirusTotalScan($fh) );
     $plScan = 0;
-    
+
     if (! $this->{relayok} && $this->{rcpt} !~ /$skipATARE/i) {
         if ($this->{maillogfilename} && $self->{enableATA} && $self->{ATAHeaderTag}) {
             my $filename = $this->{maillogfilename};
@@ -1089,6 +1126,7 @@ sub process {
         } else {
             $this->{clamscandone}=1;
             $this->{filescandone}=1;
+            $this->{vtscandone}=1;
             $self->{errstr} = $this->{averror};
             $self->{result} = "VIRUS-found";
             $plScan = 0;
@@ -1100,6 +1138,7 @@ sub process {
     }
 
     my $badimage = 0;
+    local $@;
     local $SIG{ALRM} = sub { die "__alarm__\n"; };
     alarm($maxProcessTime);
     $ret = eval {
@@ -1115,6 +1154,7 @@ sub process {
            $parent->{$part} = $email;             # remember the parent MIME part
            push @{$child->{$email}} , $part;      # remember the subparts of a MIME part
            if ($part->parts > 1 || $part->subparts) {
+               local $@;
                eval{get_MIME_parts($part, sub {my $p = shift;
                                            push @parts, $p;
                                            my @sp = $p->subparts;
@@ -1138,6 +1178,7 @@ sub process {
             checkSMTPKeepAlive($main::Con{$this->{friend}}) if $this->{friend} && $main::Con{$this->{friend}};
             $this->{clamscandone}=0;
             $this->{filescandone}=0;
+            $this->{vtscandone}=0;
             $this->{attachdone}=0;
             $self->{exetype} = undef;
             $self->{skipBinEXE} = undef;
@@ -1149,6 +1190,7 @@ sub process {
             @attZipre = ();
             $plScan = 1;
             $ZIPLevel = $self->{MaxZIPLevel};
+            my $body = $part->body;
             my $foundBadImage;
             my $filename = &main::attrHeader($part,'Content-Type','filename')
                         || &main::attrHeader($part,'Content-Disposition','filename')
@@ -1183,8 +1225,8 @@ sub process {
             }
 
             if ($CanEOM && ($self->{extractAttMail} & 2) && lc($ext) eq '.msg') {      # outlook attached a complete mail - convert it to MIME and add its parts for analyzing
+                local $@;
                 mlog(0,"info: try to convert Outlook attachment $filename to MIME ") if $main::AttachmentLog > 1;
-                my $body = $part->body;
                 open(my $eomfile, '<', \$body);
                 binmode($eomfile);
                 eval {
@@ -1218,8 +1260,8 @@ sub process {
             }
 
             if (lc($ext) eq '.eml' && ($self->{extractAttMail} & 1)) {      # attached is a complete MIME mail - add its parts for analyzing
+                local $@;
                 eval {
-                my $body = $part->body;
                 my $email = Email::MIME->new($body);
                 mlog(0,"info: attachment $filename will be splitted in to its MIME parts") if $main::AttachmentLog > 1;
 
@@ -1246,10 +1288,10 @@ sub process {
 
             # extract TNEF to MIME parts
             if ($main::CanUseTNEF && (lc($filename) eq 'winmail.dat' || $part->header("Content-Type")=~/\/ms-tnef/io)) {
+                local $@;
                 my $name = &main::attrHeader($part,'Content-Type','charset');
                 $name = Encode::resolve_alias(uc($name)) if $name;
-                my $body = $part->body;
-                $body = Encode::decode($name,$body) if $name;
+                my $body = $name ? Encode::decode($name,$body) : $body;
                 my @TNEFparts;
                 my @tmpparts;
                 eval{
@@ -1266,6 +1308,7 @@ sub process {
                 foreach my $spart (@tmpparts) {
                    $addPartsParent->{$spart} = $part;
                    if ($spart->parts > 1 || $spart->subparts) {
+                       local $@;
                        eval{get_MIME_parts($spart, sub {my $p = shift;
                                                    push @addparts, $p;
                                                    my @sp = $p->subparts;
@@ -1327,7 +1370,7 @@ sub process {
                     }
 
                     if ($attre[0] || $attre[1]) {
-                        $attre[0] = qq[\\.(?:$attre[0])\$] if $attre[0];
+                        $attre[0] = ($attre[0] eq '.*' ? '' : qq[\\.]) . qq[(?:$attre[0])\$] if $attre[0];
                         $attre[1] = qq[\\.(?:$attre[1])\$] if $attre[1];
                         $self->{attRun} = sub { return
                             ($attre[1] && $_[0] =~ /$attre[1]/i ) ||
@@ -1335,6 +1378,8 @@ sub process {
                         };
                         mlog($fh,"info: using user based attachment check") if $main::AttachmentLog;
                         $userbased = 1;
+                        $self->{blockEncryptedZIP} = 1 if (! $self->{blockEncryptedZIP} && $attre[1] && '.crypt-zip' =~ /$attre[1]/i);
+                        $self->{blockEncryptedZIP} = 0 if (  $self->{blockEncryptedZIP} && $attre[0] && '.crypt-zip' =~ /$attre[0]/i);
                         $self->{skipBinEXE} = undef;
                         if ($self->{detectBinEXE} = $self->{attRun}->('.exe-bin')) {
                             setSkipExe($self,'attRun','skipBinEXE');
@@ -1350,9 +1395,9 @@ sub process {
                 my $blockEncryptedZIP = $self->{blockEncryptedZIP}; # remember the config setting
                 $self->{skipBin} = $self->{skipBinEXE};
                 
-                if (   ($self->{exetype} = isAnEXE($self, \$part->body))
+                if (   ($self->{exetype} = isAnEXE($self, \$body))
                     || (! $self->{SHAisKnownGood} && $self->{attRun}->($attname))
-                    || ! isZipOK($self, $this, \$part->body, $attname)
+                    || ! isZipOK($self, $this, \$body, $attname)
                    )
                 {
                     $self->{SHAAllKnownGood} &= $self->{SHAisKnownGood};
@@ -1389,21 +1434,24 @@ sub process {
                         my $text = $self->{ratext};
                         $text =~ s/FILENAME/$orgname/go;
                         $text =~ s/REASON/$exetype/go;
+                        local $@;
                         eval{
 #                            $text = Encode::encode('UTF-8',$text);
                             $text = $main::UTF8BOM . $text if $text =~ /$main::NONASCII/o;
                         };
-                        $orgname =~ s/$ext$/\.txt/;
-                        $attname =~ s/$ext$/\.txt/;
-                        $orgname = &main::encodeMimeWord(Encode::encode('UTF-8', $orgname),'Q','UTF-8');
+                        my $ra_orgname = $orgname;
+                        my $ra_attname = $attname;
+                        $ra_orgname =~ s/$ext$/\.txt/;
+                        $ra_attname =~ s/$ext$/\.txt/;
+                        $ra_orgname = &main::encodeMimeWord(Encode::encode('UTF-8', $ra_orgname),'Q','UTF-8');
                         eval {
 
                         while (exists $addPartsParent->{$part}) {$part = $addPartsParent->{$part};} # replace the parent .eml or .msg attachment
                         $part->body_set('');
                         $part->content_type_set('text/plain');
                         $part->disposition_set('attachment');
-                        $part->filename_set($orgname);
-                        $part->name_set($orgname);
+                        $part->filename_set($ra_orgname);
+                        $part->name_set($ra_orgname);
                         $part->encoding_set('quoted-printable');
                         $part->charset_set('UTF-8');
                         $part->body_set($text);
@@ -1417,9 +1465,9 @@ sub process {
                                 $part->name_set( undef );
                             };
                         }
-                        mlog( $fh, "$tlit replaced $this->{messagereason} with '$attname'" ) if ($main::AttachmentLog);
+                        mlog( $fh, "$tlit replaced $this->{messagereason} with '$ra_attname'" ) if ($main::AttachmentLog);
                         $badimage-- if $foundBadImage;
-                        next;
+                        undef $foundBadImage;
                     } elsif ($main::DoBlockExes == 1) {
                         my $reply = $main::AttachmentError;
                         $orgname = &main::encodeMimeWord($orgname,'Q','UTF-8') unless &main::is_7bit_clean($orgname);
@@ -1430,6 +1478,7 @@ sub process {
                             if (! Encode::is_utf8($reason)) {
                                 $main::utf8on->(\$reason);
                                 if (! Encode::is_utf8($reason,1)) {
+                                    local $@;
                                     $reason = eval { Encode::decode('utf8', Encode::encode('utf8', $reason), &main::FB_SPACE); };
                                 }
                             }
@@ -1449,13 +1498,14 @@ sub process {
                 $self->{SHAAllKnownGood} &= $self->{SHAisKnownGood};
                 $self->{blockEncryptedZIP} = $blockEncryptedZIP; # reset to config value
                 next if ($self->{select} == 1);
-                next if (&main::ClamScanOK($fh,\$part->body) && &main::FileScanOK($fh,\$part->body));
+                next if (&main::ClamScanOK($fh,\$body) && &main::FileScanOK($fh,\$body) && vt_file_is_ok($self,\$body));
                 $self->{SHAAllKnownGood} = 0;
                 if ($self->{rv}) {
                     $modified = $modified | 2;
                     my $text = $self->{rvtext};
                     $text =~ s/FILENAME/$orgname/g;
                     $text =~ s/VIRUS/$this->{messagereason}/g;
+                    local $@;
                     eval{
 #                        $text = Encode::encode('UTF-8',$text);
                         $text = $main::UTF8BOM . $text if $text =~ /$main::NONASCII/o;
@@ -1491,6 +1541,7 @@ sub process {
                 }
                 $this->{clamscandone}=1;
                 $this->{filescandone}=1;
+                $this->{vtscandone}=1;
                 $self->{errstr} = $this->{averror};
                 $self->{result} = "VIRUS-found";
                 $plScan = 0;
@@ -1501,11 +1552,12 @@ sub process {
                 return 0;
             }
             next if ($self->{select} == 1);
-            next if (&main::ClamScanOK($fh,\$part->body) && &main::FileScanOK($fh,\$part->body));
+            next if (&main::ClamScanOK($fh,\$body) && &main::FileScanOK($fh,\$body) && vt_file_is_ok($self,\$body));
             if ($self->{rv}) {
                 $modified = $modified | 2;
                 my $text = $self->{rvtext};
                 $text =~ s/FILENAME/MIME-TEXT.eml/g;
+                local $@;
                 while (exists $addPartsParent->{$part}) {$part = $addPartsParent->{$part};} # replace the parent .eml or .msg attachment
                 eval{$part->body_set( $text );1;} or eval{$part->body_set( $self->{rvtext} );1;} or eval{$part->body_set( 'virus removed' );1;} or eval{$part->body_set( undef );1;};
                 mlog( $fh,"$this->{messagereason} - replaced virus-mail-part with simple text");
@@ -1514,6 +1566,7 @@ sub process {
             }
             $this->{clamscandone}=1;
             $this->{filescandone}=1;
+            $this->{vtscandone}=1;
             $self->{errstr} = $this->{averror};
             $self->{result} = "VIRUS-found";
             $plScan = 0;
@@ -1531,6 +1584,7 @@ sub process {
         alarm(0);
         $this->{clamscandone}=1;
         $this->{filescandone}=1;
+        $this->{vtscandone}=1;
         $this->{attachdone}=1;
         my ($package, $file, $line) = caller;
         if ( $@ =~ /__alarm__/o ) {
@@ -1572,6 +1626,7 @@ sub process {
 HeaderIsNotOK:
     $this->{clamscandone}=1;
     $this->{filescandone}=1;
+    $this->{vtscandone}=1;
     $this->{attachdone}=1;
     my $numatt = @name;
     my $s = 's' if ($numatt >1);
@@ -1665,6 +1720,7 @@ HeaderIsNotOK:
         && ! &main::matchHashKey(\%skipSMIME,$this->{mailfrom},'0 1 1')
         && checkrcpt($smime, $this)
     ) {
+        local $@;
         my $out = eval{$main::L->($main::T[100])->{call}->{'100'}->($smime,$email,$this);};
         if (ref($out)) {
             $email = Email::MIME->new($$out);
@@ -1873,6 +1929,171 @@ sub max {
     return [sort {$main::b <=> $main::a} @_]->[0];
 }
 
+sub vt_file_is_ok {
+    my ($self,$file) = @_;
+    return 1 unless $CanVT;
+    return 1 unless $self->{vtapi};
+    my $this = $self->{this};
+    my $fh = $this->{self};
+    $file ||= $this->{scanfile};
+    return 1 unless $file;
+    return 1 unless &haveToVirusTotalScan($fh);
+    my $ScanLog = $main::ScanLog;
+    $self->{vtapi}->reset();
+    local $@;
+
+    my $res = eval{$self->{vtapi}->is_file_bad($file)};
+    mlog($fh,"VirusTotal: scan finished - ".($res==1 ? 'virus found':'OK'),1)
+        if($res == 1 && $ScanLog ) || $ScanLog >= 2;
+
+    if ($res == 1) {
+        my $virus;
+        my $vendor;
+        my $report = $self->{vtapi}->report;
+        if ($ScanLog >= 2) {
+            for my $tag (sort keys(%$report)) {
+                next if $tag eq 'scans';
+                mlog(0,"$tag: $report->{$tag}") unless ref $report->{$tag};
+            }
+            for my $ven (sort keys %{$report->{scans}}) {
+                my $detected = $report->{scans}->{$ven}->{detected} ? 'true' : 'false';
+                my $update = $report->{scans}->{$ven}->{update};
+                $update =~ s/(\d{4})(\d\d)(\d\d)/$3-$2-$1/o;
+                mlog(0,"$ven: detected: $detected , update: $update , version: $report->{scans}->{$ven}->{version} , result: $report->{scans}->{$ven}->{result}")
+            }
+        }
+
+        for my $ven (qw(Symantec TrendMicro Kaspersky McAfee McAfee-GW-Edition
+                        Microsoft Sophos ESET-NOD32 F-Prot F-Secure GData
+                        Fortinet AVG Avira BitDefender ClamAV Comodo) ,
+                        keys %{$report->{scans}})
+        {
+            next unless $report->{scans}->{$ven}->{detected};
+            next unless $report->{scans}->{$ven}->{result};
+            $virus = $report->{scans}->{$ven}->{result};
+            $vendor = $ven;
+            next if $virus =~ /suspic|possibl/io;
+            last;
+        }
+        $virus  ||= 'known bad';
+        $vendor ||= 'community reported';
+        $report->{positives} ||= 1;
+        $report->{total} ||= 64;
+
+        if ($main::SuspiciousVirus && $virus=~/($main::SuspiciousVirusRE)/i) {
+            my $SV = $1;
+            if ($this->{scanfile}) {
+                mlog($fh,"suspicious virus '$virus' (match '$SV') found in file $this->{scanfile} - no action") if $ScanLog;
+                return 1;
+            }
+            $this->{messagereason}="SuspiciousVirus: $virus '$SV'";
+            &main::pbAdd($fh,$this->{ip},&main::calcValence(&weightRe('vsValencePB','SuspiciousVirus',\$SV,$fh),'vsValencePB'),"SuspiciousVirus-VirusTotal:$virus",1);
+            $this->{prepend}="[VIRUS][scoring]";
+            mlog($fh,"'$virus' passing the virus check because of only suspicious virus '$SV'") if $ScanLog;
+            return 1;
+        }
+
+        $this->{prepend}="[VIRUS]";
+        $this->{averror}=$main::AvError;
+        $this->{averror}=~s/\$infection/$virus/gio;
+
+        #mlog($fh,"virus detected '$virus'");
+        my $reportheader;
+        if ($main::EmailVirusReportsHeader) {
+            if ($this->{header} =~ /^($main::HeaderRe+)/o) {
+                $reportheader = "Full Header:\r\n$1\r\n";
+            }
+            $reportheader ||= "Full Header:\r\n$this->{header}\r\n";
+        }
+        my $sub = "virus detected: '$virus'";
+
+        my $bod="Message ID: $this->{msgtime}\r\n";
+        $bod.="Session: $this->{SessionID}\r\n";
+        $bod.="Remote IP: $this->{ip}\r\n";
+        $bod.="Subject: $this->{subject2}\r\n";
+        $bod.="Sender: $this->{mailfrom}\r\n";
+        $bod.="Recipients(s): $this->{rcpt}\r\n";
+        $bod.="Virus Detected: '$virus'\r\n";
+        $reportheader = $bod.$reportheader;
+
+        # Send virus report to administrator if set
+        if ($main::EmailVirusReportsTo && $fh) {
+            my @sendTo = split(/\s*\|\s*/,$main::EmailVirusReportsTo);
+            while (@sendTo) {
+                my $addr = shift(@sendTo);
+                $addr =~ s/\s+//go;
+                my $mask = $this->{relayok} ? 2 : 1;
+                my $how = 3;
+                $how = 1 if $addr =~ s/^IN://io;
+                $how = 2 if $addr =~ s/^OUT://io;
+                if ($how & $mask) {
+                    if ($addr =~ /USER|DOMAIN/o) {
+                        my ($user, $domain);
+                        ($user, $domain) = ($1,$2) if (($this->{relayok} ? $this->{mailfrom} : [split(/\s+/o,$this->{rcpt})]->[0]) =~ /^($main::EmailAdrRe)\@($main::EmailDomainRe)$/o);
+                        next unless ($user && $domain);
+                        $addr =~ s/USER/$user/go;
+                        $addr =~ s/DOMAIN/$domain/go;
+                        next unless &main::localmailaddress($fh,$addr);
+                    }
+                    &main::AdminReportMail($sub,\$reportheader,$addr);
+                }
+            }
+        }
+
+        # Send virus report to recipient if set
+        $this->{reportaddr} = 'virus';
+        &main::ReturnMail($fh,$this->{rcpt},$main::base.'/'.$main::ReportFiles{EmailVirusReportsToRCPT},$sub,\$bod,'') if ($fh && ($main::EmailVirusReportsToRCPT == 1 || ($main::EmailVirusReportsToRCPT == 2 && ! $this->{spamfound})));
+        delete $this->{reportaddr};
+
+        $main::Stats{viridetected}++ if $fh && ! $this->{scanfile};
+        &main::delayWhiteExpire($fh);
+        $this->{messagereason} = 'VirusTotal: virus-hits '.$report->{positives}.'/'.$report->{total}." , $vendor: $virus";
+        my $flag = $this->{scanfile} ? 3 : 0;      # prevent message-scoring and header-add if scanfile is defined (eg: post-scan)
+        &main::pbAdd($fh,$this->{ip},'vdValencePB',"virus-VirusTotal:$virus",(2 & $flag),(1 & $flag));
+
+        return 0;
+    }
+    return 1;
+}
+
+sub vt_url_is_ok {
+    my ($self,$url,$maxhits) = @_;
+    return 1 unless $CanVT;
+    return 1 unless $self->{vtapi};
+    return 1 unless $url;
+    my $this = $self->{this};
+    my $fh = $this->{self};
+    $self->{vtapi}->reset();
+    local $@;
+
+    my $res = eval{$self->{vtapi}->is_url_bad($url,$maxhits)};
+    if ($res == 1) {
+        my $virus;
+        my $vendor;
+        my $report = $self->{vtapi}->report;
+        for my $ven (qw(Symantec TrendMicro Kaspersky McAfee McAfee-GW-Edition
+                        Microsoft Sophos ESET-NOD32 F-Prot F-Secure GData
+                        Fortinet AVG Avira BitDefender ClamAV Comodo) ,
+                        keys %{$report->{scans}})
+        {
+            next unless $report->{scans}->{$ven}->{detected};
+            next unless $report->{scans}->{$ven}->{result};
+            $virus = $report->{scans}->{$ven}->{result};
+            $vendor = $ven;
+            next if $virus =~ /suspic|possibl/io;
+            last;
+        }
+        $virus  ||= 'known bad';
+        $vendor ||= 'community';
+        $report->{positives} ||= 1;
+        $report->{total} ||= 69;
+        $this->{messagereason} = 'VirusTotal: url-hits '.$report->{positives}.'/'.$report->{total}." , $vendor: $virus";
+        if ($fh) {$main::Stats{uriblfails}++;}
+        return 0;
+    }
+    return 1;
+}
+
 sub haveToScan {
     my $fh = shift;
     my $this=$main::Con{$fh};
@@ -1919,6 +2140,34 @@ sub haveToFileScan {
     return 0 if ($this->{noprocessing} & 1) && $main::ScanNP!=1;
     return 0 if $this->{relayok} && $main::ScanLocal!=1;
     return 0 if ! $DoFileScan;
+
+    return 0 if ($this->{noscan} = $main::noScanIP && &main::matchIP($this->{ip},'noScanIP',$fh));
+    return 0 if $main::NoScanRe  && $this->{ip}=~('('.$main::NoScanReRE.')');
+    return 0 if $main::NoScanRe  && $this->{helo}=~('('.$main::NoScanReRE.')');
+    return 0 if $main::NoScanRe  && $this->{mailfrom}=~('('.$main::NoScanReRE.')');
+
+    $this->{prepend}="";
+
+    return 1;
+}
+
+sub haveToVirusTotalScan {
+    my $fh = shift;
+    my $this=$main::Con{$fh};
+
+    my $skipASSPscan = $main::DoASSP_AFC == 1 && ($main::ASSP_AFCSelect == 2 or $main::ASSP_AFCSelect == 3);
+
+    my $DoVirusTotalVirusScan = $main::ASSP_AFCDoVirusTotalVirusScan;    # copy the global to local - using local from this point
+    $DoVirusTotalVirusScan = $this->{overwritedo} if ($this->{overwritedo});   # overwrite requ by Plugin
+
+    return 0 if ($skipASSPscan && ! $this->{overwritedo} && ! $plScan);    # was not called from a Plugin
+
+    return 0 if ($this->{noscan} || ($this->{noscan} = $main::noScan && main::matchSL($this->{mailfrom},'noScan')) );
+    return 0 if $this->{vtscandone}==1;
+    return 0 if $this->{whitelisted} && $main::ScanWL!=1;
+    return 0 if ($this->{noprocessing} & 1) && $main::ScanNP!=1;
+    return 0 if $this->{relayok} && $main::ScanLocal!=1;
+    return 0 if ! $DoVirusTotalVirusScan;
 
     return 0 if ($this->{noscan} = $main::noScanIP && &main::matchIP($this->{ip},'noScanIP',$fh));
     return 0 if $main::NoScanRe  && $this->{ip}=~('('.$main::NoScanReRE.')');
@@ -2145,7 +2394,7 @@ sub isAnEXE {
 #
     my $pdf;
     if ($buff =~ /^\%PDF-/oi && ! $self->getPDFSum($raf)) {                                           # a PDF file tag followed anywhere by
-        $pdf = substr($$raf,0,min($maxPDFscanSize,length($$raf))); # we need to copy the content for later manipulation but limit is 1MB
+        $pdf = substr($$raf,0,min($maxPDFscanSize,length($$raf))); # we need to copy the content for later manipulation but limit is 10MB
 # deobviuscate the PDF - https://blog.didierstevens.com/2008/04/29/pdf-let-me-count-the-ways/
         $pdf =~ s{\\\n}{\n}goi;   # remove line continuation
         $pdf =~ s/\\(\d{3})\s*/chr(oct($1))/goie;    # convert octal character representation
@@ -2181,7 +2430,7 @@ sub isAnEXE {
                      | cls
                      | [jpw]ar
                    )[^a-zA-Z0-9]
-                   /x;
+                   /xi;
         
         if ( $sk !~ /:PDF/oi  # general malicious checks
              &&
@@ -2337,13 +2586,15 @@ sub parseOLE {
             }
         }
         if ($self->{select} != 1) {
-            if (! &main::ClamScanOK($self->{this}->{self},\$data) || ! &main::FileScanOK($self->{this}->{self},\$data)) {
+            if (! &main::ClamScanOK($self->{this}->{self},\$data) || ! &main::FileScanOK($self->{this}->{self},\$data) || ! vt_file_is_ok($self,\$data)) {
                 $self->{this}->{clamscandone}=0;
                 $self->{this}->{filescandone}=0;
+                $self->{this}->{vtscandone}=0;
                 return $self->{this}->{messagereason};
             }
             $self->{this}->{clamscandone}=0;
             $self->{this}->{filescandone}=0;
+            $self->{this}->{vtscandone}=0;
         }
         $type = isAnEXE($self, \$data);
         return $type if $type;                                                   # found an executable
@@ -2431,7 +2682,7 @@ sub isZipOK {
         }
 
         if ($attZipre[0] || $attZipre[1]) {
-            $attZipre[0] = qq[\\.(?:$attZipre[0])\$] if $attZipre[0];
+            $attZipre[0] = ($attZipre[0] eq '.*' ? '' : qq[\\.]) . qq[(?:$attZipre[0])\$] if $attZipre[0];
             $attZipre[1] = qq[\\.(?:$attZipre[1])\$] if $attZipre[1];
             $self->{attZipRun} = sub { return
                 ($attZipre[1] && $_[0] =~ /$attZipre[1]/i ) ||
