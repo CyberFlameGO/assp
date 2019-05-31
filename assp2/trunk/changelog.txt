@@ -1,3 +1,56 @@
+2019-05-31
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19151:
+
+- 'fillUpImportDBDir' was not working on some systems
+
+- a good rule '.*' in UserAttach was ignored
+
+
+added:
+
+- queries for viruses and bad URL's to www.virustotal.com are now supported
+  virus checks require ASSP_AFC.pm (version 5.10)
+
+lib/ASSP_VirusTotal_API.pm (version 1.01) and the changed ASSP_AFC.pm (version 5.10) and
+
+'VirusTotalAPIKey','The Privat API-Key for VirusTotal'
+ 'To query www.VirusTotal.com for URIs and/or viruses (ASSP_AFC.pm), a valid API-Key is required. An API-Key is provided by VirusTotal for free, after your registration at www.virustotal.com.
+ Such a free API-Key is limited to four queries at VirusTotal per minute. API-Keys for a higher query volume are also provided by VirusTotal.
+ Systems that are part of the ASSP-Global-PenalyBox network can leave this value empty. They are getting an API-Key with a much higher query volume from the GPB-Server automatically,
+ without any additionally costs. This API-Key is not shown here!'
+
+'ASSP_AFCDoVirusTotalVirusScan','Enable VirusTotal Virus Scan'
+'If a VirusTotalAPIKey is provided and this option is enabled, all MIME-parts will be (in addition to ClamAV and/or FileScan) checked by www.virustotal.com.' 
+
+
+- DBD::MariaDB is now supported
+
+
+changed:
+
+'enhancedOriginIPDetect','Do an Enhanced Origin IP Address Detection in the Mail Header'
+  Local and private IP's, IP's assigned by IANA to the Shared Address Space (100.64.0.0/10 RFC6598) and IP's listed in ispip, acceptAllMail, whiteListedIPs, noProcessingIPs, noDelay and noPB
+  will be ignored.
+
+'RBLServiceProvider','RBL Service Providers*'
+references to  combined.njabl.org are removed from the GUI
+
+'URIBLServiceProvider','URIBL Service Providers*'
+...
+ If VirusTotalAPIKey is configured, assp is able to query URIs on www.virustotal.com . The API answers are in the range 127.0.0.2-127.0.0.253 (or none for OK), where the last digits represents HITS + 1.
+ Queries to VirusTotal are using HTTPS connections (https://www.virustotal.com/...) instead of DNS!
+ example:
+ virustotal=>127.0.0.2=>1 # one hit
+ virustotal=>127.0.0.3=>0.5 # two hits
+ virustotal=>127.0.0.4=>0.33 # three hits
+ virustotal=>127.0.0.*=>0.25 # more than three hits'
+
+
+
+
+
+
+
 2019-04-25
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19115:
 

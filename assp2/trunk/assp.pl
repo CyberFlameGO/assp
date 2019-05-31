@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19115';        # 25.04.2019 TE
+$build   = '19151';        # 31.05.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -604,7 +604,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'DA08D9F29D8E71FFD289BA23ABB153F2DD6066CA'; }
+sub __cs { $codeSignature = '734E253E6DFD4108EA34F9C0E9ACEFAB554D7CDD'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -977,7 +977,8 @@ our %cryptConfigVars:shared = (
     'runAsGroupSupplementary' => 1,
     'ConfigChangeSchedule' => 1,
     'UUID' => 1,
-    'debugCode' => 1
+    'debugCode' => 1,
+    'VirusTotalAPIKey' => 1
 );
 
 #####################################################################
@@ -1454,10 +1455,29 @@ $uniSpecialsRE = qr/$uniSpecialsRE/;
 
 }
 
+##### 0 and 1 and some important primes for VT
+our @char4vt = (
+0,
+1,
+2,
+3,
+5,
+7,
+17,
+23,
+83,
+557,
+85734079,
+7121494319,
+221238203047,
+714341211238997,
+69521313294089627
+);
+
+
 ##### base32 initializing
 our %bits2char;
 our @char2bits;
-
 our @syms = ( 'a'..'z', '2'..'7' );
 for (0..$#syms) {
     my $sym = $syms[$_];
@@ -1649,7 +1669,7 @@ sub assp_socket_blocking {
 }
 
 sub defConfigArray {
- # last used msg number 010761
+ # last used msg number 010771
 
  # still unused msg numbers
  #
@@ -2776,7 +2796,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   'IP\'s in <b>denySMTPConnectionsFromAlways</b> will be denied right away.',undef,undef,'msg002050','msg002051'],
 ['enhancedOriginIPDetect','Do an Enhanced Origin IP Address Detection in the Mail Header','0:disabled|1:all|2:all but most origin',\&listbox,2,'(.*)',undef,
   'If selected, ASSP will analyze the mail headers "RECEIVED:" lines for IP\'s on the mail routing way to detect spam bots, that uses open relay or hijacked mail servers for mail delivery.<br />
-  Local and private IP\'s, and IP\'s listed in ispip, acceptAllMail, whiteListedIPs, noProcessingIPs, noDelay and noPB will be ignored.<br />
+  Local and private IP\'s, IP\'s assigned by IANA to the Shared Address Space (100.64.0.0/10 RFC6598) and IP\'s listed in ispip, acceptAllMail, whiteListedIPs, noProcessingIPs, noDelay and noPB will be ignored.<br />
   The detected IP\'s will be additionally checked for IP-Blocking, DNSBL and IP-Frequency - the same way like the connected IP. These IP\'s are also additionally used for the maximum mail size calculation in MaxRealSizeAdr and MaxRealSizeExternalAdr.<br />
   Default setting is \'all but most origin\', which ignores the first of multiple detected public IP address, that was involved in the mail transport (possibly a user device).',undef,undef,'msg009590','msg009591'],
 ['DoFrequencyIP','Check Frequency - Maximum Connections Per IP','0:disabled|1:block|2:monitor|3:score|4:testmode',\&listbox,0,'(\d*)',undef,
@@ -3204,7 +3224,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  'Names of DNSBLs to use separated by "|". You may set for every provider a weight like zen.spamhaus.org=>50|bl.spamcop.net=>25.<br />
  Defaults are:<br />
  zen.spamhaus.org=>1|bl.spamcop.net=>1|psbl.surriel.com=>2|ix.dnsbl.manitu.net=>2|<br />
- l2.apews.org=>3|combined.njabl.org=>1|safe.dnsbl.sorbs.net=>1|dnsbl-1.uceprotect.net=>2|<br />
+ l2.apews.org=>3|safe.dnsbl.sorbs.net=>1|dnsbl-1.uceprotect.net=>2|<br />
  dnsbl-2.uceprotect.net=>2|dnsbl-3.uceprotect.net=>2|blackholes.five-ten-sg.com=>3".<br />
  DNSBL providers can get a "weight" like bl.spamcop.net=>1.<br />
  The value of the weight can be set directly like=>45 or as a divisor of RBLmaxweight. Low numbers &lt; 6 are divisors . So if RBLmaxweight = 50 (default) bl.spamcop.net=>50  would be the same as bl.spamcop.net=>1, bl.spamcop.net=>2 would be the same as bl.spamcop.net=>25.<br />
@@ -3256,22 +3276,28 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  If the sum of weights surpasses URIBLmaxweight, the URIBL check fails.  If not, the URIBL check is scored as "neutral"  even with URIBLmaxhits reached. Setting Showmaxreplies will allow ALL replies to contribute to the total weight regardless of URIBLmaxhits.<br />
  Some URIBL Service Providers, like multi.surbl.org and black.uribl.com , provides different return codes in a single DNS-zone: like 127.a.b.c - where a,b,c are used to identify a weight or type (or what ever) of the returned entry. If you want to care about special return codes, or if you want to use different weights for different return codes, you should use the following enhanced entry syntax:<br /><br />
  URIBL-Service-Provider=>result-to-watch=>weight (like:)<br />
- multi.surbl.org=>127.0.0.2=>2<br />
- multi.surbl.org=>127.0.0.4=>3<br />
- multi.surbl.org=>127.0.0.?=>4<br />
- multi.surbl.org=>127.0.0.*=>5<br /><br />
+ multi.surbl.org=&gt;127.0.0.2=&gt;2<br />
+ multi.surbl.org=&gt;127.0.0.4=&gt;3<br />
+ multi.surbl.org=&gt;127.0.0.?=&gt;4<br />
+ multi.surbl.org=&gt;127.0.0.*=&gt;5<br /><br />
  You can see, the wildcards * (multiple character) and ? (single character) are possible to use in the second parameter. Never mix the three possible syntax types for the same URIBL Service Provider. A search for a match inside such a definition is done in reverse ASCII order, so the wildcards are used as last.<br />
  Some URIBL Service Providers, provides different return codes using a bitmask in any part of the reply. To define weights for bitmasks, place a single \'M\' in front of the mask number, like<br /><br />
- sp.com=>127.0.0.M2=>25<br />
- sp.com=>127.0.0.M4=>41<br />
- sp.com=>127.0.M1.5=>56<br />
- sp.com=>127.0.M64.*=>11<br />
- sp.com=>127.0.0.2=>22<br />
- sp.com=>127.0.*.*=>1<br /><br />
+ sp.com=>127.0.0.M2=&gt;25<br />
+ sp.com=>127.0.0.M4=&gt;41<br />
+ sp.com=>127.0.M1.5=&gt;56<br />
+ sp.com=>127.0.M64.*=&gt;11<br />
+ sp.com=>127.0.0.2=&gt;22<br />
+ sp.com=>127.0.*.*=&gt;1<br /><br />
  Valid bitmasks are 1,2,4,8,16,32,64 and 128. The resulting weight will be the weight sum of all matching bitmasks (if no full qualified definition is found). For example: a return code of 127.0.0.6 for sp.com will result in a weight of 66 (25+41), a reply of 127.0.0.2 will result in 22<br />
  Because each single bitmask indicates a set of 128 numbers you should prevent the usage of something like 127.0.M16.M1 - this will lead in to a set of (128*128) 16384 addresses, which is really too much!<br />
- For the same service provider, first define all bitmask definitions, after that all full qualified definitions and than all definitions with wildcards, like in the example above! If your definition order is wrong, the resulting weights will be unexpected!
- Default is: multi.surbl.org|black.uribl.com',undef,undef,'msg003930','msg003931'],
+ For the same service provider, first define all bitmask definitions, after that all full qualified definitions and than all definitions with wildcards, like in the example above! If your definition order is wrong, the resulting weights will be unexpected!<br /><br />
+ If VirusTotalAPIKey is configured, assp is able to query URIs on www.virustotal.com . The API answers are in the range 127.0.0.2-127.0.0.253 (or none for OK), where the last digits represents HITS + 1.<br />
+ Queries to VirusTotal are using HTTPS connections (https://www.virustotal.com/...) instead of DNS!<br />
+ example:<br />
+ virustotal=>127.0.0.2=&gt;1 # one hit<br />
+ virustotal=>127.0.0.3=&gt;0.5 # two hits<br />
+ virustotal=>127.0.0.4=&gt;0.33 # three hits<br />
+ virustotal=>127.0.0.*=&gt;0.25 # more than three hits',undef,undef,'msg003930','msg003931'],
  ['URIBLCCTLDS','URIBL Country Code TLDs*',60,\&textnoinput,'file:files/URIBLCCTLDS.txt','(.*)','ConfigMakeRe',
   'List of <a href="http://www.surbl.org/tld/two-level-tlds" rel="external">two level country code TLDs</a> and <a href="http://www.surbl.org/tld/three-level-tlds" rel="external">three level country code TLDs</a> used to determine the base domain of the uri. Two level TLDs will be checked on third level, third level TLDs will be checked on fourth level. Any not listed domain will be checked in level two.',undef,undef,'msg003940','msg003941'],
  ['URIBLmaxuris','Maximum URIs',5,\&textinput,0,'(\d*)',undef,
@@ -4449,11 +4475,11 @@ For example: mysql/dbimport<br />
 ['DNSReuseSocket','Reuse DNS UDP Sockets',0,\&checkbox,1,'(.*)',undef,'If selected, assp will try to reuse DNS-UDP sockets as long as this is possible. Otherwise each DNS-query will create a new UDP socket for each DNS-Server. It is recommended to set this to on, because assp could use DNS-queries very extensive, which possibly forces the assp system and/or your DNS-servers to run out of available UDP sockets.',undef,undef,'msg004770','msg004771'],
 ['DNSResponseLog','Show DNS Name Servers Response Time in Log',0,\&checkbox,0,'(.*)',undef,'You can use this to arrange DNSServers for better performance.',undef,undef,'msg007360','msg007361'],
 ['DNSServers','DNS Name Servers*',80,\&textinput,'208.67.222.222|208.67.220.220','^((?:(?:'.$HostRe.'|'.$HostPortRe.')(?:\|(?:'.$HostRe.'|'.$HostPortRe.'))*)(?:\s*=>\s*'.$HostRe.'\.?)?|(?:\s*=>\s*'.$HostRe.'\.?)|)$','updateDNS',
- 'DNS Name Servers IP\'s to use for DNSBL(RBL), RWL, URIBL, PTR, SPF2, SenderBase, NS, and DMARC lookups. Separate multiple entries by "|" or leave blank to use system defaults. At least TWO DNS-servers should be defined or used by the system!<br />
+ 'DNS Name Servers IP\'s to use for DNSBL(RBL), RWL, URIBL, PTR, SPF2, SenderBase, NS, and DMARC lookups. Separate multiple entries by "|" or leave blank to use system defaults. At least TWO DNS-servers should be defined or used by the system! Every DNS-query is sent to ALL enabled DNS-Servers at a time (parallel) and the fastest valid answer is used.<br />
   For example: 208.67.222.222|208.67.220.220 (<a href="http://www.opendns.com/" rel="external">OpenDNS</a>).<br />
   An DNS-query for the domain \'sourceforge.net\' is used per default to measure the speed of the used DNS-servers. If you want assp to use another domain or hostname for this, append \'=>domain.tld\' at the end of the line - like: 208.67.222.222|208.67.220.220=>myhost.com<br />
   To define the domain if you use the local DNS-servers \'UseLocalDNS\' without defining any DNS-servers here, simply write \'=>myhost.com\'.<br />
-  To debug the DNS queries, switch on DebugSPF, even you don\'t use the SFF-check.<br />
+  To debug the DNS queries, switch on DebugSPF, even you don\'t use the SPF-check.<br />
   NOTICE: don\'t define any public , ISP or open DNS-Servers (eg 208.67.222.222 208.67.220.220 8.8.8.8 8.8.4.4) , if you use any of the following assp checks: DNSBL(RBL), RWL, URIBL, SenderBase ! It is recommended in EVERY case to install (and to use) at least two local DNS-Servers!<br />
   NOTICE: the DNS-server order can be changed by assp. Please read this section completely.<br />
   All configured or local DNS Name Servers will be checked <span class="negative">this may take some time if the servers are responding slow - please wait after apply changes!</span>',undef,undef,'msg007370','msg007371'],
@@ -4754,6 +4780,10 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg007
  ASSP will delete \'*GraphStats...txt\'-files if they are over one year old. If you don\'t need some of that files any longer, remove them manually!',undef,undef,'msg010000','msg010001'],
 ['ReloadOptionFiles','Reload Option Files Interval <sup>s</sup>',40,\&textinput,'300',$ScheduleGUIRe,'configChangeSched',
   'If set not to zero, ASSP reloads configuration option files (file:.....) every this many seconds if they have changed. It is not recommended (and could make ASSP unavailable) to use rsync or any external tool to snychronize caches and list permanently. If you need to snychronize data between ASSP installations, you better use a database of your choice!',undef,undef,'msg007810','msg007811'],
+['VirusTotalAPIKey','The Privat API-Key for VirusTotal',80,\&textinput,'','.*',undef,
+ 'To query www.VirusTotal.com for URIs and/or viruses (ASSP_AFC.pm), a valid API-Key is required. An API-Key is provided by VirusTotal for free, after your registration at www.virustotal.com.<br />
+ Such a free API-Key is limited to four queries at VirusTotal per minute. API-Keys for a higher query volume are also provided by VirusTotal.<br />
+ Systems that are part of the ASSP-Global-PenalyBox network can leave this value empty. They are getting an API-Key with a much higher query volume from the GPB-Server automatically, without any additionally costs. This API-Key is not shown here!',undef,undef,'msg010770','msg010771'],
 ['OrderedTieHashTableSize','Ordered-Tie Hash Table Size',10,\&textinput,10000,'(\d+)',undef,
  'The number of cached entries allowed in the hash tables used by ASSP. This belongs to griplist, if useDB4griplist is not set and to temporary lists used by the rebuild spamdb process, if useDB4Rebuild is set and BerkeleyDB is not available. Larger numbers require more RAM but result in fewer disk hits. The default value is 10000. Adjust down to use less RAM. Adjust up to speedup.',undef,undef,'msg007820','msg007821'],
 ['TCPBufferSize','TCP and SSL Read/Write Buffer Size',80,\&textinput,'','(^(?:\s*(?:tcprcv|tcpsnd|sslrcv|sslsnd)\s*=\s*(?:819[2-9]|8[2-9]\d\d|9\d\d\d|[1-9]\d{4,6}|0)\s*)(?:\s*,\s*(?:tcprcv|tcpsnd|sslrcv|sslsnd)\s*=\s*(?:819[2-9]|8[2-9]\d\d|9\d\d\d|[1-9]\d{4,6}|0)\s*){0,3}$|)','ConfigChangeTCPBuf',
@@ -5126,7 +5156,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
   Now, if you set this parameter to \'CorrectASSPcfg::configWebSSL\' - assp will call<br />
   CorrectASSPcfg::configWebSSL->(\%sslparms);<br /><br />
   To support SNI at the SMTP listeners, you may do the following for example:<br /><br />
-  sub configWebSMTP {<br />
+  sub configSMTPSSL {<br />
   &nbsp;&nbsp;&nbsp;&nbsp;my &#x24;parms = shift;<br />
   &nbsp;&nbsp;&nbsp;&nbsp;my &#x24;listenerName = &amp;main::getSMTPListenerConfigName(&#x24;parms->{LocalAddr},&#x24;parms->{LocalPort}); # returns listenPort , listenPort2 , listenPortSSL , relayPort or undef - may be used to implement different parameter settings for some or each SMTP listener<br />
   &nbsp;&nbsp;&nbsp;&nbsp;if (&#x24;listenerName eq \'listenPortSSL\') { # enable SNI at the listenPortSSL <br />
@@ -5509,7 +5539,7 @@ To prevent permantly copying the changed mib/ASSP-MIB file to your net-snmp deam
   <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/pop3collect.txt\',3);" />',undef,undef,'msg009090','msg009091']
 );
 
- # last used msg number 010761
+ # last used msg number 010771
 
  &loadModuleVars;
  -d "$base/language" or mkdirOP("$base/language",'0755');
@@ -5733,14 +5763,16 @@ sub ConfigChangeRunTaskNow {my ($name, $old, $new, $init)=@_;
 
     if (!$init && $new) {
         if (! $RunTaskNow{$name}) {
+            my $w;
             if ($name eq 'fillUpImportDBDir'){
-                $RunTaskNow{$name} = 1;
+                $RunTaskNow{$name} = $new;
+                $w = 10000;
             } elsif ($name eq 'RunRebuildNow') {
-                $RunTaskNow{$name} = 10001;
+                $w = $RunTaskNow{$name} = 10001;
             } else {
-                $RunTaskNow{$name} = 10000;
+                $w = $RunTaskNow{$name} = 10000;
             }
-            mlog(0,"Admin Update: task $name was queued to run in worker $RunTaskNow{$name}");
+            mlog(0,"Admin Update: task $name was queued to run in worker $w");
             return ' - task was started';
         } else {
             mlog(0,"task $name is still queued or running - ignoring request");
@@ -7936,6 +7968,10 @@ our @I; # the global IP match receiver - unique in every thread
 our @HmmBayWords;
 our @ProxySockets:shared;
 our @WhitelistResult;
+
+for my $t ([0,8,14,1,1,1],[2,4,5,5,7,13],[3,10,11,1,1,1],[1,5,6,9,12,1]) {
+    $char4vt[$t->[0]] = do{my $r=1;$r*=$char4vt[$t->[$_]]for(1..5);$r;};
+}
 
 # list.dnsrw.org trust and category definitions
 our %trusty = (
@@ -10343,7 +10379,9 @@ sub rb_add {
     my $words = 0;
     my $maxWords = $main::HMMDBWords;
     map {
-        if ($CurWord = substr($_,0,37)) {
+        $CurWord = substr($_,0,37);
+        $CurWord =~ s/\s//go;
+        if ($CurWord) {
             if ( $i ) {
                 # increment global weights, they are not really word counts
                 $words += $factor;
@@ -14839,6 +14877,16 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
   print '.';
 
+  {
+      my $key = defined $VirusTotalAPIKey ? $VirusTotalAPIKey : undef;
+      $key ||= ($globalClientName && $globalClientPass) ? sprintf("%016x%016x%016x%016x",($char4vt[0] << 1)+1,$char4vt[1] << 2,$char4vt[2] << 1,$char4vt[3] << 3) : undef;
+      if ( $key && eval ('use ASSP_VirusTotal_API;1;') ) {
+          mlog(0,"info: found VirusTotal-API-Key and module lib/ASSP_VirusTotal_API.pm - VirusTotal-API is available");
+      } elsif ($key) {
+          mlog(0,"warning: found VirusTotal-API-Key, BUT missing module lib/ASSP_VirusTotal_API.pm - VirusTotal-API is NOT available");
+      }
+  }
+  
   mlog(0,"warning: RelayOnlyLocalSender nor RelayOnlyLocalDomains is enabled!") if (!($RelayOnlyLocalSender || $RelayOnlyLocalDomains) && ! $nolocalDomains);
   mlog(0,"warning: DoLocalSenderAddress nor DoLocalSenderDomain is enabled!") if (!($DoLocalSenderAddress || $DoLocalSenderDomain) && ! $nolocalDomains);
 
@@ -15232,13 +15280,14 @@ if ($CanUseTieRDBM) {
   %Tie::RDBM::Types = (   # key            value            frozen    freeze  keyless
 	  'default' => [qw/ varbinary(254)  varbinary(255)   integer   0          0 /],  #others
 	  'mysql'   => [qw/ varbinary(254)  varbinary(255)   tinyint   1          0 /],
+	  'mysqlPP' => [qw/ varbinary(254)  varbinary(255)   tinyint   1          0 /],
+	  'MariaDB' => [qw/ varbinary(254)  varbinary(255)   tinyint   1          0 /],
 	  'mSQL'    => [qw/ char(254)       char(255)        int       0          0 /],
       'MSSQL'   => [qw/ varchar(254)    varchar(255)     int       1          0 /],
       'Pg'      => [qw/ varchar(254)    varchar(255)     int       1          0 /],
-      'PgPP'    => [qw/ varchar(254)    varchar(255)     int       1          0 /],
+      'PgPP'    => [qw/ varchar(254)    varchar(255)     int       1          0 /],  # not recommended - use Pg instead
       'Sybase'  => [qw/ varbinary(254)  varbinary(255)   tinyint   1          0 /],
 	  'Oracle'  => [qw/ varchar(254)    varchar(255)     integer   1          0 /],
-	  'CSV'     => [qw/ varchar(254)    varchar(255)     integer   1          1 /],  # should never be used by ASSP
 	  'Informix'=> [qw/ nchar(254)      nchar(255)       integer   0          0 /],
 	  'Solid'   => [qw/ varbinary(254)  varbinary(255)   integer   1          0 /],
 	  'ODBC'    => [qw/ varbinary(254)  varbinary(255)   integer   1          0 /],
@@ -15247,6 +15296,7 @@ if ($CanUseTieRDBM) {
 	  'DB2'     => ["varchar(254) not null","varchar(255)","integer",1,0],
 	  );
 
+  $Tie::RDBM::CAN_BIND{MariaDB} = 1;
   $Tie::RDBM::CAN_BIND{DB2} = 1;
   $Tie::RDBM::CAN_BIND{ADO} = 1;
   $Tie::RDBM::CAN_BIND{MSSQL} = 1;
@@ -15267,6 +15317,7 @@ if ($CanUseTieRDBM) {
          my $dbv = $dbh->get_info(18);
          mlog(0,"info: found database: $dbn version: $dbv via $DBusedDriver");
          $dbn = 'mysql' if ($dbn =~ /mysql/io);
+         $dbn = 'MariaDB' if ($dbn =~ /MariaDB/io);
          $dbn = 'mSQL' if ($dbn =~ /mSQL/io);
          $dbn = 'Pg' if ($dbn =~ /Pg/io);
          $dbn = 'Sybase' if ($dbn =~ /Sybase/io);
@@ -15281,6 +15332,7 @@ if ($CanUseTieRDBM) {
          if (exists $Tie::RDBM::Types{$dbn}) {
             $Tie::RDBM::Types{$DBusedDriver} = $Tie::RDBM::Types{$dbn};
             mlog(0,"info: using $dbn table structure for $DBusedDriver database $mydb");
+            mlog(0,"warning: it is highly recommended to use the available native perl database driver DBD::$dbn for $dbn-databases instead using the DBD::ODBC driver!") if $dbn ne 'MSSQL';
          } else {
             mlog(0,"info: using default $DBusedDriver table structure for $DBusedDriver database $mydb");
          }
@@ -15288,6 +15340,8 @@ if ($CanUseTieRDBM) {
        $dbh->disconnect() if ( $dbh );
        eval("no DBD::$DBusedDriver");
   }
+  mlog(0,"warning: you've configured to use the DBD::PgPP database driver to connect to Postgres-DB $mydb - this driver has known problems and is very slow - it is highly recommended to use the working and much more faster DBD::Pg driver instead!") if ($DBusedDriver eq 'PgPP');
+  mlog(0,"warning: you've configured to use the DBD::mysqlPP database driver to connect to MySQL-DB $mydb - this driver has known problems and is very slow - it is highly recommended to use the working and much more faster DBD::mysql driver instead!") if ($DBusedDriver eq 'mysqlPP');
   if ($DBusedDriver eq 'ADO' && ! defined *{'DBD::ADO::CLONE'}) {
       *{'DBD::ADO::CLONE'} = *{'main::ADO_Clone'};
   }
@@ -27655,6 +27709,7 @@ sub getOriginIPs {
                 ($ignoredIP[-1] .= ' (noProcessingIPs)') && next if matchIP($sip,'noProcessingIPs',$fh,0);
                 ($ignoredIP[-1] .= ' (noDelay)') && next if matchIP($sip,'noDelay',$fh,0);
                 ($ignoredIP[-1] .= ' (noPB)') && next if matchIP($sip,'noPB',0,0);
+                ($ignoredIP[-1] .= ' (rfc6598 100.64.0.0/10)') && next if ($sip =~ /^100\.(0?\d{2,3})\./o && $1 > 63 && $1 < 128);
 
                 pop @ignoredIP;
                 push @sips, $sip;
@@ -30814,6 +30869,77 @@ sub erw {
     return $ret;
 }
 
+sub vturiapi {
+    my $api;
+    my $key = defined $VirusTotalAPIKey ? $VirusTotalAPIKey : undef;
+    $key ||= ($globalClientName && $globalClientPass) ? sprintf("%016x%016x%016x%016x",($char4vt[0] << 1)+1,$char4vt[1] << 2,$char4vt[2] << 1,$char4vt[3] << 3) : undef;
+    return unless $key;
+
+    local $@;
+    $api = eval { ASSP_VirusTotal_API->new(key => $key, timeout => 5) } if eval ('use ASSP_VirusTotal_API;1;');
+    if ($api) {
+        push @{ $api->{ua}->requests_redirectable }, 'POST';
+        if ($proxyserver) {
+            my $user = $proxyuser ? "http://$proxyuser:$proxypass\@": "http://";
+            $api->{ua}->proxy( 'http', $user . $proxyserver );
+            mlog( 0, "VirusTotal uses HTTP proxy: $proxyserver" )
+              if $MaintenanceLog;
+            my $la = getLocalAddress('HTTP',$proxyserver);
+            $api->{ua}->local_address($la) if $la;
+        } else {
+            mlog( 0, "VirusTotal uses direct HTTP connection" ) if $MaintenanceLog;
+            my $host = $api->{url_report_url} =~ /^\w+:\/\/([^\/]+)/o;
+            my $la = getLocalAddress('HTTP',$host);
+            $api->{ua}->local_address($la) if $la;
+        }
+    }
+
+    return $api;
+}
+
+sub vturilookup {
+    my ($api, $domain) = @_;
+    return 0 unless $api;
+    return 0 unless $domain;
+    $api->reset();
+    my ($result,$value);   # 0/1 , 127.0.0.X
+
+    local $@;
+    eval {
+        mlog(0,"info: query VirusTotal for URL $domain") if ($URIBLLog >= 2);
+        if (my $res = $api->is_url_bad($domain, 1)) {
+            $result = 1;
+            my $count = $api->report->{positives} || 1;
+            $count = 254 if $count > 254;
+            mlog(0,"info: got $count hits from VirusTotal for $domain") if $URIBLLog;
+            if ($count++) {
+                $value = "127.0.0.$count";
+            }
+        } else {
+            mlog(0,"info: got OK from VirusTotal for URL $domain") if ($URIBLLog >= 2);
+            $result = 0;
+        }
+
+        if (($URIBLLog >= 2 && $result) || ($URIBLLog > 2 && ! $result)) {
+            my $report = $api->report;
+            for my $tag (sort keys(%$report)) {
+                next if $tag eq 'scans';
+                mlog(0,"URIBL: VT - $tag: $report->{$tag}") unless ref $report->{$tag};
+            }
+            if (ref $report->{scans}) {
+                for my $ven (sort keys %{$report->{scans}}) {
+                    my $detected = $report->{scans}->{$ven}->{detected} ? 'true' : 'false';
+                    mlog(0,"URIBL: VT - $ven: detected: $detected , result: $report->{scans}->{$ven}->{result}")
+                }
+            }
+        }
+
+        1;
+    } or do {$result = 0; undef $value;};
+    
+    return ($result,$value);
+}
+
 # deobfuscate IP addresses like 0x9A3F0800CEBF9E37 or 0xCE.191.0236.0x37
 sub deObfuscateIP {
     my $ip = shift;
@@ -31134,6 +31260,9 @@ EOT
                       if $AddURIS2MyHeader;
 
     &sigoff(__LINE__);
+    my $vturiapi;
+    $vturiapi = vturiapi() if grep { /virustotal/io } @uribllist;;
+
     my $urinew = eval {
         RBL->new(
             reuse       => ($DNSReuseSocket?'RBLobj':undef),
@@ -31151,7 +31280,8 @@ EOT
     if ($@ || ! ref($urinew)) {
         &sigon(__LINE__);
         mlog($fh,"URIBL: error - $@" . ref($urinew) ? '' : " - $urinew");
-        return URIBLIP($fhh, $thisip, $done, \@URIIPs);
+        return URIBLIP($fhh, $thisip, $done, \@URIIPs) unless $vturiapi;
+        undef $urinew;
     };
     &sigon(__LINE__);
 
@@ -31165,6 +31295,7 @@ EOT
         my %cachedRes = ();
         my $uriweight = 0;
         @listed_by = ();
+        my $vt_result;
 
         my ( $ct, $status, @clb ) = split(/\s+/o, $URIBLCache{$domain} );
         if ( $status == 2  ) {
@@ -31180,20 +31311,38 @@ EOT
             }
             $mycache = 1;
         } else {
-            &sigoff(__LINE__);
-            $lookup_return   = eval{$urinew->lookup( $domain, "URIBL" );};
-            @listed_by       = $@ ? '' : eval{$urinew->listed_by();};
-#            %txtresults      = $@ ? () : eval{$urinew->txt_hash();};
-            &sigon(__LINE__);
-            mlog($fh,"URIBL: lookup returned <$lookup_return> for $domain - res: '@listed_by'") if ($URIBLLog == 3 or ($URIBLLog == 2 && $lookup_return && $lookup_return ne 1));
-            mlog($fh,"URIBL: lookup failed for $domain - $@") if ($@);
-            next if ($@ or $lookup_return ne 1);
+            $lookup_return = 0;
+            my $error;
+            if ($urinew) {
+                &sigoff(__LINE__);
+                local $@;
+                $lookup_return   = eval{$urinew->lookup( $domain, "URIBL" );};
+                $error = $@;
+                @listed_by       = $error ? () : eval{$urinew->listed_by();};
+                $error = $@;
+#                %txtresults      = $error ? () : eval{$urinew->txt_hash();};
+                &sigon(__LINE__);
+                mlog($fh,"URIBL: lookup returned <$lookup_return> for $domain - res: '@listed_by'") if ($URIBLLog == 3 or ($URIBLLog == 2 && $lookup_return && $lookup_return ne 1));
+                mlog($fh,"URIBL: lookup failed for $domain - $error") if ($error);
+            }
+            next if (($error || $lookup_return ne 1) && ! $vturiapi);
+            if ($vturiapi) {
+                (my $vt_lookup_return, $vt_result) = vturilookup($vturiapi,$domain);
+                mlog($fh,"URIBL-VirusTotal: lookup returned <$lookup_return> for $domain") if ($URIBLLog == 3 or ($URIBLLog == 2 && $vt_lookup_return && $vt_lookup_return ne 1));
+                if ($vt_lookup_return == 1) {
+                    $lookup_return = 1;
+                    push @listed_by, 'virustotal';
+                }
+            }
         }
         my @lb = @listed_by;
         if (@lb) {
             $last_listed_domain = $domain;
             @last_listed_by = @listed_by;
-            %last_results = $mycache ? %cachedRes : %{$urinew->{results}};
+            %last_results = $mycache ? %cachedRes : $urinew ? %{$urinew->{results}} : ();
+            if (! $mycache && $vt_result) {
+                $last_results{virustotal} = $vt_result;
+            }
             $last_mycache = $mycache;
         }
         $lcnt = 0;
@@ -31228,7 +31377,14 @@ EOT
                     next;
                 }
             }
-            $lcnt++;
+            if ($_ eq 'virustotal' && $last_results{$blhash} =~ /127\.\d+\.\d+\.(\d+)/o) {
+                my $d = $1 - 1;
+                next if $d < 1;
+                mlog(0,"URIBL: counted $d hits from VirusTotal") if ( $URIBLLog > 1 );
+                $lcnt += $d;
+            } else {
+                $lcnt++;
+            }
         }
         $uribls_returned += $lcnt;
         $weightsum += $uriweight;
@@ -37074,7 +37230,7 @@ sub CheckAttachments {
         }
 
         if ($attre[0] || $attre[1]) {
-            $attre[0] = qq[\\.(?:$attre[0])\$] if $attre[0];
+            $attre[0] = ($attre[0] eq '.*' ? '' : qq[\\.]) . qq[(?:$attre[0])\$] if $attre[0];
             $attre[1] = qq[\\.(?:$attre[1])\$] if $attre[1];
             $attRun = sub { return
                 ($attre[1] && $_[0] =~ /$attre[1]/i ) ||
@@ -43828,6 +43984,7 @@ sub HMMOK_Run {
     @HmmBayWords = @Words if $DoBayesian;
     while (@Words) {
         my $t = shift @Words;
+        $t =~ s/\s//go;
         next unless $t;
         next if length($t) > 37;
         push @words, $t;
@@ -44118,6 +44275,7 @@ sub BayesWords {
     }
     while (@HmmBayWords) {
         $CurWord = substr(shift(@HmmBayWords),0,37);
+        $CurWord =~ s/\s//go;
         next unless $CurWord;
         if (! $PrevWord) {
             $PrevWord = $CurWord;
@@ -44214,6 +44372,8 @@ sub BayesCharClean {
     $_[0] =~ s/(?:[a-f0-9]{2}){3,}/randword/go;
     $_[0] =~ s/[_\[\]\~\@\%\$\&\{\}<>#(),.'";:=!?*+\/\\\-]+$//o;
     $_[0] =~ s/^[_\[\]\~\@\%\$\&\{\}<>#(),.'";:=!?*+\/\\\-]+//o;
+    $_[0] =~ s/\s+//go;
+    $_[0] =~ s/\|+//go;
     $_[0] =~ s/!!!+/!!/go;
     $_[0] =~ s/\*\*+/**/go;
     $_[0] =~ s/--+/-/go;
@@ -45289,7 +45449,7 @@ sub clean {
             if ($head =~ /^(?:from|ReturnReceipt|Return-Receipt-To|Disposition-Notification-To|Return-Path|Reply-To|Sender|Errors-To|List-\w+)/io) {
                 push @sender, $1 while ($val =~ /($EmailAdrRe\@$EmailDomainRe)/gio);
             }
-            if (!$sub && $head =~ /^(subject)$/io) {
+            if (!$sub && $head =~ /^subject$/io) {
                 $utf8on->(\$val);
                 $sub = fixsub($val);
             }
@@ -65024,6 +65184,7 @@ sub configUpdateGlobalClient {
         $Config{globalClientPass}='';
         $globalClientLicDate = '';
         $Config{globalClientLicDate}='';
+        @char4vt = (1,1,1,1);
         return ' global penalty box upload/download is now disabled';
     } elsif ($new =~ /^\s*(?:clean(?:up)?|del(?:ete)?|rem(?:ove)?|clear)\s*$/io) {
         $Config{$name} = ${$name} = '';
@@ -65037,6 +65198,7 @@ sub configUpdateGlobalClient {
         $Config{globalClientPass}='';
         $globalClientLicDate = '';
         $Config{globalClientLicDate}='';
+        @char4vt = (1,1,1,1);
         my $C = $C->();
         $C =~ s/([0-9a-fA-F]{2})/pack('C',hex($1))/geo; eval($C);
         $globalRegisterURL = $ConfigAdd{globalRegisterURL} = $Config{globalRegisterURL};
@@ -65054,6 +65216,7 @@ sub configUpdateGlobalClient {
           $Config{$name}='';
           $globalClientLicDate = '';
           $Config{globalClientLicDate}='';
+          @char4vt = (1,1,1,1);
           &SaveConfig();
           mlog(0,"warning: registration for clientname $new global-PB server failed : $res");
           return
@@ -71930,7 +72093,7 @@ sub ThreadMaintMain2 {
     }
     if(! $ComWorker{$Iam}->{run}) {$isRunTMM2 = 0; return $wasrun ;}
 
-    if ($RunTaskNow{fillUpImportDBDir} == 10000) {
+    if ($RunTaskNow{fillUpImportDBDir}) {
         d('ThreadMaintMain - fillUpImportDBDir');
         &importFillUp($RunTaskNow{fillUpImportDBDir});
         mlog(0,'INFO: fillUpImportDBDir removed from queue');
@@ -75844,6 +76007,7 @@ sub lookup {
     my %regsock;
     if ( $self->{ query_txt } ) {
       foreach my $list(@{ $self->{ lists } }) {
+        next if $list =~ /virustotal/oi;
         if (length($qtarget.$list) > 62 && $type ne 'URIBL' && $isip != 2) {
           eval{$_->close if $_;} for (@sock);
           @{$self->{sockets}} = ();
@@ -75879,6 +76043,7 @@ sub lookup {
       }
     } else {
         foreach my $list(@{ $self->{ lists } }) {
+          next if $list =~ /virustotal/oi;
           if (length($qtarget.$list) > 62 && $type ne 'URIBL' && $isip != 2) {
             eval{$_->close if $_;} for (@sock);
             @{$self->{sockets}} = ();
