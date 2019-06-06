@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19151';        # 31.05.2019 TE
+$build   = '19157';        # 06.06.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -439,7 +439,6 @@ our $FileScanCMDbuild_API;               # called if defined in FileScanOK with 
 our $WebTrafficTimeout = 60;             # Transmission timeout in seconds for WebGUI and STATS connections
 our $DisableSyslogKeepAlive = 0;         # disable sending the keep alive '***assp&is%alive$$$' to the Syslog-Server
 our $noRelayNotSpamTag = 1;              # (0/1) do per default the NOTSPAMTAG for outgoing mails
-our $DKIMpassAction = 7;                 # (0..7) if DKIM pass: bit-0 = set rwlok to 1 (medium trust status), bit-1 = skip penaltybox-check, bit-2 = set IP-score to zero - default is 7 (all bits set)
 our $removePersBlackOnAutoWhite = 1;     # (0/1) remove the PersBlack entry for autowhite addresses in outgoing mails
 our $resetIntCacheAtStartup = 1;         # (0/1) reset internal Caches at startup - default is 1 (YES)
 our $BackDNSTTL = 72;                    # (number > 0) time in hours after downloaded BackDNS entries will expire - default is 72 (3 days)
@@ -604,7 +603,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '734E253E6DFD4108EA34F9C0E9ACEFAB554D7CDD'; }
+sub __cs { $codeSignature = '659DB83FFFAB3D637AF84886105C4A08017EC208'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1669,7 +1668,7 @@ sub assp_socket_blocking {
 }
 
 sub defConfigArray {
- # last used msg number 010771
+ # last used msg number 010781
 
  # still unused msg numbers
  #
@@ -2692,6 +2691,13 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['noDKIMAddresses','Do not any DKIM Check for these Addresses *',80,\&textinput,'','(.*)','ConfigMakeSLRe',
   'Mail from or to any of these envelope addresses will not be tagged and checked for DKIM. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com).',undef,undef,'msg001940','msg001941'],
 ['noDKIMIP','Exclude these IP\'s from any DKIM Check*',80,\&textinput,'','(\S*)','ConfigMakeIPRe','Enter IP\'s that you want to exclude from DKIM check, separated by pipes (|).',undef,undef,'msg001950','msg001951'],
+['DKIMpassAction','Special Action if DKIM passes',5,\&textinput,'0','([0-7])',undef,
+ 'Special action on message processing, if the DKIM check is passed.<br />
+ This value is a bit-mask using bit 0 to 2. So, valid values are in the range from 0 to 7. Default value is 0 - no special action<br />
+ Setting a bit to 1, will force the according action. The resulting value is the sum of the decimal values of the bits (1,2,4)<br />
+ - bit-0 (1) = set the message flag "rwlok" to 1 ( RWL low trust status, the same like in RWLServiceProvider )<br />
+ - bit-1 (2) = skip the penaltybox-check ( same like the IP is listed in noPB )<br />
+ - bit-2 (4) = set the IP-score (not the message scores!) to zero - IP penalty scores possibly counted after the DKIM-check, keep active.',undef,undef,'msg010780','msg010781'],
 ['DKIMWLAddresses','Whitelist these Addresses for valid DKIM Signature *',80,\&textinput,'','(.*)','ConfigMakePrivatRe',
  'If a valid DKIM or DomainKey signature is found and the signature identity (mostly the signature tag i=user@domain.tld) matches any of these addresses, the mail will be passed and saved as if it were in whiteListedDomains . The message will pass filters as Whitelisted and will be added to the corpus just like mail from a whitelisted sender would be. Unlike a true whitelisted sender, no whitelist address additions will be made.<br />
   Note this matches the end of the identity address, so if you don\'t want to match subdomains then include the @. Note that example.com would also match spamexample.com but .example.com won\'t match example.com. Wildcards are supported. For example: sourceforge.net|group*@google.com|.example.com<br /><br />
@@ -4780,7 +4786,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg007
  ASSP will delete \'*GraphStats...txt\'-files if they are over one year old. If you don\'t need some of that files any longer, remove them manually!',undef,undef,'msg010000','msg010001'],
 ['ReloadOptionFiles','Reload Option Files Interval <sup>s</sup>',40,\&textinput,'300',$ScheduleGUIRe,'configChangeSched',
   'If set not to zero, ASSP reloads configuration option files (file:.....) every this many seconds if they have changed. It is not recommended (and could make ASSP unavailable) to use rsync or any external tool to snychronize caches and list permanently. If you need to snychronize data between ASSP installations, you better use a database of your choice!',undef,undef,'msg007810','msg007811'],
-['VirusTotalAPIKey','The Privat API-Key for VirusTotal',80,\&textinput,'','.*',undef,
+['VirusTotalAPIKey','The Privat API-Key for VirusTotal',80,\&textinput,'','(.*)',undef,
  'To query www.VirusTotal.com for URIs and/or viruses (ASSP_AFC.pm), a valid API-Key is required. An API-Key is provided by VirusTotal for free, after your registration at www.virustotal.com.<br />
  Such a free API-Key is limited to four queries at VirusTotal per minute. API-Keys for a higher query volume are also provided by VirusTotal.<br />
  Systems that are part of the ASSP-Global-PenalyBox network can leave this value empty. They are getting an API-Key with a much higher query volume from the GPB-Server automatically, without any additionally costs. This API-Key is not shown here!',undef,undef,'msg010770','msg010771'],
@@ -5539,7 +5545,7 @@ To prevent permantly copying the changed mib/ASSP-MIB file to your net-snmp deam
   <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/pop3collect.txt\',3);" />',undef,undef,'msg009090','msg009091']
 );
 
- # last used msg number 010771
+ # last used msg number 010781
 
  &loadModuleVars;
  -d "$base/language" or mkdirOP("$base/language",'0755');
@@ -39541,7 +39547,7 @@ sub SpamReportExec {
     $header = "X-Assp-Reported-By: $from\r\n" if $from;
     $header.="Subject: ".$encsub."\r\n" if $encsub;
     $header.=$1."\r\n" if $bod=~/(Received:\s+from\s+.*?\(\[$IPRe.*?helo=.*?\))/io;
-    $sub =~ y/a-zA-Z0-9/_/cs unless $UseUnicode4SubjectLogging;
+    $sub =~ tr/a-zA-Z0-9/_/cs unless $UseUnicode4SubjectLogging;
     $sub =~ s/[\^\s\<\>\?\"\:\|\\\/\*]/_/igo;  # remove not allowed characters and spaces from file name
 
     $header.=$1 if $bod=~/(X-Assp-ID: .*)/io;
@@ -49058,11 +49064,11 @@ sub statRequest {
  # %head -- public hash
  (%head)=map{++$i % 2 ? lc $_ : $_} map{/^([^ :]*)[: ]{0,2}(.*)/o} split(/\r\n/o,$head);
  my ($page,$qs)=($head{get} || $head{head} || $head{post})=~/^([^\? ]+)(?:\?(\S*))?/o;
+# $qs =~ tr/+/ /;
  if(defined $data) { # GET, POST order
   $qs.='&' if ($qs ne '');
   $qs.=$data;
  }
- $qs=~y/+/ /;
  $i=0;
  # parse query string, get rid of google autofill
  # %qs -- public hash
@@ -49246,6 +49252,7 @@ sub webRequest {
     }
 
     my ($page,$qs)=($head{get} || $head{head} || $head{post})=~/^([^\? ]+)(?:\?(\S*))?/o;
+#    $qs =~ tr/+/ /;
     $currentPage = $page;
     $currentPage =~ s/^\/+//o;
     $currentPage = 'Config' unless $currentPage;
@@ -49255,7 +49262,6 @@ sub webRequest {
         $qs.='&' if ($qs ne '');
         $qs.=$$data;
     }
-    $qs=~y/+/ /;
     $i=0;
 
     # parse query string, get rid of google autofill
@@ -66566,7 +66572,7 @@ sub exportExtreme {
         open( my $IMPORT,'<', "$fil" );
         local $/ = "\n";
         while ( $r = <$IMPORT> ) {
-            $r =~ y/\r\n\t //d;
+            $r =~ tr/\r\n\t //d;
             next unless $r;
             $extremeips{$r} = 1;
             $counter++;

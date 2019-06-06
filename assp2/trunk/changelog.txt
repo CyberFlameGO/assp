@@ -1,3 +1,26 @@
+2019-06-06
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19157:
+
+- the file upload feature in the ASSP-filecommander has sometimes destroyed the uploaded files (+ was replaced by space)
+
+- VirusTotalAPIKey was rejected in every case, because of a validation check bug
+
+
+added:
+
+'DKIMpassAction' is moved from a hidden to a GUI parameter and default value is changed from 7 to 0
+
+'DKIMpassAction','Special Action if DKIM passes'
+ 'Special action on message processing, if the DKIM check is passed.
+ This value is a bit-mask using bit 0 to 2. So, valid values are in the range from 0 to 7. Default value is 0 - no special action
+ Setting a bit to 1, will force the according action. The resulting value is the sum of the decimal values of the bits (1,2,4)
+ - bit-0 (1) = set the message flag "rwlok" to 1 ( RWL low trust status, the same like in RWLServiceProvider )
+ - bit-1 (2) = skip the penaltybox-check ( same like the IP is listed in noPB )
+ - bit-2 (4) = set the IP-score (not the message scores!) to zero - IP penalty scores possibly counted after the DKIM-check, keep active.'
+
+
+
+
 2019-05-31
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19151:
 
