@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.10 2019/05/31 09:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.11 2019/06/06 16:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -256,7 +256,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.10 2019/05/31 09:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.11 2019/06/06 16:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -420,7 +420,8 @@ sub get_config {
  'Sets the priority of this Plugin within the call/run-level '.$self->{runlevel}.'. The Plugin with the lowest priority value is processed first!',undef,undef,'msg100020','msg100021'],
 
 [$self->{myName}.'DoVirusTotalVirusScan','Enable VirusTotal Virus Scan',0,\&main::checkbox,0,'(.*)',undef,
-'If a VirusTotalAPIKey is provided and this option is enabled, all MIME-parts will be (in addition to ClamAV and/or FileScan) checked by www.virustotal.com.',undef,undef,'msg100170','msg100171'],
+'If a VirusTotalAPIKey is provided and this option is enabled, all MIME-parts will be (in addition to ClamAV and/or FileScan) checked by www.virustotal.com.<br />
+ There will be no mail content sent to VirusTotal, only hashes are queried!',undef,undef,'msg100170','msg100171'],
 
 [$self->{myName}.'blockEncryptedZIP','Block Encrypted Compressed Attachments',0,\&main::checkbox,0,'(.*)',undef,
  'If set, encrypted or password protected compressed attachments will be blocked or replaced according to ASSP_AFCSelect and ASSP_AFCReplBadAttach . This setting is a general switch - an override can be done using UserAttach !<br />
