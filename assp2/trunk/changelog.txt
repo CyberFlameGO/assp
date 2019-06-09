@@ -1,3 +1,9 @@
+2019-06-09
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19160:
+
+- the bug fix in build 19157 related to the ASSP-filecommander is reverted - it caused problems with files edited in the GUI
+
+
 2019-06-06
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19157:
 

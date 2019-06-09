@@ -102,9 +102,9 @@ perl -v
 perl -V
 
 Upgrade your Perl installation to a multithreading version.
-To run this version of ASSP, a Perl version 5.016003 (5.16.3) or higher
+To run this version of ASSP, a Perl version 5.026002 (5.26.2) or higher
 is recommended.
-Perl 5.02600x (5.26.x) is highly recommended.
+Perl 5.02800x (5.28.x) is highly recommended.
 An perl version 5.010000 is at least required.
 Perl version 6.x is not supported.
 ******************************************************************************
@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19157';        # 06.06.2019 TE
+$build   = '19160';        # 09.06.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -603,7 +603,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '659DB83FFFAB3D637AF84886105C4A08017EC208'; }
+sub __cs { $codeSignature = '5EAE52746C7E92BEFA7D6CA10ABEB3E4E3BACF38'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -13521,9 +13521,9 @@ sub init {
  if ($asspSHA1 ne $codeSignature) {
    mlog(0, "error: this assp code ($version$modversion) was unexpected changed and has failed the integrity check");
  }
- if ($] lt '5.012003') {
-   mlog(0, "warning: Perl version 5.012003 (5.12.3) is at least recommended to run ASSP $version $modversion - you are running Perl version $] - please upgrade Perl");
-   $Recommends{'Perl'} = "Perl version 5.012003 (5.12.3) is at least recommended to run ASSP $version $modversion - you are running Perl version $] - please upgrade Perl";
+ if ($] lt '5.016003') {
+   mlog(0, "warning: Perl version 5.016003 (5.16.3) is at least recommended to run ASSP $version $modversion - you are running Perl version $] - please upgrade Perl");
+   $Recommends{'Perl'} = "Perl version 5.016003 (5.16.3) is at least recommended to run ASSP $version $modversion - you are running Perl version $] - please upgrade Perl";
  }
  if ($] lt '5.012000') {
    mlog(0, "Perl version 5.012000 (5.12.0) is at least required to use the unicode Bayesian/HMM engine of ASSP $version $modversion - you are running Perl version $] - please upgrade Perl");
@@ -14758,7 +14758,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.04;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.11;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.08;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -46883,7 +46883,8 @@ sub Perl_no_test {
         'Image::OCR::Tesseract' => 1,
         'PDF::OCR' => 1,
         'PDF::OCR2' => 1,
-        'LEOCHARRE::DEBUG' => 1
+        'LEOCHARRE::DEBUG' => 1,
+        'Razor2::Client::Version' => '1'
     );
     open (my $F , '<' , "$base/files/noupgradetest.txt") or return %notest;
     while (<$F>) {
@@ -46902,6 +46903,7 @@ sub Perl_no_upgrade {
     my %modules = (     # use 'X' to skip the module upgrade silently - otherwise use 1
         'Math::Prime::Util::PP' => 'X',
         'ntheory' => 'X',
+        'Razor2::Client::Version' => 'X',
     );
     my %list;
     open (my $F , '<' , "$base/files/noupgrade.txt") or return %modules;
@@ -49064,12 +49066,12 @@ sub statRequest {
  # %head -- public hash
  (%head)=map{++$i % 2 ? lc $_ : $_} map{/^([^ :]*)[: ]{0,2}(.*)/o} split(/\r\n/o,$head);
  my ($page,$qs)=($head{get} || $head{head} || $head{post})=~/^([^\? ]+)(?:\?(\S*))?/o;
-# $qs =~ tr/+/ /;
  if(defined $data) { # GET, POST order
   $qs.='&' if ($qs ne '');
   $qs.=$data;
  }
  $i=0;
+ $qs =~ tr/+/ /;
  # parse query string, get rid of google autofill
  # %qs -- public hash
  (%qs)=map{my $t = $_; $t =~ s/(e)_(mail)/$1$2/gio if ++$i % 2; $t} split(/[=&]/o,$qs);
@@ -49252,7 +49254,6 @@ sub webRequest {
     }
 
     my ($page,$qs)=($head{get} || $head{head} || $head{post})=~/^([^\? ]+)(?:\?(\S*))?/o;
-#    $qs =~ tr/+/ /;
     $currentPage = $page;
     $currentPage =~ s/^\/+//o;
     $currentPage = 'Config' unless $currentPage;
@@ -49262,6 +49263,7 @@ sub webRequest {
         $qs.='&' if ($qs ne '');
         $qs.=$$data;
     }
+    $qs =~ tr/+/ /;
     $i=0;
 
     # parse query string, get rid of google autofill
