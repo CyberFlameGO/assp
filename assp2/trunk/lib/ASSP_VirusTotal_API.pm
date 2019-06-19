@@ -92,8 +92,7 @@ sub get_url_report {
 sub scan_url {
     my ($self, $url) = @_;
 
-    croak('You have not specified a URL that should be '.
-          'scanned') if !defined $url;
+    croak('You have not specified a URL that should be scanned') if !defined $url;
 
     $self->{res} = $self->{ua}->request(
         POST $self->{url_scan_url}, [
