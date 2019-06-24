@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.11 2019/06/06 16:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.12 2019/06/24 08:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -90,7 +90,7 @@ our $skipLockyCheck = 0;
 
 ##################################################################
 # this callback can be overwritten to make your own changes      #
-# e.g.abs in lib/CorrectASSPcfg.pm                               #
+# e.g. in lib/CorrectASSPcfg.pm                                  #
 # the callback has to return the related configuration HASH      #
 ##################################################################
 our $setWeb = sub {my ($self,$fh) = @_;};                          # callback to configure the weblink parameters (webprot, webhost, webadminport) - called once for each created item
@@ -256,7 +256,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.11 2019/06/06 16:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.12 2019/06/24 08:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -368,7 +368,7 @@ sub new {
             my $la = &main::getLocalAddress('HTTP',$main::proxyserver);
             $self->{vtapi}->{ua}->local_address($la) if $la;
         } else {
-            mlog( 0, "VirusTotoal uses direct HTTP connection" ) if $main::MaintenanceLog;
+            mlog( 0, "VirusTotal uses direct HTTP connection" ) if $main::MaintenanceLog;
             my $host = $self->{vtapi}->{file_report_url} =~ /^\w+:\/\/([^\/]+)/o;
             my $la = &main::getLocalAddress('HTTP',$host);
             $self->{vtapi}->{ua}->local_address($la) if $la;
@@ -2378,12 +2378,17 @@ sub isAnEXE {
 # .a libraries
 #
     } elsif ($sk !~ /:ARC/oi && $buff =~ /^\!<arch>\x0a/oi) {
-        $type = 'Static linux or unix library',
+        $type = 'Static linux or unix library';
 #
 # Windows MMC
 #
     } elsif ($sk !~ /:MMC/oi && $buff =~ /^\s*<\?xml version.+?<MMC_ConsoleFile/oi) {
-        $type = 'Windows MMC Console File',
+        $type = 'Windows MMC Console File';
+#
+# RTF faked or RTF CVE's - normaly these should be detected as virus, but who knows
+#
+    } elsif ($$raf =~ /^\{\\rt(?:(?!f)|f(?!(?:1|\\))|.*?0903000000000000C000000000000046.*?C6AFABEC197FD211978E0000F8757E2A|.*?\\objdata 0105000002000000080000005061636b616765000000000000000000)/oi) {
+        $type = 'Faked RTF document with possible executable content';
     }
     if ($type) {
         $self->{sha} = $sha if $sha;
