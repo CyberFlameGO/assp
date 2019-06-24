@@ -1,3 +1,14 @@
+2019-06-24
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19175:
+
+
+changed:
+
+- the analyzer now also ask VirusTotal for results, if this option is enabled in ASSP_AFC
+
+- ASSP_AFC.pm version 5.12 now detects faked RTF documents as executable content (cve-2012-0158, cve-2017-11882 and others)
+
+
 2019-06-18
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19169:
 

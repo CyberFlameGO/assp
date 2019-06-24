@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19169';        # 18.06.2019 TE
+$build   = '19175';        # 24.06.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -604,7 +604,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '0681A5237E29086D86725D0160972A65551CBC16'; }
+sub __cs { $codeSignature = '97F5ED919398DD17114AD67AE0808C20EA58E0BB'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -14752,7 +14752,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
 
   my $v;
-  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.11;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+  $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.12;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.08;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -53341,6 +53341,19 @@ sub ConfigAnalyze {
                     $Con{$tmpfh}->{spfok} = $spfok;
                     $Con{$tmpfh}->{dkimresult} = $dkimok;
                     $Con{$tmpfh}->{signed} = $sigok;
+
+                    if ($ASSP_AFC::CanVT && $self->{vtapi}) {
+                        mlog(0,"info: doing VirusTotal check");
+                        $ASSP_AFC::plScan = 1;
+                        $Con{$tmpfh}->{self} = 0;
+                        $self->{this} = $Con{$tmpfh};
+                        my $body = $part->body;
+                        my $res = $self->vt_file_is_ok(\$body);
+                        $fm .= "<b><font color='red'>&bull;&nbsp;&dagger;&nbsp;&bull; $Con{$tmpfh}->{messagereason}</font></b><br />" if $Con{$tmpfh}->{messagereason};
+                        $Con{$tmpfh}->{self} = $tmpfh;
+                        $ASSP_AFC::plScan = 0;
+                        &MainLoop1(0);
+                    }
 
                     if (! $Con{$tmpfh}->{relayok} && $self->{enableATA} && $self->{ATAHeaderTag}) {
                         $enabledATA = 1;
