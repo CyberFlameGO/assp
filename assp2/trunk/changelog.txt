@@ -1,3 +1,12 @@
+2019-07-02
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19183:
+
+- if 'genARC' was enabled and foreign Authentication-Results: headers were present in the mail, no ARC-signature was created and an error
+  "error: ARC message parsing failed - unexpected token at /usr/local/lib/perl5/site_perl/Mail/DKIM/ARC/Signer.pm line 254 thread ..."
+  was written to the maillog.txt
+
+
+
 2019-06-24
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19175:
 

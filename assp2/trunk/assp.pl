@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19175';        # 24.06.2019 TE
+$build   = '19183';        # 02.07.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -604,7 +604,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '97F5ED919398DD17114AD67AE0808C20EA58E0BB'; }
+sub __cs { $codeSignature = 'DD01B9DEE2187C02976A36E629AD0AF9139F68ED'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -2668,7 +2668,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  8 - multiple sender: addresses or sender: header tags found (potential 2x score if option 2 is also enabled)<br />
  16 - no or an invalid email address found in from: header tag<br />
  32 - no or an invalid email address found in sender: header tag<br /><br />
- Simply form the sum of the numbers in front of the checks you want to select (0...63). Default vaule is 63 (1+2+4+8+16+32) - all checks are selected.',undef,undef,'msg010750','msg010751'],
+ Simply form the sum of the numbers in front of the checks you want to select (0...63). Default vaule is 59 (1+2+8+16+32) - all checks are selected.',undef,undef,'msg010750','msg010751'],
 ['DoNoFromWL','Do DoNoFrom for Whitelisted',0,\&checkbox,'1','(.*)',undef,
   'Check for existing and valid From: or Sender: header and address for whitelisted emails.',undef,undef,'msg001900','msg001901'],
 ['DoNoFromNP','Do DoNoFrom for NoProcessing',0,\&checkbox,'1','(.*)',undef,
@@ -10181,7 +10181,7 @@ sub rb_get {
         my @keep = $message =~ /((?:X-Assp-Reported-By|X-Assp-Intended-For|X-Forwarded-For):$main::HeaderValueRe)/gois;
         $message =~ s/X-ASSP[\x00-\x39\x3b-\xff]+:$main::HeaderValueRe//gois;                   # remove all X-ASSP headers
         $message =~ s/(?:X-Google-)?(?:DKIM|DomainKey)-Signature:$main::HeaderValueRe//gios;  # remove DKIM/DomainKey signatures
-        $message =~ s/ARC-(?:Seal|Message-Signature|ARC-Authentication-Results):$main::HeaderValueRe//gios;  # remove ARC signatures
+        $message =~ s/ARC-(?:Seal|Message-Signature|Authentication-Results):$main::HeaderValueRe//gios;  # remove ARC signatures
         $message = join('',@keep).$message;
         $headlen = index($message, "\x0D\x0A\x0D\x0A");
         if ($headlen >= 0) {$headlen += 4;} else {$headlen = 0;}
@@ -33445,14 +33445,33 @@ sub DKIMgen_Run {
                  }
              }
          }
+         my $dkimdetails = '';
+         my $from;
+         $from = encodeMimeWord($1) if $this->{mailfrom} =~ /\@($EmailDomainRe)$/io;
+         my $helo = encodeMimeWord($this->{helo});
+         my $spfdetails = $from ? " smtp.mailfrom=$from (connected ip $this->{ip})" : $helo ? " smtp.helo=$helo (connected ip $this->{ip})" : '';
          my $checks;
-         $checks .= " dkim=$this->{dkimresult};" if $this->{dkimresult};
-         $checks .= " spf=$this->{spf_result};" if $this->{spf_result};
+         $checks .= $this->{dkimresult} ? " dkim=$this->{dkimresult}$dkimdetails;" : ' dkim=none;';     # header.d=DOMAIN or header.i=INDENTITY
+         $checks .= $this->{spf_result} ? " spf=$this->{spf_result}$spfdetails;"   : ' spf=none$spfdetails;';
          $checks .= " dmarc=$this->{dmarcresult};" if $this->{dmarcresult};
          chop $checks;     # remove the last semicolon
-         $dkim->PRINT("Authentication-Results: $DKIM{SrvId};$checks\r\n");
+         $dkim->PRINT("Authentication-Results: $DKIM{SrvId}; $checks\r\n"); # this will become our 'ARC-Authentication-Results:' header in the ARC-chain
      }
+     my $skipAuthResLine = 0;
      for my $msgLine (split(/\n/o, $this->{header})) {
+         if ($arc eq 'ARC' && defined($skipAuthResLine)) {
+             if ($msgLine =~ /^Authentication-Results:/io) {      # ignore foreign Authentication-Results: headers if we generate an ARC-signature
+                 mlog($fh,"info: ARC-chain: ignored foreign 'Authentication-Results:' header") if $DKIMlogging;
+                 $skipAuthResLine = 1;
+                 next;
+             }
+             if ($skipAuthResLine && $msgLine =~ /^[ \t]/o) {     # skip intended Authentication-Results: header lines
+                 next;
+             } else {                                             # do not skip this line
+                 $skipAuthResLine = 0;
+             }
+             undef $skipAuthResLine if $msgLine =~ /^\.?\015$/o;  # the header or mail is finished
+         }
          $msgLine =~ s/^\.([^\015]+\015)$/$1/o;
          $dkim->PRINT("$msgLine\n") if ($msgLine !~ /^\.\015$/o);
      }
