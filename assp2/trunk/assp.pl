@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19183';        # 02.07.2019 TE
+$build   = '19195';        # 14.07.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -604,7 +604,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'DD01B9DEE2187C02976A36E629AD0AF9139F68ED'; }
+sub __cs { $codeSignature = '2A8A4E725AD301CA8244193175784AACB5B66A2E'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -639,12 +639,12 @@ our $SSLCAKeyLength = 1024;
 our $SSLServerKeyLength = 1024;
 
 our $tlds_alpha_URL = 'http://data.iana.org/TLD/tlds-alpha-by-domain.txt';
-our $tlds2_URL = 'http://george.surbl.org/two-level-tlds';
-#    "http://www.surbl.org/tld/two-level-tlds",
-#    "http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/URIBLCCTLDS-L2.txt?format=raw",
-our $tlds3_URL = 'http://george.surbl.org/three-level-tlds';
-#    "http://www.surbl.org/tld/three-level-tlds",
-#    "http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/URIBLCCTLDS-L3.txt?format=raw",
+our $tlds2_URL = 'http://www.surbl.org/tld/two-level-tlds';
+#    'http://george.surbl.org/two-level-tlds';
+#    'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/URIBLCCTLDS-L2.txt?format=raw';
+our $tlds3_URL = 'http://www.surbl.org/tld/three-level-tlds';
+#    'http://george.surbl.org/three-level-tlds';
+#    'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/URIBLCCTLDS-L3.txt?format=raw';
 
 our $BackDNSFileURL = 'http://wget-mirrors.uceprotect.net/rbldnsd-all/ips.backscatterer.org.gz';
 
@@ -2218,7 +2218,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  'If this is set, ASSP will deliver a copy of spam mails to this address. For example: spammaster@mydomain.com. The literal USERNAME is replaced by the user part of the recipient, the literal DOMAIN is replaced by the domain part of the recipient.
  For example: USERNAME@Spam.DOMAIN, USERNAME+Spam@DOMAIN, catchallspamthis@DOMAIN. Separate multiple entries by comma or space. To deliver copy of spams based on the domain name (only some special hosted domains), use ccSpamInDomain .','Basic',undef,'msg000320','msg000321'],
 ['ccSpamInDomain','Copy Spam and Send to this Address per Domain*',60,\&textinput,'','(.*)','configUpdateCCD',
- 'If the domain of the recipient-address is matches one in this list, ASSP will deliver an additional copy of spam emails of a domain to this address (even if sendAllSpam is not set). For example: monitorspam@example1.com|monitor@example2.com .<br />
+ 'If the domain of the recipient-address matches one in this list, ASSP will deliver an additional copy of spam emails of a domain to this address (even if sendAllSpam is not set). For example: monitorspam@example1.com|monitor@example2.com .<br />
   An wildcard \'*\' is supported as fallback (no other match is found) for the domain name, like: monitorspam3@*','Basic',undef,'msg008880','msg008881'],
 ['sendAllDestination','Copy Spam SMTP Destination',20,\&textinput,'','^((?:SSL:)?(?:'.$PortRe.'|'.$HostPortRe.')|)$',undef,
  'IP address and port to connect to when Spam messages are copied. If blank they go to the main SMTP Destination. eg "10.0.1.3:1025", "SSL:10.0.1.3:465", "1025", etc.',undef,undef,'msg000330','msg000331'],
@@ -5220,7 +5220,9 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
 ['globalClientPass','GPB Client Registration Password',20,\&passnoinput,'','(.*)','configUpdateGlobalHidden','If the global client is registered on the global-server, you will see a number of "*" in this field. This field is readonly.',undef,undef,'msg008320','msg008321'],
 ['globalClientLicDate','GPB Client Subscription Expiration Date',20,\&textnoinput,'','(.*)','configUpdateGlobalHidden','The date of license/subscription expiration for this global client. If this date is exceeded, no upload and download of global PB will be done! This field is readonly.',undef,undef,'msg008330','msg008331'],
 ['DoGlobalBlack','Enable the Global-Black-Penalty',0,\&checkbox,'','(.*)',undef,'Enables the merge of the Black-Penalty-Box-Entries, if the client is registered on the global-PB-server. Upload and download of the black penalty entries are done independent from this setting as long as any of GPBDownloadLists or GPBautoLibUpdate is activated.',undef,undef,'msg008340','msg008341'],
-['globalValencePB','Value for Global-Black-PB Entries +',3,\&textinput,20,'(\s*\d+\s*(?:\|\s*\d+\s*){0,1})','ConfigChangeValencePB', 'This penalty-value will be given to downloaded Black-Penalty-Box-Entries. As long as entries have the "GLOBALPB" state, they will never become extreme-Black. It is recommended to set this value above PenaltyLimit!',undef,undef,'msg008350','msg008351'],
+['globalValencePB','Value for Global-Black-PB Entries +',10,\&textinput,200,'(\s*\d+\s*(?:\|\s*\d+\s*){0,1})','ConfigChangeValencePB',
+ 'This penalty-value will be given to downloaded Black-Penalty-Box-Entries. As long as entries have the "GLOBALPB" state, they will never become extreme-Black. It is recommended to set this value above PenaltyLimit! The default value is 200.<br />
+ <b>Do not forget to configure the assp PenaltyBox ( DoPenalty )</b>, otherwise Global-Black-PB and Global-White-Penalty will have no effect. To get early blocking behavior for GPB-Black IP\'s, configure DelayIP . It is also recommended to enable MsgScoreOnEnd .',undef,undef,'msg008350','msg008351'],
 ['globalBlackExpiration','Expiration for Global-PB-Black Records',3,\&textinput,48,'(\d*)',undef, 'Global-Black-Penalties will expire after this number of hours.',undef,undef,'msg008360','msg008361'],
 ['DoGlobalWhite','Enable the Global-White-Penalty',0,\&checkbox,'','(.*)',undef,'Enables the merge of the White-Penalty-Box-Entries, if the client is registered on the global-PB-server. Upload and download of the white penalty entries are done independent from this setting as long as any of GPBDownloadLists or GPBautoLibUpdate is activated.',undef,undef,'msg008370','msg008371'],
 ['globalWhiteExpiration','Expiration for Global-PB-White Records(days)',3,\&textinput,7,'(\d*)',undef, 'Global-White-Penalties will expire after this number of days.',undef,undef,'msg008380','msg008381'],

@@ -1,3 +1,12 @@
+2019-07-14
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19195:
+
+- the 'two-level-tlds' download URL is changed from http://george.surbl.org/two-level-tlds to http://www.surbl.org/tld/two-level-tlds - george.surbl.org is no longer a valid hostname
+
+- the 'three-level-tlds' download URL is changed from http://george.surbl.org/three-level-tlds to http://www.surbl.org/tld/three-level-tlds - george.surbl.org is no longer a valid hostname
+
+
+
 2019-07-02
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19183:
 
