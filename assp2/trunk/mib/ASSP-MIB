@@ -10,7 +10,7 @@ IMPORTS
     TruthValue FROM SNMPv2-TC;
 
 thockar MODULE-IDENTITY
-    LAST-UPDATED "201810150000Z"
+    LAST-UPDATED "201906190000Z"
     ORGANIZATION "www.thockar.com"
     CONTACT-INFO
 	 "postal:       Thomas Eckardt
@@ -18,13 +18,13 @@ thockar MODULE-IDENTITY
       email:    thockar@lists.sourceforge.net"
     DESCRIPTION
 	"Top-level infrastructure of thockar projects enterprise MIB tree"
-    REVISION     "201810150000Z"
+    REVISION     "201906190000Z"
     DESCRIPTION
 	"First draft"
     ::= { enterprises 37058}
 
 asspSNMP MODULE-IDENTITY
-    LAST-UPDATED "201810150000Z"
+    LAST-UPDATED "201906190000Z"
     ORGANIZATION "www.thockar.com"
     CONTACT-INFO
 	 "postal:       Thomas Eckardt
@@ -32,7 +32,7 @@ asspSNMP MODULE-IDENTITY
       email:    thockar@lists.sourceforge.net"
     DESCRIPTION
 	"Top-level infrastructure of the thockar ASSP project enterprise MIB tree"
-    REVISION     "201810140000Z"
+    REVISION     "201906180000Z"
     DESCRIPTION
 	"First draft"
     ::= { thockar 2}
@@ -10027,7 +10027,7 @@ LocalAddressesFlat  OBJECT-TYPE
 "
 These email addresses are the list of your local addresses. You can list specific addresses (user@mydomain.com), addresses at any local domain (user), or entire domains (@mydomain.com).  Wildcards are supported (fribo*@domain.com). (|).
  For example: fribo@thisdomain.com|jhanna|@sillyguys.org or place them in a plain ASCII file one address per line - file:files/localuser.txt.
- NOTICE: The VRFY definition described below is depricated in this configuration parameter - use localDomains instead!
+ NOTICE: The VRFY definition described below is deprecated in this configuration parameter - use localDomains instead!
  You can use entries like @mydomain.com=>[SSL:]vrfyhost:port to VRFY users on your MTA, for more information read localDomains. You can use an entry like ALL=>vrfyhost:port to define a VRFY host for all domain entries ( better use Groups ).
  If the port :465 is defined for VRFY-MTA, or 'SSL:' is prepended to the VRFY-MTA, a SSL connection will be used ( read DoVRFY ).
  Notice: If an equal domain entry is defined in localDomains , the entry in localDomains will be used!
@@ -10172,7 +10172,7 @@ Check local domains against these addresses. Add a fake domain like 'assp-nospam
  If you have configured LDAP and enabled DoLDAP and ASSP finds a VRFY entry for a domain, LDAP search will be done first and if this fails, the VRFY will be used. So VRFY could be used for LDAP backup/fallback/failover!
  It is recommended to configure 'ldaplistdb' in the 'File Paths and Database' section when using this verify extension - so ASSP will store all verified recipients addresses there to minimize the queries on MTA's. There is no need to configure LDAP, but both VRFY and LDAP are using ldaplistdb. Please go to the 'LDAP setup' section to configure MaxLDAPlistDays and LDAPcrossCheckInterval or start a crosscheck now with forceLDAPcrossCheck. This three parameters belong also to VRFY.
  If 'ldaplistdb' is configured and an entry is removed from localdomains, force a LDAPcrosscheck ( forceLDAPcrossCheck ) to remove outdated no longer local addresses from ldaplistdb!
- Notice: if an equal domain entry is defined in LocalAddresses_Flat (depricated !!!), the entry in localDomains will be used!
+ Notice: if an equal domain entry is defined in LocalAddresses_Flat (deprecated !!!), the entry in localDomains will be used!
 "
     REFERENCE "Local Domains*"
     DEFVAL { "putYourDomains.com|here.org" }
@@ -11713,7 +11713,7 @@ validFormatHeloRe  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Validate Format HELO will check incoming HELOs according to rfc1123. 
+Validate Format HELO will check incoming HELOs according to .
   For example: ^(?:\w[\w\.\-]*\.\w{2,6})$ or ^(?:(?:[a-z\d][a-z\d\-]*)?[a-z\d]\.)+[a-z]{2,6}$
 "
     REFERENCE "Regular Expression to Validate Format of HELO*"
@@ -12989,8 +12989,15 @@ DoNoFrom  OBJECT-TYPE
     DESCRIPTION
 "
 If enabled, the MIME header is checked for valid From: and Sender: header tags.
-  This header check fails and faults are counted, if both headers (From: and Sender:) are missing - or if any of these headers contains not a valid email address - or if multiple of the same headers are found.
+  This header check fails and faults are counted if :
+  - from: and sender: header tag are both missing
+  - different domains found in from: and sender: email addresses
+  - multiple from: addresses or from: header tags found 
+  - multiple sender: addresses or sender: header tags found 
+  - no or an invalid email address found in from: header tag
+  - no or an invalid email address found in sender: header tag
   The scoring value nofromValencePB is added for each detected fault.
+  Use DoNoFromSelect to select which faults should be detected by assp.
 "
     REFERENCE "Check for Existing and Valid From: and Sender: Header Tag and Address"
     DEFVAL { "3" }
@@ -13033,10 +13040,10 @@ DoNoFromWL  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Check for existing From: or Sender: header and address for whitelisted emails.
+Check for existing and valid From: or Sender: header and address for whitelisted emails.
 "
     REFERENCE "Do DoNoFrom for Whitelisted"
-    DEFVAL { "" }
+    DEFVAL { "1" }
     ::= {ValidateSenderAddressesDomainsMsgIDPTRMXandDKIM 190}
 
 syncStatDoNoFromWL  OBJECT-TYPE
@@ -13076,10 +13083,10 @@ DoNoFromNP  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Check for existing From: or Sender: header and address for noprocessing emails.
+Check for existing and valid From: or Sender: header and address for noprocessing emails.
 "
     REFERENCE "Do DoNoFrom for NoProcessing"
-    DEFVAL { "" }
+    DEFVAL { "1" }
     ::= {ValidateSenderAddressesDomainsMsgIDPTRMXandDKIM 191}
 
 syncStatDoNoFromNP  OBJECT-TYPE
@@ -13162,7 +13169,7 @@ DoStrictDKIM  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-The DKIM test will fail, if the mail was modified by a mailhop. In this case the from address, the from domain, the to domain, the DKIM-signature by itself and the prefix of the digest-verification are valid, only the lower digest value differs! This may happen, if a mailhop has modified any other headerfield like X-...! If unchecked a mail will only pass, if the author policy and sender policy are accept or neutral!
+The DKIM test will fail, if the mail was modified by a mailhop. In this case the from address, the from domain, the to domain, the DKIM-signature by itself and the prefix of the digest-verification are valid, only the lower digest value differs! This may happen, if a mailhop has modified any other headerfield like X-...! If unchecked a mail will only pass, if the author policy results and sender policy results are accept or neutral!
 "
     REFERENCE "Validate DomainKeys Identified Mail strictly"
     DEFVAL { "0" }
@@ -13805,6 +13812,102 @@ synchronization status line from file assp_sync.cfg for DoNoSpoofing4ReplyTo
  4 - in sync - running master mode (wait to reach state 2)
 "
     ::= {DoNoSpoofing4ReplyTo 6}
+
+DoNoFromSelect  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+Select which check should be done in DoNoFrom .
+ 1 - from: and sender: header tag are both missing
+ 2 - different domains found in from: and sender: email addresses - or multiple addresses in a single header (FROM: or SENDER:) of different domains are found
+ 4 - multiple from: addresses or from: header tags found (potential 2x score if option 2 is also enabled)
+ 8 - multiple sender: addresses or sender: header tags found (potential 2x score if option 2 is also enabled)
+ 16 - no or an invalid email address found in from: header tag
+ 32 - no or an invalid email address found in sender: header tag
+ Simply form the sum of the numbers in front of the checks you want to select (0...63). Default vaule is 63 (1+2+4+8+16+32) - all checks are selected.
+"
+    REFERENCE "Select Checks for From: and Sender: Header"
+    DEFVAL { "59" }
+    ::= {ValidateSenderAddressesDomainsMsgIDPTRMXandDKIM 1075}
+
+syncStatDoNoFromSelect  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for DoNoFromSelect
+-1 - DoNoFromSelect could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {DoNoFromSelect 5}
+
+syncStatStrDoNoFromSelect  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for DoNoFromSelect
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {DoNoFromSelect 6}
+
+DoNoFromRemovesNPWL  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+If the combination of DoNoFrom , DoNoFromSelect , DoNoFromWL and DoNoFromNP gives more than one hit, the whitelisted and/or the noprocessing flag will be removed from the message.
+ For example: if the FROM: and /or SENDER: address fakes a whitelisted and/or noprocessing address or domain.
+ Default setting is both.
+ The noprocessing by size flag ( npSize ) will be keeped.
+"
+    REFERENCE "DoNoFrom Removes NP, WL Flag"
+    DEFVAL { "3" }
+    ::= {ValidateSenderAddressesDomainsMsgIDPTRMXandDKIM 1076}
+
+syncStatDoNoFromRemovesNPWL  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for DoNoFromRemovesNPWL
+-1 - DoNoFromRemovesNPWL could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {DoNoFromRemovesNPWL 5}
+
+syncStatStrDoNoFromRemovesNPWL  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for DoNoFromRemovesNPWL
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {DoNoFromRemovesNPWL 6}
 
 IPBlocking  OBJECT IDENTIFIER ::= {asspConfig 13}
 DoDenySMTP  OBJECT-TYPE
@@ -14575,7 +14678,7 @@ enhancedOriginIPDetect  OBJECT-TYPE
     DESCRIPTION
 "
 If selected, ASSP will analyze the mail headers 'RECEIVED:' lines for IP's on the mail routing way to detect spam bots, that uses open relay or hijacked mail servers for mail delivery.
-  Local and private IP's, and IP's listed in ispip, acceptAllMail, whiteListedIPs, noProcessingIPs, noDelay and noPB will be ignored.
+  Local and private IP's, IP's assigned by IANA to the Shared Address Space (100.64.0.0/10 RFC6598) and IP's listed in ispip, acceptAllMail, whiteListedIPs, noProcessingIPs, noDelay and noPB will be ignored.
   The detected IP's will be additionally checked for IP-Blocking, DNSBL and IP-Frequency - the same way like the connected IP. These IP's are also additionally used for the maximum mail size calculation in MaxRealSizeAdr and MaxRealSizeExternalAdr.
   Default setting is 'all but most origin', which ignores the first of multiple detected public IP address, that was involved in the mail transport (possibly a user device).
 "
@@ -15719,7 +15822,7 @@ spamtrapaddresses  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Mail to any of these addresses will be blocked and the scoring value is added. Whitelist and noPenaltyMakeTraps will be ignored. Nothing will be stored in the Spam Collection, if these addresses are not checked for validity. TO: and CC: addresses will be also checked - BCC: addresses only, if 'removeForeignBCC' is not set. If you want to use these addresses as permanent honeypott addresses (with collection), it is better to define them in spamaddresses and to enable DoNotBlockCollect . Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com).
+Mail to any of these addresses will be blocked and the scoring value is added. Whitelist and noPenaltyMakeTraps will be ignored. Nothing will be stored in the Spam Collection, if these addresses are not checked for validity. TO: and CC: addresses will be also checked - BCC: addresses only, if 'removeForeignBCC' is not set. If you want to use these addresses as permanent honeypot addresses (with collection), it is better to define them in spamaddresses and to enable DoNotBlockCollect . Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com).
 "
     REFERENCE "PenaltyBox Trap Addresses *"
     DEFVAL { "put|your@penaltytrap.com|addresses|@here.org" }
@@ -22172,7 +22275,7 @@ SRSHashLength  OBJECT-TYPE
     DESCRIPTION
 "
 The number of bytes of base64 encoded data to use for the cryptographic hash.
-  More is better, but makes for longer addresses which might exceed the 64 character length suggested by RFC2821.
+  More is better, but makes for longer addresses which might exceed the 64 character length suggested by .
   This defaults to 6, which gives 6 x 6 = 36 bits of cryptographic information, which means that a spammer will have 
   to make 2^36 attempts to guarantee forging a SRS address.
 "
@@ -22482,6 +22585,7 @@ noDMARCReportDomain  OBJECT-TYPE
     DESCRIPTION
 "
 Put any DMARC report recipient domain or address (ruf/rua) in to this list - for example if DMARC reports could be never delivered for any reason.
+ If assp receives a NDR (No Delivery Report) for a sent DMARC-Report and the file:... option is configured here, assp will automatically add the dmarc report domain and the dmarc report recipient to this file.
  Accepts specific addresses (user@example.com), user parts (user) or entire domains (@example.com). Wildcards are supported (fribo*@example.com).
 "
     REFERENCE "Don't send DMARC reports to these Addresses/Domains*"
@@ -22525,7 +22629,7 @@ DoDMARC  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-If enabled and ValidateSPF and DoDKIM are enabled and the sending domain has published a DMARC-record/policy, assp will act on the mail according to the senders DMARC-policy using the results of the SPF and DKIM check. It is save to leave this feature ON, it will not produce false positives! The blocking mode (block, monitor, score, testmode) is adapted from the most less aggressive setting of ValidateSPF and DoDKIM - and the published DMARC record ([p][sp]=[reject][quarantine]). Scoring is done using dmarcValencePB.
+If enabled and ValidateSPF and DoDKIM are enabled and the sending domain has published a DMARC-record/policy, assp will act on the mail according to the senders DMARC-policy using the results of the SPF and DKIM check and validating the SPF/DKIM address/domain Identifier Alignment rules (). It is safe to leave this feature ON, it will not produce false positives! The blocking mode (block, monitor, score, testmode) is adapted from the most less aggressive setting of ValidateSPF and DoDKIM - and the published DMARC record ([p][sp]=[reject][quarantine]). Scoring is done using dmarcValencePB.
   If you have published a DMARC-record and you want to collect statisical data, look at 
 "
     REFERENCE "Enable DMARC Check"
@@ -22615,7 +22719,7 @@ trustedAuthForwarders  OBJECT-TYPE
     DESCRIPTION
 "
 
- If an email contains a valid DKIM signature and the signature protects the 'X-Original-Authentication-Results' header line in its h= tag (RFC7601) and the host in this header line matches this regular expression, DMARC will fully trust the provided original authentication results for SPF, DKIM and DMARC.
+ If an email contains a valid DKIM signature and the signature protects the 'X-Original-Authentication-Results' header line in its h= tag () and the host in this header line matches this regular expression, DMARC will fully trust the provided original authentication results for SPF, DKIM and DMARC.
  If DoARC is enabled and a host match is found for the most recent  instance (highest instance number), the SPF-check, the DKIM-check and the DMARC-check will fully trust the provided ARC results.
  For example: ^mx\d*\.domain\.com$ or ^2\.2\.2\.2$
  An regular expression for the values of myName and myNameAlso are already added!.
@@ -22894,7 +22998,7 @@ RBLServiceProvider  OBJECT-TYPE
 Names of DNSBLs to use separated by '|'. You may set for every provider a weight like zen.spamhaus.org=>50|bl.spamcop.net=>25.
  Defaults are:
  zen.spamhaus.org=>1|bl.spamcop.net=>1|psbl.surriel.com=>2|ix.dnsbl.manitu.net=>2|
- l2.apews.org=>3|combined.njabl.org=>1|safe.dnsbl.sorbs.net=>1|dnsbl-1.uceprotect.net=>2|
+ l2.apews.org=>3|safe.dnsbl.sorbs.net=>1|dnsbl-1.uceprotect.net=>2|
  dnsbl-2.uceprotect.net=>2|dnsbl-3.uceprotect.net=>2|blackholes.five-ten-sg.com=>3'.
  DNSBL providers can get a 'weight' like bl.spamcop.net=>1.
  The value of the weight can be set directly like=>45 or as a divisor of RBLmaxweight. Low numbers &lt; 6 are divisors . So if RBLmaxweight = 50 (default) bl.spamcop.net=>50  would be the same as bl.spamcop.net=>1, bl.spamcop.net=>2 would be the same as bl.spamcop.net=>25.
@@ -23446,22 +23550,28 @@ Domain Names of URIBLs to use separated by '|'. You may set for every provider a
  If the sum of weights surpasses URIBLmaxweight, the URIBL check fails.  If not, the URIBL check is scored as 'neutral'  even with URIBLmaxhits reached. Setting Showmaxreplies will allow ALL replies to contribute to the total weight regardless of URIBLmaxhits.
  Some URIBL Service Providers, like multi.surbl.org and black.uribl.com , provides different return codes in a single DNS-zone: like 127.a.b.c - where a,b,c are used to identify a weight or type (or what ever) of the returned entry. If you want to care about special return codes, or if you want to use different weights for different return codes, you should use the following enhanced entry syntax:
  URIBL-Service-Provider=>result-to-watch=>weight (like:)
- multi.surbl.org=>127.0.0.2=>2
- multi.surbl.org=>127.0.0.4=>3
- multi.surbl.org=>127.0.0.?=>4
- multi.surbl.org=>127.0.0.*=>5
+ multi.surbl.org=&gt;127.0.0.2=&gt;2
+ multi.surbl.org=&gt;127.0.0.4=&gt;3
+ multi.surbl.org=&gt;127.0.0.?=&gt;4
+ multi.surbl.org=&gt;127.0.0.*=&gt;5
  You can see, the wildcards * (multiple character) and ? (single character) are possible to use in the second parameter. Never mix the three possible syntax types for the same URIBL Service Provider. A search for a match inside such a definition is done in reverse ASCII order, so the wildcards are used as last.
  Some URIBL Service Providers, provides different return codes using a bitmask in any part of the reply. To define weights for bitmasks, place a single 'M' in front of the mask number, like
- sp.com=>127.0.0.M2=>25
- sp.com=>127.0.0.M4=>41
- sp.com=>127.0.M1.5=>56
- sp.com=>127.0.M64.*=>11
- sp.com=>127.0.0.2=>22
- sp.com=>127.0.*.*=>1
+ sp.com=>127.0.0.M2=&gt;25
+ sp.com=>127.0.0.M4=&gt;41
+ sp.com=>127.0.M1.5=&gt;56
+ sp.com=>127.0.M64.*=&gt;11
+ sp.com=>127.0.0.2=&gt;22
+ sp.com=>127.0.*.*=&gt;1
  Valid bitmasks are 1,2,4,8,16,32,64 and 128. The resulting weight will be the weight sum of all matching bitmasks (if no full qualified definition is found). For example: a return code of 127.0.0.6 for sp.com will result in a weight of 66 (25+41), a reply of 127.0.0.2 will result in 22
  Because each single bitmask indicates a set of 128 numbers you should prevent the usage of something like 127.0.M16.M1 - this will lead in to a set of (128*128) 16384 addresses, which is really too much!
  For the same service provider, first define all bitmask definitions, after that all full qualified definitions and than all definitions with wildcards, like in the example above! If your definition order is wrong, the resulting weights will be unexpected!
- Default is: multi.surbl.org|black.uribl.com
+ If VirusTotalAPIKey is configured, assp is able to query URIs on www.virustotal.com . The API answers are in the range 127.0.0.2-127.0.0.253 (or none for OK), where the last digits represents HITS + 1.
+ Queries to VirusTotal are using HTTPS connections (https://www.virustotal.com/...) instead of DNS!
+ example:
+ virustotal=>127.0.0.2=&gt;1 # one hit
+ virustotal=>127.0.0.3=&gt;0.5 # two hits
+ virustotal=>127.0.0.4=&gt;0.33 # three hits
+ virustotal=>127.0.0.*=&gt;0.25 # more than three hits
 "
     REFERENCE "URIBL Service Providers*"
     DEFVAL { "file:files/uribls.txt" }
@@ -24438,7 +24548,7 @@ BadAttachL1  OBJECT-TYPE
 This regular expression is used to identify Level 1 attachments that should be blocked.
   Separate entries with a pipe |. The dot . is assumed to precede these, so don't include it.
   For example:
-  ad[ep]|asx|ba[st]|chm|cmd|com|cpl|crt|dbx|exe|exe\-bin|hlp|ht[ab]|in[fs]|isp|js|jse|lnk|md[abez]|mht|ms[cipt]|nch|pcd|pif|prf|ps1?|reg|sc[frt]|sh[bs]|vb|vb[es]|wms|ws[cfh]
+  ace|ad[ep]|asx|ba[st]|chm|cmd|com|cpl|crt|dbx|exe|exe\-bin|hlp|ht[ab]|in[fs]|isp|jse?|li?nk|md[abez]|mht|ms[cipt]|nch|pcd|pif|prf|ps1?|reg|sc[frt]|sh[bs]?|vb[es]?|wms|ws[cfh]?
   If you've installed the ASSP_AFC Plugin (at least version 2.10) and 'exe-bin' is defined (on any level), the Plugin will detect executable files based on their binary content. Detected will be all executables, libraries and scripts for DOS and Windows (except .com files), MS office macros(VBA), MAC-OS and linux ELF (for all processor architectures).
   If you want to skip the detection for a specific executable type, define any combination of the tags below like: 'exe-bin|:WSH|:MSOM|:WIN' - notice the leading collon for the exceptions!
  :WIN - windows executables
@@ -24501,7 +24611,7 @@ BadAttachL2  OBJECT-TYPE
 This regular expression is used to identify Level 2 attachments that should be blocked.
   Level 2 already includes all rejected extensions from Level 1. 
   For example:
-  (ad[ep]|asx|ba[st]|chm|cmd|com|cpl|crt|dbx|exe|hlp|ht[ab]|in[fs]|isp|js|jse|lnk|md[abez]|mht|ms[cipt]|nch|pcd|pif|prf|reg|sc[frt]|sh[bs]|vb|vb[es]|wms|ws[cfh]).zip
+  (ad[ep]|asx|ba[st]|chm|cmd|com|cpl|crt|dbx|exe|hlp|ht[ab]|in[fs]|isp|js|jse|lnk|md[abez]|mht|ms[cipt]|nch|pcd|pif|prf|reg|sc[frt]|sh[bs]|vb|vb[es]|wms|ws[cfh])\.zip
 "
     REFERENCE "Level 2 rejected File Extensions"
     DEFVAL { "" }
@@ -24592,7 +24702,7 @@ GoodAttach  OBJECT-TYPE
 "
 This regular expression is used to identify attachments that should be allowed. All others are blocked. Separate entries with a pipe |. The dot . is assumed to precede these, so don't include it.
   For example:
-  ai|asc|bhx|dat|docx?|eps|gif|htm|html|ics|jpg|jpeg|hqx|od[tsp]|pdf|p7[mscz]|ppt|rar|rpt|rtf|snp|txt|xls|zip|7z
+  ai|asc|bhx|dat|docx?|eps|gif|gz(?:ip)|html?|hqx|ics|jpe?g|od[tsp]|pdf|p7[mscz]|ppt|rar|rpt|rtf|snp|tar|tgz|txt|xls|zip|7z
 "
     REFERENCE "Level 4 Allowed File Extensions"
     DEFVAL { "" }
@@ -25808,11 +25918,11 @@ ClamAVtimeout  OBJECT-TYPE
     DESCRIPTION
 "
 ClamAV will timeout after this many seconds.
- default: 10 seconds.
+ default: 30 seconds.
  
 "
     REFERENCE "ClamAV Timeout"
-    DEFVAL { "10" }
+    DEFVAL { "30" }
     ::= {VirusProtectionusingClamAVandOSFileScanner 440}
 
 syncStatClamAVtimeout  OBJECT-TYPE
@@ -25856,7 +25966,7 @@ If virus check is enabled ( DoFileScan ), every file/mail (except reports - eg. 
  If a virus is found, the file/mail is not (re)sent (it will get the extension '.virus') and a notification mail will be sent to local users. Infected collected files are moved in to the SpamVirusLog folder.
  To force the resend of a virus infected mail, the header tag 'X-ASSP-ForceResend:' must be added to the file!
  If 'scan resend folder and collected files' is selected, it could be possible, that the virus scanner ( FileScanCMD ) forces a very high system workload.
- If you are not sure what to set here, leave the setting at the default 'scan resend folder only'!
+ If you are not sure what to set here, leave the setting at the default 'scan resend folder and collected files'!
  If the ASSP_AFC Plugin is installed and configured to be used, the files in the resend folder will be scanned by FileScan and ClamAV if any of FileLogScan or ClamAVLogScan is configured.
  Under normal conditions the scan will be done by the SMTP-worker, if assp is under a heavy workload, the scan request will be transfered to the High-Workers (10000/10001).
 "
@@ -26389,7 +26499,7 @@ bombSubjectRe  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Part of DoBombHeaderRe : the mail header will be checked against this Regex if DoBombHeaderRe is enabled. If DoBombHeaderRe is enabled, the mail subject will be automatically checked against RFC2047 (for NON printable characters in the undecoded MIME content).
+Part of DoBombHeaderRe : the mail header will be checked against this Regex if DoBombHeaderRe is enabled. If DoBombHeaderRe is enabled, the mail subject will be automatically checked against  (for NON printable characters in the undecoded MIME content).
 "
     REFERENCE "Regular Expression to Identify Spam in Subject**"
     DEFVAL { "" }
@@ -28537,6 +28647,7 @@ DoBATV  OBJECT-TYPE
     DESCRIPTION
 "
 If enabled any sender address of outgoing mails is mangled with a . Any incoming bounced mail is checked for a valid BATV-Tag. All valid (local) BATV-Tags will be removed from incoming mails - so whitelisting, delaying and all other recipient and sender based checks will use the normal addresses. If the BATV-check is successful, no MSGID-signing-check and DNS-Backscatter-check will be done! If any BATVTag was removed, no DKIM-check will be done! BATV-address-replacement is done, before the recipient replacement rules are processed!
+  NOTICE: Switch off all BATV-tagging on local MTA's before you enable this option!
   This check requires an installed  module in Perl.
 "
     REFERENCE "Do BATV Tagging and Validation"
@@ -29027,6 +29138,7 @@ noBackSctrAddresses  OBJECT-TYPE
     DESCRIPTION
 "
 Mail to and from any of these addresses will not be tagged and checked by any backscatter option. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com).
+ Notice: backscatter checks are skipped for regular incoming mails (not matching redRe) for local postmaster@ and webmaster@ addresses, even these addresses are listed in BounceSenders.
 "
     REFERENCE "Do not any Backscatter detection for this Addresses *"
     DEFVAL { "" }
@@ -33776,7 +33888,7 @@ spamaddresses  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Mail to any of these addresses are always spam and will contribute to the spam-collection unless from someone on the whitelist - for example honeypott addresses. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com). The addresses are not validated, they  are readdressed to sendAllSpam, however you can supersede this by putting a valid address into sendAllCollect below.
+Mail to any of these addresses are always spam and will contribute to the spam-collection unless from someone on the whitelist - for example honeypot addresses. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com). The addresses are not validated, they  are readdressed to sendAllSpam, however you can supersede this by putting a valid address into sendAllCollect below.
 "
     REFERENCE "Spam Collect Addresses*"
     DEFVAL { "" }
@@ -34557,6 +34669,7 @@ MaxBytes  OBJECT-TYPE
     DESCRIPTION
 "
 How many bytes of the message body will ASSP look at - the message header is always included in all checks? Mails stored in the collecting folders will be truncated to this size, if StoreCompleteMail is disabled. The average of Ham messages (message body) is 6K, the average of Spam messages is 3K. Usually the spam folder will be filled quicker than the notspam folder, therefore set this value to 4000 to get more wordpairs per Ham Message. When both folders are close to the maxfiles limit, reduce it to 3000.
+  If your system is fast enough and has enough RAM multiply all the above recommendations and the default value by ten.
 "
     REFERENCE "Max Bytes"
     DEFVAL { "4000" }
@@ -40147,11 +40260,11 @@ DNSServers  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-DNS Name Servers IP's to use for DNSBL(RBL), RWL, URIBL, PTR, SPF2, SenderBase, NS, and DMARC lookups. Separate multiple entries by '|' or leave blank to use system defaults. At least TWO DNS-servers should be defined or used by the system!
+DNS Name Servers IP's to use for DNSBL(RBL), RWL, URIBL, PTR, SPF2, SenderBase, NS, and DMARC lookups. Separate multiple entries by '|' or leave blank to use system defaults. At least TWO DNS-servers should be defined or used by the system! Every DNS-query is sent to ALL enabled DNS-Servers at a time (parallel) and the fastest valid answer is used.
   For example: 208.67.222.222|208.67.220.220 ().
   An DNS-query for the domain 'sourceforge.net' is used per default to measure the speed of the used DNS-servers. If you want assp to use another domain or hostname for this, append '=>domain.tld' at the end of the line - like: 208.67.222.222|208.67.220.220=>myhost.com
   To define the domain if you use the local DNS-servers 'UseLocalDNS' without defining any DNS-servers here, simply write '=>myhost.com'.
-  To debug the DNS queries, switch on DebugSPF, even you don't use the SFF-check.
+  To debug the DNS queries, switch on DebugSPF, even you don't use the SPF-check.
   NOTICE: don't define any public , ISP or open DNS-Servers (eg 208.67.222.222 208.67.220.220 8.8.8.8 8.8.4.4) , if you use any of the following assp checks: DNSBL(RBL), RWL, URIBL, SenderBase ! It is recommended in EVERY case to install (and to use) at least two local DNS-Servers!
   NOTICE: the DNS-server order can be changed by assp. Please read this section completely.
   All configured or local DNS Name Servers will be checked this may take some time if the servers are responding slow - please wait after apply changes!
@@ -43883,6 +43996,51 @@ synchronization status line from file assp_sync.cfg for HTMLParser
 "
     ::= {HTMLParser 6}
 
+VirusTotalAPIKey  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+To query www.VirusTotal.com for URIs and/or viruses (ASSP_AFC.pm), a valid API-Key is required. An API-Key is provided by VirusTotal for free, after your registration at www.virustotal.com.
+ Such a free API-Key is limited to four queries at VirusTotal per minute. API-Keys for a higher query volume are also provided by VirusTotal.
+ Systems that are part of the ASSP-Global-PenalyBox network can leave this value empty. They are getting an API-Key with a much higher query volume from the GPB-Server automatically, without any additionally costs. This API-Key is not shown here!
+"
+    REFERENCE "The Privat API-Key for VirusTotal"
+    DEFVAL { "" }
+    ::= {GeneralServerSetup 1077}
+
+syncStatVirusTotalAPIKey  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for VirusTotalAPIKey
+-1 - VirusTotalAPIKey could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {VirusTotalAPIKey 5}
+
+syncStatStrVirusTotalAPIKey  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for VirusTotalAPIKey
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {VirusTotalAPIKey 6}
+
 RebuildHiddenMarkovModelandBayesianDatabase  OBJECT IDENTIFIER ::= {asspConfig 33}
 RebuildSchedule  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -44811,6 +44969,8 @@ If set to 'drop TLS', any STARTTLS request will be removed from the protocol sta
   For 'do TLS' a server-certificate-file ' SSLCertFile ' and a server-key-file ' SSLKeyFile ' must exist and must be valid!
   If you do not have valid certificates, you may generate both files online with  or you may use OpenSSL to generate ! If you have installed OpenSSL (must be in PATH) and installed and enabled IO::Socket::SSL and ASSP is unable to find valid certificates - ASSP will try to create them at startup!
   Before you enable this feature, make sure that sendNoopInfo is switched off! If sendNoopInfo is enabled, STARTTLS will possibly not work!
+  If possible, you should consider to implement the 'SMTP MTA Strict Transport Security (MTA-STS)' by following the instructions in . To get MTA-STS working for incoming mails, it may be required to configure and to enable the SNI support (please read the complete SSL/TLS section). To use MTA-STS for outgoing mails, no special assp configuration is required - your outgoing MTA must support and implement MTA-STS.
+  DO NOT try to use the assp internal webserver to provide MTA-STS policy fetching (like: https://mta-sts.your-domain.tld/.well-known/mta-sts.txt - read )!
   
 "
     REFERENCE "How to Handle STARTTLS Requests"
@@ -45333,25 +45493,21 @@ Sets the version of the SSL protocol used to transmit data. The default is SSLv2
   The IO::Socket::SSL POD explains:
   Sets the version of the SSL protocol used to transmit data.
   'SSLv23' and the older definition 'SSLv2/3' (of the same) uses a handshake compatible with SSL2.0, SSL3.0 and TLS1.x, while
-  'SSLv2', 'SSLv3', 'TLSv1', 'TLSv1_1' or 'TLSv1_2' restrict handshake and
-  protocol to the specified version.
-  All values are case-insensitive.  Instead of 'TLSv1_1' and 'TLSv1_2' one can
-  also use 'TLSv11' and 'TLSv12'.  Support for 'TLSv1_1' and 'TLSv1_2' requires
-  recent versions of Net::SSLeay and openssl.
-  Independent from the handshake format you can limit to set of accepted SSL
-  versions by adding !version separated by ':'. 
+  'SSLv2', 'SSLv3', 'TLSv1', 'TLSv1_1', 'TLSv1_2' or 'TLSv1_3' restrict handshake and protocol to the specified version.
+  All values are case-insensitive.  Instead of 'TLSv1_1', 'TLSv1_2' and 'TLSv1_3' one can
+  also use 'TLSv11', 'TLSv12' and 'TLSv13'.  Support for 'TLSv1_1', 'TLSv1_2' and 'TLSv1_3' requires
+  recent versions of Net::SSLeay, openssl and IO::Socket::SSL.
+  Independent from the handshake format you can limit to set of accepted SSL versions by adding !version separated by ':'. 
   The default SSL_version is 'SSLv23:!SSLv3:!SSLv2' which means, that the
   handshake format is compatible to SSL2.0 and higher, but that the successful
   handshake is limited to TLS1.0 and higher, that is no SSL2.0 or SSL3.0 because
-  both of these versions have serious security issues and should not be used
-  anymore.
-  You can also use !TLSv1_1 and !TLSv1_2 to disable TLS versions 1.1 and 1.2 while
-  still allowing TLS version 1.0.
+  both of these versions have serious security issues and should not be used anymore.
+  You can also use !TLSv1_1, !TLSv1_2 and !TLSv1_3 to disable TLS versions 1.1, 1.2 and 1.3 while still allowing TLS version 1.0.
   Setting the version instead to 'TLSv1' might break interaction with older
   clients, which need a SSL2.0 compatible handshake. On the other
   side, some clients just close the connection when they receive a TLS version 1.1
   request. In this case setting the version to
-  'SSLv23:!SSLv2:!SSLv3:!TLSv1_1:!TLSv1_2' might help.
+  'SSLv23:!SSLv2:!SSLv3:!TLSv1_1:!TLSv1_2:!TLSv1_3' might help.
 If not set, the following defaults are used by IO::Socket::SSL :for local listeners : SSLv23:!SSLv3:!SSLv2 
 for client connections : SSLv23:!SSLv3:!SSLv2 
 "
@@ -45636,7 +45792,7 @@ If used, assp will call the defined subroutine in an eval closure submitting a r
   Now, if you set this parameter to 'CorrectASSPcfg::configWebSSL' - assp will call
   CorrectASSPcfg::configWebSSL->(\%sslparms);
   To support SNI at the SMTP listeners, you may do the following for example:
-  sub configWebSMTP {
+  sub configSMTPSSL {
   &nbsp;&nbsp;&nbsp;&nbsp;my &#x24;parms = shift;
   &nbsp;&nbsp;&nbsp;&nbsp;my &#x24;listenerName = &amp;main::getSMTPListenerConfigName(&#x24;parms->{LocalAddr},&#x24;parms->{LocalPort}); # returns listenPort , listenPort2 , listenPortSSL , relayPort or undef - may be used to implement different parameter settings for some or each SMTP listener
   &nbsp;&nbsp;&nbsp;&nbsp;if (&#x24;listenerName eq 'listenPortSSL') { # enable SNI at the listenPortSSL 
@@ -47425,7 +47581,12 @@ SNMP  OBJECT-TYPE
 "
 This enables the AgentX registration of assp to a SNMP master-AgentX. ASSP will be registered to the master-AgentX as 'assp_myName', the possible configuration file name will be assp_myName.conf . This option requires the installed perl module . The product and needed librarys could be downloaded at .
  All configuration values are accessed using the SNMPUser account. The SNMP-permission and visibility is used from the configured user GUI-permissions.
-The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries. The configuration values are changeable via snmp. The file mib/ASSP-MIB could be used in SNMP browsers to get a human readable view of the OID's (copy it to the net-snmp MIB file location - eg: [C:]/usr/share/snmp/mibs and the MIB location of your SNMP browser). Please keep in mind, that an extensive usage of SNMP queries will slow down assp.
+The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries. The configuration values are changeable via snmp. The published file mib/ASSP-MIB, which contains all possible OID's, could be used in SNMP browsers to get a human readable view of the OID's (copy it to the net-snmp MIB file location - eg: [C:]/usr/share/snmp/mibs and the MIB location of your SNMP browser). Please keep in mind, that an extensive usage of SNMP queries will slow down assp.
+Because the OID numbers can change in different assp versions, it is recommended to query the OID's by its consistent name (not by its number). This requires the usage of the assp version compatible mib/ASSP-MIB file!
+If you want to query or set any of the following configuration parameters: LocalAddresses_Flat, LocalAddresses_Flat_Domains, noBayesian_local, Bayesian_localOnly, SSL_version, SSL_cipher_list - remove all underscores from the config name to build the OID-name, because underscores are not allowed in SNMP queries. The MIB file already contains the corrected names.
+If you get unexpected SNMP-query results or you've lost the version compatible MIB file, rename the perl scripts lib/SNMPmakeMIB.p_ and lib/SNMPmakeMRTG.p_ to *.pl and restart assp. This will create the mib/ASSP-MIB and mib/assp-mrtg.cfg files, based on your installation and configuration. It is recommended to rename both scripts back, after the new MIB files are created.
+NOTICE: If you install or uninstall any plugin or you enable or disable the configuration synchronization and you use such a custom MIB file, the mib/ASSP-MIB file needs to be recreated to implement the new OID's and (at least) to correct the new OID order!
+To prevent permantly copying the changed mib/ASSP-MIB file to your net-snmp deamons MIB-folder - (e.g.) create a link there to the mib/ASSP-MIB file.
 .1   - runtime information
 .1.0 - assp healthy status boolean 0/1
 .1.1 - assp healthy status text
@@ -47476,7 +47637,6 @@ The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries.
 .1.20.31 - next File Age Schedule
 .1.20.32 - next BlockReport Queue Schedule
 
-
 .1.30.X - worker status (boolean) X = worker
 .1.30.X.1 - worker time since last loop (text) X = worker
 .1.30.X.2 - worker last action (text) X = worker
@@ -47486,7 +47646,7 @@ The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries.
 .1.31.X - database table status (boolean) 0/1 - X >= 1
 .1.31.X.1 - database table name - X >= 1 related to .1.31.X
 
-.2 - Configuration - X is the internal value number adapted from the language files
+.2 - Configuration - X is the internal number adapted from the language files (without the leading 'msg' and leading zeros
 .2.H - heading description - H is the internal GUI heading number
 .2.H.X   - config value
 
@@ -47497,24 +47657,32 @@ The following OIDs (relative to the SNMPBaseOID) are available for SNMP-queries.
 .3.X.3 - module installation status
 .3.X.4 - download URL for the module
 
-.4 - assp runtime status
-.4.1 - current stat - X is a counted number
-.4.1.X - current stat value
+The trailing .0 for the value query in all statistcs may be ommited, because the three digit OID's have no value, assp will return the next value (the four digit OID with the trailing .0)
 
-.4.2 - cumulative stat - X is a counted number
-.4.2.X - cumulative stat value
+.4 - assp runtime statistic
+.4.1 - current stat
+.4.1.X - current stat - X is a counted number
+.4.1.X.0 - current stat value
 
-.4.3 - current total stat - X is a counted number
-.4.3.X - current total value
+.4.2 - cumulative statistic
+.4.2.X - cumulative stat - X is a counted number
+.4.2.X.0 - cumulative stat value
 
-.4.4 - cumulative total stat - X is a counted number
-.4.4.X - cumulative total stat value
+.4.3 - current total statistic
+.4.3.X - current total stat - X is a counted number
+.4.3.X.0 - current total value
 
-.4.5 - current scoring stat - X is a counted number
-.4.5.X - current scoring stat value
+.4.4 - cumulative total statistic
+.4.4.X - cumulative total stat - X is a counted number
+.4.4.X.0 - cumulative total stat value
 
-.4.6 - cumulative scoring stat - X is a counted number
-.4.6.X - cumulative scoring stat value
+.4.5 - current scoring statistic
+.4.5.X - current scoring stat - X is a counted number
+.4.5.X.0 - current scoring stat value
+
+.4.6 - cumulative scoring statistic
+.4.6.X - cumulative scoring stat - X is a counted number
+.4.6.X.0 - cumulative scoring stat value
 
 .5.0 - SNMP-API : is writeable - accepts internal subroutine command/call to be executed
 .5.1 - the result of the last SNMP-API call (success or error)
@@ -50405,7 +50573,7 @@ ASSPAFCMaxZIPLevel  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-The maximum decompression cycles use on a compressed attachment (eg: zip in zip in zip ...). Default value is 10 - zero is not allowed to be used!
+The maximum decompression cycles used on a compressed attachment (eg: zip in zip in zip ...). Default value is 10 - zero is not allowed to be used!
 "
     REFERENCE "Maximum Decompression Level"
     DEFVAL { "10" }
@@ -50574,6 +50742,116 @@ synchronization status line from file assp_sync.cfg for ASSPAFCextractAttMail
  4 - in sync - running master mode (wait to reach state 2)
 "
     ::= {ASSPAFCextractAttMail 6}
+
+ASSPAFCKnownGoodEXE  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+Put the SHA256_HEX hash of all well known good executables in to this file (one per line). If the SHA256_HEX hash (not case sensitive) of an attachment or a part of a compressed attachment (e.g. exe, *.bin MS-Macro or OLE) is equal to a line in this file, the attachment passes the attachment check for all mails (regardless its extension and the settings in UserAttach).
+ The same applies to the following ojects in a PDF file: Certificate, Signature, JavaScript . If the SHA256_HEX hash of any of these PDF objects matches, the PDF will pass the attachment check.
+ Comments are allowed after the hash and at the begin of a line (recommended).
+ If configured, the analyzer and the maillog.txt will show the SHA256_HEX hash and the optional defined comment for all detected executables and PDF objects.
+ For security reasons, virus scanning is not skipped.
+ Notice: this feature is mainly created for executable files, but it will work for every attachment and every part of a compressed attachment.
+ For example - this can be usefull, if clients regular sending or receiving documents or excel sheets, which contains every time the same MS-Macro/MS-OLE (e.g. executable). In this case, decompress the doc[xm] and calculate the SHA256_HEX hash for the vbaProject.bin or the vbaProjectSignature.bin file and register the hash here.
+ examples:
+ # sales documents
+ a704ebf55efa5bb8079bb2ea1de54bfd5e9a0f7ed3a38867759b81bfc7b2cc9c # sales price_list.pdf - contains well known good Java-Script
+ 96c4e6976d16b424ff02d7ef3fdabf41262d3ffc6a191431dc77176a814c1256 # sales sales_report.pdf - contains known Certificate
+ 08d5518ef129ba1a992f5eb5c25e497cf886556710ffebe7cfb6aedf9d5727c9 # VBA Macro signature vbaProjectSignature.bin in sales info.docm
+ In addition to the SHA256_HEX hash, you can define at which compression level the hash should be valid. Compression levels are comma separated numerical values or ranges - like 0,1,2 or 0-2 or 0...8 or 0-2,4...6 or 1 .
+ The compression level zero is the not decompressed attachment itself. To include all compression levels, define a single asterix * or no level definition.
+ examples:
+ # sales documents
+ a704ebf55efa5bb8079bb2ea1de54bfd5e9a0f7ed3a38867759b81bfc7b2cc9c 0,1 # sales price_list.pdf - contains well known good Java-Script - valid at zip level 0 and 1
+ 96c4e6976d16b424ff02d7ef3fdabf41262d3ffc6a191431dc77176a814c1256 *   # sales sales_report.pdf - contains known Certificate - valid at any zip level
+ 08d5518ef129ba1a992f5eb5c25e497cf886556710ffebe7cfb6aedf9d5727c9 1   # VBA Macro signature vbaProjectSignature.bin in sales info.docm - only valid in the .docm itself (which is a zip) - .docm in a zip is not valid
+ 08d5518ef129ba1a992f5eb5c25e497cf886556710ffebe7cfb6aedf9d5727c9 0   # VBA Macro signature vbaProjectSignature.bin in sales info.docm - this will not work, because a .docm is a compressed file
+ To show the SHA256_HEX value for a file at the command line, execute :&gt;shasum -a 256 -b the_file_name
+ To show the SHA256_HEX values for all relevant PDF-objects in a PDF file, change in to the assp folder and execute :&gt;perl getpdfsha.pl the_PDF_file_name .
+ You may also compose and send a mail with the files in question attached to the analyze email-interface - EmailAnalyze . The log output of the analyzer will show all SHA256_HEX hashes (if AttachmentLog is enabled).
+ Notice: different PDF creator applications may store the same PDF-object (Cert, Sig, JS) in different ways, which will result in different SHA256_HEX hashes for the same PDF-object! If this happens, you need to calculate the SHA256_HEX hash for each different occurence of the PDF-object.
+"
+    REFERENCE "Well Known Good Executable Files *"
+    DEFVAL { "file:files/knowngoodattach.txt" }
+    ::= {ASSPAFCPlugin 10016}
+
+syncStatASSPAFCKnownGoodEXE  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPAFCKnownGoodEXE
+-1 - ASSPAFCKnownGoodEXE could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPAFCKnownGoodEXE 5}
+
+syncStatStrASSPAFCKnownGoodEXE  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPAFCKnownGoodEXE
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPAFCKnownGoodEXE 6}
+
+ASSPAFCDoVirusTotalVirusScan  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+If a VirusTotalAPIKey is provided and this option is enabled, all MIME-parts will be (in addition to ClamAV and/or FileScan) checked by www.virustotal.com.
+ There will be no mail content sent to VirusTotal, only hashes are queried!
+"
+    REFERENCE "Enable VirusTotal Virus Scan"
+    DEFVAL { "0" }
+    ::= {ASSPAFCPlugin 10017}
+
+syncStatASSPAFCDoVirusTotalVirusScan  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for ASSPAFCDoVirusTotalVirusScan
+-1 - ASSPAFCDoVirusTotalVirusScan could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPAFCDoVirusTotalVirusScan 5}
+
+syncStatStrASSPAFCDoVirusTotalVirusScan  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for ASSPAFCDoVirusTotalVirusScan
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {ASSPAFCDoVirusTotalVirusScan 6}
 
 ASSPARCPlugin  OBJECT IDENTIFIER ::= {asspConfig 42}
 DoASSPARC  OBJECT-TYPE
@@ -50920,7 +51198,7 @@ ASSPARCDBdriver  OBJECT-TYPE
     DESCRIPTION
 "
 The database driver used to access your database - DBD-driver. The following drivers are available on your system:
-  BerkeleyDB, ADO, DBM, ExampleP, File, Gofer, LDAP, Mem, ODBC, Oracle, Pg, PgPP, Proxy, SQLite, Sponge, Sprite, mysql
+  BerkeleyDB, ADO, CSV, DBM, ExampleP, File, Gofer, LDAP, Mem, ODBC, Oracle, Pg, PgPP, Proxy, SQLite, Sponge, Sprite, mysql
   If you can not find the driver for your database in this list, you should install it via cpan or ppm!
   -  or if you have installed an ODBC-driver for your database and DBD-ODBC, just create a DSN and use ODBC.
   Usefull are ADO|DB2|Informix|ODBC|Oracle|Pg|Sybase|mysql|mysqlPP - but any other SQL compatible database should also work.
@@ -55635,17 +55913,17 @@ download URL for the module
 "
     ::= {OLEStorageLite 4}
 
-OpenSSL110h  OBJECT-TYPE
+OpenSSL111b  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION
 "
-ASSP Perl module information for OpenSSL 1.1.0h;
+ASSP Perl module information for OpenSSL 1.1.1b;
 "
     ::= {asspPerlModuleInfo 47}
 
-iVOpenSSL110h  OBJECT-TYPE
+iVOpenSSL111b  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55653,9 +55931,9 @@ iVOpenSSL110h  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {OpenSSL110h 1}
+    ::= {OpenSSL111b 1}
 
-rVOpenSSL110h  OBJECT-TYPE
+rVOpenSSL111b  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55663,9 +55941,9 @@ rVOpenSSL110h  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {OpenSSL110h 2}
+    ::= {OpenSSL111b 2}
 
-iSOpenSSL110h  OBJECT-TYPE
+iSOpenSSL111b  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55673,9 +55951,9 @@ iSOpenSSL110h  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {OpenSSL110h 3}
+    ::= {OpenSSL111b 3}
 
-dUOpenSSL110h  OBJECT-TYPE
+dUOpenSSL111b  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55683,19 +55961,19 @@ dUOpenSSL110h  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {OpenSSL110h 4}
+    ::= {OpenSSL111b 4}
 
-OpenSSLlib110h27Mar2018  OBJECT-TYPE
+OpenSSLlib111b26Feb2019  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION
 "
-ASSP Perl module information for OpenSSL-lib 1.1.0h  27 Mar 2018;
+ASSP Perl module information for OpenSSL-lib 1.1.1b  26 Feb 2019;
 "
     ::= {asspPerlModuleInfo 48}
 
-iVOpenSSLlib110h27Mar2018  OBJECT-TYPE
+iVOpenSSLlib111b26Feb2019  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55703,9 +55981,9 @@ iVOpenSSLlib110h27Mar2018  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {OpenSSLlib110h27Mar2018 1}
+    ::= {OpenSSLlib111b26Feb2019 1}
 
-rVOpenSSLlib110h27Mar2018  OBJECT-TYPE
+rVOpenSSLlib111b26Feb2019  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55713,9 +55991,9 @@ rVOpenSSLlib110h27Mar2018  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {OpenSSLlib110h27Mar2018 2}
+    ::= {OpenSSLlib111b26Feb2019 2}
 
-iSOpenSSLlib110h27Mar2018  OBJECT-TYPE
+iSOpenSSLlib111b26Feb2019  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55723,9 +56001,9 @@ iSOpenSSLlib110h27Mar2018  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {OpenSSLlib110h27Mar2018 3}
+    ::= {OpenSSLlib111b26Feb2019 3}
 
-dUOpenSSLlib110h27Mar2018  OBJECT-TYPE
+dUOpenSSLlib111b26Feb2019  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55733,7 +56011,7 @@ dUOpenSSLlib110h27Mar2018  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {OpenSSLlib110h27Mar2018 4}
+    ::= {OpenSSLlib111b26Feb2019 4}
 
 PDFOCR2  OBJECT-TYPE
     SYNTAX      OCTET STRING
