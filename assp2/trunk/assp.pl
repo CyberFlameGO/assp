@@ -168,9 +168,9 @@ our $build;
 our $versionAge;
 our $maxAge;
 our $availversion:shared;
-our $versionURL;
-our $NewAsspURL;
-our $ChangeLogURL;
+our $versionURL:shared;
+our $NewAsspURL:shared;
+our $ChangeLogURL:shared;
 our $requiredSelfLoaderVersion;
 our %requiredDBVersion:shared;
 our $minCSSbuild;
@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19195';        # 14.07.2019 TE
+$build   = '19214';        # 02.08.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -270,9 +270,9 @@ if ($subversion % 2) {
     $ChangeLogURL = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/changelog.txt?format=raw';
     $maxAge = 90 * 24 * 3600;
 }
-our $gripListDownUrl = 'http://*HOST*/cgi-bin/assp_griplist?binary';
-our $gripListUpUrl = 'http://*HOST*/cgi-bin/assp_griplist?binary';
-our $gripListUpHost = 'assp.sourceforge.net';
+our $gripListDownUrl:shared = 'http://*HOST*/cgi-bin/assp_griplist?binary';
+our $gripListUpUrl:shared = 'http://*HOST*/cgi-bin/assp_griplist?binary';
+our $gripListUpHost:shared = 'assp.sourceforge.net';
 $gripListDownUrl =~ s/\*HOST\*/$gripListUpHost/o;
 $gripListUpUrl  =~ s/\*HOST\*/$gripListUpHost/o;
 our $GroupsFileURL = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/groups.txt?format=raw';
@@ -604,7 +604,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '2A8A4E725AD301CA8244193175784AACB5B66A2E'; }
+sub __cs { $codeSignature = '7741795B21A49EC54D928ACF1016BC1A8B05AA9D'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -638,19 +638,19 @@ our $SSLContextMaxUnused = 8 * 3600;
 our $SSLCAKeyLength = 1024;
 our $SSLServerKeyLength = 1024;
 
-our $tlds_alpha_URL = 'http://data.iana.org/TLD/tlds-alpha-by-domain.txt';
-our $tlds2_URL = 'http://www.surbl.org/tld/two-level-tlds';
+our $tlds_alpha_URL:shared = 'http://data.iana.org/TLD/tlds-alpha-by-domain.txt';
+our $tlds2_URL:shared = 'http://www.surbl.org/tld/two-level-tlds';
 #    'http://george.surbl.org/two-level-tlds';
 #    'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/URIBLCCTLDS-L2.txt?format=raw';
-our $tlds3_URL = 'http://www.surbl.org/tld/three-level-tlds';
+our $tlds3_URL:shared = 'http://www.surbl.org/tld/three-level-tlds';
 #    'http://george.surbl.org/three-level-tlds';
 #    'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/URIBLCCTLDS-L3.txt?format=raw';
 
-our $BackDNSFileURL = 'http://wget-mirrors.uceprotect.net/rbldnsd-all/ips.backscatterer.org.gz';
+our $BackDNSFileURL:shared = 'http://wget-mirrors.uceprotect.net/rbldnsd-all/ips.backscatterer.org.gz';
 
-our $DroplistURL = "http://www.spamhaus.org/drop/drop.txt";
-our $DroplistEURL = "http://www.spamhaus.org/drop/edrop.txt";
-our $Droplist6URL = "http://www.spamhaus.org/drop/dropv6.txt";
+our $DroplistURL:shared = "http://www.spamhaus.org/drop/drop.txt";
+our $DroplistEURL:shared = "http://www.spamhaus.org/drop/edrop.txt";
+our $Droplist6URL:shared = "http://www.spamhaus.org/drop/dropv6.txt";
 
 # set the blocking mode for HTTP (0/1 default is 0) and HTTPS (0/1 default is 0) on the GUI
 our $HTTPblocking = 0;
@@ -15001,7 +15001,7 @@ EOT3
           next if /\/assp.license$/oi;
           local $/ = undef;
           open(my $F, '<',"$_");my $f = (<$F>);$F->close if $F;
-          my $v;
+          my $v = {};
           local $@;
           if ( ! eval{$f && $L->($f)} ) {
               mlog(0,"error: license file '$_' is not valid".($@ ? ' - $@' : ''));
@@ -59525,6 +59525,46 @@ sub fixConfigSettings {
 
 # -- check and set the used or available encryption engine
     $CanUseCryptGhost = $AvailCryptGhost = ASSP::CRYPT->new('a',0,0)->ENCRYPT('a') ne ASSP::CRYPT->new('a',0,1)->ENCRYPT('a');
+
+    if (! $CanUseCryptGhost) {
+        local $/ = undef;
+        my $CryptGostWasLastUsed;
+        if (open(my $f, '<', "$base/notes/loaded_perl_modules.txt")) {
+              binmode $f;
+              my $cfg = (<$f>);
+              $f->close;
+              $CryptGostWasLastUsed = $cfg =~ / Crypt::GOST [^\n]+?1\.01 /o;
+        }
+
+        # last time assp was started, crypt::GOST was available and used - but now it is not
+        if ($CryptGostWasLastUsed && ! $CanUseCryptGhost) {
+            my $error = "\n***** ERROR ***** ERROR ***** ERROR *****";
+            $error .= "\n***** CAN NOT START ASSP - incompatible encryption engine in use *****";
+            $error .= "\n***** ERROR ***** ERROR ***** ERROR *****";
+            $error .= "\nERROR: last time assp was started, the perl module Crypt::GOST was available and used - but now it is not available for any reason (eg. perl upgrade without running the assp module installer script).";
+            $error .= "\nPlease read the installation instructions (eg. run the $base/assp.mod/install/mod_inst.pl script) - or install the missing module Crypt::GOST.";
+            $error .= "\nThe source of Crypt::GOST is available at $base/assp.mod/Crypt-GOST-1.01.src.tar.gz or at https://sourceforge.net/projects/assp/files/ASSP\%20V2\%20multithreading/ASSP\%20V2\%20module\%20installation/Crypt-GOST/Crypt-GOST-1.01.src.tar.gz .";
+            $error .= "\nIt is mandatory to run the assp module installer script (and to correct all shown errors) before starting assp.";
+            $error .= "\nIt is highly recommended to run 'cpan-outdated -p|cpanm [-n]' or 'cpan> [notest] upgrade' to bring all perl modules uptodate.";
+            $error .= "\nASSP will not start until the perl module Crypt::GOST is installed, or its reference is removed from $base/notes/loaded_perl_modules.txt .";
+            $error .= "\nIf this reference is removed without installing the Crypt::GOST module, assp will start - but all encryped configuration values and files will become invalid and you'll need to reconfigure them all manually!";
+            $error .= "\n***** ERROR ***** ERROR ***** ERROR *****";
+
+            if (open(my $F, '>>', "$base/moduleLoadErrors.txt")) {
+                binmode $F;
+                print $F $error;
+                $F->close;
+            }
+
+            mlog(0,$error);
+            print $error;
+            eval {print STDERR $error;};
+            print "\nError written to $base/moduleLoadErrors.txt\nASSP is exiting now with error code 255\n";
+            eval {print STDERR "\nError written to $base/moduleLoadErrors.txt\nASSP is exiting now with error code 255\n";};
+            exit 255;
+        }
+    }
+    
     if ($Config{adminusersdbpass} && $Config{adminusersdbpass} =~ /^(?:[a-fA-F0-9]{2}){5,}$/o) {
         if ($AvailCryptGhost && defined ASSP::CRYPT->new($Config{webAdminPassword},0,1)->DECRYPT($Config{adminusersdbpass})) {
             $usedCrypt = 1; # can and use Crypt::GOST

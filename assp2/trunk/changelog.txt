@@ -1,3 +1,25 @@
+2019-08-02
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19214:
+
+
+- If assp was started after a perl version upgrade (eg. as service or daemon), without installing the possibly required perl module Crypt::GOST 1.01 (eg. running the assp module installer again),
+  all encypted configuration parameters and files were destroyed.
+  ASSP now checks at every startup, that the required Crypt::GOST module is installed. If this module is required but missing, ASSP will end immediatly and will write the following error to STDOUT,
+  STDERR and the file moduleLoadErrors.txt.
+  
+***** ERROR ***** ERROR ***** ERROR *****
+***** CAN NOT START ASSP - incompatible encryption engine in use *****
+***** ERROR ***** ERROR ***** ERROR *****
+ERROR: last time assp was started, the perl module Crypt::GOST was available and used - but now it is not available for any reason (eg. perl upgrade without running the assp module installer script).
+Please read the installation instructions (eg. run the ./assp.mod/install/mod_inst.pl script) - or install the missing module Crypt::GOST.
+The source of Crypt::GOST is available at ./assp.mod/Crypt-GOST-1.01.src.tar.gz or at https://sourceforge.net/projects/assp/files/ASSP\%20V2\%20multithreading/ASSP\%20V2\%20module\%20installation/Crypt-GOST/Crypt-GOST-1.01.src.tar.gz .
+It is mandatory to run the assp module installer script (and to correct all shown errors) before starting assp.
+It is highly recommended to run 'cpan-outdated -p|cpanm [-n]' or 'cpan> [notest] upgrade' to bring all perl modules uptodate.
+ASSP will not start until the perl module Crypt::GOST is installed, or its reference is removed from ./notes/loaded_perl_modules.txt .
+If this reference is removed without installing the Crypt::GOST module, assp will start - but all encryped configuration values and files will become invalid and you'll need to reconfigure them all manually!
+***** ERROR ***** ERROR ***** ERROR *****
+
+
 2019-07-14
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19195:
 
