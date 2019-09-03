@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19214';        # 02.08.2019 TE
+$build   = '19246';        # 03.09.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -604,7 +604,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '7741795B21A49EC54D928ACF1016BC1A8B05AA9D'; }
+sub __cs { $codeSignature = '2DF9371577BF2D668E7B746A142093E9C1349C52'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1574,7 +1574,7 @@ sub loadModuleVars {
       'LWP::Simple' => 1,
       'Email::MIME' => 1,
       'MIME::Types' => 1,
-      'Email::Send' => 1,
+      'Email::Address::XS' => 1,
       'Convert::TNEF' => 0,
       'Mail::DKIM::Verifier' => 1,
       'Net::SMTP' => 1,
@@ -3967,7 +3967,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['correctednotspam','False-positive Collection',40,\&textinput,'errors/notspam','(\S+)',undef,
   'Good mail that was listed as spam, count 4x. This directory will be used in building the spamdb . For example: errors/notspam',undef,undef,'msg005670','msg005671'],
 ['resendmail','try to resend this files',40,\&textinput,'resendmail','(\S+)',undef,
-  'ASSP will try to resend the files in this directory to the original recipient. The files must have the "maillogExt" extension and must have the SMTP-format. For example: resendmail. This requires an installed <a href="http://metacpan.org/search?q=Email::Send" rel="external">Email::Send</a> module in PERL.',undef,undef,'msg005680','msg005681'],
+  'ASSP will try to resend the files in this directory to the original recipient. The files must have the "maillogExt" extension and must have the SMTP-format. For example: resendmail. This requires an installed <a href="http://metacpan.org/search?q=Email::Address::XS" rel="external">Email::Address::XS</a> module in Perl.',undef,undef,'msg005680','msg005681'],
 ['maillogExt','Extension for Mail Files',20,\&textinput,'.eml','(\S*)',undef,
   'Enter the file extension (include the period) you want appended to the mail files in the mail collections.<br />
   Leave it blank for no extension - this setting will prevent several features from working. Never use \'.msg\' - this is an extension used by MS-outlook! For Example: .eml',undef,undef,'msg005690','msg005691'],
@@ -7506,8 +7506,8 @@ our $AvailEMM           :shared;
 our $CanUseEMM          :shared;
 our $AvailMTY           :shared;
 our $CanUseMTY          :shared;
-our $AvailEMS           :shared;
-our $CanUseEMS          :shared;
+our $AvailEmailAddressXS  :shared;
+our $CanUseEmailAddressXS :shared;
 our $AvailTNEF          :shared;
 our $CanUseTNEF         :shared;
 our $AvailDKIM          :shared;
@@ -10934,10 +10934,8 @@ EOT
     $AvailMTY            = $useMIMETypes ? validateModule('MIME::Types') : 0;   # MIME::Types module installed
     $CanUseMTY           = $AvailMTY && $CanUseEMM;
 
-    ${'Return::Value::NO_CLUCK'} = 1;   # prevent the cluck from Return::Value version 1.666002
-    eval('use Return::Value();1;');
-    $AvailEMS            = $useEmailSend ? validateModule('Email::Send') : 0;  # Email::Send module installed
-    $CanUseEMS           = $AvailEMS;
+    $AvailEmailAddressXS = $useEmailAddressXS ? validateModule('Email::Address::XS()') : 0;  # Email::Address::XS module installed
+    $CanUseEmailAddressXS= $AvailEmailAddressXS;
     print '.';
 
     $AvailTNEF           = $useConvertTNEF ? validateModule('Convert::TNEF') : 0;  # Convert::TNEF module installed
@@ -11505,7 +11503,7 @@ For removal of entries from WhiteBox (PBWhite)  use <a onmousedown="showDisp(\'$
 $lngmsg{'msg500086'} = 'CacheEntry: IP/Domain \'11\' CacheIntervalStart 1=fail/2=pass Result/Comment';
 
 $lngmsg{'msg500090'} = 'To take an action, select the action and click "Do It!". To move a file to another location, just copy and delete the file!';
-$lngmsg{'msg500091'} = '<br /> For "resend file" action install the Email::Send module!';
+$lngmsg{'msg500091'} = '<br /> For "resend file" action install the Email::Address::XS module!';
 
 $lngmsg{'msg500092'} = 'IP ranges can be defined as: 182.82.10. ';
 
@@ -14439,6 +14437,16 @@ EOT
   if ($CanUseEMM) {
     $ver=eval('Email::MIME->VERSION'); $VerEmailMIME=$ver; $ver=" version $ver" if $ver;
     mlog(0,"Email::MIME module$ver installed - MIME charset decoding and conversion interface and attachment detection available");
+    if ($VerEmailMIME < 1.946) {
+        my $winext = $isWIN ? " or 'ppm install Email::MIME'" : '';
+        my $error = "ERROR: The installed version $VerEmailMIME of the important module Email::MIME is too old. The module version should be at least '1.946'. Please upgrade this module as soon as possible - using 'cpanm -n Email::MIME' or 'cpan Email::MIME'$winext!";
+        mlog(0,$error);
+        if (open(my $F, '>>', "$base/moduleLoadErrors.txt")) {
+            binmode $F;
+            print $F "\n$error\n";
+            $F->close;
+        }
+    }
     $installed = 'enabled';
     $org_Email_MIME_parts_multipart = *{'Email::MIME::parts_multipart'};
     *{'Email::MIME::parts_multipart'} = *{'main::parts_multipart'};
@@ -14448,7 +14456,7 @@ EOT
     $installed = $useEmailMIME ? 'is not installed' : 'is disabled in config';
     mlog(0,"Email::MIME module $installed - MIME charset decoding and conversion interface and attachment detection not available");
   }
-  $ModuleList{'Email::MIME'} = $VerEmailMIME.'/1.936';
+  $ModuleList{'Email::MIME'} = $VerEmailMIME.'/1.946';
   $ModuleStat{'Email::MIME'} = $installed;
 
   if ($CanUseMTY) {
@@ -14463,16 +14471,16 @@ EOT
   $ModuleStat{'MIME::Types'} = $installed;
   print '.';
 
-  if ($CanUseEMS) {
-    $ver=eval('Email::Send->VERSION'); $VerEmailSend=$ver; $ver=" version $ver" if $ver;
-    mlog(0,"Email::Send module$ver installed - sending .eml files available");
+  if ($CanUseEmailAddressXS) {
+    $ver=eval('Email::Address::XS->VERSION'); $VerEmailAddressXS=$ver; $ver=" version $ver" if $ver;
+    mlog(0,"Email::Address:XS module$ver installed - sending .eml files available");
     $installed = 'enabled';
-  } elsif (!$AvailEMS) {
-    $installed = $useEmailSend ? 'is not installed' : 'is disabled in config';
-    mlog(0,"Email::Send module $installed - sending .eml files is not available");
+  } elsif (!$AvailEmailAddressXS) {
+    $installed = $useEmailAddressXS ? 'is not installed' : 'is disabled in config';
+    mlog(0,"error: Email::Address::XS module $installed - (re)sending .eml files is not available");
   }
-  $ModuleList{'Email::Send'} = $VerEmailSend.'/2.201';
-  $ModuleStat{'Email::Send'} = $installed;
+  $ModuleList{'Email::Address::XS'} = $VerEmailAddressXS.'/1.04';
+  $ModuleStat{'Email::Address::XS'} = $installed;
 
   if ($CanUseTNEF) {
     $ver=eval('Convert::TNEF->VERSION'); $VerConvertTNEF=$ver; $ver=" version $ver" if $ver;
@@ -23931,7 +23939,8 @@ sub sendNotification {
 # '*x*' is removed in sub mlog
 sub resend_mail {
   return unless($resendmail);
-  return unless($CanUseEMS);
+  return unless($CanUseEMM);
+  return unless($CanUseEmailAddressXS);
   return unless($maillogExt);
   my @filelist;
   my @list = $unicodeDH->("$base/$resendmail");
@@ -24278,32 +24287,28 @@ sub resend_mail {
                   $from{From} .= ' REQUIRETLS' if $enableREQUIRETLS && $requireTLS && ($useSSL || $DoTLS == 2);
                   $Bits{Bits} = 8 if $IS8BITMIME && ! $CCignore8BitMIME;
 #                  %to = ('To' => $to);
-                  my $sender = Email::Send->new({mailer => 'SMTP'});
-                  $sender->mailer_args([Host => $host, Port => $port, Hello => $myName, tls => ($DoTLS == 2 && ! exists $localTLSfailed{$destinationA} && ! $useSSL), ssl => ($useSSL?1:0), %auth, %from, %to, %Bits]);
-                  eval{ require Email::Send::SMTP; };
-                  *{'Email::Send::SMTP::send'} = \&main::email_send_X;
-                  eval{$result = $sender->send($message);};
-                  mlog(0,"info: in resend_mail: send-result <$result> , returned: $@") if ($@ && $MaintenanceLog);
-                  if ($@ && $DoTLS == 2 && ! $useSSL && $@ =~ /STARTTLS: *50\d/io) {
+                  my $mailer_args = [Host => $host, Port => $port, Hello => $myName, tls => ($DoTLS == 2 && ! exists $localTLSfailed{$destinationA} && ! $useSSL), ssl => ($useSSL?1:0), %auth, %from, %to, %Bits];
+                  $result = email_send(\$message, $mailer_args);
+                  mlog(0,"info: in resend_mail->email_send: send-result <$result>") if ($result ne '1' && $MaintenanceLog);
+                  if ($result ne '1' && $DoTLS == 2 && ! $useSSL && $result =~ /STARTTLS: *50\d/io) {
                       $result = undef;
                       $localTLSfailed{$destinationA} = time;
                       $from{From} =~ s/\s+REQUIRETLS//o;
-                      $sender = Email::Send->new({mailer => 'SMTP'});
-                      $sender->mailer_args([Host => $host, Port => $port, Hello => $myName, NoTLS => 1, %auth, %from, %to, %Bits]);
-                      $result = eval{$sender->send($message)};
-                  } elsif ($@) {
-                      die "$@\n";
+                      $mailer_args = [Host => $host, Port => $port, Hello => $myName, NoTLS => 1, %auth, %from, %to, %Bits];
+                      $result = email_send(\$message, $mailer_args);
+                  } elsif ($result ne '1') {
+                      die "$result\n";
                   }
               };
-              if ($@ || ! $result) {
+              if ($@ || $result ne '1') {
                   mlog(0,"*x*error: unable to send file $file to $destinationA$useSSL ($hostCFGname) - $@") if ($@ && $MaintenanceLog);
                   $@ =~ s/\r?\n/\r\n/go;
                   $@ =~ s/[\r\n]+$//o;
                   $reason .= "X: # error: unable to send file $file to $destinationA$useSSL ($hostCFGname) - $@\r\n" if $@;
-                  mlog(0,"*x*error: unable to send file $file to $destinationA$useSSL ($hostCFGname)") if ($result && $MaintenanceLog);
+                  mlog(0,"*x*error: unable to send file $file to $destinationA$useSSL ($hostCFGname) - $result") if ($result ne '1' && $MaintenanceLog);
                   $result =~ s/\r?\n/\r\n/go;
                   $result =~ s/[\r\n]+$//o;
-                  $reason .= "X: # error: unable to send file $file to $destinationA$useSSL ($hostCFGname)\r\n" if $result;
+                  $reason .= "X: # error: unable to send file $file to $destinationA$useSSL ($hostCFGname) - $result\r\n" if $result ne '1';
                   mlog(0,"*x**** send to $destinationA$useSSL ($hostCFGname) didn't work, trying others...") ;
                   $reason .= "X: # send to $destinationA$useSSL ($hostCFGname) didn't work, trying others\r\n";
               } else {
@@ -41301,15 +41306,17 @@ sub NullData { my ($fh,$l)=@_;
                         next MXQ unless $SMTP_HOSTNAME;
 
                         eval{
-                        my $sender = eval{Email::Send->new({mailer => 'SMTP'})};
-                        last RCPT unless $sender;
-                        my %Bits;
-                        $Bits{Bits} = 8 if $Con{$fh}->{IS8BITMIME};
-                        $sender->mailer_args([Host => $SMTP_HOSTNAME, Port => 25, Hello => $myName, NoTLS => 1, To => $rcpt, From => $mailfrom, %Bits]);
-                        eval{ require Email::Send::SMTP; } or last RCPT;
-                        *{'Email::Send::SMTP::send'} = \&main::email_send_X;
-                        $sender->send($header) &&
-                        mlog(0,"send faked mail from $mailfrom to $rcpt via $SMTP_HOSTNAME");
+                            my %Bits;
+                            $Bits{Bits} = 8 if $Con{$fh}->{IS8BITMIME};
+                            my $mailer_args = [Host => $SMTP_HOSTNAME, Port => 25, Hello => $myName, NoTLS => 1, To => $rcpt, From => $mailfrom, %Bits];
+                            my $result = email_send(\$header,$mailer_args);
+                            if ($result eq '1') {
+                                mlog(0,"send faked mail from $mailfrom to $rcpt via $SMTP_HOSTNAME");
+                                1;
+                            } else {
+                                mlog(0,"error: failed to send faked mail from $mailfrom to $rcpt via $SMTP_HOSTNAME - $result");
+                                0;
+                            }
                         } && next RCPT;
                     }
                 }
@@ -41459,7 +41466,7 @@ sub BlockedMailResend {
     d("BlockedMailResend - $filename");
 
     return unless ($resendmail);
-    return unless ($CanUseEMS);
+    return unless ($CanUseEmailAddressXS);
 
     $special =~ s/[(\[][^(\[)\]]*[)\]]//io;
     my $resfile;
@@ -43044,9 +43051,17 @@ sub BlockReportBody {
             if ( $this->{rcpt} =~
                 /^(RSBM)_(.+?)\Q$maillogExt\E\Q$EmailBlockReportDomain\E\s*$/i )
             {
+                my $start = $1;
                 my $rfile = $2;
-                mlog(0,"warning: the recipient address '$this->{rcpt}' was changed to lower case - this is a wrong behavior - assp will be possibly unable to find the requested file on nix systems") if $1 eq 'rsbm' && $ReportLog >= 2;
-                $rfile =~ s/x([0-9a-fA-F]{2})X/pack('C',hex($1))/geo;
+                if ($start eq 'rsbm') {
+                    mlog(0,"warning: the recipient address '$this->{rcpt}' was changed to lower case - this is a wrong and unexpected behavior - assp will be possibly unable to find the requested file on nix systems") if $ReportLog;
+                    $rfile =~ s/x([0-9a-fA-F]{2})X/pack('C',hex($1))/gieo;
+                } elsif ($start =~ /^(?:[r][sS][bB][mM]|[rR][s][bB][mM]|[rR][sS][b][mM]|[rR][sS][bB][m])$/o) {
+                    mlog(0,"warning: the recipient address '$this->{rcpt}' was partly changed to lower case - this is a very bad and unexpected behavior of your mail system or client - assp will be possibly unable to find the requested file on your system.") if $ReportLog;
+                    $rfile =~ s/x([0-9a-fA-F]{2})X/pack('C',hex($1))/gieo;
+                } else {
+                    $rfile =~ s/x([0-9a-fA-F]{2})X/pack('C',hex($1))/geo;
+                }
                 $rfile = "$base/$rfile$maillogExt";
                 $resendfile{$rfile} = $rsbm_special;
                 $sub .= ' resend ' if $sub !~ /resend/io;
@@ -43055,7 +43070,7 @@ sub BlockReportBody {
                 foreach my $rfile ( keys %resendfile ) {
 
 #               mlog(0,"info: resend filename - $rfile on host - $host to $this->{mailfrom}");
-                    if ( (! $host || ( lc($myName) eq lc($host) )) && $resendmail && $CanUseEMS) {
+                    if ( (! $host || ( lc($myName) eq lc($host) )) && $resendmail && $CanUseEmailAddressXS) {
                         my $sp = $resendfile{$rfile} ? " - special specification: $resendfile{$rfile}" : '';
                         $sp = substr($sp,0,50);
                         mlog( 0,"info: got resend blocked mail request from $this->{mailfrom} for $rfile$sp")
@@ -43064,8 +43079,8 @@ sub BlockReportBody {
                         &BlockedMailResend( $fh, $rfile , $resendfile{$rfile});
                     } elsif ( (! $host || ( lc($myName) eq lc($host) )) && ! $resendmail ) {
                         mlog( 0,"error: resendmail is not configured - cancel local resend request for $rfile") if $ReportLog;
-                    } elsif ( (! $host || ( lc($myName) eq lc($host) )) && ! $CanUseEMS ) {
-                        mlog( 0,"error: Email::Send is not installed - cancel local resend request for $rfile") if $ReportLog;
+                    } elsif ( (! $host || ( lc($myName) eq lc($host) )) && ! $CanUseEmailAddressXS ) {
+                        mlog( 0,"error: Email::Address::XS is not installed - cancel local resend request for $rfile") if $ReportLog;
                     }
                 }
                 mlog( 0,"error: got resend blocked mail request from $this->{mailfrom} without valid filename")
@@ -56416,8 +56431,8 @@ sub ConfigEdit {
 
         $fil="$base/$fil" if $fil!~/^\Q$base\E/io;
         $option  = "<option value=\"0\">select action</option>";
-        $option .= "<option value=\"1\">copy file to resendmail</option>" if($CanUseEMS && $resendmail && $fil !~/\/$resendmail\//);
-        $option .= "<option value=\"10\" style=\"color:red\">copy file to resendmail and force attachments</option>" if($CanUseEMS && $resendmail && $fil !~/\/$resendmail\//);
+        $option .= "<option value=\"1\">copy file to resendmail</option>" if($CanUseEmailAddressXS && $resendmail && $fil !~/\/$resendmail\//);
+        $option .= "<option value=\"10\" style=\"color:red\">copy file to resendmail and force attachments</option>" if($CanUseEmailAddressXS && $resendmail && $fil !~/\/$resendmail\//);
         $option .= "<option value=\"2\">save file</option>";
         $option .= "<option value=\"3\">copy file to notspamlog</option>" if ($fil !~/\/$notspamlog\//);
         $option .= "<option value=\"4\">copy file to spamlog</option>" if ($fil !~/\/$spamlog\//);
@@ -56429,7 +56444,7 @@ sub ConfigEdit {
 
         $note = '<div class="note" id="notebox">';
         $note .= $WebIP{$ActWebSess}->{lng}->{'msg500090'} || $lngmsg{'msg500090'};
-        $note .= $WebIP{$ActWebSess}->{lng}->{'msg500091'} || $lngmsg{'msg500091'} if !($CanUseEMS && $resendmail && $fil !~/\/$resendmail\//);
+        $note .= $WebIP{$ActWebSess}->{lng}->{'msg500091'} || $lngmsg{'msg500091'} if !($resendmail && $CanUseEmailAddressXS && $fil !~/\/$resendmail\//);
         $note .= $WebIP{$ActWebSess}->{lng}->{'msg500097'} || $lngmsg{'msg500097'};
  }
 
@@ -60031,7 +60046,6 @@ sub unloadMainThreadModules {
 #    unloadNameSpace 'Mail::SRS';
 #    unloadNameSpace 'Email::MIME';
 #    unloadNameSpace 'MIME::Types';
-#    unloadNameSpace 'Email::Send';
 #    unloadNameSpace 'Convert::TNEF';
 #    unloadNameSpace 'Mail::DKIM::Verifier';
 #    unloadNameSpace 'Mail::DKIM';
@@ -72052,7 +72066,7 @@ sub ThreadMaintMain2 {
 
     $wasrun = processMaintCMDQueue();
 
-    if ($CanUseEMS && $resendmail && time >= $nextResendMail) {
+    if ($CanUseEmailAddressXS && $resendmail && time >= $nextResendMail) {
         mlog(0,"info: looking for files to (re)send") if $MaintenanceLog >= 2;
         $nextResendMail = time + 300;
         d('ThreadMaintMain - resend_mail');
@@ -74955,19 +74969,21 @@ sub cleanUpCollection {
 }
 
 #####################################################################################
-# subroutine replacement for Email::Send::SMTP::send
-# $message is an Email::MIME object
+# send an email as client                                                           #
+# $message must be a reference to a plain text scalar or an Email::MIME object      #
 #####################################################################################
-sub email_send_X {
-    my ($class, $message, @args) = @_;
+sub email_send {
+    my ($message, $arg) = @_;
+
+    $message = Email::MIME->new($$message) if ref($message) ne 'Email::MIME';
 
     my %args;
-    if ( @args % 2 ) {
-        my $host = shift @args;
-        %args = @args;
+    if ( @$arg % 2 ) {
+        my $host = shift @$arg;
+        %args = @$arg;
         $args{Host} = $host;
     } else {
-        %args = @args;
+        %args = @$arg;
     }
 
     my $host = delete($args{Host}) || 'localhost';
@@ -74993,8 +75009,7 @@ sub email_send_X {
 
     my $SMTP = $smtp_class->new($host, %args);
     if (! $SMTP) {
-        mlog(0,"error: Couldn't connect to $host:$args{Port} using '$smtp_class'");
-        return 0;
+        return "Couldn't connect to $host:$args{Port} using '$smtp_class'";
     }
 
 # check if we connected to MS exchange
@@ -75016,8 +75031,7 @@ sub email_send_X {
     if ($tls) {
         mlog(0,"info: $smtp_class uses STARTTLS") if $ConnectionLog > 2;
         if (! eval{$SMTP->starttls(getSSLParms(0,{'name' => "$host:$args{Port}", 'type' => 'smtp'}));}) {
-            mlog(0,"error: Couldn't start TLS to $host:$args{Port} using '$smtp_class': $@");
-            return 0;
+            return "Couldn't start TLS to $host:$args{Port} using '$smtp_class': $@";
         }
     }
     
@@ -75027,30 +75041,54 @@ sub email_send_X {
         my $r;
         eval{$r = $SMTP->auth($user, $pass);};
         if ($@) {
-            mlog(0,"errorr: Couldn't authenticate user '$user' at MTA $host:$args{Port} - $@");
-            return 0;
+            return "Couldn't authenticate user '$user' at MTA $host:$args{Port} - $@";
         }
         if ($r == 0) {
-            mlog(0,"error: SMTP authentication failed for user '$user' at MTA: $host:$args{Port}");
-            return 0;
+            return "SMTP authentication failed for user '$user' at MTA: $host:$args{Port}";
         }
         if (!$r) {
             mlog(0,"SMTP authentication (AUTH) is not supported by MTA: $host:$args{Port} - continue unauthenticated");
         }
     }
 
+    my $emailAddrModule = $CanUseEmailAddressXS ? 'Email::Address::XS'
+                                                : eval {require Email::Address;} ? 'Email::Address' : '';
     my @bad;
     eval {
-        my $from = $args{From} || $args{from} || $class->get_env_sender($message);
+        my $from = $args{From} || $args{from};
+        if (! $from) {
+            die "Need to parse for the MIME-header From: address, but missing the module Email::Address::XS and Email::Address - install and enable the module Email::Address::XS.\n" if (! $emailAddrModule);
+            mlog(0,"Need to parse for the MIME-header From-address, but missing the module Email::Address::XS - install and enable this module - using the insecure Email::Address module instead.") if (! $CanUseEmailAddressXS);
+            if (my $hdr = $message->header('From')) {
+                my @addresses = $emailAddrModule->parse($hdr);
+                $from = $addresses[0]->address if @addresses && $addresses[0]->address;
+            }
+        }
         my %opt;
         $opt{Bits} = $args{Bits} if $args{Bits};
         
-        # ::TLS has no useful return value, but will croak on failure.
+        # ::TLS has no useful return value (other than True), but will croak on failure.
         if (! eval { $SMTP->mail($from,%opt); } ) {
             die("FROM: <$from> denied on host $host:$args{Port}\n");
         }
         my $to = $args{To} || $args{to};
-        my @to = (ref($to) ? @{$to} : $to) || $class->get_env_recipients($message);
+        my @to;
+        if ($to) {
+            @to = (ref($to) ? @{$to} : $to);
+        }
+        if (! @to) {
+            die "Need to parse for the MIME-header To: address, but missing the module Email::Address::XS and Email::Address - install and enable the module Email::Address::XS.\n" if (! $emailAddrModule);
+            mlog(0,"Need to parse for the MIME-header To-address, but missing the module Email::Address::XS - install and enable this module - using the insecure Email::Address module instead.") if (! $CanUseEmailAddressXS);
+            for my $tag (qw(To Cc Bcc)) {
+                my $hdr = $message->header($tag);
+                next unless $hdr;
+                for my $address ($emailAddrModule->parse($hdr)) {
+                    if ($address && (my $addr = $address->address)) {
+                        push @to, $addr;
+                    }
+                }
+            }
+        }
         if (@to) {
             my @ok = $SMTP->to(@to, { SkipBad => 1 });
 
@@ -75067,8 +75105,7 @@ sub email_send_X {
     };
 
     if ($@) {
-        mlog(0,"error: email_send failed - $@");
-        return 0;
+        return "email_send failed - $@";
     }
 
     my $timeout = (int(length($message) / (1024 * 1024)) + 1) * 60; # 1MB/min
@@ -75086,14 +75123,12 @@ sub email_send_X {
         mlog(0,"info: $smtp_class terminate mail data") if $ConnectionLog > 2;
         $SMTP->dataend();
         1;
-    } or do {
-        mlog(0,"error: Can't send data - $@");
-        return 0;
-    };
+    } or return "Can't send data - $@";
+
     mlog(0,"info: $smtp_class send QUIT") if $ConnectionLog > 2;
-    eval {$SMTP->quit;1;} or do {mlog(0,"Can't QUIT SMTP session - $@");return 0;};
-    mlog(0,'info: Message sent - not accepted recipients: ' . join(', ',@bad)) if @bad;
-    return 1;
+    eval {$SMTP->quit;1;} or return "Can't QUIT SMTP session - $@";
+    mlog(0,'info: message sent - not accepted recipients: ' . join(', ',@bad)) if @bad;
+    return '1';
 }
 
 #####################################################################################

@@ -1,3 +1,28 @@
+2019-09-03
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19246:
+
+
+- improved parsing of the block-report RSBM_..... recipient address (right resend link), in case the address was converted to lower case by the mail client
+  related to: https://sourceforge.net/p/assp/tickets/111/
+
+
+changed:
+
+- the following deprecated modules are removed from the code:
+  Email::Send
+  Return::Value
+
+- the following vulnerable module is remove from the primary code
+  Email::Address (CVE-2015-7686)
+
+- the recommended version of Email::MIME is changed from 1.936 to 1.946
+
+- the module Email::Address::XS 1.04 is required (automatically installed by the latest Email::MIME) - if not installed Email::Address is used as fallback
+
+
+
+
+
 2019-08-02
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19214:
 
