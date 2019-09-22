@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.13 2019/09/16 07:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.14 2019/09/19 14:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -256,7 +256,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.13 2019/09/16 07:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.14 2019/09/19 14:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -2332,6 +2332,12 @@ sub isAnEXE {
 #
     } elsif ($sk !~ /:(?:MSOLE|HLMSOLE)/oi && $buff =~ /^(?:\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1|\x0e\x11\xfc\x0d\xd0\xcf\x11\x0e)/o) {
         $type = 'MS Compound File Binary (MSOLE)';
+        if (my $olesubtype = isBadOLE($self, $raf, $sk)) {
+            my $encr;
+            $encr = " - encrypted: @{$self->{isEncrypt}}" if @{$self->{isEncrypt}};
+            $type .= " with $olesubtype$encr";
+        }
+        
 #
 # Microsoft Compound File Binary File format with analyzed OLE file (:MSOLE not set, :HLMSOLE set, OLE is bad), Version 3 and 4
 #
@@ -2543,6 +2549,7 @@ sub isBadOLE {
         $oOl = OLE::Storage_Lite->new($oFH);  # create the OLE object
         $oPps = $oOl->getPpsTree(1);          # get the OLE tree with data
     };
+    mlog(0,"info: can't parse OLE object - $@") if $main::AttachmentLog > 1 && $@;
     unless($oPps) {
         $oFH->close;
         $$data =~ s/^xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1/"\x0e\x11\xfc\x0d\xd0\xcf\x11\x0e"/o if $swapolehead;
@@ -2569,6 +2576,17 @@ sub parseOLE {
 
     return 'MS VBA Macro' if $sk !~ /:MSOM/oi && $sName =~ /VBA_PROJECT|Macros$|^(?:VBA|PROJECT)$/io;
 
+    mlog(0,"info: OLE contains entry '$sName'") if $main::AttachmentLog > 1;
+
+    if ($sName =~ /^EncryptionInfo/oi) {
+        push @{$self->{isEncrypt}}, $sName;
+        mlog($self->{this}->{self},"info: encrypted content found in OLE") if $main::AttachmentLog > 1;
+        if ( $self->{blockEncryptedZIP} || ! ref($self->{this}->{self}) ) {
+            $self->{exetype} = "encrypted content (OLE) '$sName'";
+            return $self->{exetype};
+        }
+    }
+    
     if($oPps->{Type}==2) {  # check the file data recursive
         my $data;
         if ($sName =~ /Ole10Native/io) {
