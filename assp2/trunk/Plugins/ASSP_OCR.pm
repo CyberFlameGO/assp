@@ -1,4 +1,4 @@
-# $Id: ASSP_OCR,v 2.22 2016/12/31 14:00:00 TE Exp $
+# $Id: ASSP_OCR,v 2.23 2019/09/30 17:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is an OCR Plugin for ASSP - it returns OCR data for
@@ -37,7 +37,7 @@ use File::Which 'which';
 use File::Spec;
 no warnings qw(uninitialized redefine);
 
-our $VERSION = $1 if('$Id: ASSP_OCR,v 2.22 2016/12/31 14:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+our $VERSION = $1 if('$Id: ASSP_OCR,v 2.23 2019/09/30 17:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINASSPVER = '2.0.0(16.10)';
 our $runningIMG;
 our @fileToRemove;
@@ -367,6 +367,7 @@ sub process {
                                     my $ocr; my @abs_images;
                                     if (($ocr = eval{PDF::OCR2::Page->new($tmpfile);}) && (@abs_images = eval{@{$ocr->abs_images};})) {
                                         foreach (@abs_images) {
+                                            mlog($fh,"info: processing image $_ extracted with PDF::OCR2") if ($self->{Log});
                                             if ([stat($_)]->[7] > $self->{ocrmaxsize}){
                                                 my $size = &main::formatNumDataSize([stat($_)]->[7]);
                                                 my $max = &main::formatNumDataSize($self->{ocrmaxsize});
@@ -377,11 +378,14 @@ sub process {
                                             }
                                             chdir "$main::base";
                                         }
+                                    } else {
+                                        mlog($fh,"info: PDF::OCR2: no image found in PDF - $@") if ($self->{Log} > 1);
                                     }
                                 } else {
                                     my $ocr; my @abs_images;
                                     if (($ocr = eval{PDF::OCR->new($tmpfile);}) && (@abs_images = eval{@{$ocr->abs_images};})) {
                                         foreach (@abs_images) {
+                                            mlog($fh,"info: processing image $_ extracted with PDF::OCR") if ($self->{Log});
                                             if ([stat($_)]->[7] > $self->{ocrmaxsize}){
                                                 my $size = &main::formatNumDataSize([stat($_)]->[7]);
                                                 my $max = &main::formatNumDataSize($self->{ocrmaxsize});
@@ -393,6 +397,8 @@ sub process {
                                             chdir "$main::base";
                                         }
                                         $ocr->cleanup();    # cleanup temp files
+                                    } else {
+                                        mlog($fh,"info: PDF::OCR: no image found in PDF - $@") if ($self->{Log} > 1);
                                     }
                                 }
                                 $runningIMG->up;
@@ -409,7 +415,7 @@ sub process {
                           mlog($fh,"$self->{myName}: error ($@)") if ($@);
                     } elsif ($self->{DoImage} && $ext =~ /dcs|eps|fpx|img|psd|gif|jpg|jpeg|jpe|png|bmp|tiff|tif|pcx/i) { # get text from images
 
-                        mlog($fh,"$self->{myName}: processing (attatched) file $filename") if ($self->{Log} >= 2);
+                        mlog($fh,"$self->{myName}: processing (attatched image) file $filename") if ($self->{Log} >= 2);
                         open my $F , ">$tmpfile";
                         binmode $F;
                         print $F $body;
@@ -436,21 +442,32 @@ sub process {
                         &ThreadMain2($fh);
                         $runningIMG->up;
                         $sema_up_requ--;
-                        my @s     = stat($abs_tif);
-                        if ($s[7] > $self->{ocrmaxsize}) {
-                            my $size = &main::formatNumDataSize($s[7]);
-                            my $max = &main::formatNumDataSize($self->{ocrmaxsize});
-                            mlog($fh,"$self->{myName}: converted file $filename (size: $size) is to large (max: $max) for OCR - skip") if ($self->{Log});
+                        if (-e $abs_tif) {
+                            my @s     = stat($abs_tif);
+                            if ($s[7] > $self->{ocrmaxsize}) {
+                                my $size = &main::formatNumDataSize($s[7]);
+                                my $max = &main::formatNumDataSize($self->{ocrmaxsize});
+                                mlog($fh,"$self->{myName}: converted file $filename (size: $size) is to large (max: $max) for OCR - skip") if ($self->{Log});
+                                next;
+                            }
+                        } else {
+                            mlog($fh,"error: unable to find output file of systemcall >@args<") if ($self->{Log});
                             next;
                         }
                         -d '/dev' or mkdir '/dev' ,0777;  #fix for windows - on bad tesseract.pm
                         $runningIMG->down;
                         $sema_up_requ++;
-                        $self->{tocheck} .= ' ' . Image::OCR::Tesseract::get_ocr($abs_tif,$tmpdir); # get the text from image
+                        my $tessout = Image::OCR::Tesseract::get_ocr($abs_tif,$tmpdir); # get the text from image
+                        if ($tessout) {
+                            $self->{tocheck} .= ' ' . $tessout; 
+                        } else {
+                            mlog($fh,"info: no text was extracted by tesseract from image $abs_tif") if ($self->{Log});
+                        }    
                         push @fileToRemove, @Image::OCR::Tesseract::TRASH;
                         @Image::OCR::Tesseract::TRASH = ();
                         $runningIMG->up;
                         $sema_up_requ--;
+                        next unless $tessout;
                         $how .= ', ' if $how;
                         $how .= "Image($filename)";
                     } elsif ($self->{DoSimpleText} && $dis =~ /text\/[^;\s]+/io && $body) {
@@ -468,20 +485,21 @@ sub process {
                   }
             }
         };
+        my $err = $@;
         for (@fileToRemove) {unlink $_;}
         @fileToRemove = ();
         &main::sigonTry(__LINE__);
-        mlog(0,"info: semaphore status: failed in this mail $sema_up_requ - total for all workers: $$runningIMG") if ($self->{Log} > 2);;
+        mlog(0,"info: semaphore status: failed in this mail $sema_up_requ - total for all workers: $$runningIMG") if ($self->{Log} > 2 && $sema_up_requ != 0);
         $runningIMG->up while ($sema_up_requ-- > 0);
         $self->{tocheck} =~ s/\f/ /go;
         $self->{tocheck} =~ /^\s+/io;
         $main::o_EMM_pm = 0;
-        if ($@) {
-            $self->{errstr} = $@;
+        if ($err) {
+            $self->{errstr} = $err;
             $self->{result} = '';
             mlog($fh,"$self->{myName}: OCR($VERSION) ($how) data extracted") if ($self->{Log} && $self->{tocheck});
-            mlog($fh,"$self->{myName}: Plugin OCR($VERSION) ($how) error : $@!") if ($self->{Log});
-            d("$self->{myName}: Plugin OCR($VERSION) ($how) error : $@!") if $main::debug;
+            mlog($fh,"$self->{myName}: Plugin OCR($VERSION) ($how) error : $err!") if ($self->{Log});
+            d("$self->{myName}: Plugin OCR($VERSION) ($how) error : $err!") if $main::debug;
             return 1;
         } else {
             $self->{result} = '';
