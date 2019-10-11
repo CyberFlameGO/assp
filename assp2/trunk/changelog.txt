@@ -1,3 +1,22 @@
+2019-10-11
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19284:
+
+
+- disabled 'ScoreForeignCountries' was ignored in some cases
+
+- mails were unexpected blocked, if 'disableAUTH' was enabled and the sender used the AUTH=<> extension in the MAIL FROM: SMTP command (RFC4954)
+
+
+
+changed:
+
+- the ASSP_VirusTotal_API version is shown in the module statistic - load error are recorded
+
+- ASSP_OCR.pm 2.23 with improved error handling and logging
+
+
+
+
 2019-09-27
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19270:
 

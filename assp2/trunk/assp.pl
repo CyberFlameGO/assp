@@ -195,7 +195,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19270';        # 27.09.2019 TE
+$build   = '19284';        # 11.10.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -604,7 +604,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '7056A9F126C9294D235BC9FD239AEEBC6A336F5D'; }
+sub __cs { $codeSignature = '6FD04FD474C6C98ADE3F8C0D97E5C8A651C87569'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1599,7 +1599,8 @@ sub loadModuleVars {
       'Win32::Unicode' => 1,
       'Unicode::GCString' => 1,
       'Text::Unidecode' => 1,
-      'Sys::CpuAffinity' => 1
+      'Sys::CpuAffinity' => 1,
+      'ASSP_VirusTotal_API' => 1
     );
     my @cfglines;
     my $i = 3000;
@@ -2674,7 +2675,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  8 - multiple sender: addresses or sender: header tags found (potential 2x score if option 2 is also enabled)<br />
  16 - no or an invalid email address found in from: header tag<br />
  32 - no or an invalid email address found in sender: header tag<br /><br />
- Simply form the sum of the numbers in front of the checks you want to select (0...63). Default vaule is 59 (1+2+8+16+32) - all checks are selected.',undef,undef,'msg010750','msg010751'],
+ Simply form the sum of the numbers in front of the checks you want to select (0...63). Default value is 59 (1+2+8+16+32).',undef,undef,'msg010750','msg010751'],
 ['DoNoFromWL','Do DoNoFrom for Whitelisted',0,\&checkbox,'1','(.*)',undef,
   'Check for existing and valid From: or Sender: header and address for whitelisted emails.',undef,undef,'msg001900','msg001901'],
 ['DoNoFromNP','Do DoNoFrom for NoProcessing',0,\&checkbox,'1','(.*)',undef,
@@ -2860,9 +2861,9 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['NoCountryCodeRe','Ignore Countries*',80,\&textinput,'US|CA|DE','(.*)','ConfigCompileRe',
   'Messages from IP\'s based in these countries will be ignored. For example: US|CA|DE',undef,undef,'msg002220','msg002221'],
 ['CountryCodeRe','Suspicious Country Codes**',80,\&textinput,'CN|KR|RU|JP|TR|TH|PL|LT|CL|RO|UA|GR|HU|SA|IN|IE|PT|MD|PE|CZ|TW|BR|CL|ID|PH','(.*)','ConfigCompileRe',
-  'Messages from IP\'s based in these countries will increase the MessageScore. For example: CN|KR|RU|JP|TR|TH|PL|LT|CL|RO|UA|GR|HU|SA|IN|IE|PT|MD|PE|CZ|TW|BR|CL|ID|PH',undef,undef,'msg002230','msg002231'],
+  'Messages from IP\'s based in these countries will increase the MessageScore by sbsccValencePB . For example: CN|KR|RU|JP|TR|TH|PL|LT|CL|RO|UA|GR|HU|SA|IN|IE|PT|MD|PE|CZ|TW|BR|CL|ID|PH',undef,undef,'msg002230','msg002231'],
 ['MyCountryCodeRe','Home Country Codes**',80,\&textinput,'','(.*)','ConfigCompileRe',
-  'Put here your own country code(s) (for example: US). Messages from IP\'s based in these countries will decrease, messages from other countries will increase the MessageScore.',undef,undef,'msg002240','msg002241'],
+  'Put here your own country code(s) (for example: US). Messages from IP\'s based in these countries will decrease by sbhccValencePB , messages from other countries will increase the MessageScore by sbfccValencePB (if ScoreForeignCountries is enabled).',undef,undef,'msg002240','msg002241'],
 ['ScoreForeignCountries','Score Foreign Countries',0,\&checkbox,'1','(.*)',undef,
   'Messages from foreign countries will increase the total messageScore using sbfccValencePB.',undef,undef,'msg002250','msg002251'],
 ['SBCacheExp','Country Cache Refresh Interval',4,\&textinput,3,'(\d+\.?\d*|)','configUpdateSBCR',
@@ -4795,7 +4796,8 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg007
 ['VirusTotalAPIKey','The Private API-Key for VirusTotal',80,\&textinput,'','(.*)',undef,
  'To query www.VirusTotal.com for URIs and/or viruses (ASSP_AFC.pm), a valid API-Key is required. An API-Key is provided by VirusTotal for free, after your registration at www.virustotal.com.<br />
  Such a free API-Key is limited to four queries at VirusTotal per minute. API-Keys for a higher query volume are also provided by VirusTotal.<br />
- Systems that are part of the ASSP-Global-PenalyBox network can leave this value empty. They are getting an API-Key with a much higher query volume from the GPB-Server automatically, without any additionally costs. This API-Key is not shown here!',undef,undef,'msg010770','msg010771'],
+ Systems that are part of the ASSP-Global-PenalyBox network can leave this value empty. They are getting an API-Key with a much higher query volume from the GPB-Server automatically, without any additionally costs. This API-Key is not shown here!<br />
+ You need to enable ( useASSP_VirusTotal_API ) the assp module lib/ASSP_VirusTotal_API.pm and to install the perl module <a href="http://metacpan.org/search?q=JSON" rel="external">JSON</a>.',undef,undef,'msg010770','msg010771'],
 ['OrderedTieHashTableSize','Ordered-Tie Hash Table Size',10,\&textinput,10000,'(\d+)',undef,
  'The number of cached entries allowed in the hash tables used by ASSP. This belongs to griplist, if useDB4griplist is not set and to temporary lists used by the rebuild spamdb process, if useDB4Rebuild is set and BerkeleyDB is not available. Larger numbers require more RAM but result in fewer disk hits. The default value is 10000. Adjust down to use less RAM. Adjust up to speedup.',undef,undef,'msg007820','msg007821'],
 ['TCPBufferSize','TCP and SSL Read/Write Buffer Size',80,\&textinput,'','(^(?:\s*(?:tcprcv|tcpsnd|sslrcv|sslsnd)\s*=\s*(?:819[2-9]|8[2-9]\d\d|9\d\d\d|[1-9]\d{4,6}|0)\s*)(?:\s*,\s*(?:tcprcv|tcpsnd|sslrcv|sslsnd)\s*=\s*(?:819[2-9]|8[2-9]\d\d|9\d\d\d|[1-9]\d{4,6}|0)\s*){0,3}$|)','ConfigChangeTCPBuf',
@@ -7553,6 +7555,8 @@ our $AvailASSP_FC  :shared;
 our $CanUseASSP_FC :shared;
 our $AvailASSP_SVG  :shared;
 our $CanUseASSP_SVG :shared;
+our $AvailASSP_VirusTotal_API  :shared;
+our $CanUseASSP_VirusTotal_API :shared;
 our $AvailWin32Unicode  :shared;
 our $CanUseWin32Unicode :shared;
 our $AvailUnicodeGCString :shared;
@@ -11018,6 +11022,9 @@ EOT
     $AvailASSP_SVG    = $useASSP_SVG ? validateModule('ASSP_SVG()') : 0;  # ASSP_SVG  module installed
     $CanUseASSP_SVG   = $AvailASSP_SVG;
 
+    $AvailASSP_VirusTotal_API = $useASSP_VirusTotal_API ? validateModule('ASSP_VirusTotal_API()') : 0;  # ASSP_VirusTotal_Api module installed
+    $CanUseASSP_VirusTotal_API = $AvailASSP_VirusTotal_API;
+
     $AvailAsspSelfLoader   = $useAsspSelfLoader ? defined $AsspSelfLoader::VERSION : 0;  # AsspSelfLoader  module installed
     $CanUseAsspSelfLoader  = $AvailAsspSelfLoader;
 
@@ -11414,13 +11421,13 @@ from a local computer. For example, if someone goes on a vacation and turns on t
 email's autoresponder, put them on the redlist until they return. Then as they reply
 to every spam they receive they won't corrupt your non-spam collection or whitelist.<br /><br />
 In this panel, Whitelist verifications and operations are done independend from the setting of the WhitelistPrivacyLevel.<br /><br />
-To add or remove a global whitelist entry, use sender\@senderdomain.org .<br />
-To add or remove a domain whitelist entry, use sender\@senderdomain.org,\@localdomain.org .<br />
-To add or remove a private whitelist entry, use sender\@senderdomain.org,user\@localdomain.org .<br />
-To delete a global whitelist entry and all domain and private entries, use sender\@senderdomain.org,* .<br />
-To delete a domain whitelist entry and all private entries, use sender\@senderdomain.org,\@localdomain.org .<br />
-To delete a private whitelist entry, use sender\@senderdomain.org,user\@localdomain.org .<br />
-To renew an entry (e.g. extend the expriation date), add or remove it again.<br /><br />
+To add or remove a global whitelist entry, use sender\@senderdomain.org<br />
+To add or remove a domain whitelist entry, use sender\@senderdomain.org,\@localdomain.org<br />
+To add or remove a private whitelist entry, use sender\@senderdomain.org,user\@localdomain.org<br />
+To delete a global whitelist entry and all domain and private entries, use sender\@senderdomain.org,*<br />
+To delete a domain whitelist entry and all private entries, use sender\@senderdomain.org,\@localdomain.org<br />
+To delete a private whitelist entry, use sender\@senderdomain.org,user\@localdomain.org<br />
+To renew an entry (e.g. extend the expiration date), add or remove it again.<br /><br />
 Selecting 'Whitelist' and 'search', the input in each line will be interpreted as a perl regular expression and all matching whitelist entries will be shown.<br />
 For example:<br />
 \\.senderdomain\\.org,[^@]*\\\@localdomain\\.org - will show all entries for the sending domain senderdomain.org and the local domain localdomain.org<br />
@@ -14631,7 +14638,7 @@ EOT
     $installed = $useASSP_WordStem ? 'is not installed' : 'is disabled in config';
     mlog(0,"ASSP_WordStem module $installed - ASSP multi lingual word stemming engine for Bayesian and HMM checks is not available");
   }
-  $ModuleList{'ASSP_WordStem'} = $VerASSP_WordStem.'/1.27';
+  $ModuleList{'ASSP_WordStem'} = $VerASSP_WordStem.'/2.02';
   $ModuleStat{'ASSP_WordStem'} = $installed;
 
   if ($CanUseASSP_FC) {
@@ -14655,6 +14662,28 @@ EOT
   }
   $ModuleList{'ASSP_SVG'} = $VerASSP_SVG.'/1.03';
   $ModuleStat{'ASSP_SVG'} = $installed;
+
+  if ($CanUseASSP_VirusTotal_API) {
+    $ver=eval('ASSP_VirusTotal_API->VERSION'); $VerASSP_VirusTotal_API=$ver; $ver=" version $ver" if $ver;
+    mlog(0,"ASSP_VirusTotal_API module$ver installed - VirusTotal-API is available");
+    $installed = 'enabled';
+    my $key = defined $VirusTotalAPIKey ? $VirusTotalAPIKey : undef;
+    $key ||= ($globalClientName && $globalClientPass) ? sprintf("%016x%016x%016x%016x",($char4vt[0] << 1)+1,$char4vt[1] << 2,$char4vt[2] << 1,$char4vt[3] << 3) : undef;
+    if ( ! $key ) {
+        mlog(0,"warning: ASSP_VirusTotal_API has not found a valid API-Key ( VirusTotalAPIKey )");
+        $installed .= ' ( but no VirusTotal-API-Key is available)';
+    }
+  } elsif (!$AvailASSP_VirusTotal_API)  {
+    $installed = $useASSP_VirusTotal_API ? 'is not installed' : 'is disabled in config';
+    mlog(0,"ASSP_VirusTotal_API module $installed - VirusTotal-API is not available");
+    my $key = defined $VirusTotalAPIKey ? $VirusTotalAPIKey : undef;
+    $key ||= ($globalClientName && $globalClientPass) ? sprintf("%016x%016x%016x%016x",($char4vt[0] << 1)+1,$char4vt[1] << 2,$char4vt[2] << 1,$char4vt[3] << 3) : undef;
+    if ( $key ) {
+        mlog(0,"warning: found VirusTotal-API-Key, BUT missing module lib/ASSP_VirusTotal_API.pm");
+    }
+  }
+  $ModuleList{'ASSP_VirusTotal_API'} = $VerASSP_VirusTotal_API.'/1.01';
+  $ModuleStat{'ASSP_VirusTotal_API'} = $installed;
 
   my $osslv;
   {
@@ -14793,7 +14822,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.15;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.08;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
-  $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.22;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
+  $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.23;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
   $ModuleList{'Plugins::ASSP_RSS'}    =~ s/([0-9\.\-\_]+)$/$v=1.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_RSS'};
   $ModuleList{'Plugins::ASSP_Razor'}  =~ s/([0-9\.\-\_]+)$/$v=1.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_Razor'};
   $ModuleList{'Plugins::ASSP_FakeMX'} =~ s/([0-9\.\-\_]+)$/$v=1.02;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_FakeMX'};
@@ -14915,16 +14944,6 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   }
   print '.';
 
-  {
-      my $key = defined $VirusTotalAPIKey ? $VirusTotalAPIKey : undef;
-      $key ||= ($globalClientName && $globalClientPass) ? sprintf("%016x%016x%016x%016x",($char4vt[0] << 1)+1,$char4vt[1] << 2,$char4vt[2] << 1,$char4vt[3] << 3) : undef;
-      if ( $key && eval ('use ASSP_VirusTotal_API;1;') ) {
-          mlog(0,"info: found VirusTotal-API-Key and module lib/ASSP_VirusTotal_API.pm - VirusTotal-API is available");
-      } elsif ($key) {
-          mlog(0,"warning: found VirusTotal-API-Key, BUT missing module lib/ASSP_VirusTotal_API.pm - VirusTotal-API is NOT available");
-      }
-  }
-  
   mlog(0,"warning: RelayOnlyLocalSender nor RelayOnlyLocalDomains is enabled!") if (!($RelayOnlyLocalSender || $RelayOnlyLocalDomains) && ! $nolocalDomains);
   mlog(0,"warning: DoLocalSenderAddress nor DoLocalSenderDomain is enabled!") if (!($DoLocalSenderAddress || $DoLocalSenderDomain) && ! $nolocalDomains);
 
@@ -16264,15 +16283,28 @@ sub importDB {
        my ($pvalue_TYPE_NAME,$pvalue_SIZE);
        my ($pfrozen_TYPE_NAME,$pfrozen_SIZE);
        
+       ($sth, $db_info) = (undef,undef);
        ($sth = $dbh->column_info( undef, undef, $mysqlTable, 'pkey' )) and
        ($db_info = $sth->fetchrow_arrayref) and
        ($pkey_TYPE_NAME = $db_info->[5]) and
        ($pkey_SIZE = $db_info->[6]);
+
+       if (! $sth) {
+           mlog_i(0,"Warning: the column_info statement-handle for pkey in table $mydb/$mysqlTable can't be created - driver:$DBusedDriver engine:$dbn version:$dbv");
+       } elsif (! $db_info) {
+           mlog_i(0,"Warning: the column_info of pkey in table $mydb/$mysqlTable can't be fetched - driver:$DBusedDriver engine:$dbn version:$dbv");
+       } elsif (! defined $pkey_TYPE_NAME) {
+           mlog_i(0,"Warning: the column_type_name of pkey in table $mydb/$mysqlTable is empty - driver:$DBusedDriver engine:$dbn version:$dbv");
+       } elsif (! defined $pkey_SIZE) {
+           mlog_i(0,"Warning: the column_size of pkey in table $mydb/$mysqlTable is empty - driver:$DBusedDriver engine:$dbn version:$dbv");
+       }
+
        if ($pkey_SIZE != 254) {
            mlog_i(0,"Warning: the column size of pkey in table $mydb/$mysqlTable is $pkey_TYPE_NAME($pkey_SIZE), but it should be $pkey_TYPE_NAME(254)");
            $pkey_SIZE = 254;
        }
 
+       ($sth, $db_info) = (undef,undef);
        ($sth = $dbh->column_info( undef, undef, $mysqlTable, 'pvalue' )) and
        ($db_info = $sth->fetchrow_arrayref) and
        ($pvalue_TYPE_NAME = $db_info->[5]) and
@@ -16282,38 +16314,44 @@ sub importDB {
            $pvalue_SIZE = 255;
        }
 
+       ($sth, $db_info) = (undef,undef);
        ($sth = $dbh->column_info( undef, undef, $mysqlTable, 'pfrozen' )) and
        ($db_info = $sth->fetchrow_arrayref) and
        ($pfrozen_TYPE_NAME = $db_info->[5]) and
        ($pfrozen_SIZE = $db_info->[6]);
 
 # get the name of the primary key
+       ($sth, $db_info) = (undef,undef);
        $sth = $dbh->primary_key_info( undef, undef , $mysqlTable ); # for MSSQL, MySQL
        eval{$db_info = $sth->fetchrow_arrayref ;};
        my($TABLE_CAT,$TABLE_SCHEM,$TABLE_NAME,$COLUMN_NAME,$KEY_SEQ,$PK_NAME) = @$db_info ;
        if (!$TABLE_NAME) {
+          ($sth, $db_info) = (undef,undef);
           $sth = $dbh->primary_key_info( undef, undef , uc($mysqlTable));
           eval{$db_info = $sth->fetchrow_arrayref ;};
           ($TABLE_CAT,$TABLE_SCHEM,$TABLE_NAME,$COLUMN_NAME,$KEY_SEQ,$PK_NAME) = @$db_info ;
        }
        if (!$TABLE_NAME) {
+          ($sth, $db_info) = (undef,undef);
           $sth = $dbh->primary_key_info( undef, undef , lc($mysqlTable));     # for Pg
           eval{$db_info = $sth->fetchrow_arrayref ;};
           ($TABLE_CAT,$TABLE_SCHEM,$TABLE_NAME,$COLUMN_NAME,$KEY_SEQ,$PK_NAME) = @$db_info ;
        }
        if (!$TABLE_NAME) {
+          ($sth, $db_info) = (undef,undef);
           $sth = $dbh->primary_key_info( undef, $myuser , $mysqlTable );
           eval{$db_info = $sth->fetchrow_arrayref ;};
           ($TABLE_CAT,$TABLE_SCHEM,$TABLE_NAME,$COLUMN_NAME,$KEY_SEQ,$PK_NAME) = @$db_info ;
        }
        if (!$TABLE_NAME) {
+          ($sth, $db_info) = (undef,undef);
           $sth = $dbh->primary_key_info( undef , uc($myuser) , uc($mysqlTable));  # for Oracle
           eval{$db_info = $sth->fetchrow_arrayref ;};
           ($TABLE_CAT,$TABLE_SCHEM,$TABLE_NAME,$COLUMN_NAME,$KEY_SEQ,$PK_NAME) = @$db_info ;
        }
 
        if (!$TABLE_NAME) {
-          mlog_i(0,"ERROR: unable to get primary-key info for table $mysqlTable - cancel import");
+          mlog_i(0,"ERROR: unable to get primary-key info for table $mydb/$mysqlTable - driver:$DBusedDriver engine:$dbn version:$dbv - cancel import");
           return;
        }
 
@@ -25544,19 +25582,19 @@ sub getline {
         my $fr=$2;
         my $ffr = $1;
 
-        if ( ! $this->{relayok} && $this->{DisableAUTH} && $l =~ /\sAUTH=/io )
+        if ( ! $this->{relayok} && ! $this->{authenticated} && $l =~ /\sAUTH=(\S+)/io && $1 ne '<>')
         {
             $this->{lastcmd} = 'AUTH';
             push(@{$this->{cmdlist}},$this->{lastcmd}) if $ConnectionLog >= 2;
             $this->{prepend}="[unsupported_$this->{lastcmd}]";
-            mlog($fh,"$this->{lastcmd} not allowed");
+            mlog($fh,"$this->{lastcmd}=MAILBOX in MAIL FROM: is not supported without previous authencication");
             if($MaxErrors && ++$this->{serverErrors} > $MaxErrors) {
                 MaxErrorsFailed($fh,
-                "502 $this->{lastcmd} not supported\r\n421 <$myName> closing transmission\r\n",
+                "502 $this->{lastcmd}=MAILBOX in MAIL FROM: is not supported without previous authencication\r\n421 <$myName> closing transmission\r\n",
                 "max errors (MaxErrors=$MaxErrors) exceeded -- dropping connection after $this->{lastcmd}");
                 return;
             }
-            sendque($fh, "502 $this->{lastcmd} not supported\r\n");
+            sendque($fh, "502 $this->{lastcmd}=MAILBOX in MAIL FROM: is not supported without previous authencication\r\n");
             return;
         }
 
@@ -25606,9 +25644,9 @@ sub getline {
         $this->{lastcmd} = 'MAIL FROM';
         push(@{$this->{cmdlist}},$this->{lastcmd}) if $ConnectionLog >= 2;
 
-        if($EnforceAuth && &matchFH($fh,@lsn2I) && ! $this->{authenticated} && ! $this->{DisableAUTH} && ($l !~ /\sAUTH=[^\s<>]+/io || $l =~ /\sAUTH=<>/io)) {
+        if($EnforceAuth && &matchFH($fh,@lsn2I) && ! $this->{authenticated} && ! $this->{DisableAUTH}) {
             NoLoopSyswrite($fh,"530 5.7.0 Authentication required before [Mail From]\r\n",0);
-            mlog($fh,"$fr submited without previous or included AUTH - 'EnforceAuth' is set to 'ON' for 'listenPort2'",1);
+            mlog($fh,"$fr submited without previous AUTH - 'EnforceAuth' is set to 'ON' for 'listenPort2'",1);
             done($fh);
             return;
         }
@@ -25758,11 +25796,6 @@ sub getline {
                     $this->{ismaxsize}=1 ;
                 }
             }
-        }
-        if($l=~/ AUTH=.+/io) {
-            $this->{doneAuthToRelay} = 1;
-            $this->{lastcmd} = 'AUTH'; # set this for subs reply check the 235
-            push(@{$this->{cmdlist}},$this->{lastcmd}) if $ConnectionLog >= 2;
         }
 
 ########################################################### !relayok ############
@@ -35013,6 +35046,7 @@ sub SenderBaseOK {
         return 1;
     }
     if (   (${'sbfccValencePB'}[0] || ${'sbfccValencePB'}[1])        # foreign country
+        && $ScoreForeignCountries
         && ! $matchMyCountry
         && ! $matchCountryCode )
     {
@@ -50100,17 +50134,25 @@ sub StatsGetModules {
      $url = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/lib/' if ($_ eq 'ASSP_WordStem');
      $url = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/filecommander/' if ($_ eq 'ASSP_FC');
      $url = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/lib/' if ($_ eq 'ASSP_SVG');
+     $url = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/lib/' if ($_ eq 'ASSP_VirusTotal_API');
      $url = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/Plugins/' if ($_ =~ /^Plugins/o);
      $url = 'https://www.openssl.org/' if ($_ =~ /^OpenSSL/oi);
      my $prov = 'CPAN';
      $prov = 'OpenSSL' if ($_ =~ /^OpenSSL/oi);
      $prov = 'oracle' if ($_ eq 'BerkeleyDB_DBEngine');
-     $prov = 'sourceforge' if ($_ =~ /^Plugins/o or $_ eq 'AsspSelfLoader' or $_ eq 'ASSP_WordStem' or $_ eq 'ASSP_FC' or $_ eq 'ASSP_SVG');
+     $prov = 'sourceforge'
+         if (   $_ =~ /^Plugins/o
+             || $_ eq 'AsspSelfLoader'
+             || $_ eq 'ASSP_WordStem'
+             || $_ eq 'ASSP_FC'
+             || $_ eq 'ASSP_SVG'
+             || $_ eq 'ASSP_VirusTotal_API'
+         );
      my $stat = $ModuleStat{$_} ? $ModuleStat{$_} : 'enabled';
      if ($_ eq 'File::Scan::ClamAV' && $CanUseAvClamd && ! $AvailAvClamd) {
          $stat = 'ClamAvDaemon is down';
      }
-     $stat = '<font color=red>'.$stat.'</font>' if $stat ne 'enabled';
+     $stat = '<font color=red>'.$stat.'</font>' if $stat !~ /^enabled/o;
      if($_ eq 'Sys::Syslog' && $isWIN) {
           $inst = 'not supported by operating system';
           push @modArray , [$_,$inst,$requ,$stat,$url];
