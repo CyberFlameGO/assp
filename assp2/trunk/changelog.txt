@@ -1,3 +1,25 @@
+2019-10-21
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19294:
+
+- if perl was started using the -w flag, multiple warnings about the usage of uninitialized variables were shown
+
+- an error: 'error: DKIM-cfg - no configuration left for any domain' was logged, if a valid DKIM-configuration was stored, but 'genDKIM' was not enabled and 'genARC' was not enabled
+
+
+changed:
+
+- the updated buildin rebuildspamdb.pm version 7.51 got some small speed improvements
+
+- ASSP_RSS.pm is updated to version 1.11 - unneeded code is removed
+
+- assp.pl code optimization is started based on the perl development version 5.31.5, to become compatible to the next year upcomming perl production version 5.32
+  target is to be able to switch to perl 5.32 as soon as it is released, without any need to wait
+
+- if 'enableATA' is enabled in ASSP_AFC, forwarded (copied) spam mails now gets the 'ATAHeaderTag' included, if they contain attachments or includes
+  this prevents mistakenly quarantine released mailicious mails from bypassing the ATA
+
+
+
 2019-10-11
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19284:
 

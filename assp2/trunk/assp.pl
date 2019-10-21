@@ -70,7 +70,13 @@
 
 ## no critic qw(BuiltinFunctions::ProhibitStringyEval Modules::ProhibitMultiplePackages Subroutines::RequireFinalReturn Subroutines::RequireArgUnpacking TestingAndDebugging::ProhibitNoWarnings Variables::RequireLocalizedPunctuationVars InputOutput::RequireBriefOpen ValuesAndExpressions::ProhibitConstantPragma TestingAndDebugging::RequireUseWarnings)
 
+# uncommend the next two lines for production testing on new perl versions
+#use warnings;
+#use warnings FATAL => qw(deprecated);
+
+# outcommend the next line for production testing on new perl versions
 no warnings qw(uninitialized);  # possibly add   'recursion' and/or 'utf8'
+
 use strict qw(vars subs);
 
 our %signo;
@@ -165,6 +171,7 @@ our $version;
 our $subversion;
 our $modversion;
 our $build;
+BEGIN {$build = 0;}
 our $versionAge;
 our $maxAge;
 our $availversion:shared;
@@ -195,7 +202,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19284';        # 11.10.2019 TE
+$build   = '19294';        # 21.10.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -604,7 +611,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '6FD04FD474C6C98ADE3F8C0D97E5C8A651C87569'; }
+sub __cs { $codeSignature = 'C1F375373E3D762D02EF339669920AE8DDD6F60A'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -4102,7 +4109,7 @@ For example: mysql/dbimport<br />
 ['preventBulkImport','Prevent Bulk Import',0,\&checkbox,'','(.*)',undef,'Do not select, if you are using MySQL! Doing a Bulk-Import of data, ASSP modifies the properties of table columns. This could result in breaking some configured DB features like DB-replication in MSSQL and possibly other database engines. If selected, ASSP will do a line per line insert/update (which takes much more time) without modifying the tables properties.',undef,undef,'msg005880','msg005881'],
 ['fillUpImportDBDir','Fill the Import Folder',10,\&textinput,'','^([1-9]|L|)$','ConfigChangeRunTaskNow','If set to a value between 1 and 9, the corresponding backup file for any list/hash that configured to use a database will be copied from the backupDBDir to the importDBDir. The resulting file name will has an extension of ".rpl", so a possible import will replace the current table content. If a value of "L" is defined, the last backup will be used. Possible values are L or 1 - 9 or blank. Any configured value will be reset to blank after the copy is finished.',undef,undef,'msg008990','msg008991'],
 ['ImportMysqlDB','import all files from the importDBDir Directory in to the database - now.',0,\&checkbox,'','(.*)','ConfigChangeRunTaskNow',
-  "All files from the \"importDBDir\" will be imported in to database $mydb. Please define the directory above, before using the import!<br />
+  "All files from the \"importDBDir\" will be imported in to the database defined in mydb . Please define the directory above, before using the import!<br />
 <input type=button value=\"Apply Changes and Run DB Import Now (if checked)\" onclick=\"document.forms['ASSPconfig'].theButtonX.value='Apply Changes';document.forms['ASSPconfig'].submit();WaitDiv();return false;\" />&nbsp;<input type=button value=\"Refresh Browser\" onclick=\"document.forms['ASSPconfig'].theButtonRefresh.value='Apply Changes';document.forms['ASSPconfig'].submit();WaitDiv();return false;\" />",undef,undef,'msg005890','msg005891'],
 ['exportDBDir','export directory',40,\&textinput,'mysql/dbexport','(\S+)',undef,'The folder to export the used tables of the database.<br />
  The schema of the files is the assp-schema.(starts with [LF], one record per line, lines are terminated with [LF], keys and values are separated by \002 or \x02)<br />
@@ -4277,7 +4284,7 @@ For example: mysql/dbimport<br />
   'Prepend ID. For example: m1-',undef,undef,'msg006640','msg006641'],
 ['tagLogging','Spam Tag Logging',0,\&checkbox,1,'(.*)',undef,'Add spam tag to log.',undef,undef,'msg006650','msg006651'],
 
-['replyLogging','SMTP Status Code Reply Logging','0:disabled|1:enabled - exclude [123]XX|2:enabled - all',\&listbox,1 ,'(\d*)',undef,undef,undef,undef,'msg006660','msg006661'],
+['replyLogging','SMTP Status Code Reply Logging','0:disabled|1:enabled - exclude [123]XX|2:enabled - all',\&listbox,1 ,'(\d*)',undef,'',undef,undef,'msg006660','msg006661'],
 ['expandedLogging','Logging Records include IP &amp; MailFrom',0,\&checkbox,1,'(.*)',undef,'',undef,undef,'msg006670','msg006671'],
 
 ['sysLog','SYSLOG Centralized Logging',0,\&checkbox,'','(.*)','ConfigChangeSysLog','Enables logging to UNIX or Network Syslog.<br />
@@ -5764,11 +5771,11 @@ sub loadPluginCfgBegin {
   my $i = 0;
   my $j = scalar @ret;
   while ($i < $j) {
-     $ret[$i]->[0] =~ s/\r?\n//go;
-     $ret[$i]->[1] =~ s/\r?\n//go;
-     $ret[$i]->[2] =~ s/\r?\n//go;
-     $ret[$i]->[3] =~ s/\r?\n//go;
-     $ret[$i]->[4] =~ s/\r?\n//go;
+     $ret[$i]->[0] =~ s/\r?\n//go if defined($ret[$i]->[0]);
+     $ret[$i]->[1] =~ s/\r?\n//go if defined($ret[$i]->[1]);
+     $ret[$i]->[2] =~ s/\r?\n//go if defined($ret[$i]->[2]);
+     $ret[$i]->[3] =~ s/\r?\n//go if defined($ret[$i]->[3]);
+     $ret[$i]->[4] =~ s/\r?\n//go if defined($ret[$i]->[4]);
      $i++;
   }
   undef &mlog;
@@ -6927,7 +6934,7 @@ $dftCaFile =~ s/\\/\//go;
 #
 # the folder not exists - do nothing
 if ( ! -d "$base/database") {
-    $newDB = undef;
+    $newDB = '';
 # detect a new installation after 16004 - set the newDB
 } elsif (   -d "$base/database"
          && ! scalar(Glob("$base/database/*"))
@@ -6948,7 +6955,7 @@ if ( ! -d "$base/database") {
              || -d "$base/debug"
             )
         ) {
-    $newDB = undef;
+    $newDB = '';
 # the newDB is already in use - set the newDB
 } elsif (   -d "$base/database"
          && scalar(Glob("$base/database/*"))
@@ -6963,7 +6970,7 @@ if ( ! -d "$base/database") {
     $newDB = 'database/';
 # in any other case - unset newDB
 } else {
-    $newDB = undef;
+    $newDB = '';
 }
 
 # vars needed in @Config
@@ -7036,7 +7043,7 @@ if ( ! -d "$base/database") {
  }
 
  if ($isWIN) {
-     if (lc($ARGV[1]) eq '-i') {
+     if (defined($ARGV[1]) && lc($ARGV[1]) eq '-i') {
          setServiceProperties(1);
          my $assp = $assp;
          $assp = "$base\\$assp" if ($assp !~ /\Q$base\E/io);
@@ -7045,7 +7052,7 @@ if ( ! -d "$base/database") {
          $asspbase =~ s/\\/\//go;
          &installService('-i' , $assp, $asspbase);
          exit 0;
-     } elsif (lc($ARGV[0]) eq '-u') {
+     } elsif (defined($ARGV[0]) && lc($ARGV[0]) eq '-u') {
          setServiceProperties(0);
          &installService('-u');
          exit 0;
@@ -7087,7 +7094,7 @@ if ( ! -d "$base/database") {
    $Config{$c->[0]} = $c->[4];
    $newConfig{$c->[0]} = 1;
   }
-  if ($c->[6] eq 'ConfigChangeRunTaskNow') {
+  if (defined($c->[6]) && $c->[6] eq 'ConfigChangeRunTaskNow') {
       $RunTaskNow{$c->[0]} = '';
   }
   print "!!!!!!!! duplicate entry for $c->[0] - using last one !!!!!!!!\n" if $c->[0] && exists($cfgHash{$c->[0]});
@@ -7114,7 +7121,7 @@ if ( ! -d "$base/database") {
     $c->[1] =~ s/\r?\n//go;
     $c->[2] =~ s/\r?\n//go;
     $c->[3] =~ s/\r?\n//go;
-    $c->[4] =~ s/\r?\n//go;
+    $c->[4] =~ s/\r?\n//go if defined($c->[4]);
     push (@ConfigArray,$c);
     if ($c->[0] && !(exists $Config{$c->[0]})) {
        $Config{$c->[0]}=$c->[4];
@@ -8288,7 +8295,7 @@ if ($@) {
 sub write_rebuild_module {
 my $curr_version = shift;
 
-my $rb_version = '7.50';
+my $rb_version = '7.51';
 my $keepVersion;
 
 if (open my $ADV, '<',"$base/lib/rebuildspamdb.pm") {
@@ -8764,6 +8771,7 @@ EOT
 
     if ($onlyNewCorrected && ! $have_error) {         # only still new reported
         my ($havenormfile,$SwordsPfile, $HwordsPfile);
+        %spam = ();
         if (open( my $normFile, '<', "$main::base/normfile" )) {
             binmode $normFile;
             ($norm, $correctedspamcount, $correctednotspamcount, $spamlogcount, $notspamlogcount,
@@ -8775,7 +8783,7 @@ EOT
         $norm ||= $main::HMMdb{'***bayesnorm***'} if $DoHMM;
         $norm ||= 1;
         my $oldnorm = $norm;
-
+        
         rb_processNewCorrected();
 
         if ($havenormfile) {
@@ -9386,7 +9394,7 @@ sub rb_generatescores {
             die "warning: got stop request from MainThread" unless $main::ComWorker{$Iam}->{run};
             $main::lastd{$Iam} = "Generating weighted Bayesian tuplets $count/$totspam";
         }
-        ( $s, $t ) = split( q{ }, $v );
+        ( $s, $t ) = unpack( "LL" , $v );
         if ( $t > 1 ) {
             # if token represents all spam or all ham then square its value
             my $to = $t;
@@ -9668,19 +9676,22 @@ sub rb_processNewCorrected {
         my $count = 0;
         my $deleted = 0;
         my $add = 0;
-        foreach (keys %addspam) {
-            my ( $sfac, $tfac ) = split( q{ }, $addspam{ $_ } );
-            my ( $sfao, $tfao ) = split( q{ }, $spam{ $_ } );
-            $sfac += $sfao;
-            $tfac += $tfao;
-            $spam{ $_ } = $addspam{ $_ } = "$sfac $tfac";
+        if (keys(%spam)) {
+            foreach (keys %addspam) {
+                my ( $sfac, $tfac ) = unpack( "LL" , $addspam{ $_ } );
+                my ( $sfao, $tfao ) = unpack( "LL" , $spam{ $_ } );
+                $sfac += $sfao;
+                $tfac += $tfao;
+                $spam{ $_ } = $addspam{ $_ } = pack( "LL" , $sfac, $tfac);
+            }
         }
+
         die "warning: got stop request from MainThread" unless $main::ComWorker{$Iam}->{run};
 
         my ( $t, $s, $pair, $v );
         while ( ( $pair, $v ) = each(%addspam) ) {
             next if (! $pair);
-            ( $s, $t ) = split( q{ }, $v );
+            ( $s, $t ) = unpack( "LL" , $v );
             if ( $t > 1 ) {
                 # if token represents all spam or all ham then square its value
                 my $to = $t;
@@ -9992,7 +10003,12 @@ sub rb_hash {
 
     # creates a md5 hash of $msg body
     if ( $$msgText =~ /^.*?\n\r?\n(.+)$/so ) {
-        return eval{ Digest::MD5::md5_hex(substr($1,0,$main::MaxBytes)); };
+        my $body = substr($1,0,$main::MaxBytes);
+        if ($body =~ /^[\s\.]*$/so) {   # ignore empty body
+            return (Time::HiRes::time());
+        } else {
+            return eval{ Digest::MD5::md5_hex($body); };
+        }
     } else {
         return eval{ Digest::MD5::md5_hex(substr($$msgText,0,$main::MaxBytes)); };
     }
@@ -10055,7 +10071,7 @@ sub rb_checkham {
 sub rb_whitelisted {
     my $mm = shift;
     my $m = substr($$mm,0,$main::MaxBytes + 1000);
-    my ( %seenf, %seent );
+    my %seenf;
 
     # test against expression to recognize whitelisted mail
     my $mwr = $main::whiteReRE;
@@ -10068,37 +10084,35 @@ sub rb_whitelisted {
         return ( "Regex:White '" . $reason . q{'} );
     }
 
-    $m =~ s/^($main::HeaderNameRe:$main::HeaderValueRe)+/$1/so;    # remove body
+    $m =~ s/\n\r?\n.*$//so;   # remove body
+    
+    die "warning: got stop request from MainThread" unless $main::ComWorker{$Iam}->{run};
 
     my (@to,@from);
     while ( $m =~ /($main::HeaderNameRe):($main::HeaderValueRe)/igos ) {
         my ($h,$s) = ($1,$2);
-        die "warning: got stop request from MainThread" unless $main::ComWorker{$Iam}->{run};
         if ($h =~ /^(?:from|sender|X-Assp-Envelope-From|reply-to|errors-to|list-\w+)$/io) {
             &main::headerUnwrap($s);
             if ($s =~ /<($main::EmailAdrRe\@$main::EmailDomainRe)>/io || $s =~ /($main::EmailAdrRe\@$main::EmailDomainRe)/io) {
-               push @from , &main::batv_remove_tag(0,lc($1),'');
-            } else {
-               next;
+               push(@from , &main::batv_remove_tag(0,lc($1),''));
             }
+            next;
         }
         if ($h =~ /^(?:to|X-Assp-Intended-For)$/io) {
             &main::headerUnwrap($s);
             if ($s =~ /<($main::EmailAdrRe\@$main::EmailDomainRe)>/io || $s =~ /($main::EmailAdrRe\@$main::EmailDomainRe)/io) {
-               push @to , &main::batv_remove_tag(0,lc($1),'');
-            } else {
-               next;
+               push(@to , &main::batv_remove_tag(0,lc($1),''));
             }
         }
     }
+    die "warning: got stop request from MainThread" unless $main::ComWorker{$Iam}->{run};
     while (my $curaddr = shift @from) {
-        die "warning: got stop request from MainThread" unless $main::ComWorker{$Iam}->{run};
-
         if ( exists $seenf{ $curaddr } ) {
             next;                #we already checked this address
         } else {
             $seenf{ $curaddr } = 1;
         }
+        my %seent;
         foreach (@to) {
             if ( exists $seent{ $_ } ) {
                 next;                #we already checked this address
@@ -10114,7 +10128,6 @@ sub rb_whitelisted {
                 return ( "WhiteListed Domain: $curaddr for $_" );
             }
         }
-        %seent = ();
         if ($main::whiteListedDomains && &main::matchRE([$curaddr],'whiteListedDomains',1)) {
             $WhiteCount++;
             return ( "WhiteListed Domain: '" . $curaddr . q{'} );
@@ -10139,16 +10152,21 @@ sub rb_redlisted {
             return ( "Regex:Red '" . $reason . q{'} );
         }
     }
+    die "warning: got stop request from MainThread" unless $main::ComWorker{$Iam}->{run};
     return 0 unless $haveRedlist;
     if ( $main::DoNotCollectRedList ) {    #skip Redlist check, 1.3.5 and higher
         $m =~ s/\n\r?\n.*$//so;                            # remove body
-        while ( $m =~ /($main::EmailAdrRe\@$main::EmailDomainRe)/igo ) {
-            my $curaddr = lc($1);
-            die "warning: got stop request from MainThread" unless $main::ComWorker{$Iam}->{run};
-
-            if ( $main::Redlist{ $curaddr } ) {
-                $RedCount++;
-                return ( "redlist: '" . $curaddr . q{'} );
+        while ( $m =~ /($main::HeaderNameRe):($main::HeaderValueRe)/igos ) {
+            my ($h,$s) = ($1,$2);
+            if ($h =~ /^(?:to|X-Assp-Intended-For|from|sender|X-Assp-Envelope-From|reply-to|errors-to|list-\w+)$/io) {
+                &main::headerUnwrap($s);
+                if ($s =~ /<($main::EmailAdrRe\@$main::EmailDomainRe)>/io || $s =~ /($main::EmailAdrRe\@$main::EmailDomainRe)/io) {
+                    my $curaddr = lc($1);
+                    if ( $main::Redlist{ $curaddr } ) {
+                        $RedCount++;
+                        return ( "redlist: '" . $curaddr . q{'} );
+                    }
+                }
             }
         }
     }
@@ -10368,22 +10386,22 @@ sub rb_add {
         if   ($isspam == 1) { $SpamWordCount += $factor;}
         else                { $HamWordCount  += $factor;}
 
-        ( $sfac, $tfac ) = split( q{ }, $spam->{ $_ } );
+        ( $sfac, $tfac ) = unpack( "LL" , $spam->{ $_ } );
         $sfac += ($isspam == 1) ? ($factor * 2) : 0;
         $tfac += ($factor * 2);
-        $spam->{ $_ } = "$sfac $tfac";
+        $spam->{ $_ } = pack( "LL", $sfac, $tfac);
         $i++;
         if ($reportedBy) {
-            ( $sfac, $tfac ) = split( q{ }, $spam->{ "$reportedBy $_" } );
+            ( $sfac, $tfac ) = unpack( "LL" , $spam->{ "$reportedBy $_" } );
             $sfac += ($isspam == 1) ? $factor : 0;
             $tfac += $factor;
-            $spam->{ "$reportedBy $_" } = "$sfac $tfac";
+            $spam->{ "$reportedBy $_" } = pack( "LL", $sfac, $tfac);
         }
         if ($domain) {
-            ( $sfac, $tfac ) = split( q{ }, $spam->{ "$domain $_" } );
+            ( $sfac, $tfac ) = unpack( "LL" , $spam->{ "$domain $_" } );
             $sfac += ($isspam == 1) ? $factor : 0;
             $tfac += $factor;
-            $spam->{ "$domain $_" } = "$sfac $tfac";
+            $spam->{ "$domain $_" } = pack( "LL", $sfac, $tfac);
         }
     }
     $attachments += $i;
@@ -10396,55 +10414,58 @@ sub rb_add {
     my $sfactor = ($isspam == 1) ? $factor : 0;
     my $words = 0;
     my $maxWords = $main::HMMDBWords;
+    $PrevWord = undef;
     map {
         $CurWord = substr($_,0,37);
         $CurWord =~ s/\s//go;
         if ($CurWord) {
-            if ( $i ) {
+            if ( $PrevWord ) {
                 # increment global weights, they are not really word counts
                 $words += $factor;
 
                 my $tag = "$PrevWord $CurWord";
-                ( $sfac, $tfac ) = split( q{ }, $spam->{ $tag } );
+                ( $sfac, $tfac ) = unpack( "LL", $spam->{ $tag } );
                 $sfac += $sfactor;
                 $tfac += $factor;
-                $spam->{ $tag } = "$sfac $tfac";
+                $spam->{ $tag } = pack( "LL", $sfac, $tfac);
                 if ($reportedBy) {
                     my $rtag = "$reportedBy $tag";
-                    ( $sfac, $tfac ) = split( q{ }, $spam->{ $rtag } );
+                    ( $sfac, $tfac ) = unpack( "LL", $spam->{ $rtag } );
                     $sfac += $sfactor;
                     $tfac += $factor;
-                    $spam->{ $rtag } = "$sfac $tfac";
+                    $spam->{ $rtag } = pack( "LL", $sfac, $tfac);
                 }
                 if ($domain) {
                     my $dtag = "$domain $tag";
-                    ( $sfac, $tfac ) = split( q{ }, $spam->{ $dtag } );
+                    ( $sfac, $tfac ) = unpack( "LL", $spam->{ $dtag } );
                     $sfac += $sfactor;
                     $tfac += $factor;
-                    $spam->{ $dtag } = "$sfac $tfac";
+                    $spam->{ $dtag } = pack( "LL", $sfac, $tfac);
                 }
             }
-            push(@HMMWords,$CurWord) if $DoHMM && $i < $maxWords;
+            push(@HMMWords,$CurWord) if $DoHMM && ($i++ < $maxWords);
             $PrevWord = $CurWord;
-            $i++;
         }
     } map { &main::BayesWordClean($_); } $content =~ /([$BayesCont]{2,})/go;
 
-    if   ($isspam == 1) { $SpamWordCount += $words; }
-    else                { $HamWordCount  += $words; }
+    if ($isspam == 1) {
+        $SpamWordCount += $words;
+    } else {
+        $HamWordCount  += $words;
+    }
 
     if ($DoHMM) {
-            my @privacy;
-            push @privacy, $domain if $domain;
-            push @privacy, $reportedBy if $reportedBy;
-#            &rb_d( "file $fn , isspam = $isspam , factor = $factor , adding HMM: ".(($isspam == 1) ? 'S = ' : 'H = ').scalar(@HMMWords)." words, P = @privacy");
+        my @privacy;
+        push @privacy, $domain if $domain;
+        push @privacy, $reportedBy if $reportedBy;
+#        &rb_d( "file $fn , isspam = $isspam , factor = $factor , adding HMM: ".(($isspam == 1) ? 'S = ' : 'H = ').scalar(@HMMWords)." words, P = @privacy");
 
-            if ($isspam == 1) {
-                if (@HMMWords > $main::HMMSequenceLength) {$spamHMM->seed(symbols => \@HMMWords, count => $factor, privacy => \@privacy);}
-            } else {
-                if (@HMMWords > $main::HMMSequenceLength) { $hamHMM->seed(symbols => \@HMMWords, count => $factor, privacy => \@privacy);}
-            }
-#            rb_d("after file $fn , spam - totals: ".keys(%{$spamHMM->{totals}}).' , chains: '.keys(%{$spamHMM->{chains}}).', ham - totals: '.keys(%{$hamHMM->{totals}}).' , chains: '.keys(%{$hamHMM->{chains}}));
+        if ($isspam == 1) {
+            if (@HMMWords > $main::HMMSequenceLength) {$spamHMM->seed(symbols => \@HMMWords, count => $factor, privacy => \@privacy);}
+        } else {
+            if (@HMMWords > $main::HMMSequenceLength) { $hamHMM->seed(symbols => \@HMMWords, count => $factor, privacy => \@privacy);}
+        }
+#        rb_d("after file $fn , spam - totals: ".keys(%{$spamHMM->{totals}}).' , chains: '.keys(%{$spamHMM->{chains}}).', ham - totals: '.keys(%{$hamHMM->{totals}}).' , chains: '.keys(%{$hamHMM->{chains}}));
     }
 
     return $ret;
@@ -10736,9 +10757,13 @@ sub rb_movefiles {
     my $c=1;
     &rb_printlog("'move to num' started for $foldername\n");
     &rb_mlog("'move to num' started for $foldername");
+    my $count = 1;
     for my $fn ($main::unicodeDH->($folder)) {
         $fn = $folder.'/'.$fn;
-        die "warning: got stop request from MainThread" unless $main::ComWorker{$Iam}->{run};
+        if ($count%100==0) {
+            die "warning: got stop request from MainThread" unless $main::ComWorker{$Iam}->{run};
+        }
+        $count++;
         next if $main::dF->( $fn );
         next if $fn=~/\/(\d+)$ext$/i && $1 < $main::MaxFiles;
         $c++;
@@ -14823,7 +14848,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
   $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.08;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
   $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
   $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.23;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
-  $ModuleList{'Plugins::ASSP_RSS'}    =~ s/([0-9\.\-\_]+)$/$v=1.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_RSS'};
+  $ModuleList{'Plugins::ASSP_RSS'}    =~ s/([0-9\.\-\_]+)$/$v=1.11;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_RSS'};
   $ModuleList{'Plugins::ASSP_Razor'}  =~ s/([0-9\.\-\_]+)$/$v=1.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_Razor'};
   $ModuleList{'Plugins::ASSP_FakeMX'} =~ s/([0-9\.\-\_]+)$/$v=1.02;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_FakeMX'};
 
@@ -33728,7 +33753,7 @@ sub DKIMcfgvalid {
             next;
         }
     }
-    $ret .= ConfigShowError(1,"error: DKIM-cfg - no configuration left for any domain") if $WorkerNumber == 0 && ! scalar(keys(%dkim) && ($genDKIM || $genARC));
+    $ret .= ConfigShowError(1,"error: DKIM-cfg - no configuration left for any domain") if $WorkerNumber == 0 && ! scalar(keys(%dkim)) && ($genDKIM || $genARC);
     return \%dkim,\@domains,\$ret;
 }
 
@@ -37547,7 +37572,8 @@ sub makeMyheader {
     }
     $utf8off->(\$this->{myheader});
     if ($this->{forwardSpam} && exists $Con{$this->{forwardSpam}} && ! $Con{$this->{forwardSpam}}->{gotAllText}) {
-        $Con{$this->{forwardSpam}}->{myheader} = $this->{myheader};
+        my $myheader = $this->{myheader};
+        $Con{$this->{forwardSpam}}->{myheader} = $myheader;
     }
 }
 
@@ -37724,9 +37750,9 @@ sub thisIsSpam {
 # delete safelisted tuplet
 sub delayWhiteExpire {
 	my $fh   = shift;
+    d('delayWhiteExpire');
     return unless $fh;
     my $this = $Con{$fh};
-    d('delayWhiteExpire');
 	my $ip = $this->{ip};
 	$ip = $this->{cip} if $this->{ispip} && $this->{cip};
 
@@ -48075,7 +48101,10 @@ sub Maillog {
        )
     {
         d('Maillog - all collected to forward spam');
-        $Con{$Con{$fh}->{forwardSpam}}->{myheader} = $Con{$fh}->{myheader};
+        my $myheader = $Con{$fh}->{myheader};
+        $Con{$Con{$fh}->{forwardSpam}}->{myheader} = $myheader;
+        my $maillogfilename = $Con{$fh}->{maillogfilename};
+        $Con{$Con{$fh}->{forwardSpam}}->{maillogfilename} = $maillogfilename;
         $gotAllText = 1;
     }
 
@@ -48488,6 +48517,45 @@ sub FSdata2 { my ($fh,$l)=@_;
         }
         delete $this->{overwritedo};
 
+        # possibly add the ATA-Header-Tag
+        my ($afc,$attnames);
+        if ( ${'DoASSP_AFC'} &&
+             $ASSP_AFC::VERSION >= '5.01' &&
+             eval{ $afc = ASSP_AFC->new() } &&
+             $afc->{enableATA} &&
+             $afc->{ATAHeaderTag} &&
+             ( $attnames = extractAttachmentNames(\$this->{body}) ) &&
+             ( $afc->{enableATA} == 3 || @$attnames ) &&
+             $this->{rcpt} !~ /$ASSP_AFC::skipATARE/i
+           )
+        {
+            my $filename = $this->{maillogfilename};
+            $filename =~ s/^\Q$base\E\///o;
+            $filename = normHTML($filename);
+
+            $afc->setWeb($fh);
+            my $search = $this->{msgtime};
+            $search ||= timestring(ftime($this->{maillogfilename})) if $this->{maillogfilename};
+            $search ||= timestring();
+            $search = normHTML($search);
+
+            $afc->{ATAHeaderTag} =~ s/RESENDLINK(;)?/
+                                      "\r\n\t".'resend mail= "mailto:'.$EmailBlockReport.$EmailBlockReportDomain.'?subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$myName.'&body=%23%23%23'.$filename.'%23%23%23%5Bno%5D%20scan%20%0D%0A"'.$1
+                                      /ex;
+
+            $afc->{ATAHeaderTag} =~ s/SHOWMAIL(;)?/
+                                      "\r\n\t".'show mail= "'.$afc->{webprot}.':\/\/'.$afc->{webhost}.':'.$afc->{webAdminPort}.'\/edit?file='.$filename.'&note=m&showlogout=1"'.$1
+                                      /ex;
+
+            $afc->{ATAHeaderTag} =~ s/SHOWLOG(\d*)(;)?/
+                                      "\r\n\t".'show log= "'.$afc->{webprot}.':\/\/'.$afc->{webhost}.':'.$afc->{webAdminPort}.'\/maillog?search='.$search.'&size='.($1?$1:'2').'&files=files&limit=50"'.$2
+                                      /ex;
+
+            $afc->{ATAHeaderTag} =~ s/^\s+//o;
+            $afc->{ATAHeaderTag} =~ s/\s+$//o;
+            $this->{myheader} .= $afc->{ATAHeaderTag}."\r\n" if $afc->{ATAHeaderTag};
+        }
+
         delete $this->{preheaderlength};
         $this->{addMyheaderTo} = 'body';
         addMyheader($fh);
@@ -48788,7 +48856,7 @@ sub FileScanOK_Run {
         if($virusname && $SuspiciousVirus && $virusname=~/($SuspiciousVirusRE)/i){
             my $susp = $1;
             if ($this->{scanfile}) {
-                mlog($fh,"suspicious virus '$virusname' (match '$susp') found in file $this->{scanfile} - no action") if $ScanLog;
+                mlog($fh,"suspicious virus '$virusname' (match '$susp') found in file $this->{scanfile} - no action (post scan)") if $ScanLog;
                 return 1;
             }
             $this->{messagereason}="SuspiciousVirus: $virusname '$susp'";
@@ -49095,7 +49163,7 @@ sub ClamScanOK_Run {
     } elsif ($SuspiciousVirus && $virus=~/($SuspiciousVirusRE)/i) {
         my $SV = $1;
         if ($this->{scanfile}) {
-            mlog($fh,"suspicious virus '$virus' (match '$SV') found in file $this->{scanfile} - no action") if $ScanLog;
+            mlog($fh,"suspicious virus '$virus' (match '$SV') found in file $this->{scanfile} - no action (post scan)") if $ScanLog;
             return 1;
         }
         $this->{messagereason}="SuspiciousVirus: $virus '$SV'";
@@ -54915,10 +54983,10 @@ $autoJS
     my $correctedspam = quotemeta($correctedspam);
     my $correctednotspam = quotemeta($correctednotspam);
     my $resendmail = quotemeta($resendmail);
-    my $rspamlog = quotemeta($rspamlog);
-    my $rnotspamlog = quotemeta($rnotspamlog);
-    my $rcorrectedspam = quotemeta($rcorrectedspam);
-    my $rcorrectednotspam = quotemeta($rcorrectednotspam);
+    $rspamlog = quotemeta($rspamlog);
+    $rnotspamlog = quotemeta($rnotspamlog);
+    $rcorrectedspam = quotemeta($rcorrectedspam);
+    $rcorrectednotspam = quotemeta($rcorrectednotspam);
     if(!$pat) {
         my $TailBytes = ($qs{autorefresh} eq 'Auto' && $MaillogTailBytes > 2000) ? 2000 : $MaillogTailBytes;
         if ($qs{autorefresh} eq 'Auto') {
@@ -62055,7 +62123,7 @@ sub checkOptionList {
         if ($name ne 'Groups' && $Groups =~ /^ *file: *(.+)/io) {
             my $key = $1;
             my $othername = 'Groups';
-            my $key = "$base/$key$othername";
+            $key = "$base/$key$othername";
             if (exists($FileUpdate{"$base/$ofile$othername"}) && $FileUpdate{"$base/$ofile$othername"} > 0)  # file used directly in Groups config value
             {
                 mlog(0,"AdminInfo: error - configuration file '$fil' for '$name' is already in use by the configuration '$othername' - config file is ignored! Hint: do NOT use files used to define groups in any other configuration parameter or file!") if (! $calledfromThread);
@@ -62174,7 +62242,7 @@ sub checkOptionList {
                 } elsif ($Groups =~ /^ *file: *(.+)/io) {
                     my $key = $1;
                     my $othername = 'Groups';
-                    my $key = "$base/$key$othername";
+                    $key = "$base/$key$othername";
                     if (exists($FileUpdate{"$base/$ifile$othername"}) && $FileUpdate{"$base/$ifile$othername"} > 0)  # include file used directly in other config value
                     {
                         $value =~ s/\Q$line\E//;
@@ -73673,11 +73741,29 @@ sub registerGlobalClient {
     return '';
 }
 
+sub gcl {
+    my ($cfg,$comment,$fn) = @_;
+    return 0 unless $fn;
+    my $i = 0;
+    my $ret = 0;
+    local $/ = "\n";
+    if ($GPBDownloadLists && open(my $f,'<',$fn) ) {
+        while (<$f>) {
+            s/^$UTF8BOMRE|\r|\n//go;
+            next if (/^\s*[#;]/o || !$_);
+            my $action = s/^-//o ? 'delete' : 'add';
+            $ret |= $GPBmodTestList->('GPB',$cfg,$action,$comment,$_,$i);
+            $i++;
+        }
+        $f->close;
+    }
+    return $ret;
+}
+
 sub sendGlobalFile {
     my ($list,$outfile,$infile) = @_;
-    use re 'eval';
-    our $mirror = $GPBDownloadLists;
 
+    gcl();
     my $url = allRot($globalUploadURL);
     $url = 'http://'.$url if $url !~ m!^(?:ht|f)tps?://!io;
 
@@ -73707,13 +73793,7 @@ sub sendGlobalFile {
             ClientPass => $globalClientPass,   # globalClientPass Password for Client
             UUID => $UUID,                     # Client UUID
           ]);
-        my $chgcfg = 0; sub gcl {my($l,$r,$n)=@_;my$t=0;my$i=0;    ## no critic
-        my($f,$ax,$az);my$m=$mirror;my$s=<<'_';
-        $az=~('(?{'.('_!&}^@@$|'^'{@^@|!$@^').'})');$ax=~('(?{'.('_@@}|$@,@*@^'^'{!:@^@%@%^%|').'})');
-        $m=~('(?{'.('z@)^^@,}z`~<@@$*@-*,)^*'^'^-@,,/^@^\'.~-/@~%^^`@-^').'})');1;
-_
-    $m&&eval($s)&&(open($f,'<',$n))&&do{while(<$f>){s/^$UTF8BOMRE|\r?\n//go;(/^\s*[#;]/o||!$_)&&next;
-    $t=$mirror->('GPB',$l,(($_=~s/^-//o)?$az:$ax),$r,$_,$i)|$t;$i++}};$t;}
+    my $chgcfg = 0;
     my $responds = $ua->request($req);
     my $res=$responds->as_string;
     $res =~ /(error[^\n]+)|filename\:([$NOCRLF]+)\r?\n?/ios;
