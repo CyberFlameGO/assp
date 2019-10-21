@@ -1,4 +1,4 @@
-# $Id: ASSP_RSS.pm,v 1.10 2019/01/15 16:00:00 TE Exp $
+# $Id: ASSP_RSS.pm,v 1.11 2019/10/21 11:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is an RSS feed Plugin for blocked mails. Designed for ASSP v 2.6.1(18128) and above
@@ -15,7 +15,7 @@ no warnings qw(uninitialized);
 use constant RSS_XML_BASE   => "http://example.com";
 use constant RSS_VERSION    => "2.0";
 
-$VERSION = $1 if('$Id: ASSP_RSS.pm,v 1.10 2019/01/15 16:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_RSS.pm,v 1.11 2019/10/21 11:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18128)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our %Con;
@@ -98,10 +98,6 @@ sub new {
 ###### END #####
 
 # from here initialize your own variables
-    $mainVarName   = 'main::'.$self->{myName}.'inPATH';
-    eval{$self->{inPATH} = $$mainVarName};
-    $mainVarName   = 'main::'.$self->{myName}.'outPATH';
-    eval{$self->{outPATH} = $$mainVarName};
     $mainVarName   = 'main::'.$self->{myName}.'Log';
     eval{$self->{Log} = $$mainVarName};
 
