@@ -1,3 +1,59 @@
+2019-10-24
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19297:
+
+- If MySQL 5.7 (or higher) or MariaDB was used as database backend at a case sensitive filesystem and the mysql configuration switch 'lower_case_table_names = 1'
+  ( https://dev.mysql.com/doc/refman/5.7/en/identifier-case-sensitivity.html ) was not defined in the MySQL Server configuration file, it was possible that assp database imports
+  and the assp database connection keeping failed.
+  
+  It was also possible, that several database tables for dynamic PB-caches and lists were mistakenly created twice by assp - one time with all lower case characters and
+  one time with some capital letters in the name. From now on assp uses lower case database table names in every case.
+  
+  the following database tables may be affected by this issue, depending on your assp configuration: 
+          adminusers, adminusersright, backdns, batvtag, dkimcache, mxacache, pbblack, pbtrap, pbwhite, ptrcache, rblcache, rwlcache, sbcache, spfcache, uriblcache
+
+  *****************************************
+  How to fix twice created database tables?
+  *****************************************
+  
+  Be prepared. Be not in a hurry. Read all the next lines!
+  In doubt contact your database administrator for assistance!
+  
+  **** ATTENTION ****
+  While working with database tables, DO NOT change the assp root password - this may lead in to data lost and/or startup crashes!
+  
+  option 1: stop assp - drop tables which contains capital characters: DROP TABLE 'UpperCaseTableName' - start assp
+  
+  option 2: stop assp - rename tables which contains capital characters: ALTER TABLE 'UpperCaseTableName' RENAME TO 'lowercasetablename' - start assp
+  
+  option 3: use the assp buildin functions
+            - make sure your assp is doing regular database backups (importDBDir backupDBDir backupDBInterval copyDBToOrgLoc)
+            - set 'fillUpImportDBDir' to L and apply - this will copy the last backup of all tables to the 'importDBDir'
+            - stop assp
+            - possibly remove the import files for already lower case table names from the 'importDBDir'
+            - DROP all tables from the database which contains upper case letters
+            - start assp - assp will create all missing tables and will import all data for all tables from the 'importDBDir' at startup
+  
+  option 4: use the mysql client, the workbench, the MySQL-Tools or any other DB management tool (like DBeaver)
+            - stop assp - use the management tool of your choice to backup, rename, drop, recover the required tables and there data - start assp
+
+  Notice: it is save to drop all tables which contains only dynamic PB-cache data - these table will be filled up by assp again quickly
+          if the tables 'adminusers' and/or 'adminusersright' contain capital letters and valid data, handle them with care to prevent data lost !!!
+          if you upgrade MySQL or MariaDB consider to set the configuration switch 'lower_case_table_names = 1' to force the DB-engine to use lower case table names
+              !!! BUT !!! - before you set the MySQL configuration switch 'lower_case_table_names = 1' make sure all existing table names are lower case unique!
+
+  *************************************************************************************
+  What happens if you consider to do nothing - or an automatic assp.pl upgrade is done?
+  *************************************************************************************
+  
+  Don't worry - if assp detects a case mismatch for a database table at startup - it will try to rename the table to lower case. If this is not possible for any reason, the lower case
+  table will be checked or created and used. ASSP will write a startup warning to the maillog.txt for this event. The dynamic caches and lists will be filled up quickly. ASSP will do some more DNS-queries
+  as normal for a short time. You should consider to remove the uppercase database tables, if you find some time later.
+  If there are admin users defined, it may be possible that they are unable to login to the GUI. In this case, follow the instructions above (How to fix....) 
+  to rename both tables (adminusers, adminusersright). The assp root account is not affected.
+
+
+
+
 2019-10-21
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19294:
 

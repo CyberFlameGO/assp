@@ -202,7 +202,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19294';        # 21.10.2019 TE
+$build   = '19297';        # 24.10.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -611,7 +611,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'C1F375373E3D762D02EF339669920AE8DDD6F60A'; }
+sub __cs { $codeSignature = 'B8212C0E8230082CD70CC29DDF02E8C0AA0DE0C3'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -13532,26 +13532,26 @@ sub initDBSetup {
       delete $tempDBvars{HMMdb};
   }
 
-  $v = ("PBWhite   ,pbdb       ,PBWhiteObject   ,$pbdb.white.db,pbdb.white.db,".$p."pb/pbdb    ,PBWhite"     ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("PBBlack   ,pbdb       ,PBBlackObject   ,$pbdb.black.db,pbdb.black.db,".$p."pb/pbdb    ,PBBlack"     ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("RBLCache  ,pbdb       ,RBLCacheObject  ,$pbdb.rbl.db  ,pbdb.rbl.db  ,".$p."pb/pbdb    ,RBLCache"    ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("URIBLCache,pbdb       ,URIBLCacheObject,$pbdb.uribl.db,pbdb.uribl.db,".$p."pb/pbdb    ,URIBLCache"  ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("PTRCache  ,pbdb       ,PTRCacheObject  ,$pbdb.ptr.db  ,pbdb.ptr.db  ,".$p."pb/pbdb    ,PTRCache"    ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("MXACache  ,pbdb       ,MXACacheObject  ,$pbdb.mxa.db  ,pbdb.mxa.db  ,".$p."pb/pbdb    ,MXACache"    ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("RWLCache  ,pbdb       ,RWLCacheObject  ,$pbdb.rwl.db  ,pbdb.rwl.db  ,".$p."pb/pbdb    ,RWLCache"    ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("SPFCache  ,pbdb       ,SPFCacheObject  ,$pbdb.spf.db  ,pbdb.spf.db  ,".$p."pb/pbdb    ,SPFCache"    ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("SBCache   ,pbdb       ,SBCacheObject   ,$pbdb.sb.db   ,pbdb.sb.db   ,".$p."pb/pbdb    ,SBCache"     ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("PBTrap    ,pbdb       ,PBTrapObject    ,$pbdb.trap.db ,pbdb.trap.db ,".$p."pb/pbdb    ,PBTrap"      ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("DKIMCache ,pbdb       ,DKIMCacheObject ,$pbdb.dkim.db ,pbdb.dkim.db ,".$p."pb/pbdb    ,DKIMCache"   ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("BATVTag   ,pbdb       ,BATVTagObject   ,$pbdb.batv.db ,pbdb.batv.db ,".$p."pb/pbdb    ,BATVTag"     ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("BackDNS   ,pbdb       ,BackDNSObject   ,$pbdb.back.db ,pbdb.back.db ,".$p."pb/pbdb    ,BackDNS"     ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("PBWhite   ,pbdb       ,PBWhiteObject   ,$pbdb.white.db,pbdb.white.db,".$p."pb/pbdb    ,pbwhite"     ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("PBBlack   ,pbdb       ,PBBlackObject   ,$pbdb.black.db,pbdb.black.db,".$p."pb/pbdb    ,pbblack"     ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("RBLCache  ,pbdb       ,RBLCacheObject  ,$pbdb.rbl.db  ,pbdb.rbl.db  ,".$p."pb/pbdb    ,rblcache"    ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("URIBLCache,pbdb       ,URIBLCacheObject,$pbdb.uribl.db,pbdb.uribl.db,".$p."pb/pbdb    ,uriblcache"  ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("PTRCache  ,pbdb       ,PTRCacheObject  ,$pbdb.ptr.db  ,pbdb.ptr.db  ,".$p."pb/pbdb    ,ptrcache"    ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("MXACache  ,pbdb       ,MXACacheObject  ,$pbdb.mxa.db  ,pbdb.mxa.db  ,".$p."pb/pbdb    ,mxacache"    ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("RWLCache  ,pbdb       ,RWLCacheObject  ,$pbdb.rwl.db  ,pbdb.rwl.db  ,".$p."pb/pbdb    ,rwlcache"    ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("SPFCache  ,pbdb       ,SPFCacheObject  ,$pbdb.spf.db  ,pbdb.spf.db  ,".$p."pb/pbdb    ,spfcache"    ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("SBCache   ,pbdb       ,SBCacheObject   ,$pbdb.sb.db   ,pbdb.sb.db   ,".$p."pb/pbdb    ,sbcache"     ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("PBTrap    ,pbdb       ,PBTrapObject    ,$pbdb.trap.db ,pbdb.trap.db ,".$p."pb/pbdb    ,pbtrap"      ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("DKIMCache ,pbdb       ,DKIMCacheObject ,$pbdb.dkim.db ,pbdb.dkim.db ,".$p."pb/pbdb    ,dkimcache"   ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("BATVTag   ,pbdb       ,BATVTagObject   ,$pbdb.batv.db ,pbdb.batv.db ,".$p."pb/pbdb    ,batvtag"     ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("BackDNS   ,pbdb       ,BackDNSObject   ,$pbdb.back.db ,pbdb.back.db ,".$p."pb/pbdb    ,backdns"     ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
 
   $v = ("PersBlack ,persblackdb,PersBlackObject ,$persblackdb  ,persblack    ,".$p."persblack  ,persblack"   ); $v=~s/\s*,/,/go; push(@PersBlackGroup,$v);
 
   $v = ("LDAPlist  ,ldaplistdb ,LDAPlistObject  ,$ldaplistdb   ,ldaplist     ,".$p."ldaplist   ,ldaplist"    ); $v=~s/\s*,/,/go; push(@LDAPGroup,$v);
 
-  $v = ("AdminUsers,adminusersdb ,AdminUsersObject,$adminusersdb   ,adminusers   ,".$p."adminusers ,AdminUsers"  ); $v=~s/\s*,/,/go; push(@AdminGroup,$v);
-  $v = ("AdminUsersRight,adminusersdb,AdminUsersRightObject,$adminusersdb.right,adminusers.right,".$p."adminusers,AdminUsersRight"   ); $v=~s/\s*,/,/go; push(@AdminGroup,$v);
+  $v = ("AdminUsers,adminusersdb ,AdminUsersObject,$adminusersdb ,adminusers ,".$p."adminusers ,adminusers"  ); $v=~s/\s*,/,/go; push(@AdminGroup,$v);
+  $v = ("AdminUsersRight,adminusersdb,AdminUsersRightObject,$adminusersdb.right,adminusers.right,".$p."adminusers,adminusersright"   ); $v=~s/\s*,/,/go; push(@AdminGroup,$v);
 }
 
 sub init {
@@ -15779,6 +15779,9 @@ sub initDBHashes {
             foreach my $dbGroupEntry (@$dbGroup) {
                 last if ($switch_to_files);
                 my ($KeyName,$dbConfig,$CacheObject,$realFileName,$mysqlFileName,$FailoverValue,$mysqlTable) = split(/,/o,$dbGroupEntry);
+                if (lc($mysqlTable) ne $mysqlTable && ! $calledfromThread) {
+                    mlog(0,"Error: script code error - the database table name '$mysqlTable' in assp.pl (sub initDBHashes) is not all lower case - please report to development");
+                }
                 undef $$CacheObject if (defined $$CacheObject && ${$dbConfig} =~ /DB:/o); # undef if we have switched from database to files
                 eval {untie %$KeyName if (${$dbConfig} =~ /DB:/o);}; # untie if we have switched from database to files
                 if (($CanUseTieRDBM or $CanUseBerkeleyDB) && ${$dbConfig} =~ /DB:/o && ! $waserror) {
@@ -15811,6 +15814,7 @@ sub initDBHashes {
                                     			      Warn=>0 }
                                     			  );
                             die "unable to connect to database $mydb for $mysqlTable on host $myhost using DBI::$DBusedDriver - $DBI::err: $DBI::errstr\n" unless $dbh;
+                            mlog(0, "Warning: the database driver DBD::$DBusedDriver does not support the required '_async_check' function - $@ - please consider to use another database driver") unless eval{$dbh->func('_async_check')};
                             if ($dbGroup ne 'AdminGroup') {
                                 d("DB (initDBHashes) - $KeyName");
                                 $$CacheObject=tie %$KeyName,'Tie::RDBM',{db=>$dbh,table=>"$mysqlTable",create=>1,DEBUG=>$DataBaseDebug};
@@ -15837,7 +15841,7 @@ sub initDBHashes {
                         }
                     } else {
                         if (! $calledfromThread) {
-                            CheckTableStructure($mysqlTable) if ($DBusedDriver eq 'mysql'); # change the table if there was made an upgrade
+                            CheckTableStructure($mysqlTable) if ($DBusedDriver eq 'mysql' or $DBusedDriver eq 'MariaDB'); # change the table if there was made an upgrade
                             importDB($KeyName,$mysqlFileName,$mysqlTable,'','','');
                             $realFileName =~ s/DB:/$FailoverValue/o;
                             if ($DBusedDriver eq 'BerkeleyDB' && $CanUseBerkeleyDB) {
@@ -16039,14 +16043,38 @@ sub CheckTableStructure {
   my $dbh;
   my $sth;
 
+  if (lc($mysqlTable) ne $mysqlTable && ! $calledfromThread) {
+      mlog(0,"Error: script code error - the database table name '$mysqlTable' in assp.pl (sub CheckTableStructure) is not all lower case - please report to development");
+      return;
+  }
+
   $dbh = DBI->connect("DBI:$DBusedDriver:".($mydb ? "database=$mydb;" : '').($myhost ? "$DBhostTag=$myhost" : '' )."$DBOption", "$myuser", "$mypassword");
   if (!$dbh) {
     mlog(0,"Error: $DBI::errstr");
     mlog(0,"MySQL check for table $mysqlTable canceled!");
-    $dbh->disconnect() if ( $dbh );
     return;
   }
 
+  my $tables;
+  eval{$sth = $dbh->table_info();};
+  eval{$tables = $sth->fetchall_arrayref} if $sth;
+  if (ref($tables)) {
+      for (@$tables) {
+          if ($_->[2] eq $mysqlTable) {
+              last;
+          } elsif (lc($_->[2]) eq lc($mysqlTable)) {
+              $sql="ALTER TABLE '$_->[2]' RENAME TO '$mysqlTable'";
+              if ($dbh->do($sql)) {
+                  mlog(0,"info: renamed table $_->[2] to $mysqlTable");
+              } else {
+                  mlog(0,"warning: can't renamed table $_->[2] to $mysqlTable (lower case) - ".$dbh->errstr);
+              }
+          }
+      }
+      $sth = undef;
+      $sql = undef;
+  }
+  
   my $db_features = $Tie::RDBM::Types{$DBusedDriver};
   my($keytype,$valuetype,$frozentype) = @{$db_features};
 
@@ -16064,9 +16092,7 @@ sub CheckTableStructure {
   if (lc($pkey_TYPE_NAME) ne lc($keytype)) {
     mlog(0,"info: convert field pkey in table $mysqlTable from $pkey_TYPE_NAME to $keytype");
     $sql="ALTER TABLE $mysqlTable MODIFY COLUMN pkey $keytype NOT NULL";
-    $sth = $dbh->do($sql);
-    $dbh->commit unless $main::DBautocommit;
-    if (!$dbh) {
+    if (! $dbh->do($sql)) {
       mlog(0,"Error: $DBI::errstr");
       mlog(0,"conversion for table $mysqlTable failed!");
     }
@@ -16079,9 +16105,7 @@ sub CheckTableStructure {
   if (lc($pvalue_TYPE_NAME) ne lc($valuetype)) {
     mlog(0,"info: convert field pvalue in table $mysqlTable from $pvalue_TYPE_NAME to $valuetype");
     $sql="ALTER TABLE $mysqlTable MODIFY COLUMN pvalue $valuetype DEFAULT NULL";
-    $sth = $dbh->do($sql);
-    $dbh->commit unless $main::DBautocommit;
-    if (!$dbh) {
+    if (! $dbh->do($sql)) {
       mlog(0,"Error: $DBI::errstr");
       mlog(0,"conversion for table $mysqlTable failed!");
     }
@@ -16126,6 +16150,10 @@ sub importDB {
    if ($DBusedDriver ne 'BerkeleyDB' && !-e "$base/assp_db_import.cfg"){
      mlog_i(0,"ERROR: unable to find file $base/assp_db_import.cfg - cancel import");
      return;
+   }
+
+   if ($mysqlTable && lc($mysqlTable) ne $mysqlTable) {
+       mlog_i(0,"Error: script code error - the database table name '$mysqlTable' in assp.pl (sub importDB) is not all lower case - please report to development");
    }
 
    exportDB($name,$file,"backup",0) if $importrpl ne 'cache';   #overall - backup before update is the right way
@@ -16254,7 +16282,7 @@ sub importDB {
        $dbv = $dbh->get_info(18);
        mlog_i(0,"database: $dbn $dbv");
        if (!($dbn && $dbv)) {
-           mlog_i(0,"ERROR: unable to get database information from DBI");
+           mlog_i(0,"ERROR: unable to get database information from DBI - $DBI::errstr");
            mlog_i(0,"Import for table $mysqlTable canceled!");
            $dbh->disconnect() if ( $dbh );
            return;
@@ -16303,7 +16331,7 @@ sub importDB {
 # get the types of fields - they may differ depending on the used DB engine
 # at this time, this is only needed for MS-SQL to build the right CONVERT statement
 # this is to be expanded if any DB require CAT- or SCHEMA-definition (see primary key)
-       my $db_info;
+       my ($db_info,$db_error);
        my ($pkey_TYPE_NAME,$pkey_SIZE);
        my ($pvalue_TYPE_NAME,$pvalue_SIZE);
        my ($pfrozen_TYPE_NAME,$pfrozen_SIZE);
@@ -16314,14 +16342,16 @@ sub importDB {
        ($pkey_TYPE_NAME = $db_info->[5]) and
        ($pkey_SIZE = $db_info->[6]);
 
+       eval {$db_error = $dbh->errstr;} unless $pkey_SIZE;
+
        if (! $sth) {
-           mlog_i(0,"Warning: the column_info statement-handle for pkey in table $mydb/$mysqlTable can't be created - driver:$DBusedDriver engine:$dbn version:$dbv");
+           mlog_i(0,"Warning: the column_info statement-handle for pkey in table $mydb/$mysqlTable can't be created - driver:$DBusedDriver engine:$dbn version:$dbv DBI-error:$db_error");
        } elsif (! $db_info) {
-           mlog_i(0,"Warning: the column_info of pkey in table $mydb/$mysqlTable can't be fetched - driver:$DBusedDriver engine:$dbn version:$dbv");
+           mlog_i(0,"Warning: the column_info of pkey in table $mydb/$mysqlTable can't be fetched - driver:$DBusedDriver engine:$dbn version:$dbv DBI-error:$db_error");
        } elsif (! defined $pkey_TYPE_NAME) {
-           mlog_i(0,"Warning: the column_type_name of pkey in table $mydb/$mysqlTable is empty - driver:$DBusedDriver engine:$dbn version:$dbv");
+           mlog_i(0,"Warning: the column_type_name of pkey in table $mydb/$mysqlTable is empty - driver:$DBusedDriver engine:$dbn version:$dbv DBI-error:$db_error");
        } elsif (! defined $pkey_SIZE) {
-           mlog_i(0,"Warning: the column_size of pkey in table $mydb/$mysqlTable is empty - driver:$DBusedDriver engine:$dbn version:$dbv");
+           mlog_i(0,"Warning: the column_size of pkey in table $mydb/$mysqlTable is empty - driver:$DBusedDriver engine:$dbn version:$dbv DBI-error:$db_error");
        }
 
        if ($pkey_SIZE != 254) {
@@ -16335,7 +16365,8 @@ sub importDB {
        ($pvalue_TYPE_NAME = $db_info->[5]) and
        ($pvalue_SIZE = $db_info->[6]);
        if ($pvalue_SIZE != 255) {
-           mlog_i(0,"Warning: the column size of pvalue in table $mydb/$mysqlTable is $pvalue_TYPE_NAME($pvalue_SIZE), but it should be $pvalue_TYPE_NAME(255)");
+           eval {$db_error = $dbh->errstr;};
+           mlog_i(0,"Warning: the column size of pvalue in table $mydb/$mysqlTable is $pvalue_TYPE_NAME($pvalue_SIZE), but it should be $pvalue_TYPE_NAME(255) DBI-error:$db_error");
            $pvalue_SIZE = 255;
        }
 
@@ -16349,30 +16380,31 @@ sub importDB {
        ($sth, $db_info) = (undef,undef);
        $sth = $dbh->primary_key_info( undef, undef , $mysqlTable ); # for MSSQL, MySQL
        eval{$db_info = $sth->fetchrow_arrayref ;};
-       my($TABLE_CAT,$TABLE_SCHEM,$TABLE_NAME,$COLUMN_NAME,$KEY_SEQ,$PK_NAME) = @$db_info ;
+       my ($TABLE_CAT,$TABLE_SCHEM,$TABLE_NAME,$COLUMN_NAME,$KEY_SEQ,$PK_NAME);
+       ($TABLE_CAT,$TABLE_SCHEM,$TABLE_NAME,$COLUMN_NAME,$KEY_SEQ,$PK_NAME) = @$db_info if ref($db_info);
        if (!$TABLE_NAME) {
           ($sth, $db_info) = (undef,undef);
           $sth = $dbh->primary_key_info( undef, undef , uc($mysqlTable));
           eval{$db_info = $sth->fetchrow_arrayref ;};
-          ($TABLE_CAT,$TABLE_SCHEM,$TABLE_NAME,$COLUMN_NAME,$KEY_SEQ,$PK_NAME) = @$db_info ;
+          ($TABLE_CAT,$TABLE_SCHEM,$TABLE_NAME,$COLUMN_NAME,$KEY_SEQ,$PK_NAME) = @$db_info if ref($db_info);
        }
        if (!$TABLE_NAME) {
           ($sth, $db_info) = (undef,undef);
           $sth = $dbh->primary_key_info( undef, undef , lc($mysqlTable));     # for Pg
           eval{$db_info = $sth->fetchrow_arrayref ;};
-          ($TABLE_CAT,$TABLE_SCHEM,$TABLE_NAME,$COLUMN_NAME,$KEY_SEQ,$PK_NAME) = @$db_info ;
+          ($TABLE_CAT,$TABLE_SCHEM,$TABLE_NAME,$COLUMN_NAME,$KEY_SEQ,$PK_NAME) = @$db_info if ref($db_info);
        }
        if (!$TABLE_NAME) {
           ($sth, $db_info) = (undef,undef);
           $sth = $dbh->primary_key_info( undef, $myuser , $mysqlTable );
           eval{$db_info = $sth->fetchrow_arrayref ;};
-          ($TABLE_CAT,$TABLE_SCHEM,$TABLE_NAME,$COLUMN_NAME,$KEY_SEQ,$PK_NAME) = @$db_info ;
+          ($TABLE_CAT,$TABLE_SCHEM,$TABLE_NAME,$COLUMN_NAME,$KEY_SEQ,$PK_NAME) = @$db_info if ref($db_info);
        }
        if (!$TABLE_NAME) {
           ($sth, $db_info) = (undef,undef);
           $sth = $dbh->primary_key_info( undef , uc($myuser) , uc($mysqlTable));  # for Oracle
           eval{$db_info = $sth->fetchrow_arrayref ;};
-          ($TABLE_CAT,$TABLE_SCHEM,$TABLE_NAME,$COLUMN_NAME,$KEY_SEQ,$PK_NAME) = @$db_info ;
+          ($TABLE_CAT,$TABLE_SCHEM,$TABLE_NAME,$COLUMN_NAME,$KEY_SEQ,$PK_NAME) = @$db_info if ref($db_info);
        }
 
        if (!$TABLE_NAME) {
@@ -16668,6 +16700,9 @@ sub exportMysqlDB {
   foreach my $dbGroup (@GroupList) {
       foreach my $dbGroupEntry (@$dbGroup) {
         my ($KeyName,$dbConfig,$CacheObject,$realFileName,$mysqlFileName,$FailoverValue,$mysqlTable) = split(/,/o,$dbGroupEntry);
+        if ($mysqlTable && lc($mysqlTable) ne $mysqlTable) {
+            mlog(0,"Error: script code error - the database table name '$mysqlTable' in assp.pl (sub exportMysqlDB) is not all lower case - please report to development");
+        }
         $realFileName =~ s/DB:/$FailoverValue/o;
         exportDB($KeyName,$mysqlFileName,$action,$realFileName) if ((${$dbConfig} !~ /DB:/o && $action =~ /export/o) || (${$dbConfig} =~ /DB:/o && ! $failedTable{$KeyName}));
         &checkDBCon();
