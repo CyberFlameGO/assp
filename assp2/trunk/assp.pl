@@ -202,7 +202,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19297';        # 24.10.2019 TE
+$build   = '19298';        # 25.10.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -611,7 +611,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'B8212C0E8230082CD70CC29DDF02E8C0AA0DE0C3'; }
+sub __cs { $codeSignature = 'AB258113EE2606557B7C15E81DE7866894EA9E27'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -9292,7 +9292,7 @@ EOT
     $main::cleanHMM = 1;
     $main::RunTaskNow{ImportMysqlDB} = $Iam;
     $main::lastd{$Iam} = "populating HMM - $tot records";
-    &main::importDB('main::HMMdb','','hmmdb',\%HMMres,$totn, 1/2) unless $main::RebuildTestMode;
+    &main::importDB('main::HMMdb','',$main::DBvars{'HMMdb'},\%HMMres,$totn, 1/2) unless $main::RebuildTestMode;
     $main::RunTaskNow{ImportMysqlDB} = '';
     $main::cleanHMM = 0 if ($main::haveHMM = &main::getDBCount('main::HMMdb','main::spamdb'));
     delete $main::HMMdb{''};
@@ -9308,8 +9308,7 @@ sub rb_populate_Spamdb {
     my ($hashref, $totn) = @_;
 
     my $mainhashname = 'main::Spamdb';
-    my $mysqlTable = lc $mainhashname;
-    $mysqlTable =~ s/main:://o;
+    my $mysqlTable = $main::DBvars{'Spamdb'};
     my $tot = &rb_commify($totn);
 
     &rb_printlog( "start populating Spamdb with $tot records - Bayesian check is now disabled!\n" );
@@ -13517,41 +13516,42 @@ sub initDBSetup {
   my $v;
 # $v =  "KeyName   ,dbConfigVar,CacheObject     ,realFileName  ,mysqlFileName,".$p."FailoverValue,mysqlTable"); remove spaces and push to Group
 #                                                                                                               for dbConfigVar
-  $v = ("Whitelist ,whitelistdb,WhitelistObject ,$whitelistdb  ,whitelist    ,".$p."whitelist  ,whitelist"   ); $v=~s/\s*,/,/go; push(@whitelistGroup,$v);
+  $v = ("Whitelist ,whitelistdb,WhitelistObject ,$whitelistdb  ,whitelist    ,".$p."whitelist  ,".$DBvars{'Whitelist'}   ); $v=~s/\s*,/,/go; push(@whitelistGroup,$v);
 
-  $v = ("Redlist   ,redlistdb  ,RedlistObject   ,$redlistdb    ,redlist      ,".$p."redlist    ,redlist"     ); $v=~s/\s*,/,/go; push(@redlistGroup,$v);
+  $v = ("Redlist   ,redlistdb  ,RedlistObject   ,$redlistdb    ,redlist      ,".$p."redlist    ,".$DBvars{'Redlist'}     ); $v=~s/\s*,/,/go; push(@redlistGroup,$v);
 
-  $v = ("Delay     ,delaydb    ,DelayObject     ,$delaydb      ,delaydb      ,".$p."delaydb    ,delaydb"     ); $v=~s/\s*,/,/go; push(@delayGroup,$v);
-  $v = ("DelayWhite,delaydb    ,DelayWhiteObject,$delaydb.white,delaydb.white,".$p."delaydb    ,delaywhitedb"); $v=~s/\s*,/,/go; push(@delayGroup,$v);
+  $v = ("Delay     ,delaydb    ,DelayObject     ,$delaydb      ,delaydb      ,".$p."delaydb    ,".$DBvars{'Delay'}       ); $v=~s/\s*,/,/go; push(@delayGroup,$v);
+  $v = ("DelayWhite,delaydb    ,DelayWhiteObject,$delaydb.white,delaydb.white,".$p."delaydb    ,".$DBvars{'DelayWhite'}  ); $v=~s/\s*,/,/go; push(@delayGroup,$v);
 
-  $v = ("Spamdb    ,spamdb     ,SpamdbObject    ,$spamdb       ,spamdb       ,".$p."spamdb     ,spamdb"      ); $v=~s/\s*,/,/go; push(@spamdbGroup,$v);
-  $v = ("HeloBlack ,spamdb     ,HeloBlackObject ,$spamdb.helo  ,spamdb.helo  ,".$p."spamdb     ,spamdbhelo"  ); $v=~s/\s*,/,/go; push(@spamdbGroup,$v);
+  $v = ("Spamdb    ,spamdb     ,SpamdbObject    ,$spamdb       ,spamdb       ,".$p."spamdb     ,".$DBvars{'Spamdb'}      ); $v=~s/\s*,/,/go; push(@spamdbGroup,$v);
+  $v = ("HeloBlack ,spamdb     ,HeloBlackObject ,$spamdb.helo  ,spamdb.helo  ,".$p."spamdb     ,".$DBvars{'HeloBlack'}   ); $v=~s/\s*,/,/go; push(@spamdbGroup,$v);
 
   if (! $runHMMusesBDB || ! $CanUseBerkeleyDB) {
-      $v = ("HMMdb ,spamdb     ,HMMdbObject     ,$HMMdb        ,HMMdb        ,".$p."HMMdb      ,hmmdb"      ); $v=~s/\s*,/,/go; push(@spamdbGroup,$v);
+      $v = ("HMMdb ,spamdb     ,HMMdbObject     ,$HMMdb        ,HMMdb        ,".$p."HMMdb      ,".$DBvars{'HMMdb'}       ); $v=~s/\s*,/,/go; push(@spamdbGroup,$v);
       delete $tempDBvars{HMMdb};
   }
 
-  $v = ("PBWhite   ,pbdb       ,PBWhiteObject   ,$pbdb.white.db,pbdb.white.db,".$p."pb/pbdb    ,pbwhite"     ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("PBBlack   ,pbdb       ,PBBlackObject   ,$pbdb.black.db,pbdb.black.db,".$p."pb/pbdb    ,pbblack"     ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("RBLCache  ,pbdb       ,RBLCacheObject  ,$pbdb.rbl.db  ,pbdb.rbl.db  ,".$p."pb/pbdb    ,rblcache"    ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("URIBLCache,pbdb       ,URIBLCacheObject,$pbdb.uribl.db,pbdb.uribl.db,".$p."pb/pbdb    ,uriblcache"  ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("PTRCache  ,pbdb       ,PTRCacheObject  ,$pbdb.ptr.db  ,pbdb.ptr.db  ,".$p."pb/pbdb    ,ptrcache"    ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("MXACache  ,pbdb       ,MXACacheObject  ,$pbdb.mxa.db  ,pbdb.mxa.db  ,".$p."pb/pbdb    ,mxacache"    ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("RWLCache  ,pbdb       ,RWLCacheObject  ,$pbdb.rwl.db  ,pbdb.rwl.db  ,".$p."pb/pbdb    ,rwlcache"    ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("SPFCache  ,pbdb       ,SPFCacheObject  ,$pbdb.spf.db  ,pbdb.spf.db  ,".$p."pb/pbdb    ,spfcache"    ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("SBCache   ,pbdb       ,SBCacheObject   ,$pbdb.sb.db   ,pbdb.sb.db   ,".$p."pb/pbdb    ,sbcache"     ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("PBTrap    ,pbdb       ,PBTrapObject    ,$pbdb.trap.db ,pbdb.trap.db ,".$p."pb/pbdb    ,pbtrap"      ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("DKIMCache ,pbdb       ,DKIMCacheObject ,$pbdb.dkim.db ,pbdb.dkim.db ,".$p."pb/pbdb    ,dkimcache"   ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("BATVTag   ,pbdb       ,BATVTagObject   ,$pbdb.batv.db ,pbdb.batv.db ,".$p."pb/pbdb    ,batvtag"     ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
-  $v = ("BackDNS   ,pbdb       ,BackDNSObject   ,$pbdb.back.db ,pbdb.back.db ,".$p."pb/pbdb    ,backdns"     ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("PBWhite   ,pbdb       ,PBWhiteObject   ,$pbdb.white.db,pbdb.white.db,".$p."pb/pbdb    ,".$DBvars{'PBWhite'}     ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("PBBlack   ,pbdb       ,PBBlackObject   ,$pbdb.black.db,pbdb.black.db,".$p."pb/pbdb    ,".$DBvars{'PBBlack'}     ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("RBLCache  ,pbdb       ,RBLCacheObject  ,$pbdb.rbl.db  ,pbdb.rbl.db  ,".$p."pb/pbdb    ,".$DBvars{'RBLCache'}    ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("URIBLCache,pbdb       ,URIBLCacheObject,$pbdb.uribl.db,pbdb.uribl.db,".$p."pb/pbdb    ,".$DBvars{'URIBLCache'}  ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("PTRCache  ,pbdb       ,PTRCacheObject  ,$pbdb.ptr.db  ,pbdb.ptr.db  ,".$p."pb/pbdb    ,".$DBvars{'PTRCache'}    ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("MXACache  ,pbdb       ,MXACacheObject  ,$pbdb.mxa.db  ,pbdb.mxa.db  ,".$p."pb/pbdb    ,".$DBvars{'MXACache'}    ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("RWLCache  ,pbdb       ,RWLCacheObject  ,$pbdb.rwl.db  ,pbdb.rwl.db  ,".$p."pb/pbdb    ,".$DBvars{'RWLCache'}    ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("SPFCache  ,pbdb       ,SPFCacheObject  ,$pbdb.spf.db  ,pbdb.spf.db  ,".$p."pb/pbdb    ,".$DBvars{'SPFCache'}    ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("SBCache   ,pbdb       ,SBCacheObject   ,$pbdb.sb.db   ,pbdb.sb.db   ,".$p."pb/pbdb    ,".$DBvars{'SBCache'}     ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("PBTrap    ,pbdb       ,PBTrapObject    ,$pbdb.trap.db ,pbdb.trap.db ,".$p."pb/pbdb    ,".$DBvars{'PBTrap'}      ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("DKIMCache ,pbdb       ,DKIMCacheObject ,$pbdb.dkim.db ,pbdb.dkim.db ,".$p."pb/pbdb    ,".$DBvars{'DKIMCache'}   ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("BATVTag   ,pbdb       ,BATVTagObject   ,$pbdb.batv.db ,pbdb.batv.db ,".$p."pb/pbdb    ,".$DBvars{'BATVTag'}     ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
+  $v = ("BackDNS   ,pbdb       ,BackDNSObject   ,$pbdb.back.db ,pbdb.back.db ,".$p."pb/pbdb    ,".$DBvars{'BackDNS'}     ); $v=~s/\s*,/,/go; push(@pbdbGroup,$v);
 
-  $v = ("PersBlack ,persblackdb,PersBlackObject ,$persblackdb  ,persblack    ,".$p."persblack  ,persblack"   ); $v=~s/\s*,/,/go; push(@PersBlackGroup,$v);
+  $v = ("PersBlack ,persblackdb,PersBlackObject ,$persblackdb  ,persblack    ,".$p."persblack  ,".$DBvars{'PersBlack'}   ); $v=~s/\s*,/,/go; push(@PersBlackGroup,$v);
 
-  $v = ("LDAPlist  ,ldaplistdb ,LDAPlistObject  ,$ldaplistdb   ,ldaplist     ,".$p."ldaplist   ,ldaplist"    ); $v=~s/\s*,/,/go; push(@LDAPGroup,$v);
+  $v = ("LDAPlist  ,ldaplistdb ,LDAPlistObject  ,$ldaplistdb   ,ldaplist     ,".$p."ldaplist   ,".$DBvars{'LDAPlist'}    ); $v=~s/\s*,/,/go; push(@LDAPGroup,$v);
 
-  $v = ("AdminUsers,adminusersdb ,AdminUsersObject,$adminusersdb ,adminusers ,".$p."adminusers ,adminusers"  ); $v=~s/\s*,/,/go; push(@AdminGroup,$v);
-  $v = ("AdminUsersRight,adminusersdb,AdminUsersRightObject,$adminusersdb.right,adminusers.right,".$p."adminusers,adminusersright"   ); $v=~s/\s*,/,/go; push(@AdminGroup,$v);
+  $v = ("AdminUsers,adminusersdb ,AdminUsersObject,$adminusersdb ,adminusers ,".$p."adminusers ,".$DBvars{'AdminUsers'}  ); $v=~s/\s*,/,/go; push(@AdminGroup,$v);
+  $v = ("AdminUsersRight,adminusersdb,AdminUsersRightObject,$adminusersdb.right,adminusers.right,".$p."adminusers,".$DBvars{'AdminUsersRight'} ); $v=~s/\s*,/,/go; push(@AdminGroup,$v);
+  return;
 }
 
 sub init {
@@ -15815,6 +15815,8 @@ sub initDBHashes {
                                     			  );
                             die "unable to connect to database $mydb for $mysqlTable on host $myhost using DBI::$DBusedDriver - $DBI::err: $DBI::errstr\n" unless $dbh;
                             mlog(0, "Warning: the database driver DBD::$DBusedDriver does not support the required '_async_check' function - $@ - please consider to use another database driver") unless eval{$dbh->func('_async_check')};
+                            # the MaintThread is the first one which call this function - other threads don't need to do this again
+                            checkAndRenameTable($dbh,$mysqlTable) if ($WorkerNumber == 10000 && ($DBusedDriver eq 'mysql' or $DBusedDriver eq 'MariaDB'));
                             if ($dbGroup ne 'AdminGroup') {
                                 d("DB (initDBHashes) - $KeyName");
                                 $$CacheObject=tie %$KeyName,'Tie::RDBM',{db=>$dbh,table=>"$mysqlTable",create=>1,DEBUG=>$DataBaseDebug};
@@ -16037,6 +16039,60 @@ sub clearDBConPrivat {
     }
 }
 
+sub checkAndRenameTable {
+    my ($dbh, $mysqlTable) = @_;
+    return unless $dbh;
+    return unless $mysqlTable;
+
+    if (lc($mysqlTable) ne $mysqlTable && ! $calledfromThread) {
+        mlog(0,"Error: script code error - the database table name '$mysqlTable' in assp.pl (sub checkAndRenameTable) is not all lower case - please report to development");
+        return;
+    }
+
+    return if $mysqlSlaveMode;  # this is a SQL SLAVE instance - the master will manage this stuff
+    
+    my ($sth,$sql);
+    my $tables;
+    eval{ $sth = $dbh->table_info();
+          $tables = $sth->fetchall_arrayref if $sth;
+    };
+    if (ref($tables)) {                     # we got a table list reference
+        for (sort(@$tables)) {              # sorted table names with upper case letters first - if there are some
+            if ($_->[2] eq $mysqlTable) {   # upper case name are already processed - end the loop
+                last;
+            } elsif (lc($_->[2]) eq $mysqlTable) {   # upper case table name found
+                $Recommends{'database_'.$mysqlTable} = "the table $_->[2] (name contains capital letters) should be removed from the database";
+                $sql = qq{ALTER TABLE $_->[2] RENAME $mysqlTable};   # try to rename the table to lower case
+                if ($dbh->do($sql)) {
+                    mlog(0,"info: renamed table $_->[2] to $mysqlTable");
+                    delete $Recommends{'database_'.$mysqlTable};
+                } else {                                               # the rename failed
+                    mlog(0,"warning: can't rename table $_->[2] to $mysqlTable (lower case) - ".$dbh->errstr);
+                    if ($dbh->errstr =~ /already exists/o) {           # if rename faile because the lowercase table already exists
+                        mlog(0,"info: will try to copy data from $_->[2] to $mysqlTable and to DROP table $_->[2]");
+                        $sql = qq{INSERT IGNORE INTO $mysqlTable SELECT * FROM $_->[2]};   # try to copy the data from upper to lower - ignore duplicate keys
+                        my $ld = $lastd{$WorkerNumber};
+                        $lastd{$WorkerNumber} = $sql;
+                        if ($dbh->do($sql)) {
+                            mlog(0,"info: successfully copied data from table $_->[2] to $mysqlTable - now try to DROP table $_->[2]");
+                            $sql = qq{DROP TABLE $_->[2]};             # copy data was ok - now try to remove the old upper case table
+                            if ($dbh->do($sql)) {
+                                mlog(0,"info: successfully removed table $_->[2]");   # upper case dropped
+                                delete $Recommends{'database_'.$mysqlTable};
+                            } else {
+                                mlog(0,"warning: unable to DROP table $_->[2] - ".$dbh->errstr);  # can't drop uppercase
+                            }
+                        } else {
+                            mlog(0,"warning: unable to copy data from $_->[2] to $mysqlTable - ".$dbh->errstr);  # can't copy data
+                        }
+                        $lastd{$WorkerNumber} = $ld;
+                    }
+                }
+            }
+        }
+    }
+}
+
 sub CheckTableStructure {
   my $mysqlTable = shift;
   my $sql;
@@ -16055,35 +16111,15 @@ sub CheckTableStructure {
     return;
   }
 
-  my $tables;
-  eval{$sth = $dbh->table_info();};
-  eval{$tables = $sth->fetchall_arrayref} if $sth;
-  if (ref($tables)) {
-      for (@$tables) {
-          if ($_->[2] eq $mysqlTable) {
-              last;
-          } elsif (lc($_->[2]) eq lc($mysqlTable)) {
-              $sql="ALTER TABLE '$_->[2]' RENAME TO '$mysqlTable'";
-              if ($dbh->do($sql)) {
-                  mlog(0,"info: renamed table $_->[2] to $mysqlTable");
-              } else {
-                  mlog(0,"warning: can't renamed table $_->[2] to $mysqlTable (lower case) - ".$dbh->errstr);
-              }
-          }
-      }
-      $sth = undef;
-      $sql = undef;
-  }
-  
   my $db_features = $Tie::RDBM::Types{$DBusedDriver};
   my($keytype,$valuetype,$frozentype) = @{$db_features};
 
   $sth = $dbh->column_info( undef, undef, $mysqlTable, 'pkey' );
   my $db_info;
-  eval{$db_info = $sth->fetchrow_arrayref} ;
+  eval{$db_info = $sth->fetchrow_arrayref} if $sth;
   if ($@) {
-    mlog(0,"warning: your mysql driver does not support GET-COLUMNE-INFO");
-    mlog(0,"driver version is $DBD::mysql::VERSION - should be at least 4.005");
+    mlog(0,"warning: your mysql driver does not support GET-COLUMNE-INFO - or the table $mysqlTable can't be accessed - $DBI::errstr");
+    mlog(0,"driver version is $DBD::mysql::VERSION - should be at least 4.005") if ${'DBD::mysql::VERSION'} < 4.005;
     $dbh->disconnect() if ( $dbh );
     return;
   }
@@ -16091,7 +16127,7 @@ sub CheckTableStructure {
 
   if (lc($pkey_TYPE_NAME) ne lc($keytype)) {
     mlog(0,"info: convert field pkey in table $mysqlTable from $pkey_TYPE_NAME to $keytype");
-    $sql="ALTER TABLE $mysqlTable MODIFY COLUMN pkey $keytype NOT NULL";
+    $sql = qq{ALTER TABLE $mysqlTable MODIFY COLUMN pkey $keytype NOT NULL};
     if (! $dbh->do($sql)) {
       mlog(0,"Error: $DBI::errstr");
       mlog(0,"conversion for table $mysqlTable failed!");
@@ -16104,7 +16140,7 @@ sub CheckTableStructure {
 
   if (lc($pvalue_TYPE_NAME) ne lc($valuetype)) {
     mlog(0,"info: convert field pvalue in table $mysqlTable from $pvalue_TYPE_NAME to $valuetype");
-    $sql="ALTER TABLE $mysqlTable MODIFY COLUMN pvalue $valuetype DEFAULT NULL";
+    $sql = qq{ALTER TABLE $mysqlTable MODIFY COLUMN pvalue $valuetype DEFAULT NULL};
     if (! $dbh->do($sql)) {
       mlog(0,"Error: $DBI::errstr");
       mlog(0,"conversion for table $mysqlTable failed!");
@@ -46924,7 +46960,7 @@ sub mergeBackDNS {
         }
         $f->close;
         $count = scalar(keys(%tempbackdns));
-        importDB('BackDNS','','backdns',\%tempbackdns,$count, 1/2) if($ComWorker{$WorkerNumber}->{run});
+        importDB('BackDNS','',$DBvars{'BackDNS'},\%tempbackdns,$count, 1/2) if($ComWorker{$WorkerNumber}->{run});
     } else {
         while (my $line = (<$f>)) {
             next if $line =~ /^(?:\D|127\.)/o;
@@ -74033,7 +74069,7 @@ sub uploadGlobalPB {
             mlog(0,"saving penalty Black records") if $MaintenanceLog;
             if ($rstblack && $ComWorker{$WorkerNumber}->{run}) {
                 mlog(0,"info: $count records merged from global-PB $list in to temporary hash in ".(time - $starttime)." seconds - ".(int($fcount / (time - $starttime))).'/s') if $MaintenanceLog;
-                importDB('PBBlack','','pbblack',$pbblack,$count, 1/2);
+                importDB('PBBlack','',$DBvars{'PBBlack'},$pbblack,$count, 1/2);
             } else {
                 &SaveHash('PBBlack');
             }
@@ -74068,7 +74104,7 @@ sub uploadGlobalPB {
             mlog(0,"saving penalty White records") if $MaintenanceLog;
             if ($rstwhite && $ComWorker{$WorkerNumber}->{run}) {
                 mlog(0,"info: $count records merged from global-PB $list in to temporary hash in ".(time - $starttime)." seconds - ".(int($fcount / (time - $starttime))).'/s') if $MaintenanceLog;
-                importDB('PBWhite','','pbwhite',$pbwhite,$count, 1/2);
+                importDB('PBWhite','',$DBvars{'PBWhite'},$pbwhite,$count, 1/2);
             } else {
                 &SaveHash('PBWhite');
             }
