@@ -202,7 +202,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19298';        # 25.10.2019 TE
+$build   = '19303';        # 30.10.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -611,7 +611,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'AB258113EE2606557B7C15E81DE7866894EA9E27'; }
+sub __cs { $codeSignature = '12E156F245EF49EB0BDA23BC92F45F3B532D0983'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -631,7 +631,7 @@ our $fallBackSSLBuf = 16384;        # fall back to this SSL (receive/send) buffe
 
 # the OpenSSL and OpenSSL-Library minimum version requirement
 our $minOpenSSLVersion = '1.0.0t';
-our $minOpenSSLLibVersion = '1.1.0h';
+our $minOpenSSLLibVersion = '1.0.2s';
 
 # SSL/TLS assp will try to do a fast read ahead using the following values
 # be carefull changing any of these values !
@@ -3498,7 +3498,8 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['ScanWL','Scan Whitelisted Senders',0,\&checkbox,'1','(.*)',undef,'',undef,undef,'msg004230','msg004231'],
 ['ScanNP','Scan No Processing Senders',0,\&checkbox,'','(.*)',undef,'',undef,undef,'msg004240','msg004241'],
 ['ScanLocal','Scan Local Senders',0,\&checkbox,'','(.*)',undef,'',undef,undef,'msg004250','msg004251'],
-['ScanCC','Scan Copied Spam and Forwarded Ham Mails',0,\&checkbox,'','(.*)',undef,'',undef,undef,'msg004260','msg004261'],
+['ScanCC','Scan Copied Spam and Forwarded Ham Mails',0,\&checkbox,'','(.*)',undef,'
+ If enabled and a virus is found in the forwarded mail content, forwarding will be skipped.',undef,undef,'msg004260','msg004261'],
 ['AvError','Reply Code to Refuse Infected Messages',80,\&textinput,'554 5.7.1 Mail appears infected with [$infection].','([25]\d\d .*)',undef,
  'Reply code to refuse infected messages. The string $infection is replaced with the name of the detected virus.<br />
  For example: 554 5.7.1 Mail appears infected with [$infection] -- disinfect and resend.',undef,undef,'msg004270','msg004271'],
@@ -4584,8 +4585,9 @@ For example: mysql/dbimport<br />
   If this value is set to \'download and install\', ASSP will try an autoupdate of the new available modules. It is possible, that some modules could not be installed, because the XS module parts are still in use. In this case follow the instruction - click the "new available perl modules" button above. To disable the automatic Perl module update - set "noModuleAutoUpdate" below.<br />
   Click this button to see the log file for the updated modules&nbsp;&nbsp;<input type="button" value="module upgrade log" onclick="javascript:popFileEditor(\'notes/upgraded_Perl_Modules.log\',1);" /><br />
   The perl module <a href="http://metacpan.org/search?q=Compress::Zlib/" rel="external">Compress::Zlib</a> is required to use this feature.',undef,undef,'msg008810','msg008811'],
-['noModuleAutoUpdate','No Automatic Perl Module update','0:no skip - update all|1:skip all|2:skip installed but not used by assp',\&listbox,'2','(.*)',undef,'If set, ASSP will skip the automatic Perl module update for the selected. Default is: skip installed but not used by assp<br />
-  On NIX systems this value is ignored, if runAsUser is used! The automatic perl module upgrade is only done, if assp is running as OS user \'root\'.',undef,undef,'msg007900','msg007901'],
+['noModuleAutoUpdate','No Automatic Perl Module update','0:no skip - update all|1:skip all|2:skip installed but not used by assp',\&listbox,'2','(.*)',undef,
+ 'If set, ASSP will skip the automatic Perl module update for the selected. Default is: skip installed but not used by assp<br />
+  On NIX systems assp must run as user \'root\' or the used user must have the permission to sudo without a password prompt - otherwise this value is ignored and an error is written to the maillog.txt.',undef,undef,'msg007900','msg007901'],
 ['AutoRestartCmd','OS-shell command for AutoRestart',100,\&textinput,'','(.*)',undef,'The OS level shell-command that is used to autorestart ASSP, if it runs not as a windows service! A possible value for your system is:<br />
  <font color=blue>$dftrestartcmd</font><br />
  Leave this field blank, if ASSP runs inside an external loop (inside the OS like assp.sh or assp.cmd).<br />
@@ -31694,7 +31696,7 @@ sub URIBLIP {
             my $err = $URIBLError;
             $err =~ s/URIBLNAME/$ip/go;
             $Stats{uriblfails}++ if $fh;
-            $this->{uri_listed_by} .= "$ip<-URIBLIPs;" if ($this->{skipuriblPL} || ! $fh);
+            $this->{uri_listed_by} .= " $ip<-URIBLIPs;" if ($this->{skipuriblPL} || ! $fh);
             thisIsSpam($fh,$this->{messagereason},$URIBLFailLog,$err,0,0,$done) if ($fh && ! $this->{skipuriblPL});  # do not thisisspam if called from Plugin routines
             $res = 0;
             last;
@@ -47034,10 +47036,6 @@ sub Perl_upgrade_do {
     or do {
 #    mlog(0,"info: PPM ??? $@");
     eval('
-    if($> != 0 && $isNoWIN) {
-        mlog(0,"warning: ASSP is not running as user root - skip CPAN Perl module update");
-        return;
-    }
     use CPAN;
     $touse = \'Perl_CPAN_upgrade_do\';
     defined ${chr(ord("\026") << 2)};
@@ -47161,6 +47159,19 @@ sub Perl_CPAN_upgrade_do {
     my %noTestModule = Perl_no_test();
     eval {
         chdir "$base/tmp";
+
+        CPAN::HandleConfig->load();
+        # check if sudo is used by CPAN in case we are not running as root on nix
+        if($isNoWIN && $> != 0 && $CPAN::Config->{'make_install_make_command'} !~ /(?:^| )sudo /o ) {
+            mlog(0,"error: ASSP is not running as user root and CPAN can't use sudo (o conf make_install_make_command = ".$CPAN::Config->{'make_install_make_command'}
+                  ." (should be: sudo ".$CPAN::Config->{'make_install_make_command'}
+                  . ($CPAN::Config->{'mbuild_install_build_command'} =~ /(?:^| )sudo /o ? '' :
+                       " , o conf mbuild_install_build_command) = ".$CPAN::Config->{'mbuild_install_build_command'}
+                      ." (should be: sudo ".$CPAN::Config->{'mbuild_install_build_command'})
+                  ." - skip CPAN Perl module update");
+            return wantarray ? %avail : $upgrade_count;
+        }
+
         CPAN::Shell->o(qw(conf prerequisites_policy follow));
         CPAN::Shell->o(qw(conf connect_to_internet_ok no));
         CPAN::Shell->o(qw(conf commit));
@@ -48575,10 +48586,10 @@ sub FSdata2 { my ($fh,$l)=@_;
         $this->{ip} = $this->{fromIP};
         $this->{overwritedo} = 1;
         if ($ScanCC &&
-                   $this->{body}  &&
-                   ((haveToScan($fh) && ! ClamScanOK($fh,\substr($this->{body},0,$clamavbytes))) or
-                    (haveToFileScan($fh) && ! FileScanOK($fh,\substr($this->{body},0,$clamavbytes)))
-                   )
+            $this->{body}  &&
+            ((haveToScan($fh) && ! ClamScanOK($fh,\substr($this->{body},0,$clamavbytes))) ||
+             (haveToFileScan($fh) && ! FileScanOK($fh,\substr($this->{body},0,$clamavbytes)))
+           )
            ) {
            delete $this->{overwritedo};
            mlog($fh,"info: skip forwarding message to $this->{to_as} - virus found") if $ConnectionLog;
@@ -48720,13 +48731,22 @@ sub scanFile4VirusOK {
 
     if ($buf) {
         $Con{$fh}->{scanfile} = de8($Con{$fh}->{maillogfilename});
-        mlog(($fh =~ /^\d+$/o ? 0 : $fh),'info: scanning stored file '.$Con{$fh}->{scanfile}.' for virus ( forced by ClamAVLogScan and/or FileLogScan )') if $ScanLog > 1 && ($ClamAVLogScan > 1 || $FileLogScan   > 1);
+        mlog(($fh =~ /^\d+$/o ? 0 : $fh),'info: scanning stored file '.$Con{$fh}->{scanfile}.' for virus ( forced by ClamAVLogScan and/or FileLogScan )') if $ScanLog > 1 && ($ClamAVLogScan > 1 || $FileLogScan > 1);
         if (    ( $ClamAVLogScan > 1 && ! ClamScanOK_Run($fh, bodyWrap(\$buf,length($buf))) )
              || ( $FileLogScan   > 1 && ! FileScanOK_Run($fh, bodyWrap(\$buf,length($buf))) ) )
         {
             my $vfile = $Con{$fh}->{maillogfilename};
-            $vfile =~ s/^\Q$base\E\/[^\/]+/$base\/$viruslog/;
-            mlog(($fh =~ /^\d+$/o ? 0 : $fh),'info: moved virus infected file '.$Con{$fh}->{scanfile}.' to '.de8($vfile)) if $move->($Con{$fh}->{maillogfilename},$vfile);
+            if ($viruslog && $SpamVirusLog != 0) {
+                $vfile =~ s/^\Q$base\E\/[^\/]+/$base\/$viruslog/;
+                if ($move->($Con{$fh}->{maillogfilename},$vfile) ) {
+                    mlog(($fh =~ /^\d+$/o ? 0 : $fh),'info: moved virus infected file '.$Con{$fh}->{scanfile}.' to '.de8($vfile));
+                    $Con{$fh}->{maillogfilename} = $vfile;
+                }
+            } elsif ($SpamVirusLog == 0 && $fh !~ /^\d+$/o && $WorkerNumber < 10000) {
+                $Con{$fh}->{deletemaillog} = "virus files are not collected";
+            } elsif ($WorkerNumber >= 10000 && $SpamVirusLog == 0 && $unlink->($Con{$fh}->{maillogfilename})) {
+                mlog(($fh =~ /^\d+$/o ? 0 : $fh),'info: removed virus infected file '.$Con{$fh}->{scanfile});
+            }
             delete $Con{$fh}->{scanfile};
             delete $Con{$fh}->{overwritedo};
             delete $Con{$fh} if $cleanup;

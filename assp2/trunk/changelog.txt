@@ -1,3 +1,16 @@
+2019-10-30
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19303:
+
+- if 'FileLogScan' or 'ClamAVLogScan' was configured to scan collected files and 'SpamVirusLog' was set to 'no collect' the post virus scan has not removed the infected file,
+  instead it was copied to the quarantine folder
+
+
+changed:
+
+- noModuleAutoUpdate' is now working on nix systems for non root users, if CPAN is configured to use sudo (without password prompt) for the running assp user
+
+
+
 2019-10-25
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19298:
 
