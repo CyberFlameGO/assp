@@ -202,7 +202,7 @@ our %WebConH;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19303';        # 30.10.2019 TE
+$build   = '19309';        # 05.11.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
@@ -611,7 +611,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '12E156F245EF49EB0BDA23BC92F45F3B532D0983'; }
+sub __cs { $codeSignature = '8D05A861DD5002FF560A3F64DE0DAD7B30C31593'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -9922,8 +9922,8 @@ sub rb_processfolder {
     }
 
     if ($doattach) {
-        rb_mlog(&rb_commify($attachments)." attachment/image entries processed");
-        rb_printlog("\n".&rb_commify($attachments)." attachment/image entries processed");
+        rb_mlog("attachment/image entries processed:\t".&rb_commify($attachments));
+        rb_printlog("\nattachment/image entries processed:\t".&rb_commify($attachments));
     }
 
     &rb_printlog( "\nImported Files for HeloBlackList:\t" . &rb_commify($pcount) );
@@ -36586,67 +36586,84 @@ sub PBExtremeOK {
         return 1 if $this->{PBExtremeOK};
         $this->{PBExtremeOK} = 1;
     }
-    d('PBExtremeOK');
-    my $newscore;
-    my $data;
+    d('PBExtremeOK - IP-blocking');
     my $ip = ($myip eq $this->{ip} || $myip eq $this->{cip}) ? '' : "(OIP: $myip) ";
     my $slok = $this->{allLovePBSpam} == 1;
-    my $noBLIPs = matchIP( $myip, 'noBlockingIPs',$fh,0);
 
-    my $byWhatList = 'denySMTPConnectionsFromAlways';
-    if ((!$denySMTPstrictEarly || $skipcip) && ! $noBLIPs) {
-
-        my $ret = matchIP( $myip, 'denySMTPConnectionsFromAlways', $fh ,0);
-        $ret = matchIP( $myip, 'droplist', $fh ,0) if (! $ret && ($DoDropList == 2 or $DoDropList == 3) && ($byWhatList = 'droplist')) ;
-        if ($ret && $DoDenySMTPstrict == 1 && ! matchIP( $myip, 'noPB', 0, 1 ) ) {
-            $this->{prepend} = "[DenyStrict]";
-            mlog( $fh, $ip."blocked by $byWhatList strict: $ret" )
-              if $denySMTPLog || $ConnectionLog >= 2;
-            $Stats{denyConnection}++;
-            $this->{messagereason} = $ip."blocked by $byWhatList strict '$ret'";
-            return 0;
+    # IP-blocking
+    if (! matchIP( $myip, 'noBlockingIPs',$fh,0)) {
+        my $byWhatList = 'denySMTPConnectionsFromAlways';
+        if (! $denySMTPstrictEarly || $skipcip) {
+            my $ret = matchIP( $myip, 'denySMTPConnectionsFromAlways', $fh ,0);
+            $ret = matchIP( $myip, 'droplist', $fh ,0) if (! $ret && ($DoDropList == 2 or $DoDropList == 3) && ($byWhatList = 'droplist')) ;
+            if ($ret && $DoDenySMTPstrict == 1 ) {
+                $this->{prepend} = "[DenyStrict]";
+                mlog( $fh, $ip."blocked by $byWhatList strict: $ret" )
+                  if $denySMTPLog || $ConnectionLog >= 2;
+                $Stats{denyConnection}++;
+                $this->{messagereason} = $ip."blocked by $byWhatList strict '$ret'";
+                return 0;
+            }
+            if ($ret && $DoDenySMTPstrict == 2 ) {
+                $this->{prepend} = "[DenyStrict]";
+                mlog( $fh, "[monitoring] ".$ip."blocked by $byWhatList strict: $ret" )
+                  if $denySMTPLog || $ConnectionLog >= 2;
+            }
         }
-        if ($ret && $DoDenySMTPstrict == 2 && ! matchIP( $myip, 'noPB', 0, 1 ) ) {
-            $this->{prepend} = "[DenyStrict]";
-            mlog( $fh, "[monitoring] ".$ip."blocked by $byWhatList strict: $ret" )
-              if $denySMTPLog || $ConnectionLog >= 2;
+
+        return 1 if $this->{contentonly};
+
+        if (! $this->{cip}) {
+            skipCheck($this,'ispip','nd','nb') && return 1;
+        }
+        skipCheck($this,'aa','ro') && return 1;
+
+        if ( $DoDenySMTP ) {
+            $byWhatList = 'denySMTPConnectionsFromAlways';
+            my $ret;
+            $ret = matchIP( $myip, 'denySMTPConnectionsFromAlways', $fh ,0);
+            if (! $ret) {
+                if (pbWhiteFind($myip)) {
+                    pbBlackDelete( $fh, $myip );
+                    $this->{messagereason} = $ip."In Penalty White Box";
+                    pbAdd( $fh, $myip, 'pbwValencePB', 'InWhiteBox', 1 );
+                    return 1;
+                }
+                my $skip = matchIP( $myip, 'noProcessingIPs', $fh ,0) || matchIP( $myip, 'whiteListedIPs', $fh ,0);
+                if (! $skip) {
+                    $byWhatList = 'denySMTPConnectionsFrom';
+                    $ret =   matchIP( $myip, 'denySMTPConnectionsFrom', $fh, 0 );
+                    $ret ||= matchIP( $myip, 'droplist', $fh, 0 ) if ($DoDropList && ($byWhatList = 'droplist')) ;
+                }
+            }
+
+            if ($ret) {
+                if ( $DoDenySMTP == 1 ) {
+                    $this->{prepend} = "[DenyIP]";
+                    $Stats{denyConnection}++;
+                    $this->{messagereason} = $ip." blocked by $byWhatList '$ret'";
+                    return 0;
+                } elsif ( $DoDenySMTP == 2 ) {
+                    $this->{prepend} = "[DenyIP]";
+                    mlog( $fh, "[monitoring] ".$ip." blocked by $byWhatList '$ret'" )
+                      if $denySMTPLog || $ConnectionLog >= 2;
+                }
+            }
         }
     }
+    
+    # PB-extreme IP-scrore blocking
+    d('PBExtremeOK - IP-extrem-blocking');
 
     return 1 if $this->{contentonly};
-    return 1 if $this->{whitelisted}  && !$ExtremeWL;
-    return 1 if ($this->{noprocessing} & 1) && !$ExtremeNP;
-
-    if (pbWhiteFind($myip)) {
-        pbBlackDelete( $fh, $myip );
-        $this->{messagereason} = $ip."In Penalty White Box";
-        pbAdd( $fh, $myip, 'pbwValencePB', 'InWhiteBox', 1 );
-        return 1;
-    }
 
     if (! $this->{cip}) {
         skipCheck($this,'ispip','nd','nb') && return 1;
     }
     skipCheck($this,'aa','ro') && return 1;
 
-    $byWhatList = 'denySMTPConnectionsFromAlways';
-    my $ret;
-    $ret = matchIP( $myip, 'denySMTPConnectionsFromAlways', $fh ,0) if ! $noBLIPs;
-    $byWhatList = 'denySMTPConnectionsFrom' unless $ret;
-    $ret ||= matchIP( $myip, 'denySMTPConnectionsFrom', $fh, 0 ) if ! $noBLIPs;
-    $ret ||= matchIP( $myip, 'droplist', $fh, 0 ) if (! $noBLIPs && $DoDropList && ($byWhatList = 'droplist')) ;
-
-    if ( $ret && $DoDenySMTP == 1 ) {
-        $this->{prepend} = "[DenyIP]";
-        $Stats{denyConnection}++;
-        $this->{messagereason} = $ip." blocked by $byWhatList '$ret'";
-        return 0;
-    }
-    if ( $ret && $DoDenySMTP == 2 ) {
-        $this->{prepend} = "[DenyIP]";
-        mlog( $fh, "[monitoring] ".$ip." blocked by $byWhatList '$ret'" )
-          if $PenaltyExtremeLog;
-    }
+    return 1 if $this->{whitelisted}  && ! $ExtremeWL;
+    return 1 if ($this->{noprocessing} & 1) && ! $ExtremeNP;
 
     my $DoPenaltyExtreme = $DoPenaltyExtreme;
     return 1 if !$DoPenaltyExtreme;
@@ -62429,8 +62446,8 @@ sub checkOptionList {
         delete $Recommends{$name};
     }
 
-    if (! $AllowCodeInRegex && $value =~ /(?:^|[^\\])(\(\s*\?\{.+?[^\\]\}\))/o) {
-        return ("\x00\xff error: resulting regular expression in '$name' contains executable perl code '$1' - this is not allowed (\$AllowCodeInRegex = 0) - the complete value is ignored!");
+    if (! $AllowCodeInRegex && $value =~ /(?:^|[^\\])(\(\s*\?{1,2}\{.+?[^\\]\}\))/o) {
+        return ("\x00\xff error: resulting regular expression in '$name' contains executable perl code '$1' - this is not allowed (\$AllowCodeInRegex is set to zero) - the complete value is ignored!");
     }
 
     mlog(0,"option list file: '$fil' reloaded ($name) with ".nN($count)." records") if ($value && !$init && $fromfile && ! $calledfromThread);
@@ -62545,7 +62562,15 @@ sub ConfigCompileRe {
             $how =~ s/\-+/-/go;
             $how ||= $defaultHow;
 
-            eval{$note =~ /$re/};
+            if ($AllowCodeInRegex) {
+                eval { use re 'eval';
+                       $note =~ /$re/;
+                };
+            } else {
+                eval {
+                       $note =~ /$re/;
+                };
+            }
             if ($@) {
                 $RegexError{$name} = 'error in regular expression';
                 mlog(0,"error: weighted regex for $name is invalid '$re=>$we' - $@") if $WorkerNumber == 0;

@@ -1,3 +1,16 @@
+2019-11-05
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19309:
+
+- IP-blocking was unexpected skipped, if PBextreme-blocking was not configured
+
+- even if 'AllowCodeInRegex' was enabled, regular expressions with evaluation code were rejected by the regex-precheck
+  known issue for 'AllowCodeInRegex': perl/assp variables used in regular expressions evaluation code are read and interpolated at the regex configuration time
+                                      if such a variable is changed after configuration, this change is ignored inside the regular expression
+  how ever - it is highly recommended to NOT enable this hidden feature ('AllowCodeInRegex'). If regex files are not protected from unauthorized write access,
+  assp/perl can be forced to execute any code at runtime!
+
+
+
 2019-10-30
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19303:
 
