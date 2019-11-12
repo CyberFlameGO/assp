@@ -1,3 +1,33 @@
+2019-11-12
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19316:
+
+
+- if a mail matched the 'contentOnlyRe', the 'HELO' and PenaltyBox checks were not skipped
+
+
+
+changed:
+
+- enhanced perl version check and reporting
+
+- it is now possible to use the regex-eval-code function in regular expressions without any restriction
+  how ever - it is highly recommended to NOT enable the required hidden feature ('AllowCodeInRegex'). If regex files are not protected from unauthorized write access,
+  assp/perl can be forced to execute any code at runtime!
+
+- if a mail matched the 'contentOnlyRe', the connected IP was undocumented treated like an ISP-IP - this is no longer the case
+
+- code indent correction
+
+
+added:
+
+- a new hidden parameter is added to control the SPF PASS action
+  !!! ATTENTION !!! : until now this action was hardcoded corresponding to a setting of 5 - now the default is 0
+
+our $SPFpassAction = 0; # (0..7) if SPF  pass: bit-0 = set rwlok to 1 (medium trust status), bit-1 = skip penaltybox-check, bit-2 = set IP-score to zero - default is 0 (no bits set)
+
+
+
 2019-11-05
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19309:
 
