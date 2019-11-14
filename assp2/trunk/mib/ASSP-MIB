@@ -10,7 +10,7 @@ IMPORTS
     TruthValue FROM SNMPv2-TC;
 
 thockar MODULE-IDENTITY
-    LAST-UPDATED "201906190000Z"
+    LAST-UPDATED "201911140000Z"
     ORGANIZATION "www.thockar.com"
     CONTACT-INFO
 	 "postal:       Thomas Eckardt
@@ -18,13 +18,13 @@ thockar MODULE-IDENTITY
       email:    thockar@lists.sourceforge.net"
     DESCRIPTION
 	"Top-level infrastructure of thockar projects enterprise MIB tree"
-    REVISION     "201906190000Z"
+    REVISION     "201911140000Z"
     DESCRIPTION
 	"First draft"
     ::= { enterprises 37058}
 
 asspSNMP MODULE-IDENTITY
-    LAST-UPDATED "201906190000Z"
+    LAST-UPDATED "201911140000Z"
     ORGANIZATION "www.thockar.com"
     CONTACT-INFO
 	 "postal:       Thomas Eckardt
@@ -32,7 +32,7 @@ asspSNMP MODULE-IDENTITY
       email:    thockar@lists.sourceforge.net"
     DESCRIPTION
 	"Top-level infrastructure of the thockar ASSP project enterprise MIB tree"
-    REVISION     "201906180000Z"
+    REVISION     "201911130000Z"
     DESCRIPTION
 	"First draft"
     ::= { thockar 2}
@@ -6419,7 +6419,7 @@ synchronization status line from file assp_sync.cfg for NotSpamTagProc
 "
     ::= {NotSpamTagProc 6}
 
-CopySpamampHam  OBJECT IDENTIFIER ::= {asspConfig 6}
+CopySpamAndHam  OBJECT IDENTIFIER ::= {asspConfig 6}
 sendAllSpam  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-write
@@ -6431,7 +6431,7 @@ If this is set, ASSP will deliver a copy of spam mails to this address. For exam
 "
     REFERENCE "Copy Spam and Send to this Address"
     DEFVAL { "" }
-    ::= {CopySpamampHam 32}
+    ::= {CopySpamAndHam 32}
 
 syncStatsendAllSpam  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -6474,7 +6474,7 @@ IP address and port to connect to when Spam messages are copied. If blank they g
 "
     REFERENCE "Copy Spam SMTP Destination"
     DEFVAL { "" }
-    ::= {CopySpamampHam 33}
+    ::= {CopySpamAndHam 33}
 
 syncStatsendAllDestination  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -6517,7 +6517,7 @@ Restricts Copy Spam to these recipients. Accepts specific addresses (user@domain
 "
     REFERENCE "Copy Spam to these Recipients Only*"
     DEFVAL { "" }
-    ::= {CopySpamampHam 34}
+    ::= {CopySpamAndHam 34}
 
 syncStatccSpamFilter  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -6560,7 +6560,7 @@ Copy Spam to these recipients regardless of collection mode. Accepts specific ad
 "
     REFERENCE "Copy Spam to these Recipients always*"
     DEFVAL { "" }
-    ::= {CopySpamampHam 35}
+    ::= {CopySpamAndHam 35}
 
 syncStatccSpamAlways  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -6603,7 +6603,7 @@ Never Copy Spam regardless of collection mode. Put anything here to identify mes
 "
     REFERENCE "Do Not Copy Spam Regex*"
     DEFVAL { "" }
-    ::= {CopySpamampHam 36}
+    ::= {CopySpamAndHam 36}
 
 syncStatccSpamNeverRe  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -6646,7 +6646,7 @@ Messages whose score exceeds this threshold will not be copied.  For example: 75
 "
     REFERENCE "Do Not Copy Messages Above This MessageTotal score"
     DEFVAL { "" }
-    ::= {CopySpamampHam 37}
+    ::= {CopySpamAndHam 37}
 
 syncStatccMaxScore  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -6689,7 +6689,7 @@ CCMail will cut off Spam mails, thereby reducing the load considerably.
 "
     REFERENCE "Restrict Copy Spam to MaxBytes"
     DEFVAL { "" }
-    ::= {CopySpamampHam 38}
+    ::= {CopySpamAndHam 38}
 
 syncStatccMaxBytes  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -6732,7 +6732,7 @@ If set, spamSubject gets prepended to the subject of the copied message.
 "
     REFERENCE "Prepend Spam Subject to Copied Spam"
     DEFVAL { "" }
-    ::= {CopySpamampHam 39}
+    ::= {CopySpamAndHam 39}
 
 syncStatspamSubjectCC  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -6775,7 +6775,7 @@ The check which caused the spam detection will be prepended to the subject of th
 "
     REFERENCE "Prepend Spam Tag to Copied Spam"
     DEFVAL { "1" }
-    ::= {CopySpamampHam 40}
+    ::= {CopySpamAndHam 40}
 
 syncStatspamTagCC  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -6818,7 +6818,7 @@ IP address and port to connect to when  Ham messages are copied. If blank they g
 "
     REFERENCE "Copy Not-Spam SMTP Destination"
     DEFVAL { "" }
-    ::= {CopySpamampHam 41}
+    ::= {CopySpamAndHam 41}
 
 syncStatsendAllHamDestination  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -6861,7 +6861,7 @@ If you put an address in this box  ASSP will forward a copy of notspam messages 
 "
     REFERENCE "Copy Incoming Not-Spam and Send to this Address"
     DEFVAL { "" }
-    ::= {CopySpamampHam 42}
+    ::= {CopySpamAndHam 42}
 
 syncStatsendHamInbound  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -6904,7 +6904,7 @@ If you put an address in this box ASSP will forward a copy of outgoing notspam m
 "
     REFERENCE "Copy Outgoing Not-Spam and Send to this Address"
     DEFVAL { "" }
-    ::= {CopySpamampHam 43}
+    ::= {CopySpamAndHam 43}
 
 syncStatsendHamOutbound  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -6947,7 +6947,7 @@ Copy Not-Spam to these addresses only. Accepts specific addresses (user@domain.c
 "
     REFERENCE "Copy Ham Filter*"
     DEFVAL { "" }
-    ::= {CopySpamampHam 44}
+    ::= {CopySpamAndHam 44}
 
 syncStatccHamFilter  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -6990,7 +6990,7 @@ Do Not Copy Ham to these addresses. Accepts specific addresses (user@domain.com)
 "
     REFERENCE "Do Not Copy Ham Filter*"
     DEFVAL { "" }
-    ::= {CopySpamampHam 45}
+    ::= {CopySpamAndHam 45}
 
 syncStatccnHamFilter  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -7034,7 +7034,7 @@ The recipient replacement (ReplaceRecpt) rules from the 'Recipients/Local Domain
 "
     REFERENCE "ccMail Recipient Replacement"
     DEFVAL { "" }
-    ::= {CopySpamampHam 46}
+    ::= {CopySpamAndHam 46}
 
 syncStatccMailReplaceRecpt  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -7073,12 +7073,12 @@ ccSpamInDomain  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-If the domain of the recipient-address is matches one in this list, ASSP will deliver an additional copy of spam emails of a domain to this address (even if sendAllSpam is not set). For example: monitorspam@example1.com|monitor@example2.com .
+If the domain of the recipient-address matches one in this list, ASSP will deliver an additional copy of spam emails of a domain to this address (even if sendAllSpam is not set). For example: monitorspam@example1.com|monitor@example2.com .
   An wildcard '*' is supported as fallback (no other match is found) for the domain name, like: monitorspam3@*
 "
     REFERENCE "Copy Spam and Send to this Address per Domain*"
     DEFVAL { "" }
-    ::= {CopySpamampHam 888}
+    ::= {CopySpamAndHam 888}
 
 syncStatccSpamInDomain  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -9715,13 +9715,15 @@ WhitelistPrivacyLevel  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Sets the privacy level of the whitelistdb . If a (local) user adds an email address to the whitelist:
-  (0) global &amp; private - this email address is automatically whitelisted for all other local users
-  (1) domain &amp; private - this email address is automatically whitelisted for all other local users in the same local domain
-  (2) private only - this email address is only whitelisted for this single local user
-  (0-1) unless another user has removed this email address from his whitelist.
-  Default setting is zero, which is the legacy setting.
-  NOTICE: independent from this setting, the whitelistdb is filled with all three entries (global,domain,private), to make it possible to change this value.
+Sets the privacy level of the whitelistdb . Default setting is zero, which is the legacy setting.
+ If a (local) user adds an email address to the whitelist or an automatic whitelist addition is done:
+  (0) global &amp; private - the email address is automatically whitelisted for all local domains and all local users
+  (1) domain &amp; private - the email address is automatically whitelisted for all local users in the same local domain
+  (2) private only - the email address is only whitelisted for this single local user
+ Global and domain based entries are not added to the whitelist by a private addition, if these records are marked as 'rmoved from whitelist'.
+ If a user removes an email address from his personal whitelist, global and domain based entries are not changed!
+ NOTICE: independent from this setting, the whitelistdb manages all three entries (global,domain,private), to make it possible to switch this value at any time.
+ This setting is only observed in queries to the whitelist!
 "
     REFERENCE "PrivacyLevel of the Whitelist"
     DEFVAL { "0" }
@@ -9801,7 +9803,7 @@ synchronization status line from file assp_sync.cfg for NoAutoWhiteAdresses
 "
     ::= {NoAutoWhiteAdresses 6}
 
-LocalRecipientsandDomainsampTransparentRecipientsandDomains  OBJECT IDENTIFIER ::= {asspConfig 10}
+LocalRecipientsandDomainsAndTransparentRecipientsandDomains  OBJECT IDENTIFIER ::= {asspConfig 10}
 sendAllPostmaster  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-write
@@ -9812,7 +9814,7 @@ ASSP will deliver messages addressed to all postmasters of your local domains to
 "
     REFERENCE "Catchall Address for Messages to Postmaster"
     DEFVAL { "" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 125}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 125}
 
 syncStatsendAllPostmaster  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -9855,7 +9857,7 @@ sendAllPostmasterNP  OBJECT-TYPE
 "
     REFERENCE "Skip Spam Checks for Postmaster Catchall"
     DEFVAL { "" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 126}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 126}
 
 syncStatsendAllPostmasterNP  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -9898,7 +9900,7 @@ ASSP will deliver messages to all abuse addresses of your local domains to this 
 "
     REFERENCE "Catchall Address for Messages to Abuse"
     DEFVAL { "" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 127}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 127}
 
 syncStatsendAllAbuse  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -9941,7 +9943,7 @@ sendAllAbuseNP  OBJECT-TYPE
 "
     REFERENCE "Skip Spam Checks for Abuse Catchall"
     DEFVAL { "" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 128}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 128}
 
 syncStatsendAllAbuseNP  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -9986,7 +9988,7 @@ If activated, the envelope sender and/or each envelope recipient is checked to c
 "
     REFERENCE "Validate addresses to conform with RFC 822"
     DEFVAL { "2" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 129}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 129}
 
 syncStatDoRFC822  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10038,7 +10040,7 @@ These email addresses are the list of your local addresses. You can list specifi
 "
     REFERENCE "Lookup valid Local Addresses from here*"
     DEFVAL { "" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 130}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 130}
 
 syncStatLocalAddressesFlat  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10081,7 +10083,7 @@ Will handle entries without '@' as full domains
 "
     REFERENCE "Use Addresses without '@' as Domains"
     DEFVAL { "0" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 131}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 131}
 
 syncStatLocalAddressesFlatDomains  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10124,7 +10126,7 @@ If ANY recipient is on reject list, message will not be delivered. Used for disa
 "
     REFERENCE "Reject These Local Addresses*"
     DEFVAL { "" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 132}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 132}
 
 syncStatRejectTheseLocalAddresses  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10176,7 +10178,7 @@ Check local domains against these addresses. Add a fake domain like 'assp-nospam
 "
     REFERENCE "Local Domains*"
     DEFVAL { "putYourDomains.com|here.org" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 133}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 133}
 
 syncStatlocalDomains  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10219,7 +10221,7 @@ The number of seconds ASSP will wait for an answer of the MTA that is queried wi
 "
     REFERENCE "SMTP VRFY-Query Timeout"
     DEFVAL { "5" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 134}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 134}
 
 syncStatVRFYQueryTimeOut  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10262,7 +10264,7 @@ Define MTA's here for which you want ASSP to force the usage of MAIL FROM:,RCPT 
 "
     REFERENCE "Force the usage of RCPT TO*"
     DEFVAL { "" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 135}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 135}
 
 syncStatVRFYforceRCPTTO  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10307,7 +10309,7 @@ Check local addresses against an LDAP database before accepting the message.
 "
     REFERENCE "Do LDAP lookup for valid local addresses"
     DEFVAL { "" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 136}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 136}
 
 syncStatDoLDAP  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10350,7 +10352,7 @@ If a recipient is found in NoProcessing, the user validation is skipped.
 "
     REFERENCE "Do Not  Validate Local Addresses if in NoProcessing List"
     DEFVAL { "" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 137}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 137}
 
 syncStatLocalAddressesNP  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10394,7 +10396,7 @@ ASSP will send to this addresses/domain if no valid user is found in LocalAddres
 "
     REFERENCE "Catchall per Domain*"
     DEFVAL { "" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 139}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 139}
 
 syncStatCatchAll  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10438,7 +10440,7 @@ ASSP will send to this address if no valid user is found  in LocalAddresses_Flat
 "
     REFERENCE "Catchall for All Domains"
     DEFVAL { "" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 140}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 140}
 
 syncStatCatchAllAll  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10481,7 +10483,7 @@ If set, ASSP will move all ISP connections with wrong recipient addresses to a N
 "
     REFERENCE "Move ISP Connection with wrong Recipient Address to NULL"
     DEFVAL { "" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 141}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 141}
 
 syncStatCatchallallISP2NULL  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10524,7 +10526,7 @@ ASSP will dump a message silently when encountering such an address in 'MAIL FRO
 "
     REFERENCE "NULL Connection Addresses*"
     DEFVAL { "" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 142}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 142}
 
 syncStatNullAddresses  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10567,7 +10569,7 @@ These local addresses accept mail only from local domains. Accepts specific addr
 "
     REFERENCE "Accept Mail from Local Domains only*"
     DEFVAL { "" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 143}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 143}
 
 syncStatInternalAddresses  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10610,7 +10612,7 @@ RFC 3598 describes subaddressing with a Separation Character. A star ('*') is no
 "
     REFERENCE "Separation Character for Subaddressing"
     DEFVAL { "+" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 144}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 144}
 
 syncStatSepChar  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10653,7 +10655,7 @@ If set, ASSP will support addresses like domainx!user and will convert them to u
 "
     REFERENCE "Support Bang Path"
     DEFVAL { "" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 145}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 145}
 
 syncStatEnableBangPath  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10696,7 +10698,7 @@ The maximum number of failed 'RCPT TO' or 'VRFY' commands encountered before the
 "
     REFERENCE "Maximum recipient verification Errors"
     DEFVAL { "0" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 146}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 146}
 
 syncStatMaxVRFYErrors  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10739,7 +10741,7 @@ recommented if used: file:files/rcptreplrules.txt - default empty ! This enables
 "
     REFERENCE "Enable recipient replacement*"
     DEFVAL { "file:files/rcptreplrules.txt" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 147}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 147}
 
 syncStatReplaceRecpt  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10783,7 +10785,7 @@ SMTP reply for invalid Users. Default: '550 5.1.1 User unknown: EMAILADDRESS'
 "
     REFERENCE "No-Valid-Local-User Reply"
     DEFVAL { "550 5.1.1 User unknown: EMAILADDRESS" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 148}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 148}
 
 syncStatNoValidRecipient  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10826,7 +10828,7 @@ If you have enabled VRFY and/or EXPN on your MTA to make assp able to verify add
 "
     REFERENCE "Disable VRFY and EXPN for External Clients"
     DEFVAL { "" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 860}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 860}
 
 syncStatDisableVRFY  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10871,7 +10873,7 @@ If activated and the format 'Domain=>MTA:Port' is encountered in localDomains an
 "
     REFERENCE "Verify Recipients with SMTP-VRFY"
     DEFVAL { "1" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 885}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 885}
 
 syncStatDoVRFY  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10914,7 +10916,7 @@ Block remote servers that uses the same recipient address more times, than the n
 "
     REFERENCE "Block Max Duplicate Recipients"
     DEFVAL { "3" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 895}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 895}
 
 syncStatDoMaxDupRcpt  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -10959,7 +10961,7 @@ The maximum number of duplicate recipient addresses that are allowed in the sequ
 "
     REFERENCE "Maximum Allowed Duplicate Recipient Addresses"
     DEFVAL { "0" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 896}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 896}
 
 syncStatMaxDupRcpt  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -11002,7 +11004,7 @@ Remove foreign BCC: header lines from the mail header. The remove is done before
 "
     REFERENCE "remove Foreign BCC"
     DEFVAL { "" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 978}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 978}
 
 syncStatremoveForeignBCC  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -11045,7 +11047,7 @@ These local addresses accept mail only from local domains and whitelisted extern
 "
     REFERENCE "Accept Mail from Local Domains and Whitelisted Senders only*"
     DEFVAL { "" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 989}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 989}
 
 syncStatInternalAndWhiteAddresses  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -11097,7 +11099,7 @@ If enabled TO: , CC: and BCC: header lines are checked the following way:
 "
     REFERENCE "Check TO,CC and BCC headers"
     DEFVAL { "" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 1001}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 1001}
 
 syncStatDoHeaderAddrCheck  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -11144,7 +11146,7 @@ Mails to any of these recipients or domains are handled transparent immediatly a
 "
     REFERENCE "Mails to these Recipients are Handled in Transparent-PROXY Mode*"
     DEFVAL { "" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 1058}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 1058}
 
 syncStattransparentRecipients  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -11187,7 +11189,7 @@ If enabled and the module IO::Socket::SSL is available and STARTTLS is supported
 "
     REFERENCE "Enable STARTTLS for VRFY"
     DEFVAL { "0" }
-    ::= {LocalRecipientsandDomainsampTransparentRecipientsandDomains 1059}
+    ::= {LocalRecipientsandDomainsAndTransparentRecipientsandDomains 1059}
 
 syncStatenableTLS4VRFY  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -11979,12 +11981,13 @@ invalidHeloRe  OBJECT-TYPE
     DESCRIPTION
 "
 Regular expression to check and block immediatly incoming HELOs.
- This option blocks and drops a connection immediatly by sending a reply '554 5.7.1 the connection is rejected - bad host identity detected', if the sent HELO matches this regular expression. The check is done immediatly after the HELO is sent by a peer. It can be used to block BOT's, that are using different IP's but the same or similar HELO every time.
+ This option blocks and drops a connection immediatly by sending a reply '554 5.7.1 the connection is rejected - bad host identity detected', if the sent HELO matches this regular expression.
+ The check is done immediatly after the HELO is sent by a peer. It can be used to block BOT's, that are using different IP's but the same or similar HELO every time.
  Notice: this option ignores all other settings in assp!
  The penalty box score for the connected IP is increased by ihValencePB .
  For example:  ylmf-pc
 "
-    REFERENCE "Regular Expression to Immediatly Blocked Invalidate HELO*"
+    REFERENCE "Regular Expression to Immediatly Blocked Invalid HELO*"
     DEFVAL { "ylmf-pc" }
     ::= {ValidateHELOandEHLO 1060}
 
@@ -13826,7 +13829,7 @@ Select which check should be done in DoNoFrom .
  8 - multiple sender: addresses or sender: header tags found (potential 2x score if option 2 is also enabled)
  16 - no or an invalid email address found in from: header tag
  32 - no or an invalid email address found in sender: header tag
- Simply form the sum of the numbers in front of the checks you want to select (0...63). Default vaule is 63 (1+2+4+8+16+32) - all checks are selected.
+ Simply form the sum of the numbers in front of the checks you want to select (0...63). Default value is 59 (1+2+8+16+32).
 "
     REFERENCE "Select Checks for From: and Sender: Header"
     DEFVAL { "59" }
@@ -15113,7 +15116,7 @@ CountryCodeRe  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Messages from IP's based in these countries will increase the MessageScore. For example: CN|KR|RU|JP|TR|TH|PL|LT|CL|RO|UA|GR|HU|SA|IN|IE|PT|MD|PE|CZ|TW|BR|CL|ID|PH
+Messages from IP's based in these countries will increase the MessageScore by sbsccValencePB . For example: CN|KR|RU|JP|TR|TH|PL|LT|CL|RO|UA|GR|HU|SA|IN|IE|PT|MD|PE|CZ|TW|BR|CL|ID|PH
 "
     REFERENCE "Suspicious Country Codes**"
     DEFVAL { "CN|KR|RU|JP|TR|TH|PL|LT|CL|RO|UA|GR|HU|SA|IN|IE|PT|MD|PE|CZ|TW|BR|CL|ID|PH" }
@@ -15156,7 +15159,7 @@ MyCountryCodeRe  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Put here your own country code(s) (for example: US). Messages from IP's based in these countries will decrease, messages from other countries will increase the MessageScore.
+Put here your own country code(s) (for example: US). Messages from IP's based in these countries will decrease by sbhccValencePB , messages from other countries will increase the MessageScore by sbfccValencePB (if ScoreForeignCountries is enabled).
 "
     REFERENCE "Home Country Codes**"
     DEFVAL { "" }
@@ -25293,6 +25296,7 @@ ScanCC  OBJECT-TYPE
     DESCRIPTION
 "
 
+ If enabled and a virus is found in the forwarded mail content, forwarding will be skipped.
 "
     REFERENCE "Scan Copied Spam and Forwarded Ham Mails"
     DEFVAL { "" }
@@ -30938,9 +30942,15 @@ Any mail sent by local/authenticated users to this username will be interpreted 
   sender@domain.org,@localdomain.org
   sender@domain.org,otheruser@localdomain.org
   Per default a removal request is processed. To delete records from whitelistdb, write 'delete' (unquoted) into the subject of the report mail.
-  NOTICE: removing whitelist entries will mark the records as NOT whitelisted!
+  To remove a global whitelist entry, use sender@senderdomain.org .
+  To remove a domain whitelist entry, use sender@senderdomain.org,localdomain.org .
+  To remove a private whitelist entry, use sender@senderdomain.org,user@localdomain.org .
+  To delete a global whitelist entry and all domain and private entries, use sender@senderdomain.org,* .
+  To delete a domain whitelist entry and all private entries, use sender@senderdomain.org,@localdomain.org .
+  To delete a private whitelist entry, use sender@senderdomain.org,user@localdomain.org .
+  NOTICE: removing whitelist entries will mark the records as NOT whitelisted - the records are NOT delete from the database/list. Wildcards (,*) are ignored for the remove action!
   <p class='warning'>
-  NOTICE: deleting whitelist entries will DELETE ALL related records! For example: an emailaddress is globaly whitelisted but markted as not whitelisted for a specific domain.
+  NOTICE: deleting whitelist entries will DELETE ALL related (matching) records! For example: an emailaddress is globaly whitelisted but markted as not whitelisted for a specific domain.
   Now if you DELETE the domain based record, all domain related records will be deleted - but because of the global whitelisting, all emailaddresses from this domain are now treated as whitelisted!
 "
     REFERENCE "Remove from Whitelist Address"
@@ -32729,7 +32739,7 @@ resendmail  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-ASSP will try to resend the files in this directory to the original recipient. The files must have the 'maillogExt' extension and must have the SMTP-format. For example: resendmail. This requires an installed  module in PERL.
+ASSP will try to resend the files in this directory to the original recipient. The files must have the 'maillogExt' extension and must have the SMTP-format. For example: resendmail. This requires an installed  module in Perl.
 "
     REFERENCE "try to resend this files"
     DEFVAL { "resendmail" }
@@ -33420,7 +33430,7 @@ ImportMysqlDB  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-All files from the 'importDBDir' will be imported in to database . Please define the directory above, before using the import!
+All files from the 'importDBDir' will be imported in to the database defined in mydb . Please define the directory above, before using the import!
 &nbsp;
 "
     REFERENCE "import all files from the importDBDir Directory in to the database - now."
@@ -42640,7 +42650,7 @@ noModuleAutoUpdate  OBJECT-TYPE
     DESCRIPTION
 "
 If set, ASSP will skip the automatic Perl module update for the selected. Default is: skip installed but not used by assp
-  On NIX systems this value is ignored, if runAsUser is used! The automatic perl module upgrade is only done, if assp is running as OS user 'root'.
+  On NIX systems assp must run as user 'root' or the used user must have the permission to sudo without a password prompt - otherwise this value is ignored and an error is written to the maillog.txt.
 "
     REFERENCE "No Automatic Perl Module update"
     DEFVAL { "2" }
@@ -44005,8 +44015,9 @@ VirusTotalAPIKey  OBJECT-TYPE
 To query www.VirusTotal.com for URIs and/or viruses (ASSP_AFC.pm), a valid API-Key is required. An API-Key is provided by VirusTotal for free, after your registration at www.virustotal.com.
  Such a free API-Key is limited to four queries at VirusTotal per minute. API-Keys for a higher query volume are also provided by VirusTotal.
  Systems that are part of the ASSP-Global-PenalyBox network can leave this value empty. They are getting an API-Key with a much higher query volume from the GPB-Server automatically, without any additionally costs. This API-Key is not shown here!
+ You need to enable ( useASSP_VirusTotal_API ) the assp module lib/ASSP_VirusTotal_API.pm and to install the perl module .
 "
-    REFERENCE "The Privat API-Key for VirusTotal"
+    REFERENCE "The Private API-Key for VirusTotal"
     DEFVAL { "" }
     ::= {GeneralServerSetup 1077}
 
@@ -46312,10 +46323,11 @@ globalValencePB  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-This penalty-value will be given to downloaded Black-Penalty-Box-Entries. As long as entries have the 'GLOBALPB' state, they will never become extreme-Black. It is recommended to set this value above PenaltyLimit!
+This penalty-value will be given to downloaded Black-Penalty-Box-Entries. As long as entries have the 'GLOBALPB' state, they will never become extreme-Black. It is recommended to set this value above PenaltyLimit! The default value is 200.
+ Do not forget to configure the assp PenaltyBox ( DoPenalty ), otherwise Global-Black-PB and Global-White-Penalty will have no effect. To get early blocking behavior for GPB-Black IP's, configure DelayIP . It is also recommended to enable MsgScoreOnEnd .
 "
     REFERENCE "Value for Global-Black-PB Entries +"
-    DEFVAL { "20" }
+    DEFVAL { "200" }
     ::= {GlobalPenaltyBoxNetwork 835}
 
 globalBlackExpiration  OBJECT-TYPE
@@ -48126,6 +48138,49 @@ synchronization status line from file assp_sync.cfg for useASSPSVG
 "
     ::= {useASSPSVG 6}
 
+useASSPVirusTotalAPI  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+If selected, the perl module ASSP_VirusTotal_API will be loaded if it is installed. If not selected, ASSP will not load the perl module ASSP_VirusTotal_API even it is installed and several features of ASSP will not be available! It is recommended to disable installed but unused modules to reduce the required memory. Requires ASSP restart!This module is possibly used for VirusTotalAPIKey and maybe some other features.
+"
+    REFERENCE "Use Module ASSP_VirusTotal_API"
+    DEFVAL { "1" }
+    ::= {PerlModuleSetup 3003}
+
+syncStatuseASSPVirusTotalAPI  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for useASSPVirusTotalAPI
+-1 - useASSPVirusTotalAPI could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {useASSPVirusTotalAPI 5}
+
+syncStatStruseASSPVirusTotalAPI  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for useASSPVirusTotalAPI
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {useASSPVirusTotalAPI 6}
+
 useASSPWordStem  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-write
@@ -48136,7 +48191,7 @@ If selected, the perl module ASSP_WordStem will be loaded if it is installed. If
 "
     REFERENCE "Use Module ASSP_WordStem"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3003}
+    ::= {PerlModuleSetup 3004}
 
 syncStatuseASSPWordStem  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -48179,7 +48234,7 @@ If selected, the perl module AsspSelfLoader will be loaded if it is installed. I
 "
     REFERENCE "Use Module AsspSelfLoader"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3004}
+    ::= {PerlModuleSetup 3005}
 
 syncStatuseAsspSelfLoader  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -48222,7 +48277,7 @@ If selected, the perl module Authen::SASL will be loaded if it is installed. If 
 "
     REFERENCE "Use Module Authen::SASL"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3005}
+    ::= {PerlModuleSetup 3006}
 
 syncStatuseAuthenSASL  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -48265,7 +48320,7 @@ If selected, the perl module BerkeleyDB will be loaded if it is installed. If no
 "
     REFERENCE "Use Module BerkeleyDB"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3006}
+    ::= {PerlModuleSetup 3007}
 
 syncStatuseBerkeleyDB  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -48308,7 +48363,7 @@ If selected, the perl module Compress::Zlib will be loaded if it is installed. I
 "
     REFERENCE "Use Module Compress::Zlib"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3007}
+    ::= {PerlModuleSetup 3008}
 
 syncStatuseCompressZlib  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -48351,7 +48406,7 @@ If selected, the perl module Convert::TNEF will be loaded if it is installed. If
 "
     REFERENCE "Use Module Convert::TNEF"
     DEFVAL { "0" }
-    ::= {PerlModuleSetup 3008}
+    ::= {PerlModuleSetup 3009}
 
 syncStatuseConvertTNEF  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -48394,7 +48449,7 @@ If selected, the perl module DB_File will be loaded if it is installed. If not s
 "
     REFERENCE "Use Module DB_File"
     DEFVAL { "0" }
-    ::= {PerlModuleSetup 3009}
+    ::= {PerlModuleSetup 3010}
 
 syncStatuseDBFile  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -48437,7 +48492,7 @@ If selected, the perl module Digest::MD5 will be loaded if it is installed. If n
 "
     REFERENCE "Use Module Digest::MD5"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3010}
+    ::= {PerlModuleSetup 3011}
 
 syncStatuseDigestMD5  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -48480,7 +48535,7 @@ If selected, the perl module Digest::SHA1 will be loaded if it is installed. If 
 "
     REFERENCE "Use Module Digest::SHA1"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3011}
+    ::= {PerlModuleSetup 3012}
 
 syncStatuseDigestSHA1  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -48513,6 +48568,49 @@ synchronization status line from file assp_sync.cfg for useDigestSHA1
 "
     ::= {useDigestSHA1 6}
 
+useEmailAddressXS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+"
+If selected, the perl module Email::Address::XS will be loaded if it is installed. If not selected, ASSP will not load the perl module Email::Address::XS even it is installed and several features of ASSP will not be available! It is recommended to disable installed but unused modules to reduce the required memory. Requires ASSP restart!This module is possibly used for resendmail and maybe some other features.
+"
+    REFERENCE "Use Module Email::Address::XS"
+    DEFVAL { "1" }
+    ::= {PerlModuleSetup 3013}
+
+syncStatuseEmailAddressXS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status for useEmailAddressXS
+-1 - useEmailAddressXS could not be synchronized
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {useEmailAddressXS 5}
+
+syncStatStruseEmailAddressXS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+synchronization status line from file assp_sync.cfg for useEmailAddressXS
+ 0 - synchronization not configured
+ 1 - out of sync - running master mode
+ 2 - in sync - running  mastermode
+ 3 - in sync - running slave mode
+ 4 - in sync - running master mode (wait to reach state 2)
+"
+    ::= {useEmailAddressXS 6}
+
 useEmailMIME  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-write
@@ -48523,7 +48621,7 @@ If selected, the perl module Email::MIME will be loaded if it is installed. If n
 "
     REFERENCE "Use Module Email::MIME"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3012}
+    ::= {PerlModuleSetup 3014}
 
 syncStatuseEmailMIME  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -48556,49 +48654,6 @@ synchronization status line from file assp_sync.cfg for useEmailMIME
 "
     ::= {useEmailMIME 6}
 
-useEmailSend  OBJECT-TYPE
-    SYNTAX      OCTET STRING
-    MAX-ACCESS  read-write
-    STATUS      current
-    DESCRIPTION
-"
-If selected, the perl module Email::Send will be loaded if it is installed. If not selected, ASSP will not load the perl module Email::Send even it is installed and several features of ASSP will not be available! It is recommended to disable installed but unused modules to reduce the required memory. Requires ASSP restart!This module is possibly used for resendmail and maybe some other features.
-"
-    REFERENCE "Use Module Email::Send"
-    DEFVAL { "1" }
-    ::= {PerlModuleSetup 3013}
-
-syncStatuseEmailSend  OBJECT-TYPE
-    SYNTAX      OCTET STRING
-    MAX-ACCESS  read-only
-    STATUS      current
-    DESCRIPTION
-"
-synchronization status for useEmailSend
--1 - useEmailSend could not be synchronized
- 0 - synchronization not configured
- 1 - out of sync - running master mode
- 2 - in sync - running  mastermode
- 3 - in sync - running slave mode
- 4 - in sync - running master mode (wait to reach state 2)
-"
-    ::= {useEmailSend 5}
-
-syncStatStruseEmailSend  OBJECT-TYPE
-    SYNTAX      OCTET STRING
-    MAX-ACCESS  read-only
-    STATUS      current
-    DESCRIPTION
-"
-synchronization status line from file assp_sync.cfg for useEmailSend
- 0 - synchronization not configured
- 1 - out of sync - running master mode
- 2 - in sync - running  mastermode
- 3 - in sync - running slave mode
- 4 - in sync - running master mode (wait to reach state 2)
-"
-    ::= {useEmailSend 6}
-
 useFileReadBackwards  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-write
@@ -48609,7 +48664,7 @@ If selected, the perl module File::ReadBackwards will be loaded if it is install
 "
     REFERENCE "Use Module File::ReadBackwards"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3014}
+    ::= {PerlModuleSetup 3015}
 
 syncStatuseFileReadBackwards  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -48652,7 +48707,7 @@ If selected, the perl module File::Scan::ClamAV will be loaded if it is installe
 "
     REFERENCE "Use Module File::Scan::ClamAV"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3015}
+    ::= {PerlModuleSetup 3016}
 
 syncStatuseFileScanClamAV  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -48695,7 +48750,7 @@ If selected, the perl module IO::Socket::INET6 will be loaded if it is installed
 "
     REFERENCE "Use Module IO::Socket::INET6"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3016}
+    ::= {PerlModuleSetup 3017}
 
 syncStatuseIOSocketINET6  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -48738,7 +48793,7 @@ If selected, the perl module IO::Socket::SSL will be loaded if it is installed. 
 "
     REFERENCE "Use Module IO::Socket::SSL"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3017}
+    ::= {PerlModuleSetup 3018}
 
 syncStatuseIOSocketSSL  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -48781,7 +48836,7 @@ If selected, the perl module LWP::Simple will be loaded if it is installed. If n
 "
     REFERENCE "Use Module LWP::Simple"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3018}
+    ::= {PerlModuleSetup 3019}
 
 syncStatuseLWPSimple  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -48824,7 +48879,7 @@ If selected, the perl module MIME::Types will be loaded if it is installed. If n
 "
     REFERENCE "Use Module MIME::Types"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3019}
+    ::= {PerlModuleSetup 3020}
 
 syncStatuseMIMETypes  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -48867,7 +48922,7 @@ If selected, the perl module Mail::DKIM::Verifier will be loaded if it is instal
 "
     REFERENCE "Use Module Mail::DKIM::Verifier"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3020}
+    ::= {PerlModuleSetup 3021}
 
 syncStatuseMailDKIMVerifier  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -48910,7 +48965,7 @@ If selected, the perl module Mail::SPF will be loaded if it is installed. If not
 "
     REFERENCE "Use Module Mail::SPF"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3021}
+    ::= {PerlModuleSetup 3022}
 
 syncStatuseMailSPF  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -48953,7 +49008,7 @@ If selected, the perl module Mail::SPF::Query will be loaded if it is installed.
 "
     REFERENCE "Use Module Mail::SPF::Query"
     DEFVAL { "0" }
-    ::= {PerlModuleSetup 3022}
+    ::= {PerlModuleSetup 3023}
 
 syncStatuseMailSPFQuery  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -48996,7 +49051,7 @@ If selected, the perl module Mail::SRS will be loaded if it is installed. If not
 "
     REFERENCE "Use Module Mail::SRS"
     DEFVAL { "0" }
-    ::= {PerlModuleSetup 3023}
+    ::= {PerlModuleSetup 3024}
 
 syncStatuseMailSRS  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49039,7 +49094,7 @@ If selected, the perl module Net::CIDR::Lite will be loaded if it is installed. 
 "
     REFERENCE "Use Module Net::CIDR::Lite"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3024}
+    ::= {PerlModuleSetup 3025}
 
 syncStatuseNetCIDRLite  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49082,7 +49137,7 @@ If selected, the perl module Net::DNS will be loaded if it is installed. If not 
 "
     REFERENCE "Use Module Net::DNS"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3025}
+    ::= {PerlModuleSetup 3026}
 
 syncStatuseNetDNS  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49125,7 +49180,7 @@ If selected, the perl module Net::IP will be loaded if it is installed. If not s
 "
     REFERENCE "Use Module Net::IP"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3026}
+    ::= {PerlModuleSetup 3027}
 
 syncStatuseNetIP  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49168,7 +49223,7 @@ If selected, the perl module Net::LDAP will be loaded if it is installed. If not
 "
     REFERENCE "Use Module Net::LDAP"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3027}
+    ::= {PerlModuleSetup 3028}
 
 syncStatuseNetLDAP  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49211,7 +49266,7 @@ If selected, the perl module Net::SMTP will be loaded if it is installed. If not
 "
     REFERENCE "Use Module Net::SMTP"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3028}
+    ::= {PerlModuleSetup 3029}
 
 syncStatuseNetSMTP  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49254,7 +49309,7 @@ If selected, the perl module Net::SMTP::SSL will be loaded if it is installed. I
 "
     REFERENCE "Use Module Net::SMTP::SSL"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3029}
+    ::= {PerlModuleSetup 3030}
 
 syncStatuseNetSMTPSSL  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49297,7 +49352,7 @@ If selected, the perl module NetAddr::IP::Lite will be loaded if it is installed
 "
     REFERENCE "Use Module NetAddr::IP::Lite"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3030}
+    ::= {PerlModuleSetup 3031}
 
 syncStatuseNetAddrIPLite  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49340,7 +49395,7 @@ If selected, the perl module NetSNMP::agent will be loaded if it is installed. I
 "
     REFERENCE "Use Module NetSNMP::agent"
     DEFVAL { "0" }
-    ::= {PerlModuleSetup 3031}
+    ::= {PerlModuleSetup 3032}
 
 syncStatuseNetSNMPagent  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49383,7 +49438,7 @@ If selected, the perl module PerlIO::scalar will be loaded if it is installed. I
 "
     REFERENCE "Use Module PerlIO::scalar"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3032}
+    ::= {PerlModuleSetup 3033}
 
 syncStatusePerlIOscalar  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49426,7 +49481,7 @@ If selected, the perl module Regexp::Optimizer will be loaded if it is installed
 "
     REFERENCE "Use Module Regexp::Optimizer"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3033}
+    ::= {PerlModuleSetup 3034}
 
 syncStatuseRegexpOptimizer  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49469,7 +49524,7 @@ If selected, the perl module Schedule::Cron will be loaded if it is installed. I
 "
     REFERENCE "Use Module Schedule::Cron"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3034}
+    ::= {PerlModuleSetup 3035}
 
 syncStatuseScheduleCron  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49512,7 +49567,7 @@ If selected, the perl module Sys::CpuAffinity will be loaded if it is installed.
 "
     REFERENCE "Use Module Sys::CpuAffinity"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3035}
+    ::= {PerlModuleSetup 3036}
 
 syncStatuseSysCpuAffinity  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49555,7 +49610,7 @@ If selected, the perl module Sys::MemInfo will be loaded if it is installed. If 
 "
     REFERENCE "Use Module Sys::MemInfo"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3036}
+    ::= {PerlModuleSetup 3037}
 
 syncStatuseSysMemInfo  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49598,7 +49653,7 @@ If selected, the perl module Sys::Syslog will be loaded if it is installed. If n
 "
     REFERENCE "Use Module Sys::Syslog"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3037}
+    ::= {PerlModuleSetup 3038}
 
 syncStatuseSysSyslog  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49641,7 +49696,7 @@ If selected, the perl module Text::Unidecode will be loaded if it is installed. 
 "
     REFERENCE "Use Module Text::Unidecode"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3038}
+    ::= {PerlModuleSetup 3039}
 
 syncStatuseTextUnidecode  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49684,7 +49739,7 @@ If selected, the perl module Thread::State will be loaded if it is installed. If
 "
     REFERENCE "Use Module Thread::State"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3039}
+    ::= {PerlModuleSetup 3040}
 
 syncStatuseThreadState  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49727,7 +49782,7 @@ If selected, the perl module Tie::RDBM will be loaded if it is installed. If not
 "
     REFERENCE "Use Module Tie::RDBM"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3040}
+    ::= {PerlModuleSetup 3041}
 
 syncStatuseTieRDBM  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49770,7 +49825,7 @@ If selected, the perl module Unicode::GCString will be loaded if it is installed
 "
     REFERENCE "Use Module Unicode::GCString"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3041}
+    ::= {PerlModuleSetup 3042}
 
 syncStatuseUnicodeGCString  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49813,7 +49868,7 @@ If selected, the perl module Win32::API::OutputDebugString will be loaded if it 
 "
     REFERENCE "Use Module Win32::API::OutputDebugString"
     DEFVAL { "0" }
-    ::= {PerlModuleSetup 3042}
+    ::= {PerlModuleSetup 3043}
 
 syncStatuseWin32APIOutputDebugString  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49856,7 +49911,7 @@ If selected, the perl module Win32::Daemon will be loaded if it is installed. If
 "
     REFERENCE "Use Module Win32::Daemon"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3043}
+    ::= {PerlModuleSetup 3044}
 
 syncStatuseWin32Daemon  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -49899,7 +49954,7 @@ If selected, the perl module Win32::Unicode will be loaded if it is installed. I
 "
     REFERENCE "Use Module Win32::Unicode"
     DEFVAL { "1" }
-    ::= {PerlModuleSetup 3044}
+    ::= {PerlModuleSetup 3045}
 
 syncStatuseWin32Unicode  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -51198,7 +51253,7 @@ ASSPARCDBdriver  OBJECT-TYPE
     DESCRIPTION
 "
 The database driver used to access your database - DBD-driver. The following drivers are available on your system:
-  BerkeleyDB, ADO, CSV, DBM, ExampleP, File, Gofer, LDAP, Mem, ODBC, Oracle, Pg, PgPP, Proxy, SQLite, Sponge, Sprite, mysql
+  BerkeleyDB, ADO, CSV, DBM, ExampleP, File, Gofer, LDAP, Mem, ODBC, Pg, PgPP, Proxy, SQLite, Sponge, Sprite, mysql
   If you can not find the driver for your database in this list, you should install it via cpan or ppm!
   -  or if you have installed an ODBC-driver for your database and DBD-ODBC, just create a DSN and use ODBC.
   Usefull are ADO|DB2|Informix|ODBC|Oracle|Pg|Sybase|mysql|mysqlPP - but any other SQL compatible database should also work.
@@ -53663,6 +53718,56 @@ download URL for the module
 "
     ::= {ASSPSVG 4}
 
+ASSPVirusTotalAPI  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+ASSP Perl module information for ASSP_VirusTotal_API;
+"
+    ::= {asspPerlModuleInfo 2}
+
+iVASSPVirusTotalAPI  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+installed module version
+"
+    ::= {ASSPVirusTotalAPI 1}
+
+rVASSPVirusTotalAPI  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+required/recommended module version
+"
+    ::= {ASSPVirusTotalAPI 2}
+
+iSASSPVirusTotalAPI  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+module installation status
+"
+    ::= {ASSPVirusTotalAPI 3}
+
+dUASSPVirusTotalAPI  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+download URL for the module
+"
+    ::= {ASSPVirusTotalAPI 4}
+
 ASSPWordStem  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
@@ -53671,7 +53776,7 @@ ASSPWordStem  OBJECT-TYPE
 "
 ASSP Perl module information for ASSP_WordStem;
 "
-    ::= {asspPerlModuleInfo 2}
+    ::= {asspPerlModuleInfo 3}
 
 iVASSPWordStem  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53713,7 +53818,7 @@ download URL for the module
 "
     ::= {ASSPWordStem 4}
 
-ArchiveExtract  OBJECT-TYPE
+Archive-Extract  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53721,9 +53826,9 @@ ArchiveExtract  OBJECT-TYPE
 "
 ASSP Perl module information for Archive::Extract;
 "
-    ::= {asspPerlModuleInfo 3}
+    ::= {asspPerlModuleInfo 4}
 
-iVArchiveExtract  OBJECT-TYPE
+iVArchive-Extract  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53731,9 +53836,9 @@ iVArchiveExtract  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {ArchiveExtract 1}
+    ::= {Archive-Extract 1}
 
-rVArchiveExtract  OBJECT-TYPE
+rVArchive-Extract  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53741,9 +53846,9 @@ rVArchiveExtract  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {ArchiveExtract 2}
+    ::= {Archive-Extract 2}
 
-iSArchiveExtract  OBJECT-TYPE
+iSArchive-Extract  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53751,9 +53856,9 @@ iSArchiveExtract  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {ArchiveExtract 3}
+    ::= {Archive-Extract 3}
 
-dUArchiveExtract  OBJECT-TYPE
+dUArchive-Extract  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53761,9 +53866,9 @@ dUArchiveExtract  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {ArchiveExtract 4}
+    ::= {Archive-Extract 4}
 
-ArchiveLibarchiveXS  OBJECT-TYPE
+Archive-Libarchive-XS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53771,9 +53876,9 @@ ArchiveLibarchiveXS  OBJECT-TYPE
 "
 ASSP Perl module information for Archive::Libarchive::XS;
 "
-    ::= {asspPerlModuleInfo 4}
+    ::= {asspPerlModuleInfo 5}
 
-iVArchiveLibarchiveXS  OBJECT-TYPE
+iVArchive-Libarchive-XS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53781,9 +53886,9 @@ iVArchiveLibarchiveXS  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {ArchiveLibarchiveXS 1}
+    ::= {Archive-Libarchive-XS 1}
 
-rVArchiveLibarchiveXS  OBJECT-TYPE
+rVArchive-Libarchive-XS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53791,9 +53896,9 @@ rVArchiveLibarchiveXS  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {ArchiveLibarchiveXS 2}
+    ::= {Archive-Libarchive-XS 2}
 
-iSArchiveLibarchiveXS  OBJECT-TYPE
+iSArchive-Libarchive-XS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53801,9 +53906,9 @@ iSArchiveLibarchiveXS  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {ArchiveLibarchiveXS 3}
+    ::= {Archive-Libarchive-XS 3}
 
-dUArchiveLibarchiveXS  OBJECT-TYPE
+dUArchive-Libarchive-XS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53811,9 +53916,9 @@ dUArchiveLibarchiveXS  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {ArchiveLibarchiveXS 4}
+    ::= {Archive-Libarchive-XS 4}
 
-ArchiveLibarchiveXSlibarchiveversion  OBJECT-TYPE
+Archive-Libarchive-XSlibarchiveversion  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53821,9 +53926,9 @@ ArchiveLibarchiveXSlibarchiveversion  OBJECT-TYPE
 "
 ASSP Perl module information for Archive::Libarchive::XS(libarchive-version);
 "
-    ::= {asspPerlModuleInfo 5}
+    ::= {asspPerlModuleInfo 6}
 
-iVArchiveLibarchiveXSlibarchiveversion  OBJECT-TYPE
+iVArchive-Libarchive-XSlibarchiveversion  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53831,9 +53936,9 @@ iVArchiveLibarchiveXSlibarchiveversion  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {ArchiveLibarchiveXSlibarchiveversion 1}
+    ::= {Archive-Libarchive-XSlibarchiveversion 1}
 
-rVArchiveLibarchiveXSlibarchiveversion  OBJECT-TYPE
+rVArchive-Libarchive-XSlibarchiveversion  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53841,9 +53946,9 @@ rVArchiveLibarchiveXSlibarchiveversion  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {ArchiveLibarchiveXSlibarchiveversion 2}
+    ::= {Archive-Libarchive-XSlibarchiveversion 2}
 
-iSArchiveLibarchiveXSlibarchiveversion  OBJECT-TYPE
+iSArchive-Libarchive-XSlibarchiveversion  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53851,9 +53956,9 @@ iSArchiveLibarchiveXSlibarchiveversion  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {ArchiveLibarchiveXSlibarchiveversion 3}
+    ::= {Archive-Libarchive-XSlibarchiveversion 3}
 
-dUArchiveLibarchiveXSlibarchiveversion  OBJECT-TYPE
+dUArchive-Libarchive-XSlibarchiveversion  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53861,9 +53966,9 @@ dUArchiveLibarchiveXSlibarchiveversion  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {ArchiveLibarchiveXSlibarchiveversion 4}
+    ::= {Archive-Libarchive-XSlibarchiveversion 4}
 
-ArchiveRarPassthrough  OBJECT-TYPE
+Archive-Rar-Passthrough  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53871,9 +53976,9 @@ ArchiveRarPassthrough  OBJECT-TYPE
 "
 ASSP Perl module information for Archive::Rar::Passthrough;
 "
-    ::= {asspPerlModuleInfo 6}
+    ::= {asspPerlModuleInfo 7}
 
-iVArchiveRarPassthrough  OBJECT-TYPE
+iVArchive-Rar-Passthrough  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53881,9 +53986,9 @@ iVArchiveRarPassthrough  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {ArchiveRarPassthrough 1}
+    ::= {Archive-Rar-Passthrough 1}
 
-rVArchiveRarPassthrough  OBJECT-TYPE
+rVArchive-Rar-Passthrough  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53891,9 +53996,9 @@ rVArchiveRarPassthrough  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {ArchiveRarPassthrough 2}
+    ::= {Archive-Rar-Passthrough 2}
 
-iSArchiveRarPassthrough  OBJECT-TYPE
+iSArchive-Rar-Passthrough  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53901,9 +54006,9 @@ iSArchiveRarPassthrough  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {ArchiveRarPassthrough 3}
+    ::= {Archive-Rar-Passthrough 3}
 
-dUArchiveRarPassthrough  OBJECT-TYPE
+dUArchive-Rar-Passthrough  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53911,9 +54016,9 @@ dUArchiveRarPassthrough  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {ArchiveRarPassthrough 4}
+    ::= {Archive-Rar-Passthrough 4}
 
-ArchiveZip  OBJECT-TYPE
+Archive-Zip  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53921,9 +54026,9 @@ ArchiveZip  OBJECT-TYPE
 "
 ASSP Perl module information for Archive::Zip;
 "
-    ::= {asspPerlModuleInfo 7}
+    ::= {asspPerlModuleInfo 8}
 
-iVArchiveZip  OBJECT-TYPE
+iVArchive-Zip  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53931,9 +54036,9 @@ iVArchiveZip  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {ArchiveZip 1}
+    ::= {Archive-Zip 1}
 
-rVArchiveZip  OBJECT-TYPE
+rVArchive-Zip  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53941,9 +54046,9 @@ rVArchiveZip  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {ArchiveZip 2}
+    ::= {Archive-Zip 2}
 
-iSArchiveZip  OBJECT-TYPE
+iSArchive-Zip  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53951,9 +54056,9 @@ iSArchiveZip  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {ArchiveZip 3}
+    ::= {Archive-Zip 3}
 
-dUArchiveZip  OBJECT-TYPE
+dUArchive-Zip  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -53961,7 +54066,7 @@ dUArchiveZip  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {ArchiveZip 4}
+    ::= {Archive-Zip 4}
 
 AsspSelfLoader  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -53971,7 +54076,7 @@ AsspSelfLoader  OBJECT-TYPE
 "
 ASSP Perl module information for AsspSelfLoader;
 "
-    ::= {asspPerlModuleInfo 8}
+    ::= {asspPerlModuleInfo 9}
 
 iVAsspSelfLoader  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54013,7 +54118,7 @@ download URL for the module
 "
     ::= {AsspSelfLoader 4}
 
-AuthenSASL  OBJECT-TYPE
+Authen-SASL  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54021,9 +54126,9 @@ AuthenSASL  OBJECT-TYPE
 "
 ASSP Perl module information for Authen::SASL;
 "
-    ::= {asspPerlModuleInfo 9}
+    ::= {asspPerlModuleInfo 10}
 
-iVAuthenSASL  OBJECT-TYPE
+iVAuthen-SASL  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54031,9 +54136,9 @@ iVAuthenSASL  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {AuthenSASL 1}
+    ::= {Authen-SASL 1}
 
-rVAuthenSASL  OBJECT-TYPE
+rVAuthen-SASL  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54041,9 +54146,9 @@ rVAuthenSASL  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {AuthenSASL 2}
+    ::= {Authen-SASL 2}
 
-iSAuthenSASL  OBJECT-TYPE
+iSAuthen-SASL  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54051,9 +54156,9 @@ iSAuthenSASL  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {AuthenSASL 3}
+    ::= {Authen-SASL 3}
 
-dUAuthenSASL  OBJECT-TYPE
+dUAuthen-SASL  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54061,7 +54166,7 @@ dUAuthenSASL  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {AuthenSASL 4}
+    ::= {Authen-SASL 4}
 
 BerkeleyDB  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54071,7 +54176,7 @@ BerkeleyDB  OBJECT-TYPE
 "
 ASSP Perl module information for BerkeleyDB;
 "
-    ::= {asspPerlModuleInfo 10}
+    ::= {asspPerlModuleInfo 11}
 
 iVBerkeleyDB  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54121,7 +54226,7 @@ BerkeleyDBDBEngine  OBJECT-TYPE
 "
 ASSP Perl module information for BerkeleyDB_DBEngine;
 "
-    ::= {asspPerlModuleInfo 11}
+    ::= {asspPerlModuleInfo 12}
 
 iVBerkeleyDBDBEngine  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54163,7 +54268,7 @@ download URL for the module
 "
     ::= {BerkeleyDBDBEngine 4}
 
-CompressZlib  OBJECT-TYPE
+Compress-Zlib  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54171,9 +54276,9 @@ CompressZlib  OBJECT-TYPE
 "
 ASSP Perl module information for Compress::Zlib;
 "
-    ::= {asspPerlModuleInfo 12}
+    ::= {asspPerlModuleInfo 13}
 
-iVCompressZlib  OBJECT-TYPE
+iVCompress-Zlib  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54181,9 +54286,9 @@ iVCompressZlib  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {CompressZlib 1}
+    ::= {Compress-Zlib 1}
 
-rVCompressZlib  OBJECT-TYPE
+rVCompress-Zlib  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54191,9 +54296,9 @@ rVCompressZlib  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {CompressZlib 2}
+    ::= {Compress-Zlib 2}
 
-iSCompressZlib  OBJECT-TYPE
+iSCompress-Zlib  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54201,9 +54306,9 @@ iSCompressZlib  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {CompressZlib 3}
+    ::= {Compress-Zlib 3}
 
-dUCompressZlib  OBJECT-TYPE
+dUCompress-Zlib  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54211,9 +54316,9 @@ dUCompressZlib  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {CompressZlib 4}
+    ::= {Compress-Zlib 4}
 
-ConvertTNEF  OBJECT-TYPE
+Convert-TNEF  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54221,9 +54326,9 @@ ConvertTNEF  OBJECT-TYPE
 "
 ASSP Perl module information for Convert::TNEF;
 "
-    ::= {asspPerlModuleInfo 13}
+    ::= {asspPerlModuleInfo 14}
 
-iVConvertTNEF  OBJECT-TYPE
+iVConvert-TNEF  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54231,9 +54336,9 @@ iVConvertTNEF  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {ConvertTNEF 1}
+    ::= {Convert-TNEF 1}
 
-rVConvertTNEF  OBJECT-TYPE
+rVConvert-TNEF  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54241,9 +54346,9 @@ rVConvertTNEF  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {ConvertTNEF 2}
+    ::= {Convert-TNEF 2}
 
-iSConvertTNEF  OBJECT-TYPE
+iSConvert-TNEF  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54251,9 +54356,9 @@ iSConvertTNEF  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {ConvertTNEF 3}
+    ::= {Convert-TNEF 3}
 
-dUConvertTNEF  OBJECT-TYPE
+dUConvert-TNEF  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54261,9 +54366,9 @@ dUConvertTNEF  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {ConvertTNEF 4}
+    ::= {Convert-TNEF 4}
 
-CryptSMIME  OBJECT-TYPE
+Crypt-SMIME  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54271,9 +54376,9 @@ CryptSMIME  OBJECT-TYPE
 "
 ASSP Perl module information for Crypt::SMIME;
 "
-    ::= {asspPerlModuleInfo 14}
+    ::= {asspPerlModuleInfo 15}
 
-iVCryptSMIME  OBJECT-TYPE
+iVCrypt-SMIME  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54281,9 +54386,9 @@ iVCryptSMIME  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {CryptSMIME 1}
+    ::= {Crypt-SMIME 1}
 
-rVCryptSMIME  OBJECT-TYPE
+rVCrypt-SMIME  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54291,9 +54396,9 @@ rVCryptSMIME  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {CryptSMIME 2}
+    ::= {Crypt-SMIME 2}
 
-iSCryptSMIME  OBJECT-TYPE
+iSCrypt-SMIME  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54301,9 +54406,9 @@ iSCryptSMIME  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {CryptSMIME 3}
+    ::= {Crypt-SMIME 3}
 
-dUCryptSMIME  OBJECT-TYPE
+dUCrypt-SMIME  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54311,7 +54416,7 @@ dUCryptSMIME  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {CryptSMIME 4}
+    ::= {Crypt-SMIME 4}
 
 DBFile  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54321,7 +54426,7 @@ DBFile  OBJECT-TYPE
 "
 ASSP Perl module information for DB_File;
 "
-    ::= {asspPerlModuleInfo 15}
+    ::= {asspPerlModuleInfo 16}
 
 iVDBFile  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -54363,7 +54468,7 @@ download URL for the module
 "
     ::= {DBFile 4}
 
-DigestMD5  OBJECT-TYPE
+Digest-MD5  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54371,9 +54476,9 @@ DigestMD5  OBJECT-TYPE
 "
 ASSP Perl module information for Digest::MD5;
 "
-    ::= {asspPerlModuleInfo 16}
+    ::= {asspPerlModuleInfo 17}
 
-iVDigestMD5  OBJECT-TYPE
+iVDigest-MD5  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54381,9 +54486,9 @@ iVDigestMD5  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {DigestMD5 1}
+    ::= {Digest-MD5 1}
 
-rVDigestMD5  OBJECT-TYPE
+rVDigest-MD5  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54391,9 +54496,9 @@ rVDigestMD5  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {DigestMD5 2}
+    ::= {Digest-MD5 2}
 
-iSDigestMD5  OBJECT-TYPE
+iSDigest-MD5  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54401,9 +54506,9 @@ iSDigestMD5  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {DigestMD5 3}
+    ::= {Digest-MD5 3}
 
-dUDigestMD5  OBJECT-TYPE
+dUDigest-MD5  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54411,9 +54516,9 @@ dUDigestMD5  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {DigestMD5 4}
+    ::= {Digest-MD5 4}
 
-DigestSHA1  OBJECT-TYPE
+Digest-SHA1  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54421,9 +54526,9 @@ DigestSHA1  OBJECT-TYPE
 "
 ASSP Perl module information for Digest::SHA1;
 "
-    ::= {asspPerlModuleInfo 17}
+    ::= {asspPerlModuleInfo 18}
 
-iVDigestSHA1  OBJECT-TYPE
+iVDigest-SHA1  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54431,9 +54536,9 @@ iVDigestSHA1  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {DigestSHA1 1}
+    ::= {Digest-SHA1 1}
 
-rVDigestSHA1  OBJECT-TYPE
+rVDigest-SHA1  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54441,9 +54546,9 @@ rVDigestSHA1  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {DigestSHA1 2}
+    ::= {Digest-SHA1 2}
 
-iSDigestSHA1  OBJECT-TYPE
+iSDigest-SHA1  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54451,9 +54556,9 @@ iSDigestSHA1  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {DigestSHA1 3}
+    ::= {Digest-SHA1 3}
 
-dUDigestSHA1  OBJECT-TYPE
+dUDigest-SHA1  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54461,9 +54566,59 @@ dUDigestSHA1  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {DigestSHA1 4}
+    ::= {Digest-SHA1 4}
 
-EmailMIME  OBJECT-TYPE
+Email-Address-XS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+ASSP Perl module information for Email::Address::XS;
+"
+    ::= {asspPerlModuleInfo 19}
+
+iVEmail-Address-XS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+installed module version
+"
+    ::= {Email-Address-XS 1}
+
+rVEmail-Address-XS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+required/recommended module version
+"
+    ::= {Email-Address-XS 2}
+
+iSEmail-Address-XS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+module installation status
+"
+    ::= {Email-Address-XS 3}
+
+dUEmail-Address-XS  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+"
+download URL for the module
+"
+    ::= {Email-Address-XS 4}
+
+Email-MIME  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54471,9 +54626,9 @@ EmailMIME  OBJECT-TYPE
 "
 ASSP Perl module information for Email::MIME;
 "
-    ::= {asspPerlModuleInfo 18}
+    ::= {asspPerlModuleInfo 20}
 
-iVEmailMIME  OBJECT-TYPE
+iVEmail-MIME  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54481,9 +54636,9 @@ iVEmailMIME  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {EmailMIME 1}
+    ::= {Email-MIME 1}
 
-rVEmailMIME  OBJECT-TYPE
+rVEmail-MIME  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54491,9 +54646,9 @@ rVEmailMIME  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {EmailMIME 2}
+    ::= {Email-MIME 2}
 
-iSEmailMIME  OBJECT-TYPE
+iSEmail-MIME  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54501,9 +54656,9 @@ iSEmailMIME  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {EmailMIME 3}
+    ::= {Email-MIME 3}
 
-dUEmailMIME  OBJECT-TYPE
+dUEmail-MIME  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54511,9 +54666,9 @@ dUEmailMIME  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {EmailMIME 4}
+    ::= {Email-MIME 4}
 
-EmailOutlookMessage  OBJECT-TYPE
+Email-Outlook-Message  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54521,9 +54676,9 @@ EmailOutlookMessage  OBJECT-TYPE
 "
 ASSP Perl module information for Email::Outlook::Message;
 "
-    ::= {asspPerlModuleInfo 19}
+    ::= {asspPerlModuleInfo 21}
 
-iVEmailOutlookMessage  OBJECT-TYPE
+iVEmail-Outlook-Message  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54531,9 +54686,9 @@ iVEmailOutlookMessage  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {EmailOutlookMessage 1}
+    ::= {Email-Outlook-Message 1}
 
-rVEmailOutlookMessage  OBJECT-TYPE
+rVEmail-Outlook-Message  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54541,9 +54696,9 @@ rVEmailOutlookMessage  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {EmailOutlookMessage 2}
+    ::= {Email-Outlook-Message 2}
 
-iSEmailOutlookMessage  OBJECT-TYPE
+iSEmail-Outlook-Message  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54551,9 +54706,9 @@ iSEmailOutlookMessage  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {EmailOutlookMessage 3}
+    ::= {Email-Outlook-Message 3}
 
-dUEmailOutlookMessage  OBJECT-TYPE
+dUEmail-Outlook-Message  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54561,59 +54716,9 @@ dUEmailOutlookMessage  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {EmailOutlookMessage 4}
+    ::= {Email-Outlook-Message 4}
 
-EmailSend  OBJECT-TYPE
-    SYNTAX      OCTET STRING
-    MAX-ACCESS  read-only
-    STATUS      current
-    DESCRIPTION
-"
-ASSP Perl module information for Email::Send;
-"
-    ::= {asspPerlModuleInfo 20}
-
-iVEmailSend  OBJECT-TYPE
-    SYNTAX      OCTET STRING
-    MAX-ACCESS  read-only
-    STATUS      current
-    DESCRIPTION
-"
-installed module version
-"
-    ::= {EmailSend 1}
-
-rVEmailSend  OBJECT-TYPE
-    SYNTAX      OCTET STRING
-    MAX-ACCESS  read-only
-    STATUS      current
-    DESCRIPTION
-"
-required/recommended module version
-"
-    ::= {EmailSend 2}
-
-iSEmailSend  OBJECT-TYPE
-    SYNTAX      OCTET STRING
-    MAX-ACCESS  read-only
-    STATUS      current
-    DESCRIPTION
-"
-module installation status
-"
-    ::= {EmailSend 3}
-
-dUEmailSend  OBJECT-TYPE
-    SYNTAX      OCTET STRING
-    MAX-ACCESS  read-only
-    STATUS      current
-    DESCRIPTION
-"
-download URL for the module
-"
-    ::= {EmailSend 4}
-
-FileReadBackwards  OBJECT-TYPE
+File-ReadBackwards  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54621,9 +54726,9 @@ FileReadBackwards  OBJECT-TYPE
 "
 ASSP Perl module information for File::ReadBackwards;
 "
-    ::= {asspPerlModuleInfo 21}
+    ::= {asspPerlModuleInfo 22}
 
-iVFileReadBackwards  OBJECT-TYPE
+iVFile-ReadBackwards  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54631,9 +54736,9 @@ iVFileReadBackwards  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {FileReadBackwards 1}
+    ::= {File-ReadBackwards 1}
 
-rVFileReadBackwards  OBJECT-TYPE
+rVFile-ReadBackwards  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54641,9 +54746,9 @@ rVFileReadBackwards  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {FileReadBackwards 2}
+    ::= {File-ReadBackwards 2}
 
-iSFileReadBackwards  OBJECT-TYPE
+iSFile-ReadBackwards  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54651,9 +54756,9 @@ iSFileReadBackwards  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {FileReadBackwards 3}
+    ::= {File-ReadBackwards 3}
 
-dUFileReadBackwards  OBJECT-TYPE
+dUFile-ReadBackwards  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54661,9 +54766,9 @@ dUFileReadBackwards  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {FileReadBackwards 4}
+    ::= {File-ReadBackwards 4}
 
-FileScanClamAV  OBJECT-TYPE
+File-Scan-ClamAV  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54671,9 +54776,9 @@ FileScanClamAV  OBJECT-TYPE
 "
 ASSP Perl module information for File::Scan::ClamAV;
 "
-    ::= {asspPerlModuleInfo 22}
+    ::= {asspPerlModuleInfo 23}
 
-iVFileScanClamAV  OBJECT-TYPE
+iVFile-Scan-ClamAV  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54681,9 +54786,9 @@ iVFileScanClamAV  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {FileScanClamAV 1}
+    ::= {File-Scan-ClamAV 1}
 
-rVFileScanClamAV  OBJECT-TYPE
+rVFile-Scan-ClamAV  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54691,9 +54796,9 @@ rVFileScanClamAV  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {FileScanClamAV 2}
+    ::= {File-Scan-ClamAV 2}
 
-iSFileScanClamAV  OBJECT-TYPE
+iSFile-Scan-ClamAV  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54701,9 +54806,9 @@ iSFileScanClamAV  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {FileScanClamAV 3}
+    ::= {File-Scan-ClamAV 3}
 
-dUFileScanClamAV  OBJECT-TYPE
+dUFile-Scan-ClamAV  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54711,9 +54816,9 @@ dUFileScanClamAV  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {FileScanClamAV 4}
+    ::= {File-Scan-ClamAV 4}
 
-FileType  OBJECT-TYPE
+File-Type  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54721,9 +54826,9 @@ FileType  OBJECT-TYPE
 "
 ASSP Perl module information for File::Type;
 "
-    ::= {asspPerlModuleInfo 23}
+    ::= {asspPerlModuleInfo 24}
 
-iVFileType  OBJECT-TYPE
+iVFile-Type  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54731,9 +54836,9 @@ iVFileType  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {FileType 1}
+    ::= {File-Type 1}
 
-rVFileType  OBJECT-TYPE
+rVFile-Type  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54741,9 +54846,9 @@ rVFileType  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {FileType 2}
+    ::= {File-Type 2}
 
-iSFileType  OBJECT-TYPE
+iSFile-Type  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54751,9 +54856,9 @@ iSFileType  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {FileType 3}
+    ::= {File-Type 3}
 
-dUFileType  OBJECT-TYPE
+dUFile-Type  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54761,9 +54866,9 @@ dUFileType  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {FileType 4}
+    ::= {File-Type 4}
 
-FileWhich  OBJECT-TYPE
+File-Which  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54771,9 +54876,9 @@ FileWhich  OBJECT-TYPE
 "
 ASSP Perl module information for File::Which;
 "
-    ::= {asspPerlModuleInfo 24}
+    ::= {asspPerlModuleInfo 25}
 
-iVFileWhich  OBJECT-TYPE
+iVFile-Which  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54781,9 +54886,9 @@ iVFileWhich  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {FileWhich 1}
+    ::= {File-Which 1}
 
-rVFileWhich  OBJECT-TYPE
+rVFile-Which  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54791,9 +54896,9 @@ rVFileWhich  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {FileWhich 2}
+    ::= {File-Which 2}
 
-iSFileWhich  OBJECT-TYPE
+iSFile-Which  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54801,9 +54906,9 @@ iSFileWhich  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {FileWhich 3}
+    ::= {File-Which 3}
 
-dUFileWhich  OBJECT-TYPE
+dUFile-Which  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54811,9 +54916,9 @@ dUFileWhich  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {FileWhich 4}
+    ::= {File-Which 4}
 
-HTMLStrip  OBJECT-TYPE
+HTML-Strip  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54821,9 +54926,9 @@ HTMLStrip  OBJECT-TYPE
 "
 ASSP Perl module information for HTML::Strip;
 "
-    ::= {asspPerlModuleInfo 25}
+    ::= {asspPerlModuleInfo 26}
 
-iVHTMLStrip  OBJECT-TYPE
+iVHTML-Strip  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54831,9 +54936,9 @@ iVHTMLStrip  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {HTMLStrip 1}
+    ::= {HTML-Strip 1}
 
-rVHTMLStrip  OBJECT-TYPE
+rVHTML-Strip  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54841,9 +54946,9 @@ rVHTMLStrip  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {HTMLStrip 2}
+    ::= {HTML-Strip 2}
 
-iSHTMLStrip  OBJECT-TYPE
+iSHTML-Strip  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54851,9 +54956,9 @@ iSHTMLStrip  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {HTMLStrip 3}
+    ::= {HTML-Strip 3}
 
-dUHTMLStrip  OBJECT-TYPE
+dUHTML-Strip  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54861,9 +54966,9 @@ dUHTMLStrip  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {HTMLStrip 4}
+    ::= {HTML-Strip 4}
 
-IOPoll  OBJECT-TYPE
+IO-Poll  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54871,9 +54976,9 @@ IOPoll  OBJECT-TYPE
 "
 ASSP Perl module information for IO::Poll;
 "
-    ::= {asspPerlModuleInfo 26}
+    ::= {asspPerlModuleInfo 27}
 
-iVIOPoll  OBJECT-TYPE
+iVIO-Poll  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54881,9 +54986,9 @@ iVIOPoll  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {IOPoll 1}
+    ::= {IO-Poll 1}
 
-rVIOPoll  OBJECT-TYPE
+rVIO-Poll  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54891,9 +54996,9 @@ rVIOPoll  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {IOPoll 2}
+    ::= {IO-Poll 2}
 
-iSIOPoll  OBJECT-TYPE
+iSIO-Poll  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54901,9 +55006,9 @@ iSIOPoll  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {IOPoll 3}
+    ::= {IO-Poll 3}
 
-dUIOPoll  OBJECT-TYPE
+dUIO-Poll  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54911,9 +55016,9 @@ dUIOPoll  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {IOPoll 4}
+    ::= {IO-Poll 4}
 
-IOSelect  OBJECT-TYPE
+IO-Select  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54921,9 +55026,9 @@ IOSelect  OBJECT-TYPE
 "
 ASSP Perl module information for IO::Select;
 "
-    ::= {asspPerlModuleInfo 27}
+    ::= {asspPerlModuleInfo 28}
 
-iVIOSelect  OBJECT-TYPE
+iVIO-Select  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54931,9 +55036,9 @@ iVIOSelect  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {IOSelect 1}
+    ::= {IO-Select 1}
 
-rVIOSelect  OBJECT-TYPE
+rVIO-Select  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54941,9 +55046,9 @@ rVIOSelect  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {IOSelect 2}
+    ::= {IO-Select 2}
 
-iSIOSelect  OBJECT-TYPE
+iSIO-Select  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54951,9 +55056,9 @@ iSIOSelect  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {IOSelect 3}
+    ::= {IO-Select 3}
 
-dUIOSelect  OBJECT-TYPE
+dUIO-Select  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54961,9 +55066,9 @@ dUIOSelect  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {IOSelect 4}
+    ::= {IO-Select 4}
 
-IOSocketINET6  OBJECT-TYPE
+IO-Socket-INET6  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54971,9 +55076,9 @@ IOSocketINET6  OBJECT-TYPE
 "
 ASSP Perl module information for IO::Socket::INET6;
 "
-    ::= {asspPerlModuleInfo 28}
+    ::= {asspPerlModuleInfo 29}
 
-iVIOSocketINET6  OBJECT-TYPE
+iVIO-Socket-INET6  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54981,9 +55086,9 @@ iVIOSocketINET6  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {IOSocketINET6 1}
+    ::= {IO-Socket-INET6 1}
 
-rVIOSocketINET6  OBJECT-TYPE
+rVIO-Socket-INET6  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -54991,9 +55096,9 @@ rVIOSocketINET6  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {IOSocketINET6 2}
+    ::= {IO-Socket-INET6 2}
 
-iSIOSocketINET6  OBJECT-TYPE
+iSIO-Socket-INET6  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55001,9 +55106,9 @@ iSIOSocketINET6  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {IOSocketINET6 3}
+    ::= {IO-Socket-INET6 3}
 
-dUIOSocketINET6  OBJECT-TYPE
+dUIO-Socket-INET6  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55011,9 +55116,9 @@ dUIOSocketINET6  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {IOSocketINET6 4}
+    ::= {IO-Socket-INET6 4}
 
-IOSocketSSL  OBJECT-TYPE
+IO-Socket-SSL  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55021,9 +55126,9 @@ IOSocketSSL  OBJECT-TYPE
 "
 ASSP Perl module information for IO::Socket::SSL;
 "
-    ::= {asspPerlModuleInfo 29}
+    ::= {asspPerlModuleInfo 30}
 
-iVIOSocketSSL  OBJECT-TYPE
+iVIO-Socket-SSL  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55031,9 +55136,9 @@ iVIOSocketSSL  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {IOSocketSSL 1}
+    ::= {IO-Socket-SSL 1}
 
-rVIOSocketSSL  OBJECT-TYPE
+rVIO-Socket-SSL  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55041,9 +55146,9 @@ rVIOSocketSSL  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {IOSocketSSL 2}
+    ::= {IO-Socket-SSL 2}
 
-iSIOSocketSSL  OBJECT-TYPE
+iSIO-Socket-SSL  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55051,9 +55156,9 @@ iSIOSocketSSL  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {IOSocketSSL 3}
+    ::= {IO-Socket-SSL 3}
 
-dUIOSocketSSL  OBJECT-TYPE
+dUIO-Socket-SSL  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55061,9 +55166,9 @@ dUIOSocketSSL  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {IOSocketSSL 4}
+    ::= {IO-Socket-SSL 4}
 
-ImageOCRTesseract  OBJECT-TYPE
+Image-OCR-Tesseract  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55071,9 +55176,9 @@ ImageOCRTesseract  OBJECT-TYPE
 "
 ASSP Perl module information for Image::OCR::Tesseract;
 "
-    ::= {asspPerlModuleInfo 30}
+    ::= {asspPerlModuleInfo 31}
 
-iVImageOCRTesseract  OBJECT-TYPE
+iVImage-OCR-Tesseract  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55081,9 +55186,9 @@ iVImageOCRTesseract  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {ImageOCRTesseract 1}
+    ::= {Image-OCR-Tesseract 1}
 
-rVImageOCRTesseract  OBJECT-TYPE
+rVImage-OCR-Tesseract  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55091,9 +55196,9 @@ rVImageOCRTesseract  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {ImageOCRTesseract 2}
+    ::= {Image-OCR-Tesseract 2}
 
-iSImageOCRTesseract  OBJECT-TYPE
+iSImage-OCR-Tesseract  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55101,9 +55206,9 @@ iSImageOCRTesseract  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {ImageOCRTesseract 3}
+    ::= {Image-OCR-Tesseract 3}
 
-dUImageOCRTesseract  OBJECT-TYPE
+dUImage-OCR-Tesseract  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55111,9 +55216,9 @@ dUImageOCRTesseract  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {ImageOCRTesseract 4}
+    ::= {Image-OCR-Tesseract 4}
 
-LWPSimple  OBJECT-TYPE
+LWP-Simple  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55121,9 +55226,9 @@ LWPSimple  OBJECT-TYPE
 "
 ASSP Perl module information for LWP::Simple;
 "
-    ::= {asspPerlModuleInfo 31}
+    ::= {asspPerlModuleInfo 32}
 
-iVLWPSimple  OBJECT-TYPE
+iVLWP-Simple  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55131,9 +55236,9 @@ iVLWPSimple  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {LWPSimple 1}
+    ::= {LWP-Simple 1}
 
-rVLWPSimple  OBJECT-TYPE
+rVLWP-Simple  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55141,9 +55246,9 @@ rVLWPSimple  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {LWPSimple 2}
+    ::= {LWP-Simple 2}
 
-iSLWPSimple  OBJECT-TYPE
+iSLWP-Simple  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55151,9 +55256,9 @@ iSLWPSimple  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {LWPSimple 3}
+    ::= {LWP-Simple 3}
 
-dULWPSimple  OBJECT-TYPE
+dULWP-Simple  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55161,9 +55266,9 @@ dULWPSimple  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {LWPSimple 4}
+    ::= {LWP-Simple 4}
 
-MIMETypes  OBJECT-TYPE
+MIME-Types  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55171,9 +55276,9 @@ MIMETypes  OBJECT-TYPE
 "
 ASSP Perl module information for MIME::Types;
 "
-    ::= {asspPerlModuleInfo 32}
+    ::= {asspPerlModuleInfo 33}
 
-iVMIMETypes  OBJECT-TYPE
+iVMIME-Types  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55181,9 +55286,9 @@ iVMIMETypes  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {MIMETypes 1}
+    ::= {MIME-Types 1}
 
-rVMIMETypes  OBJECT-TYPE
+rVMIME-Types  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55191,9 +55296,9 @@ rVMIMETypes  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {MIMETypes 2}
+    ::= {MIME-Types 2}
 
-iSMIMETypes  OBJECT-TYPE
+iSMIME-Types  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55201,9 +55306,9 @@ iSMIMETypes  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {MIMETypes 3}
+    ::= {MIME-Types 3}
 
-dUMIMETypes  OBJECT-TYPE
+dUMIME-Types  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55211,9 +55316,9 @@ dUMIMETypes  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {MIMETypes 4}
+    ::= {MIME-Types 4}
 
-MailDKIMVerifier  OBJECT-TYPE
+Mail-DKIM-Verifier  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55221,9 +55326,9 @@ MailDKIMVerifier  OBJECT-TYPE
 "
 ASSP Perl module information for Mail::DKIM::Verifier;
 "
-    ::= {asspPerlModuleInfo 33}
+    ::= {asspPerlModuleInfo 34}
 
-iVMailDKIMVerifier  OBJECT-TYPE
+iVMail-DKIM-Verifier  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55231,9 +55336,9 @@ iVMailDKIMVerifier  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {MailDKIMVerifier 1}
+    ::= {Mail-DKIM-Verifier 1}
 
-rVMailDKIMVerifier  OBJECT-TYPE
+rVMail-DKIM-Verifier  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55241,9 +55346,9 @@ rVMailDKIMVerifier  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {MailDKIMVerifier 2}
+    ::= {Mail-DKIM-Verifier 2}
 
-iSMailDKIMVerifier  OBJECT-TYPE
+iSMail-DKIM-Verifier  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55251,9 +55356,9 @@ iSMailDKIMVerifier  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {MailDKIMVerifier 3}
+    ::= {Mail-DKIM-Verifier 3}
 
-dUMailDKIMVerifier  OBJECT-TYPE
+dUMail-DKIM-Verifier  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55261,9 +55366,9 @@ dUMailDKIMVerifier  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {MailDKIMVerifier 4}
+    ::= {Mail-DKIM-Verifier 4}
 
-MailSPF  OBJECT-TYPE
+Mail-SPF  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55271,9 +55376,9 @@ MailSPF  OBJECT-TYPE
 "
 ASSP Perl module information for Mail::SPF;
 "
-    ::= {asspPerlModuleInfo 34}
+    ::= {asspPerlModuleInfo 35}
 
-iVMailSPF  OBJECT-TYPE
+iVMail-SPF  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55281,9 +55386,9 @@ iVMailSPF  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {MailSPF 1}
+    ::= {Mail-SPF 1}
 
-rVMailSPF  OBJECT-TYPE
+rVMail-SPF  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55291,9 +55396,9 @@ rVMailSPF  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {MailSPF 2}
+    ::= {Mail-SPF 2}
 
-iSMailSPF  OBJECT-TYPE
+iSMail-SPF  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55301,9 +55406,9 @@ iSMailSPF  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {MailSPF 3}
+    ::= {Mail-SPF 3}
 
-dUMailSPF  OBJECT-TYPE
+dUMail-SPF  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55311,9 +55416,9 @@ dUMailSPF  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {MailSPF 4}
+    ::= {Mail-SPF 4}
 
-MailSPFQuery  OBJECT-TYPE
+Mail-SPF-Query  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55321,9 +55426,9 @@ MailSPFQuery  OBJECT-TYPE
 "
 ASSP Perl module information for Mail::SPF::Query;
 "
-    ::= {asspPerlModuleInfo 35}
+    ::= {asspPerlModuleInfo 36}
 
-iVMailSPFQuery  OBJECT-TYPE
+iVMail-SPF-Query  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55331,9 +55436,9 @@ iVMailSPFQuery  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {MailSPFQuery 1}
+    ::= {Mail-SPF-Query 1}
 
-rVMailSPFQuery  OBJECT-TYPE
+rVMail-SPF-Query  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55341,9 +55446,9 @@ rVMailSPFQuery  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {MailSPFQuery 2}
+    ::= {Mail-SPF-Query 2}
 
-iSMailSPFQuery  OBJECT-TYPE
+iSMail-SPF-Query  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55351,9 +55456,9 @@ iSMailSPFQuery  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {MailSPFQuery 3}
+    ::= {Mail-SPF-Query 3}
 
-dUMailSPFQuery  OBJECT-TYPE
+dUMail-SPF-Query  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55361,9 +55466,9 @@ dUMailSPFQuery  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {MailSPFQuery 4}
+    ::= {Mail-SPF-Query 4}
 
-MailSRS  OBJECT-TYPE
+Mail-SRS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55371,9 +55476,9 @@ MailSRS  OBJECT-TYPE
 "
 ASSP Perl module information for Mail::SRS;
 "
-    ::= {asspPerlModuleInfo 36}
+    ::= {asspPerlModuleInfo 37}
 
-iVMailSRS  OBJECT-TYPE
+iVMail-SRS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55381,9 +55486,9 @@ iVMailSRS  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {MailSRS 1}
+    ::= {Mail-SRS 1}
 
-rVMailSRS  OBJECT-TYPE
+rVMail-SRS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55391,9 +55496,9 @@ rVMailSRS  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {MailSRS 2}
+    ::= {Mail-SRS 2}
 
-iSMailSRS  OBJECT-TYPE
+iSMail-SRS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55401,9 +55506,9 @@ iSMailSRS  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {MailSRS 3}
+    ::= {Mail-SRS 3}
 
-dUMailSRS  OBJECT-TYPE
+dUMail-SRS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55411,9 +55516,9 @@ dUMailSRS  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {MailSRS 4}
+    ::= {Mail-SRS 4}
 
-NetCIDRLite  OBJECT-TYPE
+Net-CIDR-Lite  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55421,9 +55526,9 @@ NetCIDRLite  OBJECT-TYPE
 "
 ASSP Perl module information for Net::CIDR::Lite;
 "
-    ::= {asspPerlModuleInfo 37}
+    ::= {asspPerlModuleInfo 38}
 
-iVNetCIDRLite  OBJECT-TYPE
+iVNet-CIDR-Lite  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55431,9 +55536,9 @@ iVNetCIDRLite  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {NetCIDRLite 1}
+    ::= {Net-CIDR-Lite 1}
 
-rVNetCIDRLite  OBJECT-TYPE
+rVNet-CIDR-Lite  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55441,9 +55546,9 @@ rVNetCIDRLite  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {NetCIDRLite 2}
+    ::= {Net-CIDR-Lite 2}
 
-iSNetCIDRLite  OBJECT-TYPE
+iSNet-CIDR-Lite  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55451,9 +55556,9 @@ iSNetCIDRLite  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {NetCIDRLite 3}
+    ::= {Net-CIDR-Lite 3}
 
-dUNetCIDRLite  OBJECT-TYPE
+dUNet-CIDR-Lite  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55461,9 +55566,9 @@ dUNetCIDRLite  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {NetCIDRLite 4}
+    ::= {Net-CIDR-Lite 4}
 
-NetDNS  OBJECT-TYPE
+Net-DNS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55471,9 +55576,9 @@ NetDNS  OBJECT-TYPE
 "
 ASSP Perl module information for Net::DNS;
 "
-    ::= {asspPerlModuleInfo 38}
+    ::= {asspPerlModuleInfo 39}
 
-iVNetDNS  OBJECT-TYPE
+iVNet-DNS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55481,9 +55586,9 @@ iVNetDNS  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {NetDNS 1}
+    ::= {Net-DNS 1}
 
-rVNetDNS  OBJECT-TYPE
+rVNet-DNS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55491,9 +55596,9 @@ rVNetDNS  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {NetDNS 2}
+    ::= {Net-DNS 2}
 
-iSNetDNS  OBJECT-TYPE
+iSNet-DNS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55501,9 +55606,9 @@ iSNetDNS  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {NetDNS 3}
+    ::= {Net-DNS 3}
 
-dUNetDNS  OBJECT-TYPE
+dUNet-DNS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55511,9 +55616,9 @@ dUNetDNS  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {NetDNS 4}
+    ::= {Net-DNS 4}
 
-NetIP  OBJECT-TYPE
+Net-IP  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55521,9 +55626,9 @@ NetIP  OBJECT-TYPE
 "
 ASSP Perl module information for Net::IP;
 "
-    ::= {asspPerlModuleInfo 39}
+    ::= {asspPerlModuleInfo 40}
 
-iVNetIP  OBJECT-TYPE
+iVNet-IP  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55531,9 +55636,9 @@ iVNetIP  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {NetIP 1}
+    ::= {Net-IP 1}
 
-rVNetIP  OBJECT-TYPE
+rVNet-IP  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55541,9 +55646,9 @@ rVNetIP  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {NetIP 2}
+    ::= {Net-IP 2}
 
-iSNetIP  OBJECT-TYPE
+iSNet-IP  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55551,9 +55656,9 @@ iSNetIP  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {NetIP 3}
+    ::= {Net-IP 3}
 
-dUNetIP  OBJECT-TYPE
+dUNet-IP  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55561,9 +55666,9 @@ dUNetIP  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {NetIP 4}
+    ::= {Net-IP 4}
 
-NetLDAP  OBJECT-TYPE
+Net-LDAP  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55571,9 +55676,9 @@ NetLDAP  OBJECT-TYPE
 "
 ASSP Perl module information for Net::LDAP;
 "
-    ::= {asspPerlModuleInfo 40}
+    ::= {asspPerlModuleInfo 41}
 
-iVNetLDAP  OBJECT-TYPE
+iVNet-LDAP  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55581,9 +55686,9 @@ iVNetLDAP  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {NetLDAP 1}
+    ::= {Net-LDAP 1}
 
-rVNetLDAP  OBJECT-TYPE
+rVNet-LDAP  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55591,9 +55696,9 @@ rVNetLDAP  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {NetLDAP 2}
+    ::= {Net-LDAP 2}
 
-iSNetLDAP  OBJECT-TYPE
+iSNet-LDAP  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55601,9 +55706,9 @@ iSNetLDAP  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {NetLDAP 3}
+    ::= {Net-LDAP 3}
 
-dUNetLDAP  OBJECT-TYPE
+dUNet-LDAP  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55611,9 +55716,9 @@ dUNetLDAP  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {NetLDAP 4}
+    ::= {Net-LDAP 4}
 
-NetSMTP  OBJECT-TYPE
+Net-SMTP  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55621,9 +55726,9 @@ NetSMTP  OBJECT-TYPE
 "
 ASSP Perl module information for Net::SMTP;
 "
-    ::= {asspPerlModuleInfo 41}
+    ::= {asspPerlModuleInfo 42}
 
-iVNetSMTP  OBJECT-TYPE
+iVNet-SMTP  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55631,9 +55736,9 @@ iVNetSMTP  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {NetSMTP 1}
+    ::= {Net-SMTP 1}
 
-rVNetSMTP  OBJECT-TYPE
+rVNet-SMTP  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55641,9 +55746,9 @@ rVNetSMTP  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {NetSMTP 2}
+    ::= {Net-SMTP 2}
 
-iSNetSMTP  OBJECT-TYPE
+iSNet-SMTP  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55651,9 +55756,9 @@ iSNetSMTP  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {NetSMTP 3}
+    ::= {Net-SMTP 3}
 
-dUNetSMTP  OBJECT-TYPE
+dUNet-SMTP  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55661,9 +55766,9 @@ dUNetSMTP  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {NetSMTP 4}
+    ::= {Net-SMTP 4}
 
-NetSMTPSSL  OBJECT-TYPE
+Net-SMTP-SSL  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55671,9 +55776,9 @@ NetSMTPSSL  OBJECT-TYPE
 "
 ASSP Perl module information for Net::SMTP::SSL;
 "
-    ::= {asspPerlModuleInfo 42}
+    ::= {asspPerlModuleInfo 43}
 
-iVNetSMTPSSL  OBJECT-TYPE
+iVNet-SMTP-SSL  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55681,9 +55786,9 @@ iVNetSMTPSSL  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {NetSMTPSSL 1}
+    ::= {Net-SMTP-SSL 1}
 
-rVNetSMTPSSL  OBJECT-TYPE
+rVNet-SMTP-SSL  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55691,9 +55796,9 @@ rVNetSMTPSSL  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {NetSMTPSSL 2}
+    ::= {Net-SMTP-SSL 2}
 
-iSNetSMTPSSL  OBJECT-TYPE
+iSNet-SMTP-SSL  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55701,9 +55806,9 @@ iSNetSMTPSSL  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {NetSMTPSSL 3}
+    ::= {Net-SMTP-SSL 3}
 
-dUNetSMTPSSL  OBJECT-TYPE
+dUNet-SMTP-SSL  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55711,9 +55816,9 @@ dUNetSMTPSSL  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {NetSMTPSSL 4}
+    ::= {Net-SMTP-SSL 4}
 
-NetSSLeay  OBJECT-TYPE
+Net-SSLeay  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55721,9 +55826,9 @@ NetSSLeay  OBJECT-TYPE
 "
 ASSP Perl module information for Net::SSLeay;
 "
-    ::= {asspPerlModuleInfo 43}
+    ::= {asspPerlModuleInfo 44}
 
-iVNetSSLeay  OBJECT-TYPE
+iVNet-SSLeay  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55731,9 +55836,9 @@ iVNetSSLeay  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {NetSSLeay 1}
+    ::= {Net-SSLeay 1}
 
-rVNetSSLeay  OBJECT-TYPE
+rVNet-SSLeay  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55741,9 +55846,9 @@ rVNetSSLeay  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {NetSSLeay 2}
+    ::= {Net-SSLeay 2}
 
-iSNetSSLeay  OBJECT-TYPE
+iSNet-SSLeay  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55751,9 +55856,9 @@ iSNetSSLeay  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {NetSSLeay 3}
+    ::= {Net-SSLeay 3}
 
-dUNetSSLeay  OBJECT-TYPE
+dUNet-SSLeay  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55761,9 +55866,9 @@ dUNetSSLeay  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {NetSSLeay 4}
+    ::= {Net-SSLeay 4}
 
-NetAddrIPLite  OBJECT-TYPE
+NetAddr-IP-Lite  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55771,9 +55876,9 @@ NetAddrIPLite  OBJECT-TYPE
 "
 ASSP Perl module information for NetAddr::IP::Lite;
 "
-    ::= {asspPerlModuleInfo 44}
+    ::= {asspPerlModuleInfo 45}
 
-iVNetAddrIPLite  OBJECT-TYPE
+iVNetAddr-IP-Lite  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55781,9 +55886,9 @@ iVNetAddrIPLite  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {NetAddrIPLite 1}
+    ::= {NetAddr-IP-Lite 1}
 
-rVNetAddrIPLite  OBJECT-TYPE
+rVNetAddr-IP-Lite  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55791,9 +55896,9 @@ rVNetAddrIPLite  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {NetAddrIPLite 2}
+    ::= {NetAddr-IP-Lite 2}
 
-iSNetAddrIPLite  OBJECT-TYPE
+iSNetAddr-IP-Lite  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55801,9 +55906,9 @@ iSNetAddrIPLite  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {NetAddrIPLite 3}
+    ::= {NetAddr-IP-Lite 3}
 
-dUNetAddrIPLite  OBJECT-TYPE
+dUNetAddr-IP-Lite  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55811,9 +55916,9 @@ dUNetAddrIPLite  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {NetAddrIPLite 4}
+    ::= {NetAddr-IP-Lite 4}
 
-NetSNMPagent  OBJECT-TYPE
+NetSNMP-agent  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55821,9 +55926,9 @@ NetSNMPagent  OBJECT-TYPE
 "
 ASSP Perl module information for NetSNMP::agent;
 "
-    ::= {asspPerlModuleInfo 45}
+    ::= {asspPerlModuleInfo 46}
 
-iVNetSNMPagent  OBJECT-TYPE
+iVNetSNMP-agent  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55831,9 +55936,9 @@ iVNetSNMPagent  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {NetSNMPagent 1}
+    ::= {NetSNMP-agent 1}
 
-rVNetSNMPagent  OBJECT-TYPE
+rVNetSNMP-agent  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55841,9 +55946,9 @@ rVNetSNMPagent  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {NetSNMPagent 2}
+    ::= {NetSNMP-agent 2}
 
-iSNetSNMPagent  OBJECT-TYPE
+iSNetSNMP-agent  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55851,9 +55956,9 @@ iSNetSNMPagent  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {NetSNMPagent 3}
+    ::= {NetSNMP-agent 3}
 
-dUNetSNMPagent  OBJECT-TYPE
+dUNetSNMP-agent  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55861,9 +55966,9 @@ dUNetSNMPagent  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {NetSNMPagent 4}
+    ::= {NetSNMP-agent 4}
 
-OLEStorageLite  OBJECT-TYPE
+OLE-StorageLite  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55871,9 +55976,9 @@ OLEStorageLite  OBJECT-TYPE
 "
 ASSP Perl module information for OLE::Storage_Lite;
 "
-    ::= {asspPerlModuleInfo 46}
+    ::= {asspPerlModuleInfo 47}
 
-iVOLEStorageLite  OBJECT-TYPE
+iVOLE-StorageLite  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55881,9 +55986,9 @@ iVOLEStorageLite  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {OLEStorageLite 1}
+    ::= {OLE-StorageLite 1}
 
-rVOLEStorageLite  OBJECT-TYPE
+rVOLE-StorageLite  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55891,9 +55996,9 @@ rVOLEStorageLite  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {OLEStorageLite 2}
+    ::= {OLE-StorageLite 2}
 
-iSOLEStorageLite  OBJECT-TYPE
+iSOLE-StorageLite  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55901,9 +56006,9 @@ iSOLEStorageLite  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {OLEStorageLite 3}
+    ::= {OLE-StorageLite 3}
 
-dUOLEStorageLite  OBJECT-TYPE
+dUOLE-StorageLite  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -55911,7 +56016,7 @@ dUOLEStorageLite  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {OLEStorageLite 4}
+    ::= {OLE-StorageLite 4}
 
 OpenSSL111b  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55921,7 +56026,7 @@ OpenSSL111b  OBJECT-TYPE
 "
 ASSP Perl module information for OpenSSL 1.1.1b;
 "
-    ::= {asspPerlModuleInfo 47}
+    ::= {asspPerlModuleInfo 48}
 
 iVOpenSSL111b  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -55971,7 +56076,7 @@ OpenSSLlib111b26Feb2019  OBJECT-TYPE
 "
 ASSP Perl module information for OpenSSL-lib 1.1.1b  26 Feb 2019;
 "
-    ::= {asspPerlModuleInfo 48}
+    ::= {asspPerlModuleInfo 49}
 
 iVOpenSSLlib111b26Feb2019  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -56013,7 +56118,7 @@ download URL for the module
 "
     ::= {OpenSSLlib111b26Feb2019 4}
 
-PDFOCR2  OBJECT-TYPE
+PDF-OCR2  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56021,9 +56126,9 @@ PDFOCR2  OBJECT-TYPE
 "
 ASSP Perl module information for PDF::OCR2;
 "
-    ::= {asspPerlModuleInfo 49}
+    ::= {asspPerlModuleInfo 50}
 
-iVPDFOCR2  OBJECT-TYPE
+iVPDF-OCR2  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56031,9 +56136,9 @@ iVPDFOCR2  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {PDFOCR2 1}
+    ::= {PDF-OCR2 1}
 
-rVPDFOCR2  OBJECT-TYPE
+rVPDF-OCR2  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56041,9 +56146,9 @@ rVPDFOCR2  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {PDFOCR2 2}
+    ::= {PDF-OCR2 2}
 
-iSPDFOCR2  OBJECT-TYPE
+iSPDF-OCR2  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56051,9 +56156,9 @@ iSPDFOCR2  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {PDFOCR2 3}
+    ::= {PDF-OCR2 3}
 
-dUPDFOCR2  OBJECT-TYPE
+dUPDF-OCR2  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56061,9 +56166,9 @@ dUPDFOCR2  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {PDFOCR2 4}
+    ::= {PDF-OCR2 4}
 
-PerlIOscalar  OBJECT-TYPE
+PerlIO-scalar  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56071,9 +56176,9 @@ PerlIOscalar  OBJECT-TYPE
 "
 ASSP Perl module information for PerlIO::scalar;
 "
-    ::= {asspPerlModuleInfo 50}
+    ::= {asspPerlModuleInfo 51}
 
-iVPerlIOscalar  OBJECT-TYPE
+iVPerlIO-scalar  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56081,9 +56186,9 @@ iVPerlIOscalar  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {PerlIOscalar 1}
+    ::= {PerlIO-scalar 1}
 
-rVPerlIOscalar  OBJECT-TYPE
+rVPerlIO-scalar  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56091,9 +56196,9 @@ rVPerlIOscalar  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {PerlIOscalar 2}
+    ::= {PerlIO-scalar 2}
 
-iSPerlIOscalar  OBJECT-TYPE
+iSPerlIO-scalar  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56101,9 +56206,9 @@ iSPerlIOscalar  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {PerlIOscalar 3}
+    ::= {PerlIO-scalar 3}
 
-dUPerlIOscalar  OBJECT-TYPE
+dUPerlIO-scalar  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56111,9 +56216,9 @@ dUPerlIOscalar  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {PerlIOscalar 4}
+    ::= {PerlIO-scalar 4}
 
-PluginsASSPAFC  OBJECT-TYPE
+Plugins-ASSPAFC  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56121,9 +56226,9 @@ PluginsASSPAFC  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_AFC;
 "
-    ::= {asspPerlModuleInfo 51}
+    ::= {asspPerlModuleInfo 52}
 
-iVPluginsASSPAFC  OBJECT-TYPE
+iVPlugins-ASSPAFC  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56131,9 +56236,9 @@ iVPluginsASSPAFC  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {PluginsASSPAFC 1}
+    ::= {Plugins-ASSPAFC 1}
 
-rVPluginsASSPAFC  OBJECT-TYPE
+rVPlugins-ASSPAFC  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56141,9 +56246,9 @@ rVPluginsASSPAFC  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {PluginsASSPAFC 2}
+    ::= {Plugins-ASSPAFC 2}
 
-iSPluginsASSPAFC  OBJECT-TYPE
+iSPlugins-ASSPAFC  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56151,9 +56256,9 @@ iSPluginsASSPAFC  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {PluginsASSPAFC 3}
+    ::= {Plugins-ASSPAFC 3}
 
-dUPluginsASSPAFC  OBJECT-TYPE
+dUPlugins-ASSPAFC  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56161,9 +56266,9 @@ dUPluginsASSPAFC  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {PluginsASSPAFC 4}
+    ::= {Plugins-ASSPAFC 4}
 
-PluginsASSPARC  OBJECT-TYPE
+Plugins-ASSPARC  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56171,9 +56276,9 @@ PluginsASSPARC  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_ARC;
 "
-    ::= {asspPerlModuleInfo 52}
+    ::= {asspPerlModuleInfo 53}
 
-iVPluginsASSPARC  OBJECT-TYPE
+iVPlugins-ASSPARC  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56181,9 +56286,9 @@ iVPluginsASSPARC  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {PluginsASSPARC 1}
+    ::= {Plugins-ASSPARC 1}
 
-rVPluginsASSPARC  OBJECT-TYPE
+rVPlugins-ASSPARC  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56191,9 +56296,9 @@ rVPluginsASSPARC  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {PluginsASSPARC 2}
+    ::= {Plugins-ASSPARC 2}
 
-iSPluginsASSPARC  OBJECT-TYPE
+iSPlugins-ASSPARC  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56201,9 +56306,9 @@ iSPluginsASSPARC  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {PluginsASSPARC 3}
+    ::= {Plugins-ASSPARC 3}
 
-dUPluginsASSPARC  OBJECT-TYPE
+dUPlugins-ASSPARC  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56211,9 +56316,9 @@ dUPluginsASSPARC  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {PluginsASSPARC 4}
+    ::= {Plugins-ASSPARC 4}
 
-PluginsASSPDCC  OBJECT-TYPE
+Plugins-ASSPDCC  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56221,9 +56326,9 @@ PluginsASSPDCC  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_DCC;
 "
-    ::= {asspPerlModuleInfo 53}
+    ::= {asspPerlModuleInfo 54}
 
-iVPluginsASSPDCC  OBJECT-TYPE
+iVPlugins-ASSPDCC  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56231,9 +56336,9 @@ iVPluginsASSPDCC  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {PluginsASSPDCC 1}
+    ::= {Plugins-ASSPDCC 1}
 
-rVPluginsASSPDCC  OBJECT-TYPE
+rVPlugins-ASSPDCC  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56241,9 +56346,9 @@ rVPluginsASSPDCC  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {PluginsASSPDCC 2}
+    ::= {Plugins-ASSPDCC 2}
 
-iSPluginsASSPDCC  OBJECT-TYPE
+iSPlugins-ASSPDCC  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56251,9 +56356,9 @@ iSPluginsASSPDCC  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {PluginsASSPDCC 3}
+    ::= {Plugins-ASSPDCC 3}
 
-dUPluginsASSPDCC  OBJECT-TYPE
+dUPlugins-ASSPDCC  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56261,9 +56366,9 @@ dUPluginsASSPDCC  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {PluginsASSPDCC 4}
+    ::= {Plugins-ASSPDCC 4}
 
-PluginsASSPFakeMX  OBJECT-TYPE
+Plugins-ASSPFakeMX  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56271,9 +56376,9 @@ PluginsASSPFakeMX  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_FakeMX;
 "
-    ::= {asspPerlModuleInfo 54}
+    ::= {asspPerlModuleInfo 55}
 
-iVPluginsASSPFakeMX  OBJECT-TYPE
+iVPlugins-ASSPFakeMX  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56281,9 +56386,9 @@ iVPluginsASSPFakeMX  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {PluginsASSPFakeMX 1}
+    ::= {Plugins-ASSPFakeMX 1}
 
-rVPluginsASSPFakeMX  OBJECT-TYPE
+rVPlugins-ASSPFakeMX  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56291,9 +56396,9 @@ rVPluginsASSPFakeMX  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {PluginsASSPFakeMX 2}
+    ::= {Plugins-ASSPFakeMX 2}
 
-iSPluginsASSPFakeMX  OBJECT-TYPE
+iSPlugins-ASSPFakeMX  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56301,9 +56406,9 @@ iSPluginsASSPFakeMX  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {PluginsASSPFakeMX 3}
+    ::= {Plugins-ASSPFakeMX 3}
 
-dUPluginsASSPFakeMX  OBJECT-TYPE
+dUPlugins-ASSPFakeMX  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56311,9 +56416,9 @@ dUPluginsASSPFakeMX  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {PluginsASSPFakeMX 4}
+    ::= {Plugins-ASSPFakeMX 4}
 
-PluginsASSPOCR  OBJECT-TYPE
+Plugins-ASSPOCR  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56321,9 +56426,9 @@ PluginsASSPOCR  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_OCR;
 "
-    ::= {asspPerlModuleInfo 55}
+    ::= {asspPerlModuleInfo 56}
 
-iVPluginsASSPOCR  OBJECT-TYPE
+iVPlugins-ASSPOCR  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56331,9 +56436,9 @@ iVPluginsASSPOCR  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {PluginsASSPOCR 1}
+    ::= {Plugins-ASSPOCR 1}
 
-rVPluginsASSPOCR  OBJECT-TYPE
+rVPlugins-ASSPOCR  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56341,9 +56446,9 @@ rVPluginsASSPOCR  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {PluginsASSPOCR 2}
+    ::= {Plugins-ASSPOCR 2}
 
-iSPluginsASSPOCR  OBJECT-TYPE
+iSPlugins-ASSPOCR  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56351,9 +56456,9 @@ iSPluginsASSPOCR  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {PluginsASSPOCR 3}
+    ::= {Plugins-ASSPOCR 3}
 
-dUPluginsASSPOCR  OBJECT-TYPE
+dUPlugins-ASSPOCR  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56361,9 +56466,9 @@ dUPluginsASSPOCR  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {PluginsASSPOCR 4}
+    ::= {Plugins-ASSPOCR 4}
 
-PluginsASSPRSS  OBJECT-TYPE
+Plugins-ASSPRSS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56371,9 +56476,9 @@ PluginsASSPRSS  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_RSS;
 "
-    ::= {asspPerlModuleInfo 56}
+    ::= {asspPerlModuleInfo 57}
 
-iVPluginsASSPRSS  OBJECT-TYPE
+iVPlugins-ASSPRSS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56381,9 +56486,9 @@ iVPluginsASSPRSS  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {PluginsASSPRSS 1}
+    ::= {Plugins-ASSPRSS 1}
 
-rVPluginsASSPRSS  OBJECT-TYPE
+rVPlugins-ASSPRSS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56391,9 +56496,9 @@ rVPluginsASSPRSS  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {PluginsASSPRSS 2}
+    ::= {Plugins-ASSPRSS 2}
 
-iSPluginsASSPRSS  OBJECT-TYPE
+iSPlugins-ASSPRSS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56401,9 +56506,9 @@ iSPluginsASSPRSS  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {PluginsASSPRSS 3}
+    ::= {Plugins-ASSPRSS 3}
 
-dUPluginsASSPRSS  OBJECT-TYPE
+dUPlugins-ASSPRSS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56411,9 +56516,9 @@ dUPluginsASSPRSS  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {PluginsASSPRSS 4}
+    ::= {Plugins-ASSPRSS 4}
 
-PluginsASSPRazor  OBJECT-TYPE
+Plugins-ASSPRazor  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56421,9 +56526,9 @@ PluginsASSPRazor  OBJECT-TYPE
 "
 ASSP Perl module information for Plugins::ASSP_Razor;
 "
-    ::= {asspPerlModuleInfo 57}
+    ::= {asspPerlModuleInfo 58}
 
-iVPluginsASSPRazor  OBJECT-TYPE
+iVPlugins-ASSPRazor  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56431,9 +56536,9 @@ iVPluginsASSPRazor  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {PluginsASSPRazor 1}
+    ::= {Plugins-ASSPRazor 1}
 
-rVPluginsASSPRazor  OBJECT-TYPE
+rVPlugins-ASSPRazor  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56441,9 +56546,9 @@ rVPluginsASSPRazor  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {PluginsASSPRazor 2}
+    ::= {Plugins-ASSPRazor 2}
 
-iSPluginsASSPRazor  OBJECT-TYPE
+iSPlugins-ASSPRazor  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56451,9 +56556,9 @@ iSPluginsASSPRazor  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {PluginsASSPRazor 3}
+    ::= {Plugins-ASSPRazor 3}
 
-dUPluginsASSPRazor  OBJECT-TYPE
+dUPlugins-ASSPRazor  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56461,9 +56566,9 @@ dUPluginsASSPRazor  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {PluginsASSPRazor 4}
+    ::= {Plugins-ASSPRazor 4}
 
-RegexpOptimizer  OBJECT-TYPE
+Regexp-Optimizer  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56471,9 +56576,9 @@ RegexpOptimizer  OBJECT-TYPE
 "
 ASSP Perl module information for Regexp::Optimizer;
 "
-    ::= {asspPerlModuleInfo 58}
+    ::= {asspPerlModuleInfo 59}
 
-iVRegexpOptimizer  OBJECT-TYPE
+iVRegexp-Optimizer  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56481,9 +56586,9 @@ iVRegexpOptimizer  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {RegexpOptimizer 1}
+    ::= {Regexp-Optimizer 1}
 
-rVRegexpOptimizer  OBJECT-TYPE
+rVRegexp-Optimizer  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56491,9 +56596,9 @@ rVRegexpOptimizer  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {RegexpOptimizer 2}
+    ::= {Regexp-Optimizer 2}
 
-iSRegexpOptimizer  OBJECT-TYPE
+iSRegexp-Optimizer  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56501,9 +56606,9 @@ iSRegexpOptimizer  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {RegexpOptimizer 3}
+    ::= {Regexp-Optimizer 3}
 
-dURegexpOptimizer  OBJECT-TYPE
+dURegexp-Optimizer  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56511,9 +56616,9 @@ dURegexpOptimizer  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {RegexpOptimizer 4}
+    ::= {Regexp-Optimizer 4}
 
-ScheduleCron  OBJECT-TYPE
+Schedule-Cron  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56521,9 +56626,9 @@ ScheduleCron  OBJECT-TYPE
 "
 ASSP Perl module information for Schedule::Cron;
 "
-    ::= {asspPerlModuleInfo 59}
+    ::= {asspPerlModuleInfo 60}
 
-iVScheduleCron  OBJECT-TYPE
+iVSchedule-Cron  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56531,9 +56636,9 @@ iVScheduleCron  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {ScheduleCron 1}
+    ::= {Schedule-Cron 1}
 
-rVScheduleCron  OBJECT-TYPE
+rVSchedule-Cron  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56541,9 +56646,9 @@ rVScheduleCron  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {ScheduleCron 2}
+    ::= {Schedule-Cron 2}
 
-iSScheduleCron  OBJECT-TYPE
+iSSchedule-Cron  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56551,9 +56656,9 @@ iSScheduleCron  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {ScheduleCron 3}
+    ::= {Schedule-Cron 3}
 
-dUScheduleCron  OBJECT-TYPE
+dUSchedule-Cron  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56561,9 +56666,9 @@ dUScheduleCron  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {ScheduleCron 4}
+    ::= {Schedule-Cron 4}
 
-SysCpuAffinity  OBJECT-TYPE
+Sys-CpuAffinity  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56571,9 +56676,9 @@ SysCpuAffinity  OBJECT-TYPE
 "
 ASSP Perl module information for Sys::CpuAffinity;
 "
-    ::= {asspPerlModuleInfo 60}
+    ::= {asspPerlModuleInfo 61}
 
-iVSysCpuAffinity  OBJECT-TYPE
+iVSys-CpuAffinity  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56581,9 +56686,9 @@ iVSysCpuAffinity  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {SysCpuAffinity 1}
+    ::= {Sys-CpuAffinity 1}
 
-rVSysCpuAffinity  OBJECT-TYPE
+rVSys-CpuAffinity  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56591,9 +56696,9 @@ rVSysCpuAffinity  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {SysCpuAffinity 2}
+    ::= {Sys-CpuAffinity 2}
 
-iSSysCpuAffinity  OBJECT-TYPE
+iSSys-CpuAffinity  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56601,9 +56706,9 @@ iSSysCpuAffinity  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {SysCpuAffinity 3}
+    ::= {Sys-CpuAffinity 3}
 
-dUSysCpuAffinity  OBJECT-TYPE
+dUSys-CpuAffinity  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56611,9 +56716,9 @@ dUSysCpuAffinity  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {SysCpuAffinity 4}
+    ::= {Sys-CpuAffinity 4}
 
-SysMemInfo  OBJECT-TYPE
+Sys-MemInfo  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56621,9 +56726,9 @@ SysMemInfo  OBJECT-TYPE
 "
 ASSP Perl module information for Sys::MemInfo;
 "
-    ::= {asspPerlModuleInfo 61}
+    ::= {asspPerlModuleInfo 62}
 
-iVSysMemInfo  OBJECT-TYPE
+iVSys-MemInfo  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56631,9 +56736,9 @@ iVSysMemInfo  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {SysMemInfo 1}
+    ::= {Sys-MemInfo 1}
 
-rVSysMemInfo  OBJECT-TYPE
+rVSys-MemInfo  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56641,9 +56746,9 @@ rVSysMemInfo  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {SysMemInfo 2}
+    ::= {Sys-MemInfo 2}
 
-iSSysMemInfo  OBJECT-TYPE
+iSSys-MemInfo  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56651,9 +56756,9 @@ iSSysMemInfo  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {SysMemInfo 3}
+    ::= {Sys-MemInfo 3}
 
-dUSysMemInfo  OBJECT-TYPE
+dUSys-MemInfo  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56661,9 +56766,9 @@ dUSysMemInfo  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {SysMemInfo 4}
+    ::= {Sys-MemInfo 4}
 
-SysSyslog  OBJECT-TYPE
+Sys-Syslog  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56671,9 +56776,9 @@ SysSyslog  OBJECT-TYPE
 "
 ASSP Perl module information for Sys::Syslog;
 "
-    ::= {asspPerlModuleInfo 62}
+    ::= {asspPerlModuleInfo 63}
 
-iVSysSyslog  OBJECT-TYPE
+iVSys-Syslog  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56681,9 +56786,9 @@ iVSysSyslog  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {SysSyslog 1}
+    ::= {Sys-Syslog 1}
 
-rVSysSyslog  OBJECT-TYPE
+rVSys-Syslog  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56691,9 +56796,9 @@ rVSysSyslog  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {SysSyslog 2}
+    ::= {Sys-Syslog 2}
 
-iSSysSyslog  OBJECT-TYPE
+iSSys-Syslog  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56701,9 +56806,9 @@ iSSysSyslog  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {SysSyslog 3}
+    ::= {Sys-Syslog 3}
 
-dUSysSyslog  OBJECT-TYPE
+dUSys-Syslog  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56711,9 +56816,9 @@ dUSysSyslog  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {SysSyslog 4}
+    ::= {Sys-Syslog 4}
 
-TextUnidecode  OBJECT-TYPE
+Text-Unidecode  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56721,9 +56826,9 @@ TextUnidecode  OBJECT-TYPE
 "
 ASSP Perl module information for Text::Unidecode;
 "
-    ::= {asspPerlModuleInfo 63}
+    ::= {asspPerlModuleInfo 64}
 
-iVTextUnidecode  OBJECT-TYPE
+iVText-Unidecode  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56731,9 +56836,9 @@ iVTextUnidecode  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {TextUnidecode 1}
+    ::= {Text-Unidecode 1}
 
-rVTextUnidecode  OBJECT-TYPE
+rVText-Unidecode  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56741,9 +56846,9 @@ rVTextUnidecode  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {TextUnidecode 2}
+    ::= {Text-Unidecode 2}
 
-iSTextUnidecode  OBJECT-TYPE
+iSText-Unidecode  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56751,9 +56856,9 @@ iSTextUnidecode  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {TextUnidecode 3}
+    ::= {Text-Unidecode 3}
 
-dUTextUnidecode  OBJECT-TYPE
+dUText-Unidecode  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56761,9 +56866,9 @@ dUTextUnidecode  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {TextUnidecode 4}
+    ::= {Text-Unidecode 4}
 
-ThreadQueue  OBJECT-TYPE
+Thread-Queue  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56771,9 +56876,9 @@ ThreadQueue  OBJECT-TYPE
 "
 ASSP Perl module information for Thread::Queue;
 "
-    ::= {asspPerlModuleInfo 64}
+    ::= {asspPerlModuleInfo 65}
 
-iVThreadQueue  OBJECT-TYPE
+iVThread-Queue  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56781,9 +56886,9 @@ iVThreadQueue  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {ThreadQueue 1}
+    ::= {Thread-Queue 1}
 
-rVThreadQueue  OBJECT-TYPE
+rVThread-Queue  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56791,9 +56896,9 @@ rVThreadQueue  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {ThreadQueue 2}
+    ::= {Thread-Queue 2}
 
-iSThreadQueue  OBJECT-TYPE
+iSThread-Queue  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56801,9 +56906,9 @@ iSThreadQueue  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {ThreadQueue 3}
+    ::= {Thread-Queue 3}
 
-dUThreadQueue  OBJECT-TYPE
+dUThread-Queue  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56811,9 +56916,9 @@ dUThreadQueue  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {ThreadQueue 4}
+    ::= {Thread-Queue 4}
 
-ThreadSemaphore  OBJECT-TYPE
+Thread-Semaphore  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56821,9 +56926,9 @@ ThreadSemaphore  OBJECT-TYPE
 "
 ASSP Perl module information for Thread::Semaphore;
 "
-    ::= {asspPerlModuleInfo 65}
+    ::= {asspPerlModuleInfo 66}
 
-iVThreadSemaphore  OBJECT-TYPE
+iVThread-Semaphore  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56831,9 +56936,9 @@ iVThreadSemaphore  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {ThreadSemaphore 1}
+    ::= {Thread-Semaphore 1}
 
-rVThreadSemaphore  OBJECT-TYPE
+rVThread-Semaphore  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56841,9 +56946,9 @@ rVThreadSemaphore  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {ThreadSemaphore 2}
+    ::= {Thread-Semaphore 2}
 
-iSThreadSemaphore  OBJECT-TYPE
+iSThread-Semaphore  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56851,9 +56956,9 @@ iSThreadSemaphore  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {ThreadSemaphore 3}
+    ::= {Thread-Semaphore 3}
 
-dUThreadSemaphore  OBJECT-TYPE
+dUThread-Semaphore  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56861,9 +56966,9 @@ dUThreadSemaphore  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {ThreadSemaphore 4}
+    ::= {Thread-Semaphore 4}
 
-ThreadState  OBJECT-TYPE
+Thread-State  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56871,9 +56976,9 @@ ThreadState  OBJECT-TYPE
 "
 ASSP Perl module information for Thread::State;
 "
-    ::= {asspPerlModuleInfo 66}
+    ::= {asspPerlModuleInfo 67}
 
-iVThreadState  OBJECT-TYPE
+iVThread-State  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56881,9 +56986,9 @@ iVThreadState  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {ThreadState 1}
+    ::= {Thread-State 1}
 
-rVThreadState  OBJECT-TYPE
+rVThread-State  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56891,9 +56996,9 @@ rVThreadState  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {ThreadState 2}
+    ::= {Thread-State 2}
 
-iSThreadState  OBJECT-TYPE
+iSThread-State  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56901,9 +57006,9 @@ iSThreadState  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {ThreadState 3}
+    ::= {Thread-State 3}
 
-dUThreadState  OBJECT-TYPE
+dUThread-State  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56911,9 +57016,9 @@ dUThreadState  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {ThreadState 4}
+    ::= {Thread-State 4}
 
-TieRDBM  OBJECT-TYPE
+Tie-RDBM  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56921,9 +57026,9 @@ TieRDBM  OBJECT-TYPE
 "
 ASSP Perl module information for Tie::RDBM;
 "
-    ::= {asspPerlModuleInfo 67}
+    ::= {asspPerlModuleInfo 68}
 
-iVTieRDBM  OBJECT-TYPE
+iVTie-RDBM  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56931,9 +57036,9 @@ iVTieRDBM  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {TieRDBM 1}
+    ::= {Tie-RDBM 1}
 
-rVTieRDBM  OBJECT-TYPE
+rVTie-RDBM  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56941,9 +57046,9 @@ rVTieRDBM  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {TieRDBM 2}
+    ::= {Tie-RDBM 2}
 
-iSTieRDBM  OBJECT-TYPE
+iSTie-RDBM  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56951,9 +57056,9 @@ iSTieRDBM  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {TieRDBM 3}
+    ::= {Tie-RDBM 3}
 
-dUTieRDBM  OBJECT-TYPE
+dUTie-RDBM  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56961,9 +57066,9 @@ dUTieRDBM  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {TieRDBM 4}
+    ::= {Tie-RDBM 4}
 
-TimeHiRes  OBJECT-TYPE
+Time-HiRes  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56971,9 +57076,9 @@ TimeHiRes  OBJECT-TYPE
 "
 ASSP Perl module information for Time::HiRes;
 "
-    ::= {asspPerlModuleInfo 68}
+    ::= {asspPerlModuleInfo 69}
 
-iVTimeHiRes  OBJECT-TYPE
+iVTime-HiRes  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56981,9 +57086,9 @@ iVTimeHiRes  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {TimeHiRes 1}
+    ::= {Time-HiRes 1}
 
-rVTimeHiRes  OBJECT-TYPE
+rVTime-HiRes  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -56991,9 +57096,9 @@ rVTimeHiRes  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {TimeHiRes 2}
+    ::= {Time-HiRes 2}
 
-iSTimeHiRes  OBJECT-TYPE
+iSTime-HiRes  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57001,9 +57106,9 @@ iSTimeHiRes  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {TimeHiRes 3}
+    ::= {Time-HiRes 3}
 
-dUTimeHiRes  OBJECT-TYPE
+dUTime-HiRes  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57011,9 +57116,9 @@ dUTimeHiRes  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {TimeHiRes 4}
+    ::= {Time-HiRes 4}
 
-UnicodeGCString  OBJECT-TYPE
+Unicode-GCString  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57021,9 +57126,9 @@ UnicodeGCString  OBJECT-TYPE
 "
 ASSP Perl module information for Unicode::GCString;
 "
-    ::= {asspPerlModuleInfo 69}
+    ::= {asspPerlModuleInfo 70}
 
-iVUnicodeGCString  OBJECT-TYPE
+iVUnicode-GCString  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57031,9 +57136,9 @@ iVUnicodeGCString  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {UnicodeGCString 1}
+    ::= {Unicode-GCString 1}
 
-rVUnicodeGCString  OBJECT-TYPE
+rVUnicode-GCString  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57041,9 +57146,9 @@ rVUnicodeGCString  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {UnicodeGCString 2}
+    ::= {Unicode-GCString 2}
 
-iSUnicodeGCString  OBJECT-TYPE
+iSUnicode-GCString  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57051,9 +57156,9 @@ iSUnicodeGCString  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {UnicodeGCString 3}
+    ::= {Unicode-GCString 3}
 
-dUUnicodeGCString  OBJECT-TYPE
+dUUnicode-GCString  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57061,9 +57166,9 @@ dUUnicodeGCString  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {UnicodeGCString 4}
+    ::= {Unicode-GCString 4}
 
-Win32APIOutputDebugString  OBJECT-TYPE
+Win32-API-OutputDebugString  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57071,9 +57176,9 @@ Win32APIOutputDebugString  OBJECT-TYPE
 "
 ASSP Perl module information for Win32::API::OutputDebugString;
 "
-    ::= {asspPerlModuleInfo 70}
+    ::= {asspPerlModuleInfo 71}
 
-iVWin32APIOutputDebugString  OBJECT-TYPE
+iVWin32-API-OutputDebugString  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57081,9 +57186,9 @@ iVWin32APIOutputDebugString  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {Win32APIOutputDebugString 1}
+    ::= {Win32-API-OutputDebugString 1}
 
-rVWin32APIOutputDebugString  OBJECT-TYPE
+rVWin32-API-OutputDebugString  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57091,9 +57196,9 @@ rVWin32APIOutputDebugString  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {Win32APIOutputDebugString 2}
+    ::= {Win32-API-OutputDebugString 2}
 
-iSWin32APIOutputDebugString  OBJECT-TYPE
+iSWin32-API-OutputDebugString  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57101,9 +57206,9 @@ iSWin32APIOutputDebugString  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {Win32APIOutputDebugString 3}
+    ::= {Win32-API-OutputDebugString 3}
 
-dUWin32APIOutputDebugString  OBJECT-TYPE
+dUWin32-API-OutputDebugString  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57111,9 +57216,9 @@ dUWin32APIOutputDebugString  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {Win32APIOutputDebugString 4}
+    ::= {Win32-API-OutputDebugString 4}
 
-Win32Daemon  OBJECT-TYPE
+Win32-Daemon  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57121,9 +57226,9 @@ Win32Daemon  OBJECT-TYPE
 "
 ASSP Perl module information for Win32::Daemon;
 "
-    ::= {asspPerlModuleInfo 71}
+    ::= {asspPerlModuleInfo 72}
 
-iVWin32Daemon  OBJECT-TYPE
+iVWin32-Daemon  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57131,9 +57236,9 @@ iVWin32Daemon  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {Win32Daemon 1}
+    ::= {Win32-Daemon 1}
 
-rVWin32Daemon  OBJECT-TYPE
+rVWin32-Daemon  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57141,9 +57246,9 @@ rVWin32Daemon  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {Win32Daemon 2}
+    ::= {Win32-Daemon 2}
 
-iSWin32Daemon  OBJECT-TYPE
+iSWin32-Daemon  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57151,9 +57256,9 @@ iSWin32Daemon  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {Win32Daemon 3}
+    ::= {Win32-Daemon 3}
 
-dUWin32Daemon  OBJECT-TYPE
+dUWin32-Daemon  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57161,9 +57266,9 @@ dUWin32Daemon  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {Win32Daemon 4}
+    ::= {Win32-Daemon 4}
 
-Win32Unicode  OBJECT-TYPE
+Win32-Unicode  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57171,9 +57276,9 @@ Win32Unicode  OBJECT-TYPE
 "
 ASSP Perl module information for Win32::Unicode;
 "
-    ::= {asspPerlModuleInfo 72}
+    ::= {asspPerlModuleInfo 73}
 
-iVWin32Unicode  OBJECT-TYPE
+iVWin32-Unicode  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57181,9 +57286,9 @@ iVWin32Unicode  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {Win32Unicode 1}
+    ::= {Win32-Unicode 1}
 
-rVWin32Unicode  OBJECT-TYPE
+rVWin32-Unicode  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57191,9 +57296,9 @@ rVWin32Unicode  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {Win32Unicode 2}
+    ::= {Win32-Unicode 2}
 
-iSWin32Unicode  OBJECT-TYPE
+iSWin32-Unicode  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57201,9 +57306,9 @@ iSWin32Unicode  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {Win32Unicode 3}
+    ::= {Win32-Unicode 3}
 
-dUWin32Unicode  OBJECT-TYPE
+dUWin32-Unicode  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57211,9 +57316,9 @@ dUWin32Unicode  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {Win32Unicode 4}
+    ::= {Win32-Unicode 4}
 
-XMLRSS  OBJECT-TYPE
+XML-RSS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57221,9 +57326,9 @@ XMLRSS  OBJECT-TYPE
 "
 ASSP Perl module information for XML::RSS;
 "
-    ::= {asspPerlModuleInfo 73}
+    ::= {asspPerlModuleInfo 74}
 
-iVXMLRSS  OBJECT-TYPE
+iVXML-RSS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57231,9 +57336,9 @@ iVXMLRSS  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {XMLRSS 1}
+    ::= {XML-RSS 1}
 
-rVXMLRSS  OBJECT-TYPE
+rVXML-RSS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57241,9 +57346,9 @@ rVXMLRSS  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {XMLRSS 2}
+    ::= {XML-RSS 2}
 
-iSXMLRSS  OBJECT-TYPE
+iSXML-RSS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57251,9 +57356,9 @@ iSXMLRSS  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {XMLRSS 3}
+    ::= {XML-RSS 3}
 
-dUXMLRSS  OBJECT-TYPE
+dUXML-RSS  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57261,7 +57366,7 @@ dUXMLRSS  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {XMLRSS 4}
+    ::= {XML-RSS 4}
 
 threads  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -57271,7 +57376,7 @@ threads  OBJECT-TYPE
 "
 ASSP Perl module information for threads;
 "
-    ::= {asspPerlModuleInfo 74}
+    ::= {asspPerlModuleInfo 75}
 
 iVthreads  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -57313,7 +57418,7 @@ download URL for the module
 "
     ::= {threads 4}
 
-threadsshared  OBJECT-TYPE
+threads-shared  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57321,9 +57426,9 @@ threadsshared  OBJECT-TYPE
 "
 ASSP Perl module information for threads::shared;
 "
-    ::= {asspPerlModuleInfo 75}
+    ::= {asspPerlModuleInfo 76}
 
-iVthreadsshared  OBJECT-TYPE
+iVthreads-shared  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57331,9 +57436,9 @@ iVthreadsshared  OBJECT-TYPE
 "
 installed module version
 "
-    ::= {threadsshared 1}
+    ::= {threads-shared 1}
 
-rVthreadsshared  OBJECT-TYPE
+rVthreads-shared  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57341,9 +57446,9 @@ rVthreadsshared  OBJECT-TYPE
 "
 required/recommended module version
 "
-    ::= {threadsshared 2}
+    ::= {threads-shared 2}
 
-iSthreadsshared  OBJECT-TYPE
+iSthreads-shared  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57351,9 +57456,9 @@ iSthreadsshared  OBJECT-TYPE
 "
 module installation status
 "
-    ::= {threadsshared 3}
+    ::= {threads-shared 3}
 
-dUthreadsshared  OBJECT-TYPE
+dUthreads-shared  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
@@ -57361,7 +57466,7 @@ dUthreadsshared  OBJECT-TYPE
 "
 download URL for the module
 "
-    ::= {threadsshared 4}
+    ::= {threads-shared 4}
 
 currentDCC  OBJECT-TYPE
     SYNTAX      Counter32
@@ -57454,7 +57559,7 @@ Bayesian/HMM Spams
     ::= {currentStats 8}
 
 currentcpuAvg  OBJECT-TYPE
-    SYNTAX      Counter32
+    SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION
@@ -57814,7 +57919,7 @@ currentnextUpload  OBJECT-TYPE
     ::= {currentStats 47}
 
 currentpctBlocked  OBJECT-TYPE
-    SYNTAX      Counter32
+    SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION
@@ -58494,7 +58599,7 @@ Bayesian/HMM Spams
     ::= {cumulativeStat 8}
 
 cumulcpuAvg  OBJECT-TYPE
-    SYNTAX      Counter32
+    SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION
@@ -58594,7 +58699,7 @@ Scripts
     ::= {cumulativeStat 18}
 
 cumulversion  OBJECT-TYPE
-    SYNTAX      Counter32
+    SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION
@@ -58864,7 +58969,7 @@ cumulnextUpload  OBJECT-TYPE
     ::= {cumulativeStat 47}
 
 cumulpctBlocked  OBJECT-TYPE
-    SYNTAX      Counter32
+    SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION
@@ -59943,7 +60048,7 @@ currently scored bombRe
 "
     ::= {currentScoreStat 2}
 
-currentScoredHMM-HAM  OBJECT-TYPE
+currentScoredHMMHAM  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -59983,7 +60088,7 @@ currently scored SPFpass
 "
     ::= {currentScoreStat 6}
 
-currentScoredSSL-DoS  OBJECT-TYPE
+currentScoredSSLDoS  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60003,7 +60108,7 @@ currently scored TimeOut
 "
     ::= {currentScoreStat 8}
 
-currentScoredASSP_AFC  OBJECT-TYPE
+currentScoredASSPAFC  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60013,7 +60118,7 @@ currently scored ASSP_AFC
 "
     ::= {currentScoreStat 9}
 
-currentScoredASSP_DCC  OBJECT-TYPE
+currentScoredASSPDCC  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60023,7 +60128,7 @@ currently scored ASSP_DCC
 "
     ::= {currentScoreStat 10}
 
-currentScoredASSP_OCR  OBJECT-TYPE
+currentScoredASSPOCR  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60153,7 +60258,7 @@ currently scored ValidHELO
 "
     ::= {currentScoreStat 23}
 
-currentScoredASSP_Razor  OBJECT-TYPE
+currentScoredASSPRazor  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60283,7 +60388,7 @@ currently scored SPFneutral
 "
     ::= {currentScoreStat 36}
 
-currentScoredASSP_FakeMX  OBJECT-TYPE
+currentScoredASSPFakeMX  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60383,7 +60488,7 @@ currently scored penaltytrap
 "
     ::= {currentScoreStat 46}
 
-currentScoredBayesian-HAM  OBJECT-TYPE
+currentScoredBayesianHAM  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60423,7 +60528,7 @@ currently scored BombSenderIP
 "
     ::= {currentScoreStat 50}
 
-currentScoredDMARC-failed  OBJECT-TYPE
+currentScoredDMARCfailed  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60443,7 +60548,7 @@ currently scored DNSBLneutral
 "
     ::= {currentScoreStat 52}
 
-currentScoredFrom-missing  OBJECT-TYPE
+currentScoredFrommissing  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60473,7 +60578,7 @@ currently scored URIBLneutral
 "
     ::= {currentScoreStat 55}
 
-currentScoredvirus-ClamAV  OBJECT-TYPE
+currentScoredvirusClamAV  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60513,7 +60618,7 @@ currently scored KnownGoodHelo
 "
     ::= {currentScoreStat 59}
 
-currentScoredMsg-IDinvalid  OBJECT-TYPE
+currentScoredMsgIDinvalid  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60523,7 +60628,7 @@ currently scored Msg-IDinvalid
 "
     ::= {currentScoreStat 60}
 
-currentScoredMsg-IDmissing  OBJECT-TYPE
+currentScoredMsgIDmissing  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60573,7 +60678,7 @@ currently scored ExtremeHistory
 "
     ::= {currentScoreStat 65}
 
-currentScoredGLOBALPB-Black  OBJECT-TYPE
+currentScoredGLOBALPBBlack  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60593,7 +60698,7 @@ currently scored InvalidAddress
 "
     ::= {currentScoreStat 67}
 
-currentScoredMsg-IDnotvalid  OBJECT-TYPE
+currentScoredMsgIDnotvalid  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60613,7 +60718,7 @@ currently scored NoCountryNoOrg
 "
     ::= {currentScoreStat 69}
 
-currentScoredSPFfail-strict  OBJECT-TYPE
+currentScoredSPFfailstrict  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60623,7 +60728,7 @@ currently scored SPFfail-strict
 "
     ::= {currentScoreStat 70}
 
-currentScoredSPFnone-strict  OBJECT-TYPE
+currentScoredSPFnonestrict  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60633,7 +60738,7 @@ currently scored SPFnone-strict
 "
     ::= {currentScoreStat 71}
 
-currentScoredSRS_Not_Signed  OBJECT-TYPE
+currentScoredSRSNotSigned  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60643,7 +60748,7 @@ currently scored SRS_Not_Signed
 "
     ::= {currentScoreStat 72}
 
-currentScoredvirus-FileScan  OBJECT-TYPE
+currentScoredvirusFileScan  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60713,7 +60818,7 @@ currently scored MaxDuplicateRcpt
 "
     ::= {currentScoreStat 79}
 
-currentScoredMsg-IDsuspicious  OBJECT-TYPE
+currentScoredMsgIDsuspicious  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60733,7 +60838,7 @@ currently scored bombSuspiciousRe
 "
     ::= {currentScoreStat 81}
 
-currentScoredBATV-check-failed  OBJECT-TYPE
+currentScoredBATVcheckfailed  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60753,7 +60858,7 @@ currently scored BlacklistedDomain
 "
     ::= {currentScoreStat 83}
 
-currentScoredSPFneutral-strict  OBJECT-TYPE
+currentScoredSPFneutralstrict  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60763,7 +60868,7 @@ currently scored SPFneutral-strict
 "
     ::= {currentScoreStat 84}
 
-currentScoredBackscatter-failed  OBJECT-TYPE
+currentScoredBackscatterfailed  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60793,7 +60898,7 @@ currently scored InvalidLocalSender
 "
     ::= {currentScoreStat 87}
 
-currentScoredSPFsoftfail-strict  OBJECT-TYPE
+currentScoredSPFsoftfailstrict  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60823,7 +60928,7 @@ currently scored LimitingSameSubject
 "
     ::= {currentScoreStat 90}
 
-currentScoredSSL-TLS-connection-OK  OBJECT-TYPE
+currentScoredSSLTLSconnectionOK  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60833,7 +60938,7 @@ currently scored SSL-TLS-connection-OK
 "
     ::= {currentScoreStat 91}
 
-currentScoredMSGID-signature-failed  OBJECT-TYPE
+currentScoredMSGIDsignaturefailed  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60843,7 +60948,7 @@ currently scored MSGID-signature-failed
 "
     ::= {currentScoreStat 92}
 
-currentScoredSuspiciousVirus-ClamAV  OBJECT-TYPE
+currentScoredSuspiciousVirusClamAV  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60853,7 +60958,7 @@ currently scored SuspiciousVirus-ClamAV
 "
     ::= {currentScoreStat 93}
 
-currentScoredSuspiciousVirus-FileScan  OBJECT-TYPE
+currentScoredSuspiciousVirusFileScan  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60893,7 +60998,7 @@ cumulative scored bombRe
 "
     ::= {cumulativeScoreStat 2}
 
-cumulScoredHMM-HAM  OBJECT-TYPE
+cumulScoredHMMHAM  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60933,7 +61038,7 @@ cumulative scored SPFpass
 "
     ::= {cumulativeScoreStat 6}
 
-cumulScoredSSL-DoS  OBJECT-TYPE
+cumulScoredSSLDoS  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60953,7 +61058,7 @@ cumulative scored TimeOut
 "
     ::= {cumulativeScoreStat 8}
 
-cumulScoredASSP_AFC  OBJECT-TYPE
+cumulScoredASSPAFC  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60963,7 +61068,7 @@ cumulative scored ASSP_AFC
 "
     ::= {cumulativeScoreStat 9}
 
-cumulScoredASSP_DCC  OBJECT-TYPE
+cumulScoredASSPDCC  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -60973,7 +61078,7 @@ cumulative scored ASSP_DCC
 "
     ::= {cumulativeScoreStat 10}
 
-cumulScoredASSP_OCR  OBJECT-TYPE
+cumulScoredASSPOCR  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61103,7 +61208,7 @@ cumulative scored ValidHELO
 "
     ::= {cumulativeScoreStat 23}
 
-cumulScoredASSP_Razor  OBJECT-TYPE
+cumulScoredASSPRazor  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61233,7 +61338,7 @@ cumulative scored SPFneutral
 "
     ::= {cumulativeScoreStat 36}
 
-cumulScoredASSP_FakeMX  OBJECT-TYPE
+cumulScoredASSPFakeMX  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61333,7 +61438,7 @@ cumulative scored penaltytrap
 "
     ::= {cumulativeScoreStat 46}
 
-cumulScoredBayesian-HAM  OBJECT-TYPE
+cumulScoredBayesianHAM  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61373,7 +61478,7 @@ cumulative scored BombSenderIP
 "
     ::= {cumulativeScoreStat 50}
 
-cumulScoredDMARC-failed  OBJECT-TYPE
+cumulScoredDMARCfailed  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61393,7 +61498,7 @@ cumulative scored DNSBLneutral
 "
     ::= {cumulativeScoreStat 52}
 
-cumulScoredFrom-missing  OBJECT-TYPE
+cumulScoredFrommissing  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61423,7 +61528,7 @@ cumulative scored URIBLneutral
 "
     ::= {cumulativeScoreStat 55}
 
-cumulScoredvirus-ClamAV  OBJECT-TYPE
+cumulScoredvirusClamAV  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61463,7 +61568,7 @@ cumulative scored KnownGoodHelo
 "
     ::= {cumulativeScoreStat 59}
 
-cumulScoredMsg-IDinvalid  OBJECT-TYPE
+cumulScoredMsgIDinvalid  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61473,7 +61578,7 @@ cumulative scored Msg-IDinvalid
 "
     ::= {cumulativeScoreStat 60}
 
-cumulScoredMsg-IDmissing  OBJECT-TYPE
+cumulScoredMsgIDmissing  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61523,7 +61628,7 @@ cumulative scored ExtremeHistory
 "
     ::= {cumulativeScoreStat 65}
 
-cumulScoredGLOBALPB-Black  OBJECT-TYPE
+cumulScoredGLOBALPBBlack  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61543,7 +61648,7 @@ cumulative scored InvalidAddress
 "
     ::= {cumulativeScoreStat 67}
 
-cumulScoredMsg-IDnotvalid  OBJECT-TYPE
+cumulScoredMsgIDnotvalid  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61563,7 +61668,7 @@ cumulative scored NoCountryNoOrg
 "
     ::= {cumulativeScoreStat 69}
 
-cumulScoredSPFfail-strict  OBJECT-TYPE
+cumulScoredSPFfailstrict  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61573,7 +61678,7 @@ cumulative scored SPFfail-strict
 "
     ::= {cumulativeScoreStat 70}
 
-cumulScoredSPFnone-strict  OBJECT-TYPE
+cumulScoredSPFnonestrict  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61583,7 +61688,7 @@ cumulative scored SPFnone-strict
 "
     ::= {cumulativeScoreStat 71}
 
-cumulScoredSRS_Not_Signed  OBJECT-TYPE
+cumulScoredSRSNotSigned  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61593,7 +61698,7 @@ cumulative scored SRS_Not_Signed
 "
     ::= {cumulativeScoreStat 72}
 
-cumulScoredvirus-FileScan  OBJECT-TYPE
+cumulScoredvirusFileScan  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61663,7 +61768,7 @@ cumulative scored MaxDuplicateRcpt
 "
     ::= {cumulativeScoreStat 79}
 
-cumulScoredMsg-IDsuspicious  OBJECT-TYPE
+cumulScoredMsgIDsuspicious  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61683,7 +61788,7 @@ cumulative scored bombSuspiciousRe
 "
     ::= {cumulativeScoreStat 81}
 
-cumulScoredBATV-check-failed  OBJECT-TYPE
+cumulScoredBATVcheckfailed  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61703,7 +61808,7 @@ cumulative scored BlacklistedDomain
 "
     ::= {cumulativeScoreStat 83}
 
-cumulScoredSPFneutral-strict  OBJECT-TYPE
+cumulScoredSPFneutralstrict  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61713,7 +61818,7 @@ cumulative scored SPFneutral-strict
 "
     ::= {cumulativeScoreStat 84}
 
-cumulScoredBackscatter-failed  OBJECT-TYPE
+cumulScoredBackscatterfailed  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61743,7 +61848,7 @@ cumulative scored InvalidLocalSender
 "
     ::= {cumulativeScoreStat 87}
 
-cumulScoredSPFsoftfail-strict  OBJECT-TYPE
+cumulScoredSPFsoftfailstrict  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61773,7 +61878,7 @@ cumulative scored LimitingSameSubject
 "
     ::= {cumulativeScoreStat 90}
 
-cumulScoredSSL-TLS-connection-OK  OBJECT-TYPE
+cumulScoredSSLTLSconnectionOK  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61783,7 +61888,7 @@ cumulative scored SSL-TLS-connection-OK
 "
     ::= {cumulativeScoreStat 91}
 
-cumulScoredMSGID-signature-failed  OBJECT-TYPE
+cumulScoredMSGIDsignaturefailed  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61793,7 +61898,7 @@ cumulative scored MSGID-signature-failed
 "
     ::= {cumulativeScoreStat 92}
 
-cumulScoredSuspiciousVirus-ClamAV  OBJECT-TYPE
+cumulScoredSuspiciousVirusClamAV  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
@@ -61803,7 +61908,7 @@ cumulative scored SuspiciousVirus-ClamAV
 "
     ::= {cumulativeScoreStat 93}
 
-cumulScoredSuspiciousVirus-FileScan  OBJECT-TYPE
+cumulScoredSuspiciousVirusFileScan  OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
     STATUS      current
