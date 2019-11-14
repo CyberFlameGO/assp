@@ -42,6 +42,7 @@ EOT
             my $nameid = $sortedOIDs[$i];
             $nameid =~ s/0$/1/o;
             my $name = $tl.&SNMPderefVal($subOID{$nameid});
+            $name =~ s/_/-/go;
             next if $name =~ /^current(?:mailCount|avgdamped|cpuAvg|cpuBusyTime|cpuTime|damptime|msgPerDay|nextUpload|smtpConcurrentSessions|smtpMaxConcurrentSessions|starttime|statstart|uptime|version|memoryUsage)$/io;
             $nameid =~ s/1$/2/o;
             my $desc;
