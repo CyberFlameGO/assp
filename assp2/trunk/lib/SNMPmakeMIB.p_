@@ -1,14 +1,14 @@
     my %Types = (
-'ASN_COUNTER' => 'Counter32',
-'ASN_OCTET_STR' => 'OCTET STRING',
-'ASN_FLOAT' => 'Float',
-'ASN_IPADDRESS' => 'IpAddress',
-'ASN_BOOLEAN' => 'TruthValue',
-'ASN_BIT_STR' => 'BITS',
-'ASN_INTEGER' => 'Integer32',
-'ASN_UNSIGNED' => 'Unsigned32'
-
+        'ASN_COUNTER' => 'Counter32',
+        'ASN_OCTET_STR' => 'OCTET STRING',
+        'ASN_FLOAT' => 'Float',
+        'ASN_IPADDRESS' => 'IpAddress',
+        'ASN_BOOLEAN' => 'TruthValue',
+        'ASN_BIT_STR' => 'BITS',
+        'ASN_INTEGER' => 'Integer32',
+        'ASN_UNSIGNED' => 'Unsigned32'
     );
+
     my @m  = localtime();
     my @n = localtime(time - 24 * 3600);
     my $tmI = sprintf("%04d%02d%02d0000Z",$m[5]+1900,$m[4]+1,$m[3]);
@@ -16,7 +16,7 @@
 
     open my $file, '>',(defined $MIBFile ? $MIBFile : "$base/ASSP-MIB");
     binmode $file;
-print $file 'ASSP-MIB DEFINITIONS ::= BEGIN
+    print $file 'ASSP-MIB DEFINITIONS ::= BEGIN
 
 --
 -- Top-level infrastructure of the ASSP project enterprise MIB tree
@@ -596,7 +596,11 @@ EOT
         if ($sortedOIDs[$i] =~ /^\.2\.(\d+)\.0$/o) {
             my $id = $1;
             my $v = SNMPderefVal($subOID{$sortedOIDs[$i]});
-            $v =~ s/[^a-zA-Z0-9]//go;
+            $v =~ s/-+//go;               # remove -
+            $v =~ s/:+/-/go;              # replace :: with - in module names
+            $v =~ s/\&amp;/And/go;        # replace &amp; with And
+            $v =~ s/\&[a-z]{2,5};//go;    # remove HTML tags
+            $v =~ s/[^a-zA-Z0-9\-]+//go;  # remove any other character
             print $file "$v  OBJECT IDENTIFIER ::= {asspConfig $id}\n";
             $topLevel = $v;
         } elsif ($sortedOIDs[$i] =~ /^(\.2\.\d+\.(\d+))\.(\d+)$/o) {
@@ -604,8 +608,12 @@ EOT
             my $id = $2;
             if ($3 eq '1') {
                 my $v = SNMPderefVal($subOID{$sortedOIDs[$i]});
-                $v =~ s/[^a-zA-Z0-9]//go;
                 my $type = $Types{ &SNMPVarType(\$v,$sortedOIDs[$i],1) };
+                $v =~ s/-+//go;               # remove -
+                $v =~ s/:+/-/go;              # replace :: with - in module names
+                $v =~ s/\&amp;/And/go;        # replace &amp; with And
+                $v =~ s/\&[a-z]{2,5};//go;    # remove HTML tags
+                $v =~ s/[^a-zA-Z0-9\-]+//go;  # remove any other character
                 my $desc = SNMPderefVal($subOID{"$sid.4"});
                 my $default = SNMPderefVal($subOID{"$sid.2"});
                 $default = '"'.$default.'"' if $type eq 'OCTET STRING';
@@ -672,7 +680,11 @@ EOT
             my $id = $1;
             my $v = SNMPderefVal($subOID{$sortedOIDs[$i]});
             my $fullName = $v;
-            $v =~ s/[^a-zA-Z0-9]//go;
+            $v =~ s/-+//go;               # remove -
+            $v =~ s/:+/-/go;              # replace :: with - in module names
+            $v =~ s/\&amp;/And/go;        # replace &amp; with And
+            $v =~ s/\&[a-z]{2,5};//go;    # remove HTML tags
+            $v =~ s/[^a-zA-Z0-9\-]+//go;  # remove any other character
             print $file <<EOT;
 $v  OBJECT-TYPE
     SYNTAX      OCTET STRING
@@ -741,8 +753,12 @@ EOT
             my $ws = $1;
             $topLevel = $tl{$ws};
             my $v = &SNMPderefVal($subOID{$sortedOIDs[$i]});
-            $v =~ s/[^a-zA-Z0-9]//go;
             my $type = $Types{ &SNMPVarType(\$v,$sortedOIDs[$i],1) };
+            $v =~ s/-+//go;               # remove -
+            $v =~ s/:+/-/go;              # replace :: with - in module names
+            $v =~ s/\&amp;/And/go;        # replace &amp; with And
+            $v =~ s/\&[a-z]{2,5};//go;    # remove HTML tags
+            $v =~ s/[^a-zA-Z0-9\-]+//go;  # remove any other character
             my $tl = $topLevel;
             $tl =~ s/currentStats/current/o;
             $tl =~ s/cumulativeStat/cumul/o;
@@ -753,6 +769,11 @@ EOT
             my $nameid = $sortedOIDs[$i];
             $nameid =~ s/0$/1/o;
             my $name = $tl.&SNMPderefVal($subOID{$nameid});
+            $name =~ s/-+//go;               # remove -
+            $name =~ s/:+/-/go;              # replace :: with - in module names
+            $name =~ s/\&amp;/And/go;        # replace &amp; with And
+            $name =~ s/\&[a-z]{2,5};//go;    # remove HTML tags
+            $name =~ s/[^a-zA-Z0-9\-]+//go;  # remove any other character
             $nameid =~ s/1$/2/o;
             my $desc;
             $desc = &SNMPderefVal($subOID{$nameid}) if exists $subOID{$nameid};
