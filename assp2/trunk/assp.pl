@@ -82,19 +82,19 @@ use strict qw(vars subs);
 our %signo;
 our $dftIOEngine = 0;
 sub check_iThreads {
-use Config qw(myconfig);
+    use Config qw(myconfig);
 
-my $iThreads = myconfig();
-$iThreads = lc($1) if $iThreads =~ /useithreads\s*=\s*([^\s\r\n]+)/gio;
-{
-    my $i = 0;
-    foreach (split(/\s+/o, $Config::Config{sig_name})) {
-        $signo{$_} = $i;
-        $i++;
+    my $iThreads = myconfig();
+    $iThreads = lc($1) if $iThreads =~ /useithreads\s*=\s*([^\s\r\n]+)/gio;
+    {
+        my $i = 0;
+        foreach (split(/\s+/o, $Config::Config{sig_name})) {
+            $signo{$_} = $i;
+            $i++;
+        }
     }
-}
 
-die <<EOT  if ($iThreads !~ /define/i);
+    die <<EOT  if ($iThreads !~ /define/i);
 
 ***** ATTENTION *****
 
@@ -116,19 +116,19 @@ Perl version 6.x is not supported.
 ******************************************************************************
 
 EOT
-$dftIOEngine = 1 if $Config::Config{'uname'} =~ /strawberry-perl/o || $Config::Config{'myuname'} =~ /strawberry-perl/o;
-no Config;
-undef $iThreads;
+    $dftIOEngine = 1 if $Config::Config{'uname'} =~ /strawberry-perl/o || $Config::Config{'myuname'} =~ /strawberry-perl/o;
+    no Config;
+    undef $iThreads;
 }
 
-our $VSTR = '5.10';
+our $VSTR;
 BEGIN {
     $VSTR = $];
     $VSTR =~ s/^(5\.)0(\d\d).+$/$1$2/o;
 }
 
 use 5.010;
-use feature ":$VSTR";     # <- turn on the available version features
+use feature ":$::VSTR";     # <- turn on the available version features
 use threads 1.69 ('yield');
 use threads::shared 1.18;
 use Thread::Queue 2.06;
@@ -170,7 +170,7 @@ our $MajorVersion;
 our $version;
 our $subversion;
 our $modversion;
-our $build;
+our $build = 0;
 BEGIN {$build = 0;}
 our $versionAge;
 our $maxAge;
@@ -187,6 +187,7 @@ our $assp = $0;
 our $asspSHA1;
 our $isWIN;
 our $isNoWIN;
+$isWIN = $^O eq 'MSWin32'; $isNoWIN = ! $isWIN;
 BEGIN {$isWIN = $^O eq 'MSWin32'; $isNoWIN = ! $isWIN;}
 $assp =~ s/\\/\//og;
 $assp =~ s/\/+/\//og;
@@ -203,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19316';        # 12.11.2019 TE
+$build   = '19324';        # 20.11.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.030999';
 $MAINVERSION = $version . $modversion;
@@ -614,7 +615,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'BC5EBF9BC8C7B811FAE4B615B268B733E544CFF6'; }
+sub __cs { $codeSignature = 'DF3D3342427526C9A0DF723D745FD59AC5DBC8BD'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -643,7 +644,7 @@ our $SSL_read_ahead_wait = 2;       # poll/select socket wait time in millisecon
 our $SSL_read_ahead_max_time = 50;  # time in milliseconds used for read ahead
 
 # the SSL/TLS renegotiation counter will be reset after this number of seconds without a renegotiation request and any regular data are sent or received
-our $maxSSLRenegDuration;
+our $maxSSLRenegDuration = 10;
 BEGIN {$maxSSLRenegDuration = 10;}  # maxSSLRenegDuration is referenced in the GUI - so we have to set the value at begin
 our $SSLContextMaxAge = 24 * 3600;
 our $SSLContextMaxUnused = 8 * 3600;
@@ -6801,7 +6802,7 @@ BEGIN {
 
     my ($mv,$sv,$lv) = $] =~ /(\d)\.(\d{3})(\d{3})/o;
     $mv =~ s/^0+//o;$sv =~ s/^0+//o;$lv =~ s/^0+//o; $lv ||= '0';
-    print "ASSP $version$modversion (source: $assp) is ".($^C ? 'compiling' : 'starting')." in directory $base\non host ". hostname() ."\nusing Perl $perl version $] ($mv.$sv.$lv), all Perl features for $VSTR are enabled\n";
+    print "ASSP $version$modversion (source: $assp) is ".($^C ? 'compiling' : 'starting')." in directory $base\non host ". hostname() ."\nusing Perl $perl version $] ($mv.$sv.$lv), all Perl features for $::VSTR are enabled\n";
     print $^C ? "compiling code, checking syntax and check code integrity - please wait .....\n" : "compiling code and check code integrity - please wait .....\n";
 
     push @INC,$base unless grep {/^\Q$base\E$/o} @INC;
@@ -13612,9 +13613,11 @@ sub init {
         mlog(0,"ASSP$p version $version$modversion (Perl $]) (on $^O) running on server: localhost ($localhostip)") ;
     }
     $dftExpSec = eval{ sha1_hex(join('',reverse(split(//o,$UUID))).$localhostname); };
+    check_iThreads();
     if ($dftIOEngine == 1 && $IOEngine == 0) {
-        mlog(0,"warning: IOEngine is set to 'IO::Poll'. This is Strawberry-Perl and the IOEngine 'IO::Select' is recommended to be used!");
-        $Recommends{'IOEngine'} = "IOEngine is set to 'IO::Poll'. This is Strawberry-Perl and the IOEngine 'IO::Select' is recommended to be used!"
+        mlog(0,"warning: IOEngine is set to 'IO::Poll' (0). This is Strawberry-Perl and the IOEngine 'IO::Select' (1) is highly recommended to be used! If you can't access the webinterface, consider to start assp again using the --IOEngine:=1 commandline option!");
+        $Recommends{'IOEngine'} = "IOEngine is set to 'IO::Poll' (0). This is Strawberry-Perl and the IOEngine 'IO::Select' (1) is highly recommended to be used! If you can't access the webinterface, consider to start assp again using the --IOEngine:=1 commandline option!";
+        print "\n\n**********\nIOEngine is set to 'IO::Poll' (0) in assp.cfg. This is Strawberry-Perl and the IOEngine 'IO::Select' (1) is highly recommended to be used!\nIf you can't access the webinterface, consider to start assp again using the --IOEngine:=1 commandline option!\n**********\n\n";
     }
     if ($canUnicode) {
         mlog(0,"info: unicode support is available on this system");
@@ -13733,9 +13736,10 @@ sub init {
                 }
             }
             $path_to_msvcrt =~ s/[\\|\/]*$//o;
-            if (lc $path_to_msvcrt ne lc ($ENV{'SystemRoot'}.'\system32')) {
-                mlog(0,"warning: Perl seems to use the C-runtime library 'msvcrt.dll' in directory $path_to_msvcrt, this should be MS-C-runtime library 'msvcrt.dll' in directory ".$ENV{'SystemRoot'}.'\system32. Your environment variable -PATH- is possibly wrong set!');
-                $Recommends{'WinENV'} = "Perl seems to use the C-runtime library 'msvcrt.dll' in directory $path_to_msvcrt, this should be MS-C-runtime library 'msvcrt.dll' in directory ".$ENV{'SystemRoot'}.'\system32. Your environment variable -PATH- is possibly wrong set!';
+            if (lc $path_to_msvcrt ne lc ($ENV{'SystemRoot'}.'\system32') && -e $ENV{'SystemRoot'}.'\system32\msvcrt.dll') {
+                mlog(0,"warning: Perl seems to use the C-runtime library 'msvcrt.dll' in directory $path_to_msvcrt, this should be MS-C-runtime library 'msvcrt.dll' in directory ".$ENV{'SystemRoot'}.'\system32. Ignore this warning, if this is expected. Otherwise check your environment variable -PATH- or remove or rename $path_to_msvcrt\msvcrt.dll!');
+                $Recommends{'WinENV'} = "Perl seems to use the C-runtime library 'msvcrt.dll' in directory $path_to_msvcrt, this should be MS-C-runtime library 'msvcrt.dll' in directory ".$ENV{'SystemRoot'}.'\system32. Ignore this warning, if this is expected. Otherwise check your environment variable -PATH- or remove or rename $path_to_msvcrt\msvcrt.dll!'
+                    if $path_to_msvcrt !~ /perl/io;
                 print "\t\t\t\t\t[warning]";
             } else {
                 mlog(0,'info: windows system environment looks OK');
@@ -20583,7 +20587,7 @@ sub SetRE {
         eval{
             my $loadRE;
             if (($WorkerNumber != 0) && ($loadRE = &loadexportedRE($name))) {
-                $loadRE =~ s/\)$//o if $loadRE =~ s/^\(\?(?:[ximsu\-\^]*)?\://o;
+                $loadRE =~ s/\)$//o if $loadRE =~ s/^\(\?(?:\^u?)?\:(\((?!\?\|))/$1/o;
                 $$var = qr/$loadRE/;
             } else {
    #             $o->set(debug => $debug);
@@ -20637,8 +20641,13 @@ sub SetRE {
             # but buggy in 5.10 ([RT #59734]) - fixed in 5.12
             # so it is only used if complexRE is defined
             if ($hasCode) {  # there is code included in the regex
-                my $c = qr/(?$f:(?|$r))/; # check if the regex is OK and die if not
-                $$var = ($r !~ /\Q$complexREStart\E/o) ? '(?'.$f.':'.$r.')' : '(?'.$f.':(?|'.$r.'))'; # do not precompile the regex to preserve the used variables
+                if ($r =~ /\Q$complexREStart\E/o) {
+                    my $c = qr/(?$f:(?|$r))/; # check if the regex is OK and die if not
+                    $$var = '(?'.$f.':(?|'.$r.'))'; # do not precompile the regex to preserve the used variables
+                } else {
+                    my $c = qr/(?$f:$r)/;     # check if the regex is OK and die if not
+                    $$var = '(?'.$f.':'.$r.')';     # do not precompile the regex to preserve the used variables
+                }
             } else {
                 $$var = ($r !~ /\Q$complexREStart\E/o) ? qr/(?$f:$r)/ : qr/(?$f:(?|$r))/;
             }
@@ -61678,7 +61687,7 @@ sub ConfigMakeIPRe {
 
     my $loadRE;
     if (($WorkerNumber != 0) && ($loadRE = loadexportedRE($name))) {
-         $loadRE =~ s/\)$//o if $loadRE =~ s/^\(\?(?:[xismu\-\^]*)?\://o;
+         $loadRE =~ s/\)$//o if $loadRE =~ s/^\(\?(?:\^u?)?\:(\((?!\?\|))/$1/o;
          eval{${$MakeIPRE{$name}}=qr/$loadRE/;};
          $ret .= ConfigShowError(0,"AdminInfo: regular expression error in '$name (exported):$loadRE' for $desc: $@") if $@;
          return $ret;
@@ -62679,7 +62688,7 @@ sub ConfigCompileRe {
         if ($CanUseRegexpOptimizer && $optReModule && $new) {
          my $loadRE;
          if (($WorkerNumber != 0) && ($loadRE = &loadexportedRE($name))) {
-             $loadRE =~ s/\)$//o if $loadRE =~ s/^\(\?(?:[ximsu\-\^]*)?\://o;
+             $loadRE =~ s/\)$//o if $loadRE =~ s/^\(\?(?:\^u?)?\:(\((?!\?\|))/$1/o;
              $TLDSRE = qr/$loadRE/;
          } else {
             $new .= '|'.$punyRE;

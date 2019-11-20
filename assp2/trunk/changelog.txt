@@ -1,3 +1,19 @@
+2019-11-20
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19324:
+
+- Depending on their content and the used perl version, it was possible that since build 19309 several regular expressions were not working like expected in any worker thread.
+  Most times the regexes were working case sensitive (NOT case sensitive is the default) on affected systems.
+
+- Several parameters in the ASSP-MIB.txt file contained an underscore (_) , which is not allowed and may prevented the snmp daemon from loading the MIB file.
+  A new ASSP-MIB.txt is provided and both MIB-creator scripts
+
+  lib/SNMPmakeMIB.p_
+  lib/SNMPmakeMRTG.p_
+
+  are updated to create syntactical right MIB files
+
+
+
 2019-11-12
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19316:
 
