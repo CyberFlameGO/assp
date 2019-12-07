@@ -1,3 +1,19 @@
+2019-12-07
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19341:
+
+- remote support was not working, if connections were configured
+
+- If a DKIM-identiy tag (i=.....) was calculated for a DKIM-signature, this DKIM-identity was cached and unexpected added to all later calculated DKIM-signatures until assp was restarted,
+  which made this DKIM-signatures invalid.
+
+
+changed:
+
+- 'AddSubjectHeader' is now restricted (added only) to incoming mails
+
+
+
+
 2019-11-20
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19324:
 

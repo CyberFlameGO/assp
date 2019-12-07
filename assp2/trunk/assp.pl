@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19324';        # 20.11.2019 TE
+$build   = '19341';        # 07.12.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.030999';
 $MAINVERSION = $version . $modversion;
@@ -615,7 +615,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'DF3D3342427526C9A0DF723D745FD59AC5DBC8BD'; }
+sub __cs { $codeSignature = '361D3000692DB0DBF6C8503FA6BB2DD1866784CB'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -2224,7 +2224,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['AddLevelHeader','Add Graphical Level Header',0,\&checkbox,1,'(.*)',undef,
  'Adds a line to the email header "X-Assp-Spam-Level: **** " showing the total message score represented by stars (1 - 20), every star represents five scoring points.',undef,undef,'msg000290','msg000291'],
 ['AddSubjectHeader','Add X-ASSP-Original-Subject Header',1,\&checkbox,'','(.*)',undef,
- 'Adds a line to the email header "X-ASSP-Original-Subject: the subject".',undef,undef,'msg000300','msg000301'],
+ 'Adds a line to the email header of incoming mails - "X-ASSP-Original-Subject: the subject".',undef,undef,'msg000300','msg000301'],
 ['AddSpamReasonHeader','Add Spam Reason Header',0,\&checkbox,1,'(.*)',undef,
  'Adds a line to the email header "X-Assp-Spam-Reason: " explaining why the message is spam.<br />
  <hr /><div class="cfgnotes">Notes On Spam Control</div><input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/spamcontrol.txt\',3);" />',undef,undef,'msg000310','msg000311'],
@@ -19476,7 +19476,7 @@ sub NewSMTPConnection {
     $Stats{smtpConnSSL}++ if $isSSL;
     $Con{$client}->{timestart} = Time::HiRes::time();
 
-    if ($ip && $EmergencyBlock{$ip}) {
+    if ($ip && $EmergencyBlock{$ip} && ! $isRemoteSupport) {
         mlog( $client, "$ip:$port denied by internal EMERGENCY Blocker - this IP has possibly tried before to KILL assp" );
         mlog( $client, "$ip:$port ATTENTION ! The EMERGENCY blocking for this IP will be lifted after an ASSP restart or at least in 15 minutes" );
         $Stats{denyConnectionA}++;
@@ -19488,12 +19488,13 @@ sub NewSMTPConnection {
     }
 
     my $byWhatList = 'denySMTPConnectionsFromAlways';
-    if ($ip && $denySMTPstrictEarly) {
+    if ($ip && $denySMTPstrictEarly && ! $isRemoteSupport) {
         $ret = matchIP( $ip, 'denySMTPConnectionsFromAlways', $client,0 );
         $ret = matchIP( $ip, 'droplist', $client,0 ) if (! $ret && ($DoDropList == 2 or $DoDropList == 3) && ($byWhatList = 'droplist')) ;
     }
 
     if ($ip &&
+        ! $isRemoteSupport &&
         $denySMTPstrictEarly &&
         $ret &&
         $DoDenySMTPstrict &&
@@ -19522,6 +19523,7 @@ sub NewSMTPConnection {
     my $doIPcheck;
     $maxSMTPipSessions=999 if (!$maxSMTPipSessions);
     if ( $ip &&
+         ! $isRemoteSupport &&
          ! matchIP($ip,'noMaxSMTPSessions',0,1) &&
          ($doIPcheck =
             ! $relayok &&
@@ -19562,7 +19564,7 @@ sub NewSMTPConnection {
     }
 
     # check relayPort usage
-    if ($relayused && $allowRelayCon && ! matchIP($ip,'allowRelayCon',0,1)) {
+    if (! $isRemoteSupport && $relayused && $allowRelayCon && ! matchIP($ip,'allowRelayCon',0,1)) {
         $Con{$client}->{prepend} = "[RelayAttempt]";
         $Con{$client}->{type} = 'C';
         &NoLoopSyswrite($client,"554 <$myName> Relay Service denied for IP $ip, closing transmission channel\r\n",0);
@@ -19580,6 +19582,7 @@ sub NewSMTPConnection {
         && $DelayIPTime
   		&& $doIPcheck
     	&& ! $allTestMode
+    	&& ! $isRemoteSupport
         && ( ( $ct, $ut, $freq, $pbval, $sip, $reason ) = split( / /o, $PBBlack{$bip} ) )
         && $pbval > $DelayIP
     	&& ( ! $DelayIPPB{$bip} || ($DelayIPPB{$bip} + $DelayIPTime > time))
@@ -19708,6 +19711,8 @@ sub NewSMTPConnection {
     $fnoS = fileno($server);
     if ($isRemoteSupport) {
         addProxyfh($client,$server);
+        $Con{$client}->{isremotesupport} = 1;
+        $Con{$server}->{isremotesupport} = 1;
         mlog(0,"Connected: remote support session: started from $ip:$port - the connection is moved to transparent proxy mode");
     } else {
         addfh($client,\&getline,$server);
@@ -19771,29 +19776,31 @@ sub NewSMTPConnection {
     # overall session limiting
     my $numsess;
     threads->yield();
-    $numsess = ++$SMTPSessionIP{Total};
-    threads->yield();
-    $smtpConcurrentSessions++;
-    threads->yield();
     $SMTPSession{$client} = $client;
-    if ($maxSMTPSessions && $numsess>=$maxSMTPSessions) {
-        d("$WorkerName limiting sessions: $client");
-        if ($SessionLog) {
-            mlog(0,"connected: $ip:$port") if !$ConnectionLog || matchIP($ip,'noLog',0,1); # log if not logged earlier
-            mlog(0,"limiting total connections");
-        }
-        $Stats{smtpConnLimit}++;
-    } else {      # increment Stats if connection not limited
-        if (matchIP($ip,'noLog',0,1)) {
-            $Stats{smtpConnNotLogged}++;
-        } else {
-            $Stats{smtpConn}++;
+    if (! $isRemoteSupport) {
+        threads->yield();
+        $numsess = ++$SMTPSessionIP{Total};
+        threads->yield();
+        $smtpConcurrentSessions++;
+        if ($maxSMTPSessions && $numsess>=$maxSMTPSessions) {
+            d("$WorkerName limiting sessions: $client");
+            if ($SessionLog) {
+                mlog(0,"connected: $ip:$port") if !$ConnectionLog || matchIP($ip,'noLog',0,1); # log if not logged earlier
+                mlog(0,"limiting total connections");
+            }
+            $Stats{smtpConnLimit}++;
+        } else {      # increment Stats if connection not limited
+            if (matchIP($ip,'noLog',0,1)) {
+                $Stats{smtpConnNotLogged}++;
+            } else {
+                $Stats{smtpConn}++;
+            }
         }
     }
     if ($smtpConcurrentSessions>$Stats{smtpMaxConcurrentSessions}) {
         $Stats{smtpMaxConcurrentSessions}=$smtpConcurrentSessions;
     }
-    newCrashFile($client);
+    newCrashFile($client) if (! $isRemoteSupport);
 }
 
 sub SMTPTraffic {
@@ -33458,7 +33465,8 @@ sub DKIMgen_Run {
     my $headlen;
     my $numSelectors;
     my $Selector;
-    our %DKIM;
+    our %DKIM = ();
+    %main::DKIM = ();
     my @Headers;
     my $mode = 'DKIM';
     my $showmode = $arc eq 'ARC' ? $arc : $mode;
@@ -33491,29 +33499,43 @@ sub DKIMgen_Run {
         }
         if (! $domain) {
             mlog($fh,"info: $showmode - no DKIM configuration found for domain provided in hostname myName '$myName'") if $DKIMlogging > 1;
+            %DKIM = ();
+            %main::DKIM = ();
             return;
         }
         $mf = $domain;
     } else {
         mlog($fh,"warning: can't detect signing domain for ARC, because myName is set to '$myName'") if $DKIMlogging > 1;
+        %DKIM = ();
+        %main::DKIM = ();
         return;
     }
 
-    unless ($domain && $user) {
+    if (! ($domain && $user) ) {
         ($user,$domain) = ($1,$2) if $mf =~ /^(?:([^@]+)\@)?([^@]+)$/o;
         $DKIM{Identity} = $domain;    # there is no from: and no sender: header, we need to set the identity DKIM value
+    } else {
+        delete $DKIM{Identity};
     }
     unless ($domain) {
         mlog($fh,"warning: DKIM is unable to detect the sender identity - From: or Sender: or envelope sender - DKIM signature was not added") if $DKIMlogging;
+        %DKIM = ();
+        %main::DKIM = ();
         return;
     }
     unless (exists $DKIMInfo{$domain}) {
         mlog($fh,"info: $showmode - no DKIM configuration found for domain $domain") if $DKIMlogging > 1;
+        %DKIM = ();
+        %main::DKIM = ();
         return;
     }
     
     $numSelectors = scalar(keys %{$DKIMInfo{$domain}});
-    return unless $numSelectors;
+    unless ($numSelectors) {
+        %DKIM = ();
+        %main::DKIM = ();
+        return;
+    }
 
     my $sel = int(rand($numSelectors));
     
@@ -33561,6 +33583,8 @@ sub DKIMgen_Run {
     }
     if ($mode eq 'Domainkey' && $arc eq 'ARC') {
         mlog(0,"warning: can't create ARC signatures for $Selector/$domain using Domainkey mode - DKIM mode is required") if $DKIMlogging;
+        %DKIM = ();
+        %main::DKIM = ();
         return;
     }
 
@@ -33602,6 +33626,8 @@ sub DKIMgen_Run {
     eval{$dkim = $sigMod->new(%DKIM);};
     if(! $dkim ) {
         mlog($fh,"error: $mode primary signer object failed - $@") if $DKIMlogging;
+        %DKIM = ();
+        %main::DKIM = ();
         return;
     }
 
@@ -33719,23 +33745,29 @@ sub DKIMgen_Run {
     };
     if( $@ ) {
         mlog($fh,"error: $mode message parsing failed - $@") if $DKIMlogging;
+        %DKIM = ();
+        %main::DKIM = ();
         return;
     }
     $sigobj = $arc eq 'ARC' ? $dkim : eval{ $dkim->signature;};
     if(! $sigobj ) {
-         my $result = $dkim->result;
-         my $result_detail = $dkim->result_detail;
-         my $attr = $arc eq 'ARC' ? '' : join(", ", $dkim->message_attributes);
-         mlog($fh,"error: $mode get signature object failed - $@ - $result - $result_detail - $attr") if $DKIMlogging;
-         return;
+        my $result = $dkim->result;
+        my $result_detail = $dkim->result_detail;
+        my $attr = $arc eq 'ARC' ? '' : join(", ", $dkim->message_attributes);
+        mlog($fh,"error: $mode get signature object failed - $@ - $result - $result_detail - $attr") if $DKIMlogging;
+        %DKIM = ();
+        %main::DKIM = ();
+        return;
     }
     eval{ $signature = $sigobj->as_string;};
     if(! $signature ) {
-         my $result = $dkim->result;
-         my $result_detail = $dkim->result_detail;
-         my $attr = $arc eq 'ARC' ? '' : join(", ", $dkim->message_attributes);
-         mlog($fh,"error: $mode get signature failed - $@ - $result - $result_detail - $attr") if $DKIMlogging;
-         return;
+        my $result = $dkim->result;
+        my $result_detail = $dkim->result_detail;
+        my $attr = $arc eq 'ARC' ? '' : join(", ", $dkim->message_attributes);
+        mlog($fh,"error: $mode get signature failed - $@ - $result - $result_detail - $attr") if $DKIMlogging;
+        %DKIM = ();
+        %main::DKIM = ();
+        return;
     }
     $signature =~ s/([^\015][^\012])$/$1\015\012/o;
     $signature = &headerWrap($signature) unless $needNoWrap;
@@ -33767,6 +33799,8 @@ sub DKIMgen_Run {
             mlog($fh,"error: code for $mode-Signature verification failed - $@");
         }
     }
+    %DKIM = ();
+    %main::DKIM = ();
     return;
 }
 
@@ -37644,7 +37678,7 @@ sub makeMyheader {
         }
     }
     $this->{myheader}.="X-Assp-Original-Subject: $this->{subject2}\r\n"
-        if $AddSubjectHeader && $this->{subject2} && $header !~ /X-Assp-Original-Subject:/;
+        if $AddSubjectHeader && ! $this->{relayok} && $this->{subject2} && $header !~ /X-Assp-Original-Subject:/;
     $this->{myheader}.=$header;
 
     my $red = $this->{red};
@@ -68521,7 +68555,7 @@ sub doneProxy {
                 threads->yield();
                 $smtpConcurrentSessions=0 if --$smtpConcurrentSessions < 0;
                 threads->yield();
-                $SMTPSessionIP{Total}-- ;
+                $SMTPSessionIP{Total}--;
                 threads->yield();
                 delete $SMTPSessionIP{$Con{$Con{$fh}->{friend}}->{ip}} if (--$SMTPSessionIP{$Con{$Con{$fh}->{friend}}->{ip}} <= 0);
                 threads->yield();
