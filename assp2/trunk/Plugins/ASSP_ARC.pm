@@ -1,4 +1,4 @@
-# $Id: ASSP_ARC.pm,v 2.08 2019/01/01 16:00:00 TE Exp $
+# $Id: ASSP_ARC.pm,v 2.09 2019/12/12 08:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is an archive Plugin. Desinged for ASSP v 2.1.1(12030) and above
@@ -12,7 +12,7 @@ use File::Copy;
 use Storable();
 no warnings qw(uninitialized);
 
-$VERSION = $1 if('$Id: ASSP_ARC.pm,v 2.08 2019/01/01 16:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_ARC.pm,v 2.09 2019/12/12 08:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(12030)';
 our $MINASSPVER = '2.0.1'.$MINBUILD;
 our %Con;
@@ -22,6 +22,7 @@ $main::PluginFiles{__PACKAGE__ . 'fieldMap'} = 1;
 $main::ModuleList{'Plugins::ASSP_ARC'} = $VERSION.'/'.$VERSION;
 ${'Storable::Deparse'} = 1;
 ${'Storable::Eval'} = 1;
+${'Storable::forgive_me'} = 1;
 
 &createDefaultMapFile();
 
@@ -147,7 +148,7 @@ sub get_config {
   - $this->{error} 1 = blocked message<br />
   To use this option, you need to know the internal ASSP variables and there usage!',undef,undef,'msg110050','msg110051'],
 [$self->{myName}.'Zip','Enable Compression for Archive Files',0,\&main::checkbox,'','(.*)',undef,'All archived files will be compressed (zip) and will get an extension ".gz" to there name. This requires an installed <a href="http://search.cpan.org/search?query=Compress::Zlib" rel="external">Compress::Zlib</a> module in PERL. ',undef,undef,undef,'msg110060','msg110061'],
-[$self->{myName}.'DoEncrypt','Enable Encyption for Archive Files',0,\&main::checkbox,'','(.*)',undef,'All archived files will be encrypted using AES-256-CBC algorithm and will get an extension ".aes" to there name. The used encryption-key is available in $this->{ARCCRYPTKEY} - see database section "DB field mapping file". Do not use this option, if your system has a high CPU workload, because the encryption of large files will use 100% of one CPU-core for some seconds. This requires an installed <a href="http://openssl.org" rel="external">OpenSSL</a> and the \'openssl\bin\' directory must be in the systems PATH variable.<br /><br />
+[$self->{myName}.'DoEncrypt','Enable Encryption for Archive Files',0,\&main::checkbox,'','(.*)',undef,'All archived files will be encrypted using AES-256-CBC algorithm and will get an extension ".aes" to there name. The used encryption-key is available in $this->{ARCCRYPTKEY} - see database section "DB field mapping file". Do not use this option, if your system has a high CPU workload, because the encryption of large files will use 100% of one CPU-core for some seconds. This requires an installed <a href="http://openssl.org" rel="external">OpenSSL</a> and the \'openssl\bin\' directory must be in the systems PATH variable.<br /><br />
   To decrypt a archived file use : openssl enc -d -aes-256-cbc -in the_achive_file_name -out the_target_file -pass pass:the_key_from_the_database !',undef,undef,undef,'msg110120','msg110121'],
 
 [$self->{myName}.'myhost','database hostname or IP',40,\&main::textinput,'','(\S*)',undef,
