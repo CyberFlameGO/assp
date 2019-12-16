@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19341';        # 07.12.2019 TE
+$build   = '19350';        # 16.12.2019 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.030999';
 $MAINVERSION = $version . $modversion;
@@ -366,6 +366,7 @@ our $MRTGFile;
 
 ${'Storable::Deparse'} = 1;
 ${'Storable::Eval'} = 1;
+${'Storable::forgive_me'} = 1;
 
 # max age in days of some longer existing files
 our %maxStatsAndDwnlAge = (
@@ -615,7 +616,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '361D3000692DB0DBF6C8503FA6BB2DD1866784CB'; }
+sub __cs { $codeSignature = 'A2DD88B013CBD55C94032DAB2F8A8112B98BD219'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -14874,7 +14875,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
 
     my $v;
     $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.15;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
-    $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.08;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
+    $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
     $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
     $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.23;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
     $ModuleList{'Plugins::ASSP_RSS'}    =~ s/([0-9\.\-\_]+)$/$v=1.11;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_RSS'};
@@ -25549,7 +25550,7 @@ sub getline {
                 if ($AUTHLogUser) {
                     my $tolog = "info: authentication (PLAIN) realms - foruser:$this->{userauth}{foruser}, user:$this->{userauth}{user}";
                     $tolog .= ", pass:$this->{userauth}{pass}" if $AUTHLogPWD;
-                    mlog($fh,$tolog);
+                    mlog($fh,$tolog) if $ConnectionLog > 1;
                 }
             } elsif ($authmeth eq 'plain' && ! $authstr) {
                 $this->{userauth}{stepcount} = 1;
@@ -25599,7 +25600,7 @@ sub getline {
             if ($AUTHLogUser) {
                 my $tolog = "info: authentication (PLAIN) realms - foruser:$this->{userauth}{foruser}, user:$this->{userauth}{user}";
                 $tolog .= ", pass:$this->{userauth}{pass}" if $AUTHLogPWD;
-                mlog($fh,$tolog);
+                mlog($fh,$tolog) if $ConnectionLog > 1;
             }
         } elsif ($this->{userauth}{stepcount} == 2) {          # login first step USER or digest-md5 after challange
             $this->{userauth}{stepcount} = 1;
@@ -25610,7 +25611,7 @@ sub getline {
             if ($AUTHLogUser) {
                 my $tolog = "info: authentication (LOGIN) realms - user:$this->{userauth}{user}";
                 $tolog .= ", pass:$this->{userauth}{pass}" if $AUTHLogPWD;
-                mlog($fh,$tolog);
+                mlog($fh,$tolog) if $ConnectionLog > 1;
             }
         } elsif ($this->{userauth}{authmeth} eq 'cram-md5') {  # cram-md5 single step  "USER DIGEST"
             $this->{userauth}{stepcount} = 0;
@@ -25619,7 +25620,7 @@ sub getline {
             $this->{userauth}{user} = $user if $user;
             if ($AUTHLogUser) {
                 my $tolog = "info: authentication (CRAM-MD5) realms - user:$this->{userauth}{user}";
-                mlog($fh,$tolog);
+                mlog($fh,$tolog) if $ConnectionLog > 1;
             }
         } elsif ($this->{userauth}{authmeth} eq 'digest-md5') {  # digest-md5 last step
             $this->{userauth}{stepcount} = 0;
@@ -39292,7 +39293,16 @@ sub reply {
         $Con{$cli}->{received354} = 1;
     } elsif(uc $Con{$cli}->{lastcmd} eq 'AUTH' && $l=~/^([45]\d\d)/o) {
         d("reply - $1 after AUTH");
-        mlog($cli,"warning: SMTP authentication failed on $serIP") if $ConnectionLog;
+
+        my $tolog;
+        if ($AUTHLogUser && exists $Con{$cli}->{userauth} && exists $Con{$cli}->{userauth}{user}) {
+            $tolog = ' - ';
+            $tolog .= "foruser: $Con{$cli}->{userauth}{foruser}, " if exists $Con{$cli}->{userauth}{foruser};
+            $tolog .= "user: $Con{$cli}->{userauth}{user}";
+            $tolog .= ", pass: $Con{$cli}->{userauth}{pass}" if $AUTHLogPWD && exists $Con{$cli}->{userauth}{pass};
+        }
+
+        mlog($cli,"warning: SMTP authentication failed from $Con{$cli}->{ip} on $serIP$tolog") if $ConnectionLog;
         my $r = $l;
         $r =~ s/\r|\n//go;
         if ($l =~ /^53[458]/o && !$Con{$cli}->{relayok} && ! &AUTHErrorsOK($cli)) {

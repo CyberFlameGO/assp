@@ -1,3 +1,14 @@
+2019-12-16
+fixed in assp 2.6.4 *SPAM-Evaporator* build 19350:
+
+- ASSP_ARC.pm 2.09 is released - it prevents Storable from croaking about invalid data structures, which may caused unexpected worker exceptions
+
+changed:
+
+- minor logging changes related to 'AUTHLogUser' and 'AUTHLogPWD'
+
+
+
 2019-12-07
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19341:
 
