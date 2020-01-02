@@ -10,7 +10,7 @@ IMPORTS
     TruthValue FROM SNMPv2-TC;
 
 thockar MODULE-IDENTITY
-    LAST-UPDATED "201911140000Z"
+    LAST-UPDATED "202001020000Z"
     ORGANIZATION "www.thockar.com"
     CONTACT-INFO
 	 "postal:       Thomas Eckardt
@@ -18,13 +18,13 @@ thockar MODULE-IDENTITY
       email:    thockar@lists.sourceforge.net"
     DESCRIPTION
 	"Top-level infrastructure of thockar projects enterprise MIB tree"
-    REVISION     "201911140000Z"
+    REVISION     "202001020000Z"
     DESCRIPTION
 	"First draft"
     ::= { enterprises 37058}
 
 asspSNMP MODULE-IDENTITY
-    LAST-UPDATED "201911140000Z"
+    LAST-UPDATED "202001020000Z"
     ORGANIZATION "www.thockar.com"
     CONTACT-INFO
 	 "postal:       Thomas Eckardt
@@ -32,7 +32,7 @@ asspSNMP MODULE-IDENTITY
       email:    thockar@lists.sourceforge.net"
     DESCRIPTION
 	"Top-level infrastructure of the thockar ASSP project enterprise MIB tree"
-    REVISION     "201911130000Z"
+    REVISION     "202001010000Z"
     DESCRIPTION
 	"First draft"
     ::= { thockar 2}
@@ -2023,7 +2023,7 @@ enableCFGShare  OBJECT-TYPE
     DESCRIPTION
 "
 Read all positions in this section carefully (multiple times is recommended!!!)!&nbsp;A wrong configuration sequence or wrong configuration values can lead in to a destroyed ASSP configuration!
-  If set, the configuration value and option files synchronization will be enabled. This synchronization belong to the configuration values, to the file that is possibly defined in a value and to the include files that are possibly defined in the configured file. If you don't want a specific configuration file or include file to be synchronized (send and receive), write
+  If set, the configuration value and option files synchronization will be enabled. This synchronization belongs to the configuration values, to the file that is possibly defined in a value and to the include files that are possibly defined in the configured file. If you don't want a specific configuration file or include file to be synchronized (send and receive), write
   # assp-no-sync
   as a comment anywhere in the file. A possible reason can be for example 'localDomains' - if ASSP1 is hosting DOMAIN1 and DOMAIN2 but ASSP2 is hosting only DOMAIN2 - so the entry for DOMAIN2 could be put in a not synchronized include file on ASSP1 and the synchronized main config file contains the entry for DOMAIN1.
   If the configuration of all values in this section is valid, the synchronization status will be shown in the GUI for each config value that is, or can be shared. There are several configuration values, that can not be shared. The list of all shareable values can be found in the distributed file assp_sync.cfg
@@ -6190,7 +6190,7 @@ AddSubjectHeader  OBJECT-TYPE
     STATUS      current
     DESCRIPTION
 "
-Adds a line to the email header 'X-ASSP-Original-Subject: the subject'.
+Adds a line to the email header of incoming mails - 'X-ASSP-Original-Subject: the subject'.
 "
     REFERENCE "Add X-ASSP-Original-Subject Header"
     DEFVAL { "" }
@@ -50573,7 +50573,7 @@ If set, encrypted or password protected compressed attachments will be blocked o
  :JSPDF - adobe PDF file with JavaScript inside - notice: well known malicious JavaScript combinations will be blocked, even this option is defined
  :URIPDF - adobe PDF file with URIs to download exeutables from the web or to open local files
  :MSOLE - all Microsoft Office Compound File Binary (OLE) - legacy not recommended, OLE files can contain any conceivable content
- :HLMSOLE - (HarmLess) Microsoft Office Compound File Binary (OLE) - MSOLE, except it contains forbidden files (the  module in PERL is needed)
+ :HLMSOLE - (HarmLess) Microsoft Office Compound File Binary (OLE) - MSOLE, except it contains forbidden or encrypted files (the  module in PERL is needed)
  :MSOM - Microsoft Office Macros
  The following compression formats are supported by the common perl module Archive::Extract: tar.gz,tgz,gz,tar,zip,jar,ear,war,par,tbz,tbz2,tar.bz,tar.bz2,bz2,Z,lzma,txz,tar.xz,xz.
  The detection of compressed files is done content based not filename extension based. The perl modules File::Type and MIME::Types are required in every case!
