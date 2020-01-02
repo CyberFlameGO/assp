@@ -1,3 +1,9 @@
+2020-01-02
+fixed in assp 2.6.4 *SPAM-Evaporator* build 20002:
+
+- public release
+
+
 2019-12-16
 fixed in assp 2.6.4 *SPAM-Evaporator* build 19350:
 

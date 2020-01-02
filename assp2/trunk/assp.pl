@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '19350';        # 16.12.2019 TE
+$build   = '20002';        # 02.01.2020 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.030999';
 $MAINVERSION = $version . $modversion;
@@ -616,7 +616,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'A2DD88B013CBD55C94032DAB2F8A8112B98BD219'; }
+sub __cs { $codeSignature = 'A9FCDAFDADA2E0BA3AEE0029968C3D49A17623B5'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1712,7 +1712,7 @@ sub defConfigArray {
 
 [0,0,0,'heading','Configuration Synchronization and Sharing'],
 ['enableCFGShare','Enable Configuration Sharing',0,\&checkbox,'','(.*)','ConfigChangeEnableCFGSync', '<hr><b>Read all positions in this section carefully (multiple times is recommended!!!)!&nbsp;A wrong configuration sequence or wrong configuration values can lead in to a destroyed ASSP configuration!</b><hr>
-  If set, the configuration value and option files synchronization will be enabled. This synchronization belong to the configuration values, to the file that is possibly defined in a value and to the include files that are possibly defined in the configured file. If you don\'t want a specific configuration file or include file to be synchronized (send and receive), write<br />
+  If set, the configuration value and option files synchronization will be enabled. This synchronization belongs to the configuration values, to the file that is possibly defined in a value and to the include files that are possibly defined in the configured file. If you don\'t want a specific configuration file or include file to be synchronized (send and receive), write<br />
   # assp-no-sync<br />
   as a comment anywhere in the file. A possible reason can be for example \'localDomains\' - if ASSP1 is hosting DOMAIN1 and DOMAIN2 but ASSP2 is hosting only DOMAIN2 - so the entry for DOMAIN2 could be put in a not synchronized include file on ASSP1 and the synchronized main config file contains the entry for DOMAIN1.<br />
   If the configuration of all values in this section is valid, the synchronization status will be shown in the GUI for each config value that is, or <b>can be shared</b>. There are several configuration values, that can not be shared. The list of all shareable values can be found in the distributed file assp_sync.cfg<br />
