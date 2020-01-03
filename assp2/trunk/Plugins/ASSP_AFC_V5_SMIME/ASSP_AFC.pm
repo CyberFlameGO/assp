@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.15 2019/09/23 10:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.16 2020/01/03 08:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -256,7 +256,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.15 2019/09/23 10:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.16 2020/01/03 08:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -265,7 +265,7 @@ $main::ModuleList{'Plugins::ASSP_AFC'} = $VERSION.'/'.$VERSION;
 $main::ModuleList{'Crypt::SMIME'} = $CanSMIME.'/0.13';
 $main::ModuleStat{'Crypt::SMIME'} = $CanSMIME ? 'enabled' : 'is not installed';
 
-$main::ModuleList{'OLE::Storage_Lite'} = $CanOLE.'/0.19';
+$main::ModuleList{'OLE::Storage_Lite'} = $CanOLE.'/0.20';
 $main::ModuleStat{'OLE::Storage_Lite'} = $CanOLE ? 'enabled' : 'is not installed';
 
 $main::ModuleList{'Email::Outlook::Message'} = $CanEOM.'/0.919';
