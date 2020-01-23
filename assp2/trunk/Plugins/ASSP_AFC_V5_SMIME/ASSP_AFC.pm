@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.16 2020/01/03 08:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.17 2020/01/23 07:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -256,7 +256,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.16 2020/01/03 08:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.17 2020/01/23 07:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -1943,6 +1943,10 @@ sub vt_file_is_ok {
     $self->{vtapi}->reset();
     local $@;
 
+    my %ignoreVendor = (
+                           'Trapmine' => 1
+                       );
+
     my $res = eval{$self->{vtapi}->is_file_bad($file)};
     mlog($fh,"VirusTotal: scan finished - ".($res==1 ? 'virus found':'OK'),1)
         if($res == 1 && $ScanLog ) || $ScanLog >= 2;
@@ -1980,6 +1984,11 @@ sub vt_file_is_ok {
         $vendor ||= 'community reported';
         $report->{positives} ||= 1;
         $report->{total} ||= 64;
+
+        if ($report->{positives} == 1 && exists($ignoreVendor{$vendor})) {
+            mlog($fh,"info: ignoring VirusTotal result for engine '$vendor'") if $ScanLog;
+            return 1;
+        }
 
         if ($main::SuspiciousVirus && $virus=~/($main::SuspiciousVirusRE)/i) {
             my $SV = $1;
