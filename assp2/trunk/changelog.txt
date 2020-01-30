@@ -1,3 +1,9 @@
+2020-01-30
+fixed in assp 2.6.4 *SPAM-Evaporator* build 20030:
+
+- the GUI option 'ssl_version' did not allow to configure TLSv1_3
+
+
 2020-01-02
 fixed in assp 2.6.4 *SPAM-Evaporator* build 20002:
 

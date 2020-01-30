@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '20002';        # 02.01.2020 TE
+$build   = '20030';        # 30.01.2020 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.030999';
 $MAINVERSION = $version . $modversion;
@@ -616,7 +616,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'A9FCDAFDADA2E0BA3AEE0029968C3D49A17623B5'; }
+sub __cs { $codeSignature = '40042C529BAF492401C6DB53F4E19342C19C1501'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -5032,7 +5032,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
   If possible, you should consider to implement the \'SMTP MTA Strict Transport Security (MTA-STS)\' by following the instructions in <a href="https://tools.ietf.org/html/rfc8461" rel="external">RFC8461</a>. To get MTA-STS working for incoming mails, it may be required to configure and to enable the SNI support (please read the complete SSL/TLS section). To use MTA-STS for outgoing mails, no special assp configuration is required - your outgoing MTA must support and implement MTA-STS.<br />
   <b>DO NOT</b> try to use the assp internal webserver to provide MTA-STS policy fetching (like: https://mta-sts.your-domain.tld/.well-known/mta-sts.txt - read <a href="https://tools.ietf.org/html/rfc8461#section-3.2" rel="external">RFC8461 section-3.2</a>)!<br />
   <input type="button" value="SSL-failed-Cache" onclick="javascript:popFileEditor(\'DB-SSLfailed\',\'1h\');" /><br />',undef,undef,'msg008210','msg008211'],
-['SSL_version','SSL version used for transmission',80,\&textinput,'SSLv23:!SSLv3:!SSLv2','(\!?(?:SSLv2\/?3|SSLv2|SSLv3|TLSv1(_?[12])?)(?:\:\!?(SSLv2\/?3|SSLv2|SSLv3|TLSv1(_?[12])?))*)','ConfigChangeSSL',
+['SSL_version','SSL version used for transmission',80,\&textinput,'SSLv23:!SSLv3:!SSLv2','(\!?(?:SSLv2\/?3|SSLv2|SSLv3|TLSv1(_?[123])?)(?:\:\!?(SSLv2\/?3|SSLv2|SSLv3|TLSv1(_?[123])?))*)','ConfigChangeSSL',
   'Sets the version of the SSL protocol used to transmit data. The default is SSLv23:!SSLv3:!SSLv2.<br />
   The IO::Socket::SSL POD explains:<br />
   Sets the version of the SSL protocol used to transmit data.<br />
