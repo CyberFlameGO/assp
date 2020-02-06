@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '20030';        # 30.01.2020 TE
+$build   = '20037';        # 06.02.2020 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.030999';
 $MAINVERSION = $version . $modversion;
@@ -616,7 +616,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '40042C529BAF492401C6DB53F4E19342C19C1501'; }
+sub __cs { $codeSignature = 'EAF8DA32898F179C11D4248505664FCFCD216D79'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -28107,6 +28107,7 @@ sub getheader {
             if (! $this->{$tag} && $this->{header} =~ /(?:^|\n)($tag):($HeaderValueRe)/i) {
                 my $tagName = $1;
                 my $from = $2;
+                $from = decodeMimeWords2UTF8($from);
                 headerUnwrap($from);
                 $this->{$tag} = $1 if $from =~ /<($EmailAdrRe\@$EmailDomainRe)>/oi;
                 $this->{$tag} = $1 if !$this->{$tag} && $from =~ /\s($EmailAdrRe\@$EmailDomainRe)/oi;
@@ -28132,6 +28133,7 @@ sub getheader {
             while ($this->{header} =~ /($HeaderNameRe):($HeaderValueRe)/igo) {
                 next if lc($1) ne $tag;
                 my $val = $2;
+                $val = decodeMimeWords2UTF8($val);
                 headerUnwrap($val);
                 while ($val =~ /[\s<]($EmailAdrRe\@$EmailDomainRe)/goi) {
                     $this->{$tag.'rcpt'}->{lc $1} = 1;
@@ -34040,6 +34042,7 @@ sub FromStrictOK_Run {
         next if $tag ne 'from' && $tag ne 'sender';
         my $val = $2;
         $val = decodeMimeWords2UTF8($val);
+        headerUnwrap($val);
         $count{$tag}++;
         my $intag = 0;
         my %tagAddrList;
@@ -35295,6 +35298,7 @@ sub MXAOK_Run {
     while ($this->{header} =~ /($HeaderNameRe):($HeaderValueRe)/igos) {
         my ($tag,$line) = ($1,$2);
         next if $tag !~ /^(?:From|ReturnReceipt|Return-Receipt-To|Disposition-Notification-To|Return-Path|Reply-To|Sender|Errors-To|List-\w+)$/io;
+        $line = decodeMimeWords2UTF8($line);
         headerUnwrap($line);
         my %seen;
         while ($line =~ /$EmailAdrRe\@($EmailDomainRe)/og) {

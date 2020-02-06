@@ -1,3 +1,10 @@
+2020-02-06
+fixed in assp 2.6.4 *SPAM-Evaporator* build 20037:
+
+- MIME encoded email addresses in header fields are now decoded before any email address check is done.
+
+
+
 2020-01-30
 fixed in assp 2.6.4 *SPAM-Evaporator* build 20030:
 
