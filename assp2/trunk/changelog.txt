@@ -1,3 +1,15 @@
+2020-02-13
+fixed in assp 2.6.4 *SPAM-Evaporator* build 20044:
+
+- the default value of 'ConnectionLog' is changed from 'noLog' (0) to 'standard' (1)
+
+- the SMTP-worker was dieing, if an invald 'ARC-Authentication-Results' header was defined
+
+- in some cases the warning 'warning: to remove an IP-address or IP-address-range from a defined IP-address-range, you need to install the modules Net::IP and NetAddr::IP::Lite'
+  was written to maillog.txt, even both modules were installed
+
+
+
 2020-02-06
 fixed in assp 2.6.4 *SPAM-Evaporator* build 20037:
 

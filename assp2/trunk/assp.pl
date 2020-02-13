@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '20037';        # 06.02.2020 TE
+$build   = '20044';        # 13.02.2020 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.030999';
 $MAINVERSION = $version . $modversion;
@@ -616,7 +616,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'EAF8DA32898F179C11D4248505664FCFCD216D79'; }
+sub __cs { $codeSignature = '0CD44B24492806E4F27395FA085637ED4710587E'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -2458,7 +2458,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 
 [0,0,0,'heading','Local Recipients and Domains &amp; Transparent Recipients and Domains'],
 ['transparentRecipients','Mails to these Recipients are Handled in Transparent-PROXY Mode*',80,\&textinput,'','(.*)','ConfigMakeSLRe',
-'Mails to any of these recipients or domains are handled transparent immediatly <b>after</b> a possible SRS check, BATV processing, Recipient-Replacement, RFC822 checks, ORCPT check and a feature match is found in the currently processed "RCPT TO:" SMTP command (envelope recipient).<br />
+'Mails to any of these recipients or domains are handled transparent <b>immediatly after</b> a possible SRS check, BATV processing, Recipient-Replacement, RFC822 checks, ORCPT check and a feature match is found in the currently processed "RCPT TO:" SMTP command (envelope recipient).<br />
  What means "transparent handled" ? ASSP acts like a transparent Proxy. No filter actions are taken for the mail. Nothing is analyzed. Nothing is verfied. Nothing is stored. Nothing is logged (except reply codes if configured) - only debugging will work.<br />
  NOTICE: If a connection is moved in to the transparent proxy mode, this connection will stay in this mode until "MAIL FROM:" or "RSET" is used or the connection is closed by any peer.<br />
  You can list specific addresses (user@mydomain.com), addresses at any local domain (user), or entire domains (@mydomain.com).  Wildcards are supported (fribo*@domain.com). (|).<br />
@@ -4360,7 +4360,7 @@ For example: mysql/dbimport<br />
  'Put anything here to identify messages from/to addresses you want to look at for problem solving. Messages identified will also be set to StoreCompleteMail.',undef,undef,'msg006860','msg006861'],
 ['noLogLineRe', 'Regular Expression to Identify skipped Log Lines*',80,\&textinput,'','(.*)','ConfigCompileRe',
  'Put anything here to identify log Lines that you don\'t want to be logged.',undef,undef,'msg008680','msg008681'],
-['ConnectionLog','Connections Logging','0:nolog|1:standard|2:verbose|3:diagnostic',\&listbox,0,'(.*)',undef,
+['ConnectionLog','Connections Logging','0:nolog|1:standard|2:verbose|3:diagnostic',\&listbox,1,'(.*)',undef,
   '',undef,undef,'msg006870','msg006871'],
 ['SessionLog','Session Limit Logging','0:nolog|1:standard|2:verbose|3:diagnostic',\&listbox,1,'(.*)',undef,
   '',undef,undef,'msg006880','msg006881'],
@@ -32624,10 +32624,18 @@ sub getARC {
     }
     $arc->CLOSE;
 
-    my $domain = $this->{arcresult}->{domain} = lc $arc->{seals}->[-1]->domain();
-    my $instance = $this->{arcresult}->{instance} = $arc->{seals}->[-1]->instance();
-    my $result = $this->{arcresult}->{result} = $arc->{seals}->[-1]->result();
-
+    my ($domain, $instance, $result);
+    eval {
+        $domain = $this->{arcresult}->{domain} = lc $arc->{seals}->[-1]->domain();
+        $instance = $this->{arcresult}->{instance} = $arc->{seals}->[-1]->instance();
+        $result = $this->{arcresult}->{result} = $arc->{seals}->[-1]->result();
+    };
+    if ($@) {
+        delete $this->{arcresult};
+        mlog($fh,"info: unable to fetch ARC result from ARC-Authentication-Results header") if $ConnectionLog;
+        return;
+    }
+    
     my @arcAR;
     if ($result eq 'pass') {
         @arcAR = @{$arc->{headers}};
@@ -74280,7 +74288,7 @@ sub GPBSetup {
         @cont = <$GPBFILE>;
         $GPBFILE->close;
     }
-    my $hasNetIP;
+    my $hasNetIP = $CanUseNetAddrIPLite && $CanUseNetIP;
     my $run = sub {
         my $s1 = NetAddr::IP::Lite->new(shift,(unpack("A1",${chr(ord("\026") << 2)})-1))+(shift);
         $s1 =~ s :/.*::o;
@@ -74294,7 +74302,7 @@ sub GPBSetup {
     };
     if (   $whattodo eq 'delete'
         && (   (grep {/(?$case:^\s*[^#]?\s*\Q$value\E)/} @cont)
-            || (exists $MakeIPRE{$parm} && $value =~ /^$IPRe(?:\/\d+)?$/o && ($hasNetIP = $CanUseNetAddrIPLite && $CanUseNetIP))
+            || (exists $MakeIPRE{$parm} && $value =~ /^$IPRe(?:\/\d+)?$/o && $hasNetIP )
            )
        )
     {
