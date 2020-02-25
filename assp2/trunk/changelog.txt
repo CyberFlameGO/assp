@@ -1,3 +1,10 @@
+2020-02-25
+fixed in assp 2.6.4 *SPAM-Evaporator* build 20056:
+
+- mails blocked by the IP-blocking feature or PBextreme were some times stored without the mail body and for this reason forwarded incompletely
+
+
+
 2020-02-13
 fixed in assp 2.6.4 *SPAM-Evaporator* build 20044:
 

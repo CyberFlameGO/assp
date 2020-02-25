@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '20044';        # 13.02.2020 TE
+$build   = '20056';        # 25.02.2020 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.030999';
 $MAINVERSION = $version . $modversion;
@@ -471,6 +471,8 @@ our $CCchangeMSGDate = 0;                ## (0..31) change the 'Date:' MIME-head
                                          ## but it will be changed, if a MS-Exchange MTA is detected using $ExchangeBannerRe against the SMTP banner / greeting.
                                          ## To disable this feature completely - set this value to 16.
 
+our $CCskipEmptyBody = 0;                # (0/1) do not forward mails with an empty body - default is 0 - forward anyway
+
 our $WriteRetryWaitTime = 1;             # seconds to wait before a SMTPwrite retry is done after an write error - default = 1
 
 our $resetMessageScore = 3;              #(0/1/2/3) reduce the MessageScore from SMTP handshake + header in header/body checks if whitelisting and/or noprocessing is detected in header/body (e.g. after the handshare)
@@ -616,7 +618,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '0CD44B24492806E4F27395FA085637ED4710587E'; }
+sub __cs { $codeSignature = 'A92AF6E1E18C1C58D088BEE6D2C76B93F56B273E'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -2052,7 +2054,7 @@ If multiple matches (values) are found in a mail for any IP address in the trans
  If you don\'t want to use group definitions, leave this field blank otherwise a file definition like \'file:files/groups.txt\' is required.<br/>
  Group definitions could be used in any other configuration value where multiple user names, email addresses or domain names or IP addresses could be defined.<br />
  Groups are defined and used using the same syntax [group-name] (including the brackets) in a single line. In the configuration parameters, the line [group-name] will be replaced by the content of the group definition, that is done here.<br />
- All group definitions are case sensitive. Group names can only contain the following characters: A-Z, a-z, 0-9, - , _ and @ !<br />
+ All group definitions are case sensitive. Group names can only contain the following characters: A-Z, a-z, 0-9, - , _ and @ ( the @ only for groups used in BlockReportFile )!<br />
  The structure of this file has to be as follows:<br />
  <br />
  [super_spamlovers]<br />
@@ -28598,7 +28600,7 @@ sub getheader {
             my $slok = $this->{allLovePBSpam} == 1;
             my $er = $SpamError;
             $er = $PenaltyError if $PenaltyError;
-            thisIsSpam( $fh, $this->{messagereason}, $spamPBLog, $er,($allTestMode || $pbTestMode), $slok, 1 );
+            thisIsSpam( $fh, $this->{messagereason}, $spamPBLog, $er,($allTestMode || $pbTestMode), $slok, 0 );
             if ($this->{error}) {$this->{skipnotspam} = 0;return;}
         }
         if (&MsgScoreTooHigh($fh,$done)) {$this->{skipnotspam} = 0;return;}
@@ -28614,7 +28616,7 @@ sub getheader {
                 my $slok = $this->{allLovePBSpam} == 1;
                 my $er = $SpamError;
                 $er = $PenaltyError if $PenaltyError;
-                thisIsSpam( $fh, $this->{messagereason}, $spamPBLog, $er,($allTestMode || $pbTestMode), $slok, 1 );
+                thisIsSpam( $fh, $this->{messagereason}, $spamPBLog, $er,($allTestMode || $pbTestMode), $slok, 0 );
                 if ($this->{error}) {$this->{skipnotspam} = 0;return;}
             }
             if (&MsgScoreTooHigh($fh,$done)) {$this->{skipnotspam} = 0;return;}
@@ -44043,11 +44045,22 @@ sub ccMail {
        delete $this->{mailfrom};
        delete $this->{ip};
        delete $this->{overwritedo};
-       mlog($fh,"info: skip forwarding message to $this->{to_as} - virus found") if $ConnectionLog;
+       mlog($fh,"info: skip sending copy of message to $this->{to} - virus found") if $ConnectionLog;
        @{$Con{$s}->{to}} = (); undef @{$Con{$s}->{to}};
        done2($s);
        return;
     }
+
+    if ($CCskipEmptyBody && ! $Con{$fh}->{body}) {   # the body is empty - skip the mail forwarding
+       delete $this->{mailfrom};
+       delete $this->{ip};
+       delete $this->{overwritedo};
+       mlog($fh,"info: skip sending copy of message to $this->{to} - no MIME body found") if $ConnectionLog;
+       @{$Con{$s}->{to}} = (); undef @{$Con{$s}->{to}};
+       done2($s);
+       return;
+    }
+
     delete $this->{mailfrom};
     delete $this->{ip};
     delete $this->{overwritedo};
@@ -48638,6 +48651,11 @@ sub FSrcpt { my ($fh,$l)=@_;
 }
 sub FSnoop { my ($fh,$l)=@_;
     if ($Con{$fh}->{gotAllText}) {
+        if ($CCskipEmptyBody && $Con{$fh}->{body} =~ /^($HeaderRe*)[\r\n\.]*$/os) {   # the body is empty - skip the mail forwarding
+            mlog($fh,"info: skip forwarding message to $Con{$fh}->{to_as} - no MIME body found") if $ConnectionLog;
+            &FSquit($fh,$l);
+            return;
+        }
         &FSdata($fh,$l);
         return;
     }
