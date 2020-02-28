@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.17 2020/01/23 07:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.18 2020/02/28 12:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -105,6 +105,15 @@ our %PDFtags = (          # PDF objects to analyze
     'Sig' =>        '2-Signature  ',
     'Cert' =>       '1-Certificate',
 );
+
+# ignore single VirusTotal results from these vendors to prevent false postives
+our %VirusTotalIgnoreVendor = (
+                       'Trapmine' => 1,
+                       'Qhioo-360' => 1,
+                       'Maxsecure' => 1,
+                       'SentinelOne' => 1
+);
+
 
 sub validateModule {
     my $module = shift;
@@ -256,7 +265,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.17 2020/01/23 07:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.18 2020/02/28 12:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -1943,10 +1952,6 @@ sub vt_file_is_ok {
     $self->{vtapi}->reset();
     local $@;
 
-    my %ignoreVendor = (
-                           'Trapmine' => 1
-                       );
-
     my $res = eval{$self->{vtapi}->is_file_bad($file)};
     mlog($fh,"VirusTotal: scan finished - ".($res==1 ? 'virus found':'OK'),1)
         if($res == 1 && $ScanLog ) || $ScanLog >= 2;
@@ -1985,7 +1990,7 @@ sub vt_file_is_ok {
         $report->{positives} ||= 1;
         $report->{total} ||= 64;
 
-        if ($report->{positives} == 1 && exists($ignoreVendor{$vendor})) {
+        if ($report->{positives} == 1 && exists($VirusTotalIgnoreVendor{$vendor})) {
             mlog($fh,"info: ignoring VirusTotal result for engine '$vendor'") if $ScanLog;
             return 1;
         }
