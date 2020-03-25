@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '20056';        # 25.02.2020 TE
+$build   = '20085';        # 25.03.2020 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.030999';
 $MAINVERSION = $version . $modversion;
@@ -589,9 +589,9 @@ our $threadReloadConfigDelay = 15;  # seconds to wait for each thread after the 
 #######################################################
 #                                                     #
 
-our $dnswlorg;                      # list.dnswl.org equivalent provider(s), if local DNS provides the dnswl.org list without having 'dnswl.org'
+our $dnswlorg;                      # list.dnswl.org equivalent provider(s), if local DNS provides the dnswl.org list without having 'lists.dnswl.org'
                                     # in the zone name - separate by space or comma
-our $dnswlForceRWLOK = 4;           # if the dnswl.org trust is equal or higher than this value. RWLminhits is ignored
+our $dnswlForceRWLOK = 4;           # if the list.dnswl.org trust is equal or higher than this value, RWLminhits is ignored
                                     # and the mail is processed with the highest trust 3 - default is 4, which can't be reached
 
 #                                                     #
@@ -607,7 +607,7 @@ our $dbBackupVersions = 10;         # (3- ...) min=3, default=10 - number of dat
 
 our $reReadSpamFolderInterval = 300;# reread interval of the spamfolder content for MaxAllowedDups to prevent possible DoS attacks
 
-                                    # https://tools.ietf.org/html/draft-ietf-uta-smtp-require-tls-04
+                                    # RFC8689 SMTP Require TLS Option
 our $enableREQUIRETLS = 0;          # (0/1) enable testing of the REQUIRETLS implementation
 our $provideREQUIRETLS = 0;         # (0/1) include REQUIRETLS in to the EHLO reply if not already provided
 our $forceREQUIRETLS = 0;           # (0/1) include REQUIRETLS in to the MAIL FROM: command if not provided by the MTA
@@ -618,7 +618,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'A92AF6E1E18C1C58D088BEE6D2C76B93F56B273E'; }
+sub __cs { $codeSignature = '228518C66DA0669B040F2A80A11EDA7414A4D2B2'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -25847,7 +25847,7 @@ sub getline {
         
         ######################
         # process REQUIRETLS
-        # related to: https://tools.ietf.org/html/draft-ietf-uta-smtp-require-tls-04 and later or the resulting RFC
+        # related to: RFC 8689
         ######################
         if ($enableREQUIRETLS) {
             # REQUIRETLS is requested in MAIL FROM:
@@ -25861,7 +25861,7 @@ sub getline {
                     return;
                 # check that REQUIRETLS is supported
                 } elsif (! $this->{REQUIRETLS} && "$fh" =~ /SSL/io) {
-                    NoLoopSyswrite($fh,"530 5.7.10 REQUIRETLS extension is not supported\r\n",0);
+                    NoLoopSyswrite($fh,"530 5.7.10 REQUIRETLS extension is not supported but required\r\n",0);
                     mlog($fh,"info: REQUIRETLS requested in MAIL FROM: but not supported - possibly set forceREQUIRETLS to 1",1);
                     done($fh);
                     return;
@@ -30453,13 +30453,16 @@ sub RWLok_Run {
     if ( $this->{rwlok} % 2) {    # 1 (trust) or 3 (trust and whitelisted)
         $this->{nodamping} = 1;
         $this->{whitelisted} = 1 if $this->{rwlok} == 3 && $RWLwhitelisting;
+        $this->{rwlstatus} = $this->{rwlok} if $fh;
         return 1 ;
     } elsif ($this->{rwlok} == 2) {   # RWLminhits not reached
         $this->{nodamping} = 1;
         $this->{rwlok} = '';
+        $this->{rwlstatus} = 2 if $fh;
         return 0;
     } elsif ($this->{rwlok} == 4) {   # RWL none
         $this->{rwlok} = '';
+        $this->{rwlstatus} = 4 if $fh;
         return 0;
     }
     $this->{rwlok} = '';

@@ -1,3 +1,11 @@
+2020-03-25
+fixed in assp 2.6.4 *SPAM-Evaporator* build 20085:
+
+- the analyzer has not shown the right RWL-state, if the RWL result was provided by the RWL-cache
+
+- REQUIRETLS is now defined by IANA in the RFC8689 - SMTP error reply codes got a small change
+
+
 2020-02-25
 fixed in assp 2.6.4 *SPAM-Evaporator* build 20056:
 
