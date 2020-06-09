@@ -1,3 +1,22 @@
+2020-06-09
+fixed in assp 2.6.4 *SPAM-Evaporator* build 20161:
+
+- header lines with an email address in the comment part like "<user@domain.org>" were wrong parsed. This was leading in to wrong SPF,DMARC and FROM checks
+
+- the "INBOUND" keyword in SMTP listener definitions was not accepted by the GUI
+
+
+added:
+
+- the hidden configuration parameter 'AUTHrelayTable' can be used to map different authentication values to different relayHosts(s)
+
+our $AUTHrelayTable = {};                # hash to lookup authentication credentials for different relayHost(s) - example:
+                                         # $AUTHrelayTable = {relayHost1:relayPort1 => [relayuser1,relaypass1],
+                                         #                    relayHost2:relayPort2 => [relayuser2,relaypass2],
+                                         #                    relayHost3:relayPort3 => [relayuser3,relaypass3]} 
+
+
+
 2020-03-25
 fixed in assp 2.6.4 *SPAM-Evaporator* build 20085:
 

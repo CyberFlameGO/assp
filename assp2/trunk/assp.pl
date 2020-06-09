@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '20085';        # 25.03.2020 TE
+$build   = '20161';        # 09.06.2020 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.030999';
 $MAINVERSION = $version . $modversion;
@@ -490,6 +490,11 @@ our $fakeAUTHsuccess = 0;                # (0/1/2) fake a 235 reply for AUTH suc
 our $fakeAUTHsuccessSendFake = 0;        # (0/1) send the faked mails from the honeypot - make the spammers believe of success - attention: moves assp in to something like an open relay for these mails
 our $AUTHrequireTLSDelay = 5;            # (number) seconds to damp connections that used AUTH without using SSL (to prevent DoS)
 
+our $AUTHrelayTable = {};                # hash to lookup authentication credentials for different relayHost(s) - example:
+                                         # $AUTHrelayTable = {relayHost1:relayPort1 => [relayuser1,relaypass1],
+                                         #                    relayHost2:relayPort2 => [relayuser2,relaypass2],
+                                         #                    relayHost3:relayPort3 => [relayuser3,relaypass3]}
+
 our $delayGripLow = 0.4;                 # 0 <= value <= 1 IP's with a GripList value lower or equal to the defined value will be not delayed/greylisted - default is 0.4
 
 our $protectASSP = 1;                    # (0/1) the internal 'rmtree' function will only remove files and folders in base/t[e]mp...  - other folders are ignored
@@ -618,7 +623,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '228518C66DA0669B040F2A80A11EDA7414A4D2B2'; }
+sub __cs { $codeSignature = '927BF1767D1FB3521A2555E030A15CEBA34B93C8'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1273,7 +1278,7 @@ $PortRe = qr/(?:(?:6553[0-5])|(?:655[0-2][$d])|(?:65[0-4][$d]{2})|(?:6[0-4][$d]{
 $HostRe = qr/(?:(?:$IPv4Re|\[?$IPv6Re\]?)|$EmailDomainRe|[$w][$w]+)/o;
 $HostPortRe = qr/$HostRe:$PortRe/o;
 
-$GUIHostPort = qr/^((?:(?:(?i:SSL:)?(?:$PortRe|$HostPortRe))(?:\|(?i:SSL:)?(?:$PortRe|$HostPortRe))*)|)$/o;
+$GUIHostPort = qr/^((?:(?:(?i:SSL:)?(?:$PortRe|$HostPortRe)|_*(?i:INBOUND)_*(?::$PortRe)?)(?:\|(?i:SSL:)?(?:$PortRe|$HostPortRe))*)|)$/o;
 
 $RFC822RE = <<'EOF';
 [\040\t]*(?:\([^\\\x80-\xff\n\015()]*(?:(?:\\[^\x80-\xff]|\([^\\\x80-\
@@ -1777,7 +1782,7 @@ sub defConfigArray {
   If you need to connect to the SMTP destination host using native SSL, write \'SSL:\' in front of the IP/host definition. In this case the Perl module <a href="http://metacpan.org/search?q=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> must be installed and enabled ( useIOSocketSSL ).<br />
   <small><i>Examples:</i> 125, 127.0.0.1:125, 127.0.0.1:125|127.0.0.5:125|SSL:127.0.0.1:465, INBOUND:125</small>','Basic',undef,'msg000030','msg000031'],
 ['smtpDestinationRT','SMTP Destination Routing Table*',80,\&textinput,'','^((?:(?:\s*'.$HostRe.'\s*=>\s*'.$HostPortRe.'\s*)(?:\|\s*'.$HostRe.'\s*=>\s*'.$HostPortRe.'\s*)*)|\s*file\s*:\s*.+|)$','configChangeRT',
-  'If INBOUND is used in the SMTP Destination field, the rules specified here are used to route the inbound IP address to a different outbound IP address. You must specify a port number with the outbound IP address. <p><small><i>Example:</i>141.120.110.1=>141.120.110.129:25|141.120.110.2=>141.120.110.130:125|141.120.110.3=>SSL:141.120.110.130:125</small></p>',undef,undef,'msg000040','msg000041'],
+  'If INBOUND is used in a SMTP Destination field, the rules specified here are used to route the inbound IP address to a different outbound IP address or host. You must specify a port number with the outbound IP address or host. <p><small><i>Example:</i>141.120.110.1=>141.120.110.129:25|141.120.110.2=>141.120.110.130:125|141.120.110.3=>SSL:141.120.110.130:125</small></p>',undef,undef,'msg000040','msg000041'],
 ['smtpLocalIPAddress','SMTP and Proxy - Destination to Local IP-address Mapping*',40,\&textinput,'','^(\s*file\s*:\s*.+|)$','configChangeLocalIPMap',
   'You need to use the "file: ..." option for this parameter!<br />
   On windows systems at least Vista/2008 is required!<br />
@@ -1872,8 +1877,9 @@ sub defConfigArray {
 ['relayHost','Relay Host',80,\&textinput,'',$GUIHostPort,undef,
  'Your isp\'s mail relayhost (smarthost). For example: mail.isp.com:25<br />
  If you run Exchange/Notes and you want assp to update the nonspam database and the whitelist, then enter your isp\'s smtp relay host here. Blank means no relayhost and the smtpDestination will be used. Separate multiple entries by "|".<br />
-  If you need to connect to the relay host using native SSL, write \'SSL:\' in front of the IP/host definition. In this case the Perl module <a href="http://metacpan.org/search?q=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> must be installed and enabled ( useIOSocketSSL ).<br />
-  Examples: your_ISP_Server:25, 149.1.1.1:25, SSL:149.1.1.2:465|any_other_host:25 !','Basic',undef,'msg001170','msg001171'],
+ If you need to connect to the relay host using native SSL, write \'SSL:\' in front of the IP/host definition. In this case the Perl module <a href="http://metacpan.org/search?q=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> must be installed and enabled ( useIOSocketSSL ).<br />
+ The IP based routing defined in smtpDestinationRT will be used, if the dynamic keyword <b>INBOUND</b> is defined here.<br />
+ Examples: your_ISP_Server:25, 149.1.1.1:25, SSL:149.1.1.2:465|any_other_host:25, INBOUND !','Basic',undef,'msg001170','msg001171'],
 ['relayAuthUser','User to Authenticate to Relay Host',80,\&passinput,'','(.*)',undef,'The username used for SMTP AUTH authentication to the relayhost  - for example, if your ISP need authentication on the SMTP port! Supported authentication methods are PLAIN, LOGIN, CRAM-MD5 and DIGEST-MD5 . If the relayhost offers multiple methods, the one with highest security option will be used. The Perl module <a href="http://metacpan.org/search?q=Authen::SASL" rel="external">Authen::SASL</a> must be installed to use this feature! The usage of this feature will be skipped, if the sending MTA uses the AUTH command. Leave this blank, if you do not want use this feature.','Basic',undef,'msg009040','msg009041'],
 ['relayAuthPass','Password to Authenticate to Relay Host',80,\&passinput,'','(.*)',undef,'The password used for SMTP AUTH authentication to the relayhost ! Leave this blank, if you do not want use this feature.','Basic',undef,'msg009050','msg009051'],
 ['relayPort','Relay Port',80,\&textinput,'',$GUIHostPort,'ConfigChangeRelayPort','Tell your mail server to connect to this IP/port as its smarthost / relayhost. For example: 225<br />
@@ -2153,7 +2159,7 @@ If multiple matches (values) are found in a mail for any IP address in the trans
  ldap:{host=&gt;"edir.your-domain.local:389,edir2.your-domain.local:389",base=&gt;\'ou=your-domain,o=com\',user=&gt;\'ldapadmin\',password=&gt;\'LdapAdmin0PW=\',timeout=&gt;10,scheme=&gt;ldap,starttls=&gt;1,version=&gt;3},<font color="orange">{(&amp;(objectclass=group)(cn=mailAdmins))<font color="red">&lt;=s/,o=.+//io</font>}<b>{member}</b></font>,<font color="green">{(&amp;(objectclass=inetOrgPerson)(<font color="red">%USERID%</font>))}<b>{mail}</b></font><br />
  <br />
  ASSP will do a small syntax check for your LDAP line definition. How ever - it is recommended to validate your LDAP queries with a ldap tool before you put them in to assp and to set LDAPLog to diagnostic while you play around with this configuration!<br /><br />
- NOTICE: Do NOT "#include ..." any configuration file used by any other configuration parameter - those file will become inaccessible, because this feature will encrypt the included file. Instead define the group here and use it in the other configuration parameter.<br />
+ NOTICE: Do NOT try to "#include ..." any configuration file used by any other configuration parameter - those includes will be ignored. Instead define the group here and use it in the other configuration parameter(s).<br />
  ','Basic',undef,'msg009470','msg009471'],
 ['GroupsReloadEvery','Reload the Groups definitions every this minutes <sup>s</sup>',40,\&textinput,60,$ScheduleGUIRe,'configChangeSched',
  'ASSP will reload the Groups definition every this minutes, if the exec: or ldap: option is used in Groups. <br />
@@ -4964,7 +4970,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
  This will keep the databases continuously uptodate and the RebuildSchedule interval could be increased, if there are enough files in the corpus and your corpus norm is fine.<br />
  If you need to copy/move several files from outside assp in to the corpus and you want assp to process them immediately, copy/move the files in to the subfolder "error/.../newManuallyAdded".',undef,undef,'msg009870','msg009871'],
 ['MaxKeepDeleted','Max Days of Keep Deleted',5,\&textinput,0,'(\d+)',undef,
-  'The maximum number in days deleted files in the bayesian collection folders ( spamlog , notspamlog ) will be kept. This is necessary when EmailBlockReport is used to handle the file and the file is meanwhile deleted. The list of files that are maked for deletion is stored in trashlist.db .',undef,undef,'msg008650','msg008651'],
+  'The maximum number in days deleted files in the bayesian collection folders ( spamlog , notspamlog ) will be kept. This is necessary when EmailBlockReport is used to handle the file and the file is meanwhile deleted. The list of files that are marked for deletion is stored in trashlist.db .',undef,undef,'msg008650','msg008651'],
 ['autoCorrectCorpus','Automatic Corpus Correction',60,\&textinput,'0.6-1.4-4000-14','(\d\.\d\d?-\d\.\d\d?-(?:[4-9]\d{3}|\d{5,})-\d+|)',undef,'(Syntax: a.a[a]-b.b[b]-cccc-dd or empty - default is "0.6-1.4-4000-14") If the corpus norm (the weight between spamwords/hamwords) is less than "a" (0.6 - too much ham) or greater than "b" (1.4 - too much spam), assp will delete the excess (oldest) files from the corresponding folder ( spamlog , notspamlog ). ASSP will keep a minimum of "c" (4000) files in the folder and will never delete files that are younger than "d" (14) days. This cleanup will run at the end of the rebuildspamdb task. So the corrected file corpus will take effect at the next rebuildspamdb!<br />
   If this value is defined, assp will use the middle value of "a" and "b" ((a+b)/2) as target corpusnorm and will try to reach this value, using (as many as possible) but only such a count of files in the folders spamlog and notspamlog as required!',undef,undef,'msg008980','msg008981'],
 ['RebuildFileTimeLimit','File Processing time Limit',30,\&textinput,'1 5','(\d+(?:\.\d+)?(?:(?:\s+|,)\d+(?:\.\d+)?)?)',undef,'(Syntax: a[.aa] b[.bb] - default is "1 5")<br />
@@ -8312,7 +8318,7 @@ if ($@) {
 sub write_rebuild_module {
 my $curr_version = shift;
 
-my $rb_version = '7.51';
+my $rb_version = '7.52';
 my $keepVersion;
 
 if (open my $ADV, '<',"$base/lib/rebuildspamdb.pm") {
@@ -8647,8 +8653,8 @@ EOT
             $have_error = 1;
         }
     } elsif ($main::useDB4Rebuild) {
-        rb_mlog("RebuildSpamDB uses the internal 'orderedtie' for temporary hashes");
-        push @dbhint , "warning: 'useDB4Rebuild' is set to on, but 'BerkeleyDB' nor 'DB_File' are available - the rebuild spamdb process uses the internal 'orderedtie' and will possibly require more time and a large amount of memory - check 'OrderedTieHashTableSize'!";
+        rb_mlog("RebuildSpamDB uses the internal 'orderedtie' for temporary hashes (deprecated !)");
+        push @dbhint , "warning: 'useDB4Rebuild' is set to on, but 'BerkeleyDB' nor 'DB_File' are available - the rebuild spamdb process uses the internal 'orderedtie' and will possibly require much more time and a large amount of memory - check 'OrderedTieHashTableSize'!";
 eval (<<'EOT');
         $spamObj = tie %spam, 'orderedtie', "$DBDir/rb_spam.bdb";
         $newspamObj = tie %newspam, 'orderedtie', "$DBDir/rb_newspam.bdb";
@@ -8666,7 +8672,8 @@ EOT
             $have_error = 1;
         }
     } else {
-        $TrashlistObj = tie %Trashlist,'orderedtie', "$main::base/trashlist.db";
+        $TrashlistObj = undef;
+        rb_Load_Trashlist();
         push @dbhint , "warning: 'useDB4Rebuild' is NOT set to on - the rebuild spamdb process will possibly require a very large amount of memory - but it will run very fast!";
     }
 
@@ -9157,14 +9164,7 @@ EOT
 
     if ( $main::asspLog ) { &rb_uploadgriplist(); }
 
-    if ($TrashlistObj !~ /orderedtie/o && (open my $HASH, '>', "$main::base/trashlist.db") ) {
-        binmode $HASH;
-        print $HASH "\n";
-        foreach my $k (sort keys %Trashlist) {
-            my $v = $Trashlist{$k};
-            print $HASH "$k\002$v\n";
-        }
-        eval{$HASH->close;};
+    if ($TrashlistObj !~ /orderedtie/o && rb_Save_Trashlist("$main::base/trashlist.db",\%Trashlist) ) {
         &rb_printlog( "\nTrashlist was saved to $main::base/trashlist.db\n" );
         &rb_mlog( "Trashlist was saved to $main::base/trashlist.db" );
     }
@@ -9358,20 +9358,20 @@ sub rb_populate_Spamdb {
 }
 
 sub rb_Load_Trashlist {
-    my $LH;
-    unless (open($LH, '<',"$main::base/trashlist.db")) {
-        return;
-    }
-    binmode($LH);
-    while (<$LH>) {
-        my ($k,$v) = split/\002/o;
-        chomp $v;
-        $v =~ s/\r|\n//go;
-        if ($k && $v) {
-            $Trashlist{$k}=$v;
+    my %tmp;
+    my $res = &main::loadHashFromFile("$main::base/trashlist.db",\%tmp) || return 0;
+    $res = 0;
+    while (my ($k,$v) = each(%tmp)) {
+        if ($main::eF->($k)) {
+            $Trashlist{&main::de8($k)} = $v;
+            $res++;
         }
     }
-    eval{$LH->close;};
+    return $res;
+}
+
+sub rb_Save_Trashlist {
+    return &main::saveHashToFile("$main::base/trashlist.db",\%Trashlist);
 }
 
 sub rb_BDB_getRecordCount {
@@ -10063,7 +10063,7 @@ sub rb_checkspam {
         &rb_deletefile( $FileName, $reason );
         return 1;
     }
-    delete $Trashlist{$FileName};
+    delete $Trashlist{&main::de8($FileName)};
     return 0;
 }
 
@@ -10080,7 +10080,7 @@ sub rb_checkham {
         &rb_deletefile( $FileName, "$reason" );
         return 1;
     }
-    delete $Trashlist{$FileName};
+    delete $Trashlist{&main::de8($FileName)};
     return 0;
 }
 
@@ -10109,15 +10109,15 @@ sub rb_whitelisted {
         my ($h,$s) = ($1,$2);
         if ($h =~ /^(?:from|sender|X-Assp-Envelope-From|reply-to|errors-to|list-\w+)$/io) {
             &main::headerUnwrap($s);
-            if ($s =~ /<($main::EmailAdrRe\@$main::EmailDomainRe)>/io || $s =~ /($main::EmailAdrRe\@$main::EmailDomainRe)/io) {
-               push(@from , &main::batv_remove_tag(0,lc($1),''));
+            if (my $res = &main::getEmailAddr($s)) {
+               push(@from , &main::batv_remove_tag(0,lc($res),''));
             }
             next;
         }
         if ($h =~ /^(?:to|X-Assp-Intended-For)$/io) {
             &main::headerUnwrap($s);
-            if ($s =~ /<($main::EmailAdrRe\@$main::EmailDomainRe)>/io || $s =~ /($main::EmailAdrRe\@$main::EmailDomainRe)/io) {
-               push(@to , &main::batv_remove_tag(0,lc($1),''));
+            if (my $res = &main::getEmailAddr($s)) {
+               push(@to , &main::batv_remove_tag(0,lc($res),''));
             }
         }
     }
@@ -10176,8 +10176,8 @@ sub rb_redlisted {
             my ($h,$s) = ($1,$2);
             if ($h =~ /^(?:to|X-Assp-Intended-For|from|sender|X-Assp-Envelope-From|reply-to|errors-to|list-\w+)$/io) {
                 &main::headerUnwrap($s);
-                if ($s =~ /<($main::EmailAdrRe\@$main::EmailDomainRe)>/io || $s =~ /($main::EmailAdrRe\@$main::EmailDomainRe)/io) {
-                    my $curaddr = lc($1);
+                if (my $res = &main::getEmailAddr($s)) {
+                    my $curaddr = lc($res);
                     if ( $main::Redlist{ $curaddr } ) {
                         $RedCount++;
                         return ( "redlist: '" . $curaddr . q{'} );
@@ -10192,18 +10192,19 @@ sub rb_redlisted {
 sub rb_deletefile {
     my ( $fn, $reason, $ignorekeepdeleted ) = @_;
 
+    my $fn8 = &main::de8($fn);
     if ( $main::eF->( $fn )) {
-        &rb_printlog( "\nremove " . $fn . q{ } . $reason ) unless $Trashlist{$fn};
+        &rb_printlog( "\nremove " . $fn8 . q{ } . $reason ) unless $Trashlist{$fn8};
         if (! $main::RebuildTestMode) {
             if ( $main::MaxKeepDeleted && !$ignorekeepdeleted ) {
-                $Trashlist{$fn} ||= time;
+                $Trashlist{$fn8} ||= time;
             } else {
                 $main::unlink->($fn) ||
-                rb_printlog("\ncannot delete " . $reason . " message " . $fn . ": $!" );
+                rb_printlog("\ncannot delete " . $reason . " message " . $fn8 . ": $!" );
             }
         }
     } else {
-        rb_printlog("\ncannot remove " . $reason . " message " . $fn . ": no such file" );
+        rb_printlog("\ncannot remove " . $reason . " message " . $fn8 . ": no such file" );
     }
 }
 
@@ -10279,11 +10280,11 @@ sub rb_add {
     }
 
     my $imgHash;
-    if ($doattach && ! $heloOnly && ((my $fsize = &main::fsize( $fn )) < $main::npSize) && ! exists $Trashlist{$fn.'.att'}) {
+    if ($doattach && ! $heloOnly && ((my $fsize = &main::fsize( $fn )) < $main::npSize) && ! exists $Trashlist{&main::de8($fn).'.att'}) {
         $imgHash = &main::AttachMD5File($fn);
         $processedBytes += $fsize - length($$content);
         if (rb_checkRunTime($startTime,"reached $movetime s after AttachMD5File on $fn")) {
-            $Trashlist{$fn.'.att'} = time + (3600 * 24 * 5);
+            $Trashlist{&main::de8($fn).'.att'} = time + (3600 * 24 * 5);
             $startTime = Time::HiRes::time();
             rb_printlog("\nfile '$fn' will be skipped from attachment processing in future rebuild tasks" );
             rb_mlog("file '$fn' will be skipped from attachment processing in future rebuild tasks" );
@@ -10296,10 +10297,11 @@ sub rb_add {
     my $IPprivate = $main::IPprivate;
     my ($reportedBy,$domain);
     if ($header) {
-        $reportedBy = lc $1 if (   $header =~ /X-Assp-Reported-By:\s*($main::EmailAdrRe\@$main::EmailDomainRe)/io
-                                || $header =~ /X-Assp-Intended-For:\s*($main::EmailAdrRe\@$main::EmailDomainRe)/io
-                                || $header =~ /^to:.*?<($main::EmailAdrRe\@$main::EmailDomainRe)>/io
-                                || $header =~ /^to:.*?($main::EmailAdrRe\@$main::EmailDomainRe)/io);
+        my $r;
+        $reportedBy = lc ($r || $1) if (   $header =~ /X-Assp-Reported-By:\s*($main::EmailAdrRe\@$main::EmailDomainRe)/io
+                                        || $header =~ /X-Assp-Intended-For:\s*($main::EmailAdrRe\@$main::EmailDomainRe)/io
+                                        || ($header =~ /^to:([^\r\n])/io && ($r = &main::getEmailAddr($1)) )
+                                       );
         if ($reportedBy) {
             $domain = $1 if $reportedBy =~ /(\@$main::EmailDomainRe)$/o;
             $reportedBy = '' unless (($main::DoPrivatSpamdb & 1) && &main::localmailaddress(0,$reportedBy));
@@ -10804,7 +10806,7 @@ sub rb_cleanTrashlist {
         $files_before++;
         my $f = $k;
         $f =~ s/\.att$//o;
-        if ($main::eF->( "$f" )) {
+        if ($main::eF->( $f )) {
             if (  $t - $v >= $main::MaxKeepDeleted * 3600 * 24 )
             {
                 &rb_deletefile ($f,"Trashlist",1);
@@ -11412,7 +11414,7 @@ If the third parameter is not set or any of the N,W,L,I is not set, the default 
 <span class="negative">If any parameter that allowes the usage of weighted regular expressions is set to "block", but the sum of the resulting weighted penalty value is less than the corresponding "Penalty Box Valence Value" (because of lower weights) - only scoring will be done!</span><br /></div>
 <br /><img class="genHelpIcon" src="get?file=images/regex.jpg"><br />
 <div id="regex">If the regular expression optimization is used - ("perl module Regexp::Optimizer" installed and enabled) - and you want to disable the optimization for a special regular expression (file based), set one line (eg. the first one) to a value of '<span class="positive">assp-do-not-optimize-regex</span>' or '<span class="positive">a-d-n-o-r</span>' (without the quotes)! To disable the optimization for a specific line/regex, put &lt;&lt;&lt; in front and &gt;&gt;&gt; at the end of the line/regex. To weight such line/regex write for example: <span class="positive">&lt;&lt;&lt;</span>Phishing\\.<span class="positive">&gt;&gt;&gt;</span>=>1.45=>N- or ~<span class="positive">&lt;&lt;&lt;</span>Heuristics|Email<span class="positive">&gt;&gt;&gt;</span>~=>50  or  ~<span class="positive">&lt;&lt;&lt;</span>(Email|HTML|Sanesecurity)\\.(Phishing|Spear|(Spam|Scam)[a-z0-9]?)\\.<span class="positive">&gt;&gt;&gt;</span>~=>4.6 .<br /><br />
-Using Perl 5.12 or higher, assp supports the usage of unicode block, unicode script and unicode character definitions in regular expressions, llke: \\P{Balinese} \\p{Script:Greek} \\P{Hebrew} \\p{script=katakana} \\N{greek:Sigma} \\x{263a}<br />
+Using Perl 5.12 or higher, assp supports the usage of unicode block, unicode script and unicode character definitions in regular expressions, like: \\P{Balinese} \\p{Script:Greek} \\P{Hebrew} \\p{script=katakana} \\N{greek:Sigma} \\x{263a}<br />
 It is recommended to switch off the regular expression optimization, if a unicode regular expression definition is used (at least for the line, where it is used)!<br /><br /></div>
 <img class="genHelpIcon" src="get?file=images/help.jpg"><br />
 <div id="reply">The literal 'SESSIONID' will be replaced by the unique message logging ID in every SMTP error reply.<br />
@@ -24052,8 +24054,21 @@ sub serverIsWhichHost {
     return 0 unless $dest;
     my $peeraddr = ITR($server->peerhost());
     my $peerport = $server->peerport();
+    my $localip = $CanUseIOSocketINET6 ? '::' : '0.0.0.0';
+    $localip = ITR($Con{$server}->{friend}->sockhost()) if eval {exists $Con{$server} && exists $Con{$server}->{friend} && fileno($Con{$server}->{friend})};
     foreach my $destination (split(/\s*\|\s*/o, $dest)) {
         next unless $destination;
+
+        if ($destination =~ /^(_*INBOUND_*:)?(\d+)$/o){
+            $localip = '127.0.0.1' if ($localip eq '0.0.0.0');
+            $localip = '[::1]' if ($localip eq '::');
+            if (exists $crtable{$localip}) {
+                $destination = $crtable{$localip};
+            } else {
+                $destination = $localip .':'.$2;
+            }
+        }
+
         $destination =~ s/^SSL://io;
         my ($ip,$port);
         ($ip,$port) = ($1,$2) if $destination =~ /^($HostRe)?:?(\d+)$/o;
@@ -24063,6 +24078,11 @@ sub serverIsWhichHost {
         return 1 if !$ip && $peerport == $port;
     }
     return 0;
+}
+
+sub getRelayAuth {
+    my $host = shift;
+    return (defined($host) && exists $AUTHrelayTable->{$host}) ? @{$AUTHrelayTable->{$host}} : ($relayAuthUser, $relayAuthPass);
 }
 
 sub orgAuthRes {
@@ -24233,11 +24253,10 @@ sub resend_mail {
         mlog(0,"*x*(re)send - process: $file $count") if $MaintenanceLog >= 2;
         my ($howF, $mailfrom);
         ($howF, $mailfrom) = ($1,$2)
-          if ($message =~ /(?:^|\n)(X-Assp-Envelope-From:)[^\<]*?<?($EmailAdrRe\@$EmailDomainRe)>?\s*\r?\n/sio);
+          if ($message =~ /(?:^|\n)(X-Assp-Envelope-From:)(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?\s*\r?\n/sio);
         if (! $mailfrom && $message =~ /(?:^|\n)(from:)($HeaderValueRe)/sio) {
-            ($howF, my $value) = ($1,$2);
-            ($mailfrom) = $value =~ /<($EmailAdrRe\@$EmailDomainRe)>/sio;
-            ($mailfrom) = $value =~ /($EmailAdrRe\@$EmailDomainRe)/sio unless $mailfrom;
+            $howF = $1;
+            $mailfrom = getEmailAddr($2);
         }
 
         if (! $mailfrom) {
@@ -24261,11 +24280,10 @@ sub resend_mail {
 
         my ($howT, $to);
         ($howT, $to) = ($1,$2)
-          if ($message =~ /(?:^|\n)(X-Assp-Intended-For:)[^\<]*?<?($EmailAdrRe\@$EmailDomainRe)>?/sio);
+          if ($message =~ /(?:^|\n)(X-Assp-Intended-For:)(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio);
         if (! $to && $message =~ /(?:^|\n)(to:)($HeaderValueRe)/sio) {
-            ($howT, my $value) = ($1,$2);
-            ($to) = $value =~ /<($EmailAdrRe\@$EmailDomainRe)>/sio;
-            ($to) = $value =~ /($EmailAdrRe\@$EmailDomainRe)/sio unless $to;
+            $howT = $1;
+            $to = getEmailAddr($2);
         }
 
         if (! $to) {
@@ -24277,18 +24295,17 @@ sub resend_mail {
         if (lc $howT eq lc "X-Assp-Intended-For:") {
   #          $message =~ s/\nto:[^\<]*?<?$EmailAdrRe\@$EmailDomainRe>?\s*\r?\n/\n/sio;
             $message =~ s/(^|\n)to:$HeaderValueRe/$1/sio;
-            $message =~ s/(^|\n)X-Assp-Intended-For:[^\<]*?<?($EmailAdrRe\@$EmailDomainRe)>?\s*\r?\n/$1To: <$2>\r\n/sio;
+            $message =~ s/(^|\n)X-Assp-Intended-For:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?\s*\r?\n/$1To: <$2>\r\n/sio;
         }
 
         my $requireTLS = $message =~ /(?:^|\n)X-ASSP-REQUIRETLS:\s*YES/io && $message !~ /(?:^|\n)REQUIRETLS:\s*NO/io;
 
         my $islocal = localmail($to);
         if ($islocal && $ReplaceRecpt) {
-              my ($mf) = $mailfrom =~ /<($EmailAdrRe\@$EmailDomainRe)>/o;
-              ($mf) = $mailfrom =~ /($EmailAdrRe\@$EmailDomainRe)/o unless $mf;
+              my $mf = getEmailAddr($mailfrom);
               my $newadr = RcptReplace($to,$mf,'RecRepRegex');
               if (lc $newadr ne lc $to) {
-                  $message =~ s/((?:^|\n)to:[^\<]*?<?)\Q$to\E(>?)/$1$newadr$2/is;
+                  $message =~ s/((?:^|\n)to:(?:\s*"[^"]*"\s*)?<?)\Q$to\E(>?)/$1$newadr$2/is;
                   mlog(0,"*x*(re)send - recipient $to replaced with $newadr");
                   $to = $newadr;
               }
@@ -24528,6 +24545,7 @@ sub resend_mail {
                 eval {
                     my ($host,$port) = $destinationA =~ /($HostRe)(?::($PortRe))?$/io;
                     $port ||= $useSSL ? 465 : 25;
+                    my ($relayAuthUser,$relayAuthPass) = getRelayAuth("$host:$port");
                     my %auth = ($hostCFGname eq 'relayHost' && $relayAuthUser && $relayAuthPass) ? (username => $relayAuthUser, password => $relayAuthPass) : ();
                     my (%from, %to, %Bits);
                     %from = ('From' => $mailfrom);
@@ -24619,6 +24637,43 @@ sub resendError {
     } else {
           delete $ResendFile{$file};
     }
+}
+
+sub getEmailAddr {
+    my $addr = shift;
+    headerUnwrap($addr) if $addr =~ /\r|\n|\t/o;
+    
+    # remove all comments
+    my @comments;
+    push @comments, $1 while $addr =~ s/\s*"([^"]*)"\s*//oi;
+
+    # get possibly faked addresses from inside comments
+    my @fakeaddr;
+    foreach my $comment (@comments) {
+        my @new = $comment =~ /($EmailAdrRe\@$EmailDomainRe)/goi;
+        push @fakeaddr, @new if @new;
+    }
+
+    # get the real addresses
+    my @realaddr;
+    push @realaddr, $1 while $addr =~ s/<($EmailAdrRe\@$EmailDomainRe)>//oi;
+
+    # get all left over addresses
+    my @restaddr;
+    push @restaddr, $1 while $addr =~ s/($EmailAdrRe\@$EmailDomainRe)//oi;
+
+    d("getEmailAddr - real: @realaddr - fake: @fakeaddr - rest: @restaddr - comments: @comments");
+
+    if (@realaddr) {
+        push @fakeaddr,@restaddr if @restaddr;
+    } else {
+        push @realaddr,@restaddr if @restaddr;
+    }
+    return (\@realaddr,\@fakeaddr,\@comments) if wantarray;
+    return if (! @realaddr && ! @fakeaddr);
+    return $realaddr[0] if @realaddr;
+    return $fakeaddr[0] if @fakeaddr;
+    return;
 }
 
 # wrap too long bodys
@@ -25807,8 +25862,7 @@ sub getline {
             $this->{relayok} &&
             serverIsWhichHost($server,$relayHost) &&
             scalar keys %{$this->{authmethodes}} &&
-            $relayAuthUser &&
-            $relayAuthPass
+            (my ($relayAuthUser1,$relayAuthPass1) = getRelayAuth($server->peerhost().':'.$server->peerport()))
            )
         {
             $this->{doneAuthToRelay} = 1;
@@ -25822,9 +25876,9 @@ sub getline {
                 Authen::SASL->new(
                                     mechanism => $this->{AUTHmechanism},
                                     callback  => {
-                                        user     => $relayAuthUser,
-                                        pass     => $relayAuthPass,
-                                        authname => $relayAuthUser
+                                        user     => $relayAuthUser1,
+                                        pass     => $relayAuthPass1,
+                                        authname => $relayAuthUser1
                                     },
                                     debug => $ThreadDebug
                 )->client_new('smtp');
@@ -27917,7 +27971,7 @@ sub getOriginIPs {
                 shift @words;
                 if ($words[0]) {
                     if (lc $words[0] eq 'for') {
-                        $line =~ s/\bwith\b.*$//o unless ( $line =~ s/\bwith\b.*?\b$words[0]\b(?:\s*"[^"]+")?\s*<?$EmailAdrRe\@$EmailDomainRe//i);
+                        $line =~ s/\bwith\b.*$//o unless ( $line =~ s/\bwith\b.*?\b$words[0]\b(?:\s*"[^"]*"\s*)?<?$EmailAdrRe\@$EmailDomainRe//i);
                     } else {
                         $line =~ s/\bwith\b.*?(\b$words[0]\b)/$1/i;
                     }
@@ -28111,8 +28165,8 @@ sub getheader {
                 my $from = $2;
                 $from = decodeMimeWords2UTF8($from);
                 headerUnwrap($from);
-                $this->{$tag} = $1 if $from =~ /<($EmailAdrRe\@$EmailDomainRe)>/oi;
-                $this->{$tag} = $1 if !$this->{$tag} && $from =~ /\s($EmailAdrRe\@$EmailDomainRe)/oi;
+                my $r = getEmailAddr($from);
+                $this->{$tag} = $r if $r;
                 $from =~ s/^\s+|\s+$//go;
                 if (! $this->{$tag} && $from && ! $this->{relayok}) {
                     mlog($fh,"malformed address: found in - $tagName:$from");
@@ -28137,8 +28191,9 @@ sub getheader {
                 my $val = $2;
                 $val = decodeMimeWords2UTF8($val);
                 headerUnwrap($val);
-                while ($val =~ /[\s<]($EmailAdrRe\@$EmailDomainRe)/goi) {
-                    $this->{$tag.'rcpt'}->{lc $1} = 1;
+                my @addr = getEmailAddr($val);
+                foreach my $adr (@{$addr[0]}) {
+                    $this->{$tag.'rcpt'}->{lc $adr} = 1;
                 }
             }
             pos($this->{header}) = 0;
@@ -28851,7 +28906,7 @@ sub headerAddrCheckOK_Run {
             mlog($fh,"info: checking for unexpected $BCC: recipient addresses in incoming mail") if $ValidateUserLog >= 2;
             foreach my $bc (@bccRCPT) {
                 headerUnwrap($bc);
-                while ($bc =~ /($EmailAdrRe\@$EmailDomainRe)/igos) {
+                while ($bc =~ /(?:\s*"[^"]*"\s*)?($EmailAdrRe\@$EmailDomainRe)/igos) {
                     my $addr = $1;
                     if ($ReplaceRecpt) {
                         my $newadr = RcptReplace($addr,batv_remove_tag('',$this->{mailfrom},''),'RecRepRegex');
@@ -28981,9 +29036,9 @@ sub SPFok {
     {
         my $head = $1;
         headerUnwrap($head);
-        if ($head =~ /<($EmailAdrRe\@($EmailDomainRe))>/o || $head =~ /($EmailAdrRe\@($EmailDomainRe))/o) {
-            my $mf = $1;
-            my $mfd = lc $2;
+        if (my $mf = getEmailAddr($head)) {
+            my $mfd;
+            $mfd = lc $1 if $mf =~ /\@($EmailDomainRe)/io;
             my $envmfd;
             if ( $blockstrictSPFRe && $mf =~ /$blockstrictSPFReRE/ ) # ONLY if the 'from'  address is in strictSPFre
             {
@@ -32160,7 +32215,8 @@ sub DMARCget_Run {
     $mf = $1 if $this->{header} =~ /(?:^|\n)from:($HeaderValueRe)/ios;
     return unless $mf;
     headerUnwrap($mf);
-    ($address,$domain) = (lc($1),lc($2)) if $mf=~/<($EmailAdrRe\@($EmailDomainRe))>/o || $mf=~/($EmailAdrRe\@($EmailDomainRe))/o;
+    $address = lc getEmailAddr($mf);
+    $domain = $1 if $address =~ /\@($EmailDomainRe)/o;
     return if (! $domain);
     return if localdomains($domain);
     return if matchSL($this->{mailfrom},'noDMARCDomain');
@@ -33495,7 +33551,8 @@ sub DKIMgen_Run {
             next if lc($1) ne 'from' && lc($1) ne 'sender';
             my $s = lc $2;
             &headerUnwrap($s);
-            if ($s =~ /<($EmailAdrRe)\@($EmailDomainRe)>/io || $s =~ /($EmailAdrRe)\@($EmailDomainRe)/io) {
+            if (my $r = getEmailAddr($s)) {
+                $r =~ /($EmailAdrRe)\@($EmailDomainRe)/io;
                 $user = $1;
                 $domain = $2;
                 $mf = "$user\@$domain";
@@ -34059,8 +34116,11 @@ sub FromStrictOK_Run {
         $count{$tag}++;
         my $intag = 0;
         my %tagAddrList;
-        while ( $val =~ /(?:\"[^\"]*\")?(?:\s*<|\s*)($EmailAdrRe\@($EmailDomainRe))/igo) {
-            my ($addr,$domain) = (lc($1),lc($2));
+        my @allAddr = getEmailAddr($val);
+        foreach my $addr (@{$allAddr[0]},@{$allAddr[1]}) {
+            $addr = lc($addr);
+            $addr =~ /\@($EmailDomainRe)/io;
+            my $domain = $1;
             next if $tagAddrList{$addr};
             $tagAddrList{$addr} = 1;
             $count{$tag}++ if $intag++ > 0;  # there is more than one sender in this tag
@@ -35314,7 +35374,9 @@ sub MXAOK_Run {
         $line = decodeMimeWords2UTF8($line);
         headerUnwrap($line);
         my %seen;
-        while ($line =~ /$EmailAdrRe\@($EmailDomainRe)/og) {
+        my @addr = getEmailAddr($line);
+        foreach my $adr (@{$addr[0]}) {
+            $adr =~ /\@($EmailDomainRe)/io;
             my $dom = lc $1;
             next if $seen{$dom};
             $seen{$dom} = 1;
@@ -36360,14 +36422,16 @@ sub PersBlackOK_Run {
         my ($name,$value) = ($1,$2);
         if ($name =~ /^(from|sender|reply-to|return-path|errors-to|list-\w+)$/io) {
             &headerUnwrap($value);
-            while ($value =~ /($EmailAdrRe\@$EmailDomainRe)/gio) {
-                my $addr = batv_remove_tag(0,$1,'');
+            my @adr = getEmailAddr($value);
+            foreach my $addr (@{$adr[0]}) {
+                my $addr = batv_remove_tag(0,$addr,'');
                 $senderlist{lc $addr} = 1;
             }
         } elsif ($name =~ /^(to|cc|bcc)$/io) {
             &headerUnwrap($value);
-            while ($value =~ /($EmailAdrRe\@$EmailDomainRe)/gio) {
-                my $addr = batv_remove_tag(0,$1,'');
+            my @adr = getEmailAddr($value);
+            foreach my $addr (@{$adr[0]}) {
+                my $addr = batv_remove_tag(0,$addr,'');
                 $rcpt{lc $addr} = 1;
             }
         }
@@ -37795,7 +37859,8 @@ sub thisIsSpam {
     $this->{messagereason}=$reason;
     my ($to) = $this->{rcpt} =~ /(\S+)/o;
     $to = lc($to);
-    my ($mfd,$mfu); ($mfu,$mfd) = ($1,$2) if $to =~ /($EmailAdrRe)\@($EmailDomainRe)/o;
+    my ($mfd,$mfu);
+    ($mfu,$mfd) = ($1,$2) if $to =~ /($EmailAdrRe)\@($EmailDomainRe)/o;
     $error = $SpamError if !$error;
     $error =~ s/LOCALUSER/$mfu/go;
     $error =~ s/LOCALDOMAIN/$mfd/go;
@@ -41730,6 +41795,7 @@ sub BlockReportSend {
                 }
                 my $timeout = (int(length($bod) / (1024 * 1024)) + 1) * 60; # 1MB/min
                 $timeout = 2 if $timeout < 2;
+                my ($relayAuthUser,$relayAuthPass) = getRelayAuth("$host:$port");
                 $smtp->auth($relayAuthUser,$relayAuthPass) if( ! $local && $relayAuthUser && $relayAuthPass);
                 $smtp->mail($mailfrom);
                 $smtp->to($to);
@@ -45132,8 +45198,8 @@ sub onwhitelist {
                     my $s = $2;
                     next if $1 !~ /^(?:from|sender|reply-to|return-path|errors-to|disposition-notification-to|list-\w+)$/io;
                     &headerUnwrap($s);
-                    if ($s =~ /<($EmailAdrRe\@$EmailDomainRe)>/io || $s =~ /\s($EmailAdrRe\@$EmailDomainRe)/io) {
-                        $s = batv_remove_tag(0,$1,'');
+                    if ($s = getEmailAddr($s)) {
+                        $s = batv_remove_tag(0,$s,'');
                         $senderlist{lc $s}=1;
                     }
                 }
@@ -45209,8 +45275,8 @@ sub onwhitelist {
         while ($$ba=~/($HeaderNameRe):($HeaderValueRe)/igos) {
             my $ad=$2;
             next if $1 !~ /^(?:to|cc|bcc)$/io;
-            while ($ad=~/[\s<]($EmailAdrRe\@$EmailDomainRe)/go) {
-                my $s = $1;
+            my @adr = getEmailAddr($ad);
+            foreach my $s (@{$adr[0]}) {
                 $WorkerLastAct{$WorkerNumber} = time if (++$count % 100 == 0);
                 $s = batv_remove_tag(0,$s,'');
                 $ar{lc $s} = 1;
@@ -45798,10 +45864,12 @@ sub clean {
                 $helo = $1 if $val =~ /[\s\]]helo=([^\)]+)\)/io;
             }
             if ($head =~ /^(to|cc|bcc)$/io) {
-                push @receipt, $1 while ($val =~ /($EmailAdrRe\@$EmailDomainRe)/gio);
+                my @adr = getEmailAddr($val);
+                push @receipt, @{$adr[0]} if @{$adr[0]};
             }
             if ($head =~ /^(?:from|ReturnReceipt|Return-Receipt-To|Disposition-Notification-To|Return-Path|Reply-To|Sender|Errors-To|List-\w+)/io) {
-                push @sender, $1 while ($val =~ /($EmailAdrRe\@$EmailDomainRe)/gio);
+                my @adr = getEmailAddr($val);
+                push @sender, @{$adr[0]} if @{$adr[0]};
             }
             if (!$sub && $head =~ /^subject$/io) {
                 $utf8on->(\$val);
@@ -53222,8 +53290,9 @@ sub ConfigAnalyze {
                 $fm .=  " $who: <font color='red'>$addr - is invalid</font> - PB value = nofromValencePB[0]<br />  ";
             }
             pos($s) = 0;
-            while ($s =~ /($EmailAdrRe\@$EmailDomainRe)/go) {
-                my $ss = batv_remove_tag(0,$1,'');
+            while ($s =~ /(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)/go) {
+                my $ss = $1;
+                $ss = batv_remove_tag(0,$ss,'');
                 $mailfrom = $ss if $mailfrom eq 'from';
                 $fm{lc $ss}=1;
                 $fm .=  " $who: $ss <br />  ";
@@ -53242,7 +53311,7 @@ sub ConfigAnalyze {
             my $s = shift(@recHeader);
             next if $who !~ /^(?:to|cc|bcc)$/io;
             &headerUnwrap($s);
-            while ($s =~ /($EmailAdrRe\@$EmailDomainRe)/go) {
+            while ($s =~ /(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)/go) {
                 my $ss = batv_remove_tag(0,$1,'');
                 $to{lc $ss}=1;
                 $headTo ||= $ss if (lc $who eq 'to');
@@ -57135,10 +57204,10 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
              $force = ' - attachments are forced' if $force;
              my $rfil = $fil;
              $rfil =~ s/^(\Q$base\E\/).+(\/.+\Q$maillogExt\E)$/$1$resendmail$2/i;
-             my ($to) = $s1 =~ /\nX-Assp-Intended-For:[^\<]*?<?($EmailAdrRe\@$EmailDomainRe)>?/sio;
-             ($to) = $s1 =~ /\nto:[^\<]*?<?($EmailAdrRe\@$EmailDomainRe)>?/sio unless $to;
-             my ($from) = $s1 =~ /\nX-Assp-Envelope-From:[^\<]*?<?($EmailAdrRe\@$EmailDomainRe)>?/sio;
-             ($from) = $s1 =~ /\nfrom:[^\<]*?<?($EmailAdrRe\@$EmailDomainRe)>?/sio unless $from;
+             my ($to) = $s1 =~ /\nX-Assp-Intended-For:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio;
+             ($to) = $s1 =~ /\nto:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio unless $to;
+             my ($from) = $s1 =~ /\nX-Assp-Envelope-From:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio;
+             ($from) = $s1 =~ /\nfrom:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio unless $from;
              $s1 =~ s/^\r\n//o;
              $s2='';
              if (! $to ) {
@@ -57247,10 +57316,10 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
                  $s2='<span class="positive">File copied to correctedspam folder</span>';
                  mlog(0,"info: request to create file: $rfil");
 
-                 my ($to) = $s1 =~ /\nX-Assp-Intended-For:[^\<]*?<?($EmailAdrRe\@$EmailDomainRe)>?/sio;
-                 ($to) = $s1 =~ /\nto:[^\<]*?<?($EmailAdrRe\@$EmailDomainRe)>?/sio unless $to;
-                 my ($from) = $s1 =~ /\nX-Assp-Envelope-From:[^\<]*?<?($EmailAdrRe\@$EmailDomainRe)>?/sio;
-                 ($from) = $s1 =~ /\nfrom:[^\<]*?<?($EmailAdrRe\@$EmailDomainRe)>?/sio unless $from;
+                 my ($to) = $s1 =~ /\nX-Assp-Intended-For:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio;
+                 ($to) = $s1 =~ /\nto:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio unless $to;
+                 my ($from) = $s1 =~ /\nX-Assp-Envelope-From:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio;
+                 ($from) = $s1 =~ /\nfrom:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio unless $from;
                  if (   ($EmailErrorsModifyWhite == 1 || $EmailErrorsModifyNoP == 1 || matchSL( $to, 'EmailErrorsModifyPersBlack' ))
                      && $to
                      && &localmail($to)
@@ -57285,10 +57354,10 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
                  $s2='<span class="positive">File copied to correctednotspam folder</span>';
                  mlog(0,"info: request to create file: $rfil");
 
-                 my ($to) = $s1 =~ /\nX-Assp-Intended-For:[^\<]*?<?($EmailAdrRe\@$EmailDomainRe)>?/sio;
-                 ($to) = $s1 =~ /\nto:[^\<]*?<?($EmailAdrRe\@$EmailDomainRe)>?/sio unless $to;
-                 my ($from) = $s1 =~ /\nX-Assp-Envelope-From:[^\<]*?<?($EmailAdrRe\@$EmailDomainRe)>?/sio;
-                 ($from) = $s1 =~ /\nfrom:[^\<]*?<?($EmailAdrRe\@$EmailDomainRe)>?/sio unless $from;
+                 my ($to) = $s1 =~ /\nX-Assp-Intended-For:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio;
+                 ($to) = $s1 =~ /\nto:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio unless $to;
+                 my ($from) = $s1 =~ /\nX-Assp-Envelope-From:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio;
+                 ($from) = $s1 =~ /\nfrom:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio unless $from;
                  if (   ($EmailErrorsModifyWhite == 1 || $EmailErrorsModifyNoP == 1 || matchSL( $to, 'EmailErrorsModifyPersBlack' ))
                      && $to
                      && &localmail($to)
@@ -62376,13 +62445,13 @@ sub checkOptionList {
                 my ($key, $othername) = (shift @used, shift @used);
                 if (exists($FileUpdate{"$base/$fil$othername"}) && $FileUpdate{"$base/$fil$othername"} > 0)  # include file used directly in other config value
                 {
-                    mlog(0,"AdminInfo: error - configuration file '$fil' for 'Groups' is already in use by the configuration '$othername' - config file is ignored! Hint: Do NOT build groups from already used configuration files or already inluded files!") if (! $calledfromThread);
-                    push @errors,"error: configuration file '$fil' for 'Groups' is already in use by the configuration '$othername' - config file is ignored! Hint: Do NOT build groups from already used configuration files or already inluded files!";
+                    mlog(0,"AdminInfo: error - configuration file '$fil' for 'Groups' is already in use by the configuration '$othername' - config file is ignored! Hint: Do NOT build groups from already used configuration files or already included files!") if (! $calledfromThread);
+                    push @errors,"error: configuration file '$fil' for 'Groups' is already in use by the configuration '$othername' - config file is ignored! Hint: Do NOT build groups from already used configuration files or already included files!";
                 }
                 if (exists($FileIncUpdate{$key}{$ofile}) && $FileIncUpdate{$key}{$ofile} != 0)                  # include file included in other config file
                 {
-                    mlog(0,"AdminInfo: error - configuration file '$fil' for 'Groups' is already included by the configuration '$othername' using file '$key' - config file is ignored! Hint: Do NOT build groups from already used configuration files or already inluded files!") if (! $calledfromThread);
-                    push @errors ,"error: configuration file '$fil' for 'Groups' is already included by the configuration '$othername' using file '$key' - config file is ignored! Hint: Do NOT build groups from already used configuration files or already inluded files!";
+                    mlog(0,"AdminInfo: error - configuration file '$fil' for 'Groups' is already included by the configuration '$othername' using file '$key' - config file is ignored! Hint: Do NOT build groups from already used configuration files or already included files!") if (! $calledfromThread);
+                    push @errors ,"error: configuration file '$fil' for 'Groups' is already included by the configuration '$othername' using file '$key' - config file is ignored! Hint: Do NOT build groups from already used configuration files or already included files!";
                 }
             }
         }
@@ -76445,7 +76514,7 @@ sub flush {
     do {
         sleep 1 unless unlink("$f");
     } while (-e $f && time < $t);
-    mlog(0,"error: orederedtie is unable to delete file $f - $!") if -e $f;
+    mlog(0,"error: orderedtie is unable to delete file $f - $!") if -e $f;
     rename("$f.tmp", $f) or &main::mlog(0,"error: orderedtie is unable to rename file $f.tmp to $f - $!");
     $this->{updated}={};
 }
@@ -76480,7 +76549,7 @@ sub binsearch {
     $siz-=1024;
     my $l=0;
     my $k0=$k;
-    $k=~s/([\[\]\(\)\*\^\!\|\+\.\\\/\?\`\$\@\{\}])/\\$1/go; # make sure there's no re chars unqutoed in the key
+    $k=~s/([\[\]\(\)\*\^\!\|\+\.\\\/\?\`\$\@\{\}])/\\$1/go; # make sure there's no re chars unquoted in the key
     while (1) {
         my $m=(($l+$h)>>1)-1024;
         $m=0 if $m < 0;
