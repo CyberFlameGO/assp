@@ -1,3 +1,9 @@
+2020-06-29
+fixed in assp 2.6.4 *SPAM-Evaporator* build 20181:
+
+- resend a mail using the GUI was no longer working in build 20161
+
+
 2020-06-09
 fixed in assp 2.6.4 *SPAM-Evaporator* build 20161:
 

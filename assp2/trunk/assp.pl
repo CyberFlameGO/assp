@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '20161';        # 09.06.2020 TE
+$build   = '20181';        # 29.06.2020 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.030999';
 $MAINVERSION = $version . $modversion;
@@ -623,7 +623,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '927BF1767D1FB3521A2555E030A15CEBA34B93C8'; }
+sub __cs { $codeSignature = 'AF6F67BC969CBF4039168E6C096BA65D8431B8E6'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -10300,7 +10300,7 @@ sub rb_add {
         my $r;
         $reportedBy = lc ($r || $1) if (   $header =~ /X-Assp-Reported-By:\s*($main::EmailAdrRe\@$main::EmailDomainRe)/io
                                         || $header =~ /X-Assp-Intended-For:\s*($main::EmailAdrRe\@$main::EmailDomainRe)/io
-                                        || ($header =~ /^to:([^\r\n])/io && ($r = &main::getEmailAddr($1)) )
+                                        || ($header =~ /^to:($main::HeadreValueRe)/io && ($r = &main::getEmailAddr($1)) )
                                        );
         if ($reportedBy) {
             $domain = $1 if $reportedBy =~ /(\@$main::EmailDomainRe)$/o;
@@ -10309,7 +10309,7 @@ sub rb_add {
         }
         if ( $header =~ /X-Forwarded-For: ($IPRe)/io) {
             $cip = $1;
-    		      while ( $header =~ /($main::HeaderNameRe):($main::HeaderValueRe)/gios) {
+    		while ( $header =~ /($main::HeaderNameRe):($main::HeaderValueRe)/gios) {
                 next if lc($1) ne 'received';
                 my $h = $2;
                 if ( $h =~ /\s+from\s+(?:(\S+)\s)?(?:.+?)\Q$cip\E(?::$PortRe)?\]?\)(.{1,80})by.{1,20}/gis ) {
@@ -24252,8 +24252,10 @@ sub resend_mail {
         my $count = exists $ResendFile{$file} ? "(try $ResendFile{$file}" : "(first time)";
         mlog(0,"*x*(re)send - process: $file $count") if $MaintenanceLog >= 2;
         my ($howF, $mailfrom);
-        ($howF, $mailfrom) = ($1,$2)
-          if ($message =~ /(?:^|\n)(X-Assp-Envelope-From:)(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?\s*\r?\n/sio);
+        if ($message =~ /(?:^|\n)(X-Assp-Envelope-From:)($HeaderValueRe)/sio) {
+            $howF = $1;
+            $mailfrom = getEmailAddr($2);
+        }
         if (! $mailfrom && $message =~ /(?:^|\n)(from:)($HeaderValueRe)/sio) {
             $howF = $1;
             $mailfrom = getEmailAddr($2);
@@ -24279,8 +24281,10 @@ sub resend_mail {
   #      }
 
         my ($howT, $to);
-        ($howT, $to) = ($1,$2)
-          if ($message =~ /(?:^|\n)(X-Assp-Intended-For:)(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio);
+        if ($message =~ /(?:^|\n)(X-Assp-Intended-For:)($HeaderValueRe)/sio) {
+            $howT = $1;
+            $to = getEmailAddr($2);
+        }
         if (! $to && $message =~ /(?:^|\n)(to:)($HeaderValueRe)/sio) {
             $howT = $1;
             $to = getEmailAddr($2);
@@ -24293,9 +24297,8 @@ sub resend_mail {
             next;
         }
         if (lc $howT eq lc "X-Assp-Intended-For:") {
-  #          $message =~ s/\nto:[^\<]*?<?$EmailAdrRe\@$EmailDomainRe>?\s*\r?\n/\n/sio;
             $message =~ s/(^|\n)to:$HeaderValueRe/$1/sio;
-            $message =~ s/(^|\n)X-Assp-Intended-For:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?\s*\r?\n/$1To: <$2>\r\n/sio;
+            $message =~ s/(^|\n)X-Assp-Intended-For:/$1To:$2/sio;
         }
 
         my $requireTLS = $message =~ /(?:^|\n)X-ASSP-REQUIRETLS:\s*YES/io && $message !~ /(?:^|\n)REQUIRETLS:\s*NO/io;
@@ -24305,7 +24308,7 @@ sub resend_mail {
               my $mf = getEmailAddr($mailfrom);
               my $newadr = RcptReplace($to,$mf,'RecRepRegex');
               if (lc $newadr ne lc $to) {
-                  $message =~ s/((?:^|\n)to:(?:\s*"[^"]*"\s*)?<?)\Q$to\E(>?)/$1$newadr$2/is;
+                  $message =~ s/((?:^|\n)to:\s*(?:"[^"]*"\s*)?<?)\Q$to\E(>?)/$1$newadr$2/is;
                   mlog(0,"*x*(re)send - recipient $to replaced with $newadr");
                   $to = $newadr;
               }
@@ -24641,6 +24644,7 @@ sub resendError {
 
 sub getEmailAddr {
     my $addr = shift;
+    return unless $addr;
     headerUnwrap($addr) if $addr =~ /\r|\n|\t/o;
     
     # remove all comments
@@ -28906,7 +28910,7 @@ sub headerAddrCheckOK_Run {
             mlog($fh,"info: checking for unexpected $BCC: recipient addresses in incoming mail") if $ValidateUserLog >= 2;
             foreach my $bc (@bccRCPT) {
                 headerUnwrap($bc);
-                while ($bc =~ /(?:\s*"[^"]*"\s*)?($EmailAdrRe\@$EmailDomainRe)/igos) {
+                while ($bc =~ /\s*(?:"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/igos) {
                     my $addr = $1;
                     if ($ReplaceRecpt) {
                         my $newadr = RcptReplace($addr,batv_remove_tag('',$this->{mailfrom},''),'RecRepRegex');
@@ -53289,12 +53293,11 @@ sub ConfigAnalyze {
                 $addr = eU($addr) unless is_7bit_clean(\$addr);
                 $fm .=  " $who: <font color='red'>$addr - is invalid</font> - PB value = nofromValencePB[0]<br />  ";
             }
-            pos($s) = 0;
-            while ($s =~ /(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)/go) {
-                my $ss = $1;
+            my @addr = getEmailAddr($s);
+            foreach my $ss (@{$addr[0]},@{$addr[1]}) {
                 $ss = batv_remove_tag(0,$ss,'');
                 $mailfrom = $ss if $mailfrom eq 'from';
-                $fm{lc $ss}=1;
+                $fm{lc $ss} = 1;
                 $fm .=  " $who: $ss <br />  ";
             }
         }
@@ -53311,9 +53314,10 @@ sub ConfigAnalyze {
             my $s = shift(@recHeader);
             next if $who !~ /^(?:to|cc|bcc)$/io;
             &headerUnwrap($s);
-            while ($s =~ /(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)/go) {
-                my $ss = batv_remove_tag(0,$1,'');
-                $to{lc $ss}=1;
+            my @addr = getEmailAddr($s);
+            foreach my $ss (@{$addr[0]},@{$addr[1]}) {
+                $ss = batv_remove_tag(0,$ss,'');
+                $to{lc $ss} = 1;
                 $headTo ||= $ss if (lc $who eq 'to');
                 $reportedBy ||= $ss;
                 $fm .=  " $who: $ss <br />  ";
@@ -57204,21 +57208,24 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
              $force = ' - attachments are forced' if $force;
              my $rfil = $fil;
              $rfil =~ s/^(\Q$base\E\/).+(\/.+\Q$maillogExt\E)$/$1$resendmail$2/i;
-             my ($to) = $s1 =~ /\nX-Assp-Intended-For:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio;
-             ($to) = $s1 =~ /\nto:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio unless $to;
-             my ($from) = $s1 =~ /\nX-Assp-Envelope-From:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio;
-             ($from) = $s1 =~ /\nfrom:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio unless $from;
+             my ($to) = $s1 =~ /\nX-Assp-Intended-For:($HeaderValueRe)/sio;
+             $to = getEmailAddr($to);
+             my ($from) = $s1 =~ /\nX-Assp-Envelope-From:($HeaderValueRe)/sio;
+             $from = getEmailAddr($from);
              $s1 =~ s/^\r\n//o;
-             $s2='';
+             my $error;
              if (! $to ) {
+                 $error = 1;
                  $s2 .= '<br />' if $s2;
                  $s2 .= '<span class="negative">!!! no addresses found in X-Assp-Intended-For: or TO: header line - please check !!!</span>';
              }
              if (! $from ) {
+                 $error = 1;
                  $s2 .= '<br />' if $s2;
                  $s2 .= '<span class="negative">!!! no addresses found in X-Assp-Envelope-From: or FROM: header line - please check !!!</span>';
              }
              if ((! $nolocalDomains && ! (localmail($to) or localmail($from)))) {
+                 $error = 1;
                  $s2 .= '<br />' if $s2;
                  $s2 .= '<span class="negative">!!! no local addresses found in X-Assp-Intended-For: or TO: header line - please check !!!</span>'
                      unless localmail($to);
@@ -57226,18 +57233,24 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
                  $s2 .= '<span class="negative">!!! no local addresses found in X-Assp-Envelope-From: or FROM: header line - please check !!!</span>'
                      unless localmail($from);
              }
-             if (! $s2) {
+             if (! $error) {
                  if ($open->(my $CE,'>',$rfil)) {
                      $CE->binmode;
                      $CE->print($s1);
                      $CE->close;
+                     $s2 .= '<br />' if $s2 =~ /span>$/o;
                      $s2 .= '<span class="positive">File copied to resendmail folder'.$force.'</span>';
                      mlog(0,"info: request by $WebIP{$ActWebSess}->{user} to create file: $rfil$force");
                      $nextResendMail = $nextResendMail < time + 3 ? $nextResendMail: time + 3;
                  } else {
+                     $s2 .= '<br />' if $s2 =~ /span>$/o;
                      $s2 .= '<span class="negative">unable to create file in resendmail folder - $!</span>';
                      mlog(0,"error: unable to create file in resendmail folder - $!");
                  }
+             } else {
+                     $s2 .= '<br />' if $s2 =~ /span>$/o;
+                     $s2 .= '<span class="negative">unable to resend file</span>';
+                     mlog(0,'error: unable to resend file');
              }
          } elsif ($action eq '2') {    # save
              if ($open->(my $CE,'>',$fil)) {
@@ -57249,77 +57262,84 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
                  if ($eF->( $fil ) && $fil =~ /(?<s>$rs)|(?<h>$rh)/o) {
                      $newReported{$fil} = $+{s} ? 'spam' : 'ham';
                  }
-                 $s2='<span class="positive">File saved successfully</span>';
+                 $s2 .= '<br />' if $s2;
+                 $s2 .= '<span class="positive">File saved successfully</span>';
              } else {
-                 $s2='<span class="negative">unable to save file - $!</span>';
+                 $s2 .= '<br />' if $s2;
+                 $s2 .= '<span class="negative">unable to save file - $!</span>';
                  mlog(0,"error: unable to save file - $!");
              }
          } elsif ($action eq '3') {    # copy to notspam
              my $rfil = $fil;
              $rfil =~s/^(\Q$base\E\/).+(\/.+\Q$maillogExt\E)$/$1$notspamlog$2/i;
+             $s2 .= '<br />' if $s2;
              if ($open->(my $CE,'>',$rfil)) {
                  $CE->binmode;
                  $CE->print($s1);
                  $CE->close;
-                 $s2='<span class="positive">File copied to notspamlog folder</span>';
+                 $s2 .= '<span class="positive">File copied to notspamlog folder</span>';
                  mlog(0,"info: request to create file: $rfil");
              } else {
-                 $s2='<span class="negative">unable to create file in notspamlog folder - $!</span>';
+                 $s2 .= '<span class="negative">unable to create file in notspamlog folder - $!</span>';
                  mlog(0,"error: unable to create file in notspamlog folder - $!");
              }
          } elsif ($action eq '4') {    # copy to spam
              my $rfil = $fil;
              $rfil =~s/^(\Q$base\E\/).+(\/.+\Q$maillogExt\E)$/$1$spamlog$2/i;
+             $s2 .= '<br />' if $s2;
              if ($open->(my $CE,'>',$rfil)) {
                  $CE->binmode;
                  $CE->print($s1);
                  $CE->close;
-                 $s2='<span class="positive">File copied to spamlog folder</span>';
+                 $s2 .= '<span class="positive">File copied to spamlog folder</span>';
                  mlog(0,"info: request to create file: $rfil");
              } else {
-                 $s2='<span class="negative">unable to create file in spamlog folder - $!</span>';
+                 $s2 .= '<span class="negative">unable to create file in spamlog folder - $!</span>';
                  mlog(0,"error: unable to create file in spamlog folder - $!");
              }
          } elsif ($action eq '5') {    # incomingOkMail
              my $rfil = $fil;
              $rfil =~s/^(\Q$base\E\/).+(\/.+\Q$maillogExt\E)$/$1$incomingOkMail$2/i;
+             $s2 .= '<br />' if $s2;
              if ($open->(my $CE,'>',$rfil)) {
                  $CE->binmode;
                  $CE->print($s1);
                  $CE->close;
-                 $s2='<span class="positive">File copied to incomingOkMail folder</span>';
+                 $s2 .= '<span class="positive">File copied to incomingOkMail folder</span>';
                  mlog(0,"info: request to create file: $rfil");
              } else {
-                 $s2='<span class="negative">unable to create file in incomingOkMail folder - $!</span>';
+                 $s2 .= '<span class="negative">unable to create file in incomingOkMail folder - $!</span>';
                  mlog(0,"error: unable to create file in incomingOkMail folder - $!");
              }
          } elsif ($action eq '6') {    # viruslog
              my $rfil = $fil;
              $rfil =~s/^(\Q$base\E\/).+(\/.+\Q$maillogExt\E)$/$1$viruslog$2/i;
+             $s2 .= '<br />' if $s2;
              if ($open->(my $CE,'>',$rfil)) {
                  $CE->binmode;
                  $CE->print($s1);
                  $CE->close;
-                 $s2='<span class="positive">File copied to viruslog folder</span>';
+                 $s2 .= '<span class="positive">File copied to viruslog folder</span>';
                  mlog(0,"info: request to create file: $rfil");
              } else {
-                 $s2='<span class="negative">unable to create file in viruslog folder - $!</span>';
+                 $s2 .= '<span class="negative">unable to create file in viruslog folder - $!</span>';
                  mlog(0,"error: unable to create file in viruslog folder - $!");
              }
          } elsif ($action eq '7') {    # correctedspam
              my $rfil = $fil;
              $rfil =~s/^(\Q$base\E\/).+(\/.+\Q$maillogExt\E)$/$1$correctedspam$2/i;
+             $s2 .= '<br />' if $s2;
              if ($open->(my $CE,'>',$rfil)) {
                  $CE->binmode;
                  $CE->print($s1);
                  $CE->close;
-                 $s2='<span class="positive">File copied to correctedspam folder</span>';
+                 $s2 .= '<span class="positive">File copied to correctedspam folder</span>';
                  mlog(0,"info: request to create file: $rfil");
 
-                 my ($to) = $s1 =~ /\nX-Assp-Intended-For:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio;
-                 ($to) = $s1 =~ /\nto:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio unless $to;
-                 my ($from) = $s1 =~ /\nX-Assp-Envelope-From:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio;
-                 ($from) = $s1 =~ /\nfrom:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio unless $from;
+                 my ($to) = $s1 =~ /\nX-Assp-Intended-For:($HeaderValueRe)/sio;
+                 $to = getEmailAddr($to);
+                 my ($from) = $s1 =~ /\nX-Assp-Envelope-From:($HeaderValueRe)/sio;
+                 $from = getEmailAddr($from);
                  if (   ($EmailErrorsModifyWhite == 1 || $EmailErrorsModifyNoP == 1 || matchSL( $to, 'EmailErrorsModifyPersBlack' ))
                      && $to
                      && &localmail($to)
@@ -57340,7 +57360,7 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
                  }
                  $eF->( $rfil ) && ($newReported{$rfil} = 'spam');
              } else {
-                 $s2 = '<span class="negative">unable to create file in correctedspam folder - $!</span>';
+                 $s2 .= '<span class="negative">unable to create file in correctedspam folder - $!</span>';
                  mlog(0,"error: unable to create file in correctedspam folder - $!");
              }
          } elsif ($action eq '8') {    # correctednotspam
@@ -57351,13 +57371,13 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
                  $CE->binmode;
                  $CE->print($s1);
                  $CE->close;
-                 $s2='<span class="positive">File copied to correctednotspam folder</span>';
+                 $s2 .= '<span class="positive">File copied to correctednotspam folder</span>';
                  mlog(0,"info: request to create file: $rfil");
 
-                 my ($to) = $s1 =~ /\nX-Assp-Intended-For:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio;
-                 ($to) = $s1 =~ /\nto:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio unless $to;
-                 my ($from) = $s1 =~ /\nX-Assp-Envelope-From:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio;
-                 ($from) = $s1 =~ /\nfrom:(?:\s*"[^"]*"\s*)?<?($EmailAdrRe\@$EmailDomainRe)>?/sio unless $from;
+                 my ($to) = $s1 =~ /\nX-Assp-Intended-For:($HeaderValueRe)/sio;
+                 $to = getEmailAddr($to);
+                 my ($from) = $s1 =~ /\nX-Assp-Envelope-From:($HeaderValueRe)/sio;
+                 $from = getEmailAddr($from);
                  if (   ($EmailErrorsModifyWhite == 1 || $EmailErrorsModifyNoP == 1 || matchSL( $to, 'EmailErrorsModifyPersBlack' ))
                      && $to
                      && &localmail($to)
@@ -57379,20 +57399,21 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
                  }
                  $eF->( $rfil ) && ($newReported{$rfil} = 'ham');
              } else {
-                 $s2='<span class="negative">unable to create file in correctednotspam folder - $!</span>';
+                 $s2 .= '<span class="negative">unable to create file in correctednotspam folder - $!</span>';
                  mlog(0,"error: unable to create file in correctednotspam folder - $!");
              }
          } elsif ($action eq '9') {    # copy to rebuild_error
              my $rfil = $fil;
              $rfil =~s/^(\Q$base\E\/)(.+\/.+\Q$maillogExt\E)$/$1rebuild_error\/$2/i;
+             $s2 .= '<br />' if $s2;
              if ($open->(my $CE,'>',$rfil)) {
                  $CE->binmode;
                  $CE->print($s1);
                  $CE->close;
-                 $s2='<span class="positive">File copied to rebuild_error folder</span>';
+                 $s2 .= '<span class="positive">File copied to rebuild_error folder</span>';
                  mlog(0,"info: request to create file: $rfil");
              } else {
-                 $s2='<span class="negative">unable to create file in rebuild_error folder - $!</span>';
+                 $s2 .= '<span class="negative">unable to create file in rebuild_error folder - $!</span>';
                  mlog(0,"error: unable to create file in rebuild_error folder - $!");
              }
          }
