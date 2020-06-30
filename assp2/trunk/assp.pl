@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '20181';        # 29.06.2020 TE
+$build   = '20182';        # 30.06.2020 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.030999';
 $MAINVERSION = $version . $modversion;
@@ -490,7 +490,10 @@ our $fakeAUTHsuccess = 0;                # (0/1/2) fake a 235 reply for AUTH suc
 our $fakeAUTHsuccessSendFake = 0;        # (0/1) send the faked mails from the honeypot - make the spammers believe of success - attention: moves assp in to something like an open relay for these mails
 our $AUTHrequireTLSDelay = 5;            # (number) seconds to damp connections that used AUTH without using SSL (to prevent DoS)
 
-our $AUTHrelayTable = {};                # hash to lookup authentication credentials for different relayHost(s) - example:
+our $AUTHrelayTable = {};                # HASH to lookup authentication credentials for different relayHost(s)
+                                         # if this HASH is empty or no host matches relayAuthUser and relayAuthPass are used
+                                         # if any of relayAuthUser and relayAuthPass is not defined, no authentication will be done to the relayHost
+                                         # example:
                                          # $AUTHrelayTable = {relayHost1:relayPort1 => [relayuser1,relaypass1],
                                          #                    relayHost2:relayPort2 => [relayuser2,relaypass2],
                                          #                    relayHost3:relayPort3 => [relayuser3,relaypass3]}
@@ -623,7 +626,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'AF6F67BC969CBF4039168E6C096BA65D8431B8E6'; }
+sub __cs { $codeSignature = '63FC57B4042DB176F4A669F90BEE3EC3806679E1'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -24082,7 +24085,14 @@ sub serverIsWhichHost {
 
 sub getRelayAuth {
     my $host = shift;
-    return (defined($host) && exists $AUTHrelayTable->{$host}) ? @{$AUTHrelayTable->{$host}} : ($relayAuthUser, $relayAuthPass);
+    my @auth;
+    @auth = @{$AUTHrelayTable->{$host}} if (defined($host) && exists $AUTHrelayTable->{$host} && ref($AUTHrelayTable->{$host}) eq 'ARRAY');
+    return @auth if (@auth == 2 && $auth[0] && $auth[1]);
+    if (@auth) {
+        mlog(0,"error: the authentication credentials defined for the host '$host' in the HASH AUTHrelayTable are invalid!");
+    }
+    return ($relayAuthUser, $relayAuthPass) if ($relayAuthUser && $relayAuthPass);
+    return;
 }
 
 sub orgAuthRes {

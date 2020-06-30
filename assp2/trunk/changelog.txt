@@ -1,3 +1,11 @@
+2020-06-30
+fixed in assp 2.6.4 *SPAM-Evaporator* build 20182:
+
+- build 20161 and 20181 forced an authentication to the relayhost even no authenication credentials were defined. This caused an error:
+
+  error: authentication failed (535 Authentication failed. Restarting authentication process.) - try to continue unauthenticated
+
+
 2020-06-29
 fixed in assp 2.6.4 *SPAM-Evaporator* build 20181:
 
@@ -16,10 +24,13 @@ added:
 
 - the hidden configuration parameter 'AUTHrelayTable' can be used to map different authentication values to different relayHosts(s)
 
-our $AUTHrelayTable = {};                # hash to lookup authentication credentials for different relayHost(s) - example:
+our $AUTHrelayTable = {};                # HASH to lookup authentication credentials for different relayHost(s)
+                                         # if this HASH is empty or no host matches relayAuthUser and relayAuthPass are used
+                                         # if any of relayAuthUser and relayAuthPass is not defined, no authentication will be done to the relayHost
+                                         # example:
                                          # $AUTHrelayTable = {relayHost1:relayPort1 => [relayuser1,relaypass1],
                                          #                    relayHost2:relayPort2 => [relayuser2,relaypass2],
-                                         #                    relayHost3:relayPort3 => [relayuser3,relaypass3]} 
+                                         #                    relayHost3:relayPort3 => [relayuser3,relaypass3]}
 
 
 
