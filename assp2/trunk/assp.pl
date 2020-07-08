@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '20182';        # 30.06.2020 TE
+$build   = '20190';        # 08.07.2020 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.030999';
 $MAINVERSION = $version . $modversion;
@@ -626,7 +626,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '63FC57B4042DB176F4A669F90BEE3EC3806679E1'; }
+sub __cs { $codeSignature = '3039964736F37BFEF8241D9201D21F4F7D48061F'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -57220,8 +57220,16 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
              $rfil =~ s/^(\Q$base\E\/).+(\/.+\Q$maillogExt\E)$/$1$resendmail$2/i;
              my ($to) = $s1 =~ /\nX-Assp-Intended-For:($HeaderValueRe)/sio;
              $to = getEmailAddr($to);
+             if (! $to) {
+                 ($to) = $s1 =~ /\nTo:($HeaderValueRe)/sio;
+                 $to = getEmailAddr($to);
+             }
              my ($from) = $s1 =~ /\nX-Assp-Envelope-From:($HeaderValueRe)/sio;
              $from = getEmailAddr($from);
+             if (! $from) {
+                 ($from) = $s1 =~ /\nFrom:($HeaderValueRe)/sio;
+                 $from = getEmailAddr($from);
+             }
              $s1 =~ s/^\r\n//o;
              my $error;
              if (! $to ) {

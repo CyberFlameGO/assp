@@ -1,3 +1,9 @@
+2020-07-08
+fixed in assp 2.6.4 *SPAM-Evaporator* build 20190:
+
+- the resend function using the GUI was not working if 'AddIntendedForHeader' was wrong set in the configuration or the X-Assp-Intended-For or X-Assp-Envelope-From was missing for any other reason
+
+
 2020-06-30
 fixed in assp 2.6.4 *SPAM-Evaporator* build 20182:
 
