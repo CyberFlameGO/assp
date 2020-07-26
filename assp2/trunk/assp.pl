@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '20190';        # 08.07.2020 TE
+$build   = '20208';        # 26.07.2020 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.030999';
 $MAINVERSION = $version . $modversion;
@@ -626,7 +626,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '3039964736F37BFEF8241D9201D21F4F7D48061F'; }
+sub __cs { $codeSignature = '8BA8903EFDEB45FD90E4FAB0866FFD12F5A12FFD'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -57031,7 +57031,7 @@ sub ConfigEdit {
  elsif($qs{note} eq '5'){
   $note = '<div class="note" id="notebox"></div>';
  }
-  elsif($qs{note} eq '6'){
+ elsif($qs{note} eq '6'){
   $note = '<div class="note" id="notebox">';
   $note .= $WebIP{$ActWebSess}->{lng}->{'msg500086'} || $lngmsg{'msg500086'};
   $note .= '</div\>';
@@ -57040,10 +57040,16 @@ sub ConfigEdit {
   $note = '<div class="note" id="notebox"></div>';
  }
  elsif ($qs{note} eq 'm'){                          # mail file
-        if (exists $qs{andResend}) {
+        # check the 'andResend' option
+        if ($qs{fileaction} eq '1' || $qs{fileaction} eq '10') {
+            # use and store the selected 'andResend' if a resend.. fileaction is selected
             $andResend = $AdminUsersRight{"$WebIP{$ActWebSess}->{user}.user.andResend"} = $qs{andResend};
         } elsif (exists $AdminUsersRight{"$WebIP{$ActWebSess}->{user}.user.andResend"}) {
+            # remember the 'andResend' selection if we can
             $andResend = $AdminUsersRight{"$WebIP{$ActWebSess}->{user}.user.andResend"};
+        } else {
+            # set 'andResend' to 'checked - the default
+            $andResend = 'checked';
         }
         $qs{andResend} = $andResend;
 
@@ -57066,8 +57072,6 @@ sub ConfigEdit {
         $note .= $WebIP{$ActWebSess}->{lng}->{'msg500097'} || $lngmsg{'msg500097'};
  }
 
-#$regexp1 = $WebIP{$ActWebSess}->{lng}->{'msg500011'} || $lngmsg{'msg500011'} if !$CanMatchCIDR;
-#$regexp2 = $WebIP{$ActWebSess}->{lng}->{'msg500012'} || $lngmsg{'msg500012'} if !$CanMatchCIDR;
 $regexp1 = $WebIP{$ActWebSess}->{lng}->{'msg500013'} || $lngmsg{'msg500013'};
 $regexp2 = $WebIP{$ActWebSess}->{lng}->{'msg500014'} || $lngmsg{'msg500014'};
 
@@ -57753,7 +57757,6 @@ function checkSelectChanged(sel) {
         document.getElementById("andResendText").style.display = 'none';
     }
 }
-
       //-->
     //]]>
     </script>
@@ -57937,8 +57940,6 @@ my $reload  =
  </tr>
 </table>
 ';
-#$regexp1 = $WebIP{$ActWebSess}->{lng}->{'msg500011'} || $lngmsg{'msg500011'} if !$CanMatchCIDR;
-#$regexp2 = $WebIP{$ActWebSess}->{lng}->{'msg500012'} || $lngmsg{'msg500012'} if !$CanMatchCIDR;
 $regexp1 = $WebIP{$ActWebSess}->{lng}->{'msg500013'} || $lngmsg{'msg500013'};
 $regexp2 = $WebIP{$ActWebSess}->{lng}->{'msg500014'} || $lngmsg{'msg500014'};
 my $cidr='';
