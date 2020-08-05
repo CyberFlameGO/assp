@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.18 2020/02/28 12:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.19 2020/07/30 12:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -27,6 +27,8 @@ use Encode;
 use vars qw($VERSION);
 no warnings qw(uninitialized);
 
+our $neverMatch = $main::neverMatch; # ^(?!)
+
 our %LoadError;
 our $CanFileType;
 our $CanZIPCheck;
@@ -46,7 +48,7 @@ our $LibArchRe;
 our $LibArchVer;
 # advanced thread analyzing or deep thread inspection for incoming mails
 our $enableATA;         # 1- check ATA if an attachment failed, 2- check if any attachment is found, 3- check every mail
-our $skipATARE = $main::neverMatch;  # regex with domains/users '\@(?:domain1\.tld|domain2\.tld)(?: |$)' for which enabaleATA is disabled (set to 0)
+our $skipATARE = $neverMatch;  # regex with domains/users '\@(?:domain1\.tld|domain2\.tld)(?: |$)' for which enabaleATA is disabled (set to 0)
 our $ATAHeaderTag = "X-ASSP-Require-ATA: YES; RESENDLINK;SHOWMAIL;SHOWLOG\r\n"; # the literal RESENDLINK will be replaced by a mailto resendlink, which is shown by an ATA report mail
                                                                                 # SHOWMAIL offers the link to open the file in the assp file editor
                                                                                 # SHOWLOG offers the link to show the log for the mail in maillogtail (an optional trailing number defines the days in the past e.g. SHOWLOG2 for example - two days is default and used if no number is given)
@@ -106,14 +108,17 @@ our %PDFtags = (          # PDF objects to analyze
     'Cert' =>       '1-Certificate',
 );
 
-# ignore single VirusTotal results from these vendors to prevent false postives
+# ignore single VirusTotal results from these vendors to prevent false postives - define vendors in lowercase letters
 our %VirusTotalIgnoreVendor = (
-                       'Trapmine' => 1,
-                       'Qhioo-360' => 1,
-                       'Maxsecure' => 1,
-                       'SentinelOne' => 1
+                       'trapmine' => 1,
+                       'qhioo-360' => 1,
+                       'maxsecure' => 1,
+                       'sentinelone' => 1
 );
 
+# ignore single VirusTotal results from these vendors to prevent false postives - define vendors in perl regular expression (e.g. to support wildcards)
+# replace $neverMatch with your own regular expression
+our $VirusTotalIgnoreVendorRe = qr/$neverMatch/i;
 
 sub validateModule {
     my $module = shift;
@@ -265,7 +270,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.18 2020/02/28 12:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.19 2020/07/30 12:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -1973,27 +1978,33 @@ sub vt_file_is_ok {
             }
         }
 
-        for my $ven (qw(Symantec TrendMicro Kaspersky McAfee McAfee-GW-Edition
-                        Microsoft Sophos ESET-NOD32 F-Prot F-Secure GData
-                        Fortinet AVG Avira BitDefender ClamAV Comodo) ,
-                        keys %{$report->{scans}})
+        my $positives = $report->{positives};
+        $positives ||= 1;
+        for my $ven (keys %{$report->{scans}})
         {
             next unless $report->{scans}->{$ven}->{detected};
             next unless $report->{scans}->{$ven}->{result};
             $virus = $report->{scans}->{$ven}->{result};
             $vendor = $ven;
             next if $virus =~ /suspic|possibl/io;
+            if (exists($VirusTotalIgnoreVendor{lc $vendor}) || $vendor =~ /$VirusTotalIgnoreVendorRe/i) {
+                mlog($fh,"info: ignoring VirusTotal result for engine '$vendor'") if $ScanLog;
+                $positives -= 1;
+                next;
+            }
+            $positives = 1 if $positives < 1;
             last;
         }
-        $virus  ||= 'known bad';
-        $vendor ||= 'community reported';
-        $report->{positives} ||= 1;
-        $report->{total} ||= 64;
 
-        if ($report->{positives} == 1 && exists($VirusTotalIgnoreVendor{$vendor})) {
-            mlog($fh,"info: ignoring VirusTotal result for engine '$vendor'") if $ScanLog;
+        if ($positives < 1) {
+            mlog($fh,"info: because of ignored VirusTotal results - no virus was found") if $ScanLog;
             return 1;
         }
+
+        $virus  ||= 'known bad';
+        $vendor ||= 'community reported';
+        $report->{positives} = $positives;
+        $report->{total} ||= 64;
 
         if ($main::SuspiciousVirus && $virus=~/($main::SuspiciousVirusRE)/i) {
             my $SV = $1;
@@ -2076,6 +2087,7 @@ sub vt_url_is_ok {
     return 1 unless $CanVT;
     return 1 unless $self->{vtapi};
     return 1 unless $url;
+    my $ScanLog = $main::ScanLog;
     my $this = $self->{this};
     my $fh = $this->{self};
     $self->{vtapi}->reset();
@@ -2086,21 +2098,32 @@ sub vt_url_is_ok {
         my $virus;
         my $vendor;
         my $report = $self->{vtapi}->report;
-        for my $ven (qw(Symantec TrendMicro Kaspersky McAfee McAfee-GW-Edition
-                        Microsoft Sophos ESET-NOD32 F-Prot F-Secure GData
-                        Fortinet AVG Avira BitDefender ClamAV Comodo) ,
-                        keys %{$report->{scans}})
+        my $positives = $report->{positives};
+        $positives ||= 1;
+        for my $ven (keys %{$report->{scans}})
         {
             next unless $report->{scans}->{$ven}->{detected};
             next unless $report->{scans}->{$ven}->{result};
             $virus = $report->{scans}->{$ven}->{result};
             $vendor = $ven;
             next if $virus =~ /suspic|possibl/io;
+            if (exists($VirusTotalIgnoreVendor{lc $vendor}) || $vendor =~ /$VirusTotalIgnoreVendorRe/i) {
+                mlog($fh,"info: ignoring URIBL VirusTotal result for engine '$vendor'") if $ScanLog;
+                $positives -= 1;
+                next;
+            }
+            $positives = 1 if $positives < 1;
             last;
         }
+
+        if ($positives < 1) {
+            mlog($fh,"info: because of ignored VirusTotal results - no bad URL was found") if $ScanLog;
+            return 1;
+        }
+
         $virus  ||= 'known bad';
         $vendor ||= 'community';
-        $report->{positives} ||= 1;
+        $report->{positives} = $positives;
         $report->{total} ||= 69;
         $this->{messagereason} = 'VirusTotal: url-hits '.$report->{positives}.'/'.$report->{total}." , $vendor: $virus";
         if ($fh) {$main::Stats{uriblfails}++;}
