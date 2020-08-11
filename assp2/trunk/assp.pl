@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '20208';        # 26.07.2020 TE
+$build   = '20224';        # 11.08.2020 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.030999';
 $MAINVERSION = $version . $modversion;
@@ -626,7 +626,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '8BA8903EFDEB45FD90E4FAB0866FFD12F5A12FFD'; }
+sub __cs { $codeSignature = '9F84A96EA08A2D43768D739D51BC9169F9882A83'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -5253,9 +5253,10 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
 ['globalClientName','GPB Client Registration Name',60,\&textinput,'','(.*)','configUpdateGlobalClient',
  'The Name of this global-client for registration on the global-server. This entry has to be the full qualified DNS-Name of the IP-address over which ASSP is doing HTTP-requests! If you are using a HTTP-Proxy, this should be the public IP-address of the last Proxy in chain! This DNS-Name has to be resolvable worldwide and the resolved IP-address has to match the ASSP-HTTP-connection-IP-address. It is not possible to use an IP-address in this field! Dynamic DNS-Names like "yourdomain.dyndns.org" are supported!<br />
  To become a member of the exclusive global-penalty-box-users, you will need a subscription and you will have to pay a yearly maintenance fee. To get registered and/or to get more information, please send an email with your personal/company details and the globalClientName to "assp.globalpb@thockar.com".<br />
- The name of this client has to be known by the global server <b>before</b> it can be registered from here. Please wait until you have confirmation that your client name is known by the global server.<br />
+ The name of this client has to be known by the global server <b>before</b> it can be registered from here. Please wait until you got a confirmation, that your client name is known by the global server.<br />
  If assp is unable to connect to the GPB-server for registration, check the IP - and - clientname relation! You may also try to set this parameter to the value \'<b>clean</b>\' one time - this will reset all GPB-internals and GPB-configuration parameters to their default value.<br />
  Make sure, the used assp version and the perl modules are uptodate!<br />
+ <b>Notice: In case you are using multiple assp instances in cluster mode (shared config, shared databases, blockreport forwarding ...), you need to register all instances for the GPB!</b></br>
  In addition to <a href="http://metacpan.org/search?q=Compress::Zlib" rel="external">Compress::Zlib</a> this requires an installed <a href="http://metacpan.org/search?q=LWP::UserAgent" rel="external">LWP::UserAgent</a> module in PERL.',undef,undef,'msg008310','msg008311'],
 ['globalClientPass','GPB Client Registration Password',20,\&passnoinput,'','(.*)','configUpdateGlobalHidden','If the global client is registered on the global-server, you will see a number of "*" in this field. This field is readonly.',undef,undef,'msg008320','msg008321'],
 ['globalClientLicDate','GPB Client Subscription Expiration Date',20,\&textnoinput,'','(.*)','configUpdateGlobalHidden','The date of license/subscription expiration for this global client. If this date is exceeded, no upload and download of global PB will be done! This field is readonly.',undef,undef,'msg008330','msg008331'],
@@ -14881,7 +14882,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
     }
 
     my $v;
-    $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.15;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+    $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.19;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
     $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
     $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
     $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.23;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -35053,6 +35054,35 @@ sub MessageSizeOK {
     return 1;
 }
 
+# queries the ASN , IP and Network for an IP
+sub getASData {
+    my $ip = shift;
+    return if $ip =~ /$IPprivate/o;
+    my @octets = map {
+        if ( !m/^0$/io ) { s/^0*//o; $_ }
+        else            { 0 }
+    } split( /\./o, $ip );
+
+    my $url = join('.', reverse(@octets)) . '.asn.routeviews.org';
+
+    my $res = queryDNS($url,'TXT');
+    my @data;
+    my @answers;
+    if (ref($res) && (@answers = $res->answer)) {
+        @answers = map{Net::DNS::RR->new($_->string)} @answers;
+        for my $RR (@answers) {
+            next if lc($RR->type) ne 'txt';
+            push @data, $RR->char_str_list;
+        }
+    }
+    my $result = join(' ',@data);
+    my ($ASN,$rip,$net) = $result =~ /(\d+)[^\d]+(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})[^\d]+(\d+)/;
+
+    mlog(0,"info: ASN-Data for $ip: ASN:$ASN , IP:$rip , Mask:$net") if $MaintenanceLog > 1;
+    return ($ASN,$rip,$net) if ($ASN && $rip && $net);
+    return;
+}
+
 #queries the SenderBase service
 sub SenderBaseMyIP {
     my $ip = shift;
@@ -37439,12 +37469,14 @@ sub getbody {
         if (&MsgScoreTooHigh($fh,$doneToError)) {delete $this->{TestMessageScore};$this->{skipnotspam} = 0;return;}
 
         # detect a bounce back local dmarc-report (NDR) and modify noDMARCReportDomain if possible
+        my $failedreportrcpt;
         if (   $DMARCReportFrom           # we send DMARC-reports
             && ! $this->{relayok}         # and this is an incoming mail
             && $this->{isbounce}          # and a bounce/NDR
             && ! $this->{isDMARCReport}   # but not a DMARC-report itself
-            && $$dataref =~ /(?:^|\n)X-ASSP-DMARC-Report(?:\(d+\))?:\s*ru[af];\s*($EmailAdrRe\@$EmailDomainRe)/io  # a NDR for our sent ASSP DMARC-report
-            && (my $addr = $1)
+            && $$dataref =~ /(?:^|\n)X-ASSP-DMARC-Report(?:\(d+\))?:\s*ru[af];\s*($HeaderValueRe)/io  # a NDR for our sent ASSP DMARC-report
+            && ($failedreportrcpt = decodeMimeWords($1))  # comma separated recipient list from X-ASSP-DMARC-Report header
+            && $failedreportrcpt =~ /$EmailAdrRe\@$EmailDomainRe/o
             && $$dataref =~ /(?:^|\n)Subject:\s*Report\s+Domain:\s+($EmailDomainRe)\s+Submitter:\s+($EmailDomainRe)\s+Report-ID:\s*(<\d{10,11}(?:\.\d+)?>)/io  # parse our original report subject
            )
         {
@@ -37452,12 +37484,19 @@ sub getbody {
             my $submitterdomain = '@'.$2;
             my $reportid = $3;
             if (! localdomainsreal($reportdomain) && localdomainsreal($submitterdomain)) {
-                mlog($fh,"info: bounced DMARC-Report detected - DMARC-Report with ID $reportid failed to send to: $addr , submitter-domain: $submitterdomain , report-domain: $reportdomain");
+                mlog($fh,"info: bounced DMARC-Report detected - DMARC-Report with ID $reportid failed to send to: $failedreportrcpt , submitter-domain: $submitterdomain , report-domain: $reportdomain");
                 if ($noDMARCReportDomain =~ /^\s*file:.+/io) {
                     modifyList('noDMARCReportDomain' , 'add' ,'report delivery failed', $reportdomain );
-                    modifyList('noDMARCReportDomain' , 'add' ,'report delivery failed', $addr ) if $addr !~ /\Q$reportdomain\E$/i;
+                    for my $addr (split(/\s*,\s*/o,$failedreportrcpt)) {
+                        $addr =~ s/\s+//o;
+                        next if $addr !~ /^$EmailAdrRe\@$EmailDomainRe$/o || $addr =~ /\Q$reportdomain\E$/i;
+                        modifyList('noDMARCReportDomain' , 'add' ,'report delivery failed', $addr );
+                    }
                 }
             }
+            undef $failedreportrcpt;
+        } else {
+            undef $failedreportrcpt;
         }
 
         delete $this->{TestMessageScore};
@@ -53207,7 +53246,13 @@ sub ConfigAnalyze {
             $mystatus="ip";
         }
         
-		$fm .= "Connecting IP: '$ip'<br />\n" if $ip;
+        if ($ip) {
+            $fm .= "Connecting IP: '$ip'<br />\n";
+            my ($asn,$rip,$mask) = getASData($ip);
+            if ($asn && $rip && $mask) {
+                $fm .= "&nbsp;&nbsp;ASN-info: ASN: $asn , RIP/Mask: $rip/$mask<br />\n";
+            }
+        }
         my $conIP = $ip;
         $ip3 = ipNetwork($ip,1);
         if (!$helo && ! $header && $mail =~ /(?:^[\s\r\n]*|\r?\n)\s*helo\s*=\s*([$NOCRLF]+)/ios ) {
@@ -53351,7 +53396,12 @@ sub ConfigAnalyze {
                 my $text = $enhancedOriginIPDetect == 1 ? 'all' : 'all except the most origin';
                 $fm .= "<b><font color='green'>using enhanced Originated IP detection for $text IP addresses</font></b><br />\n" ;
                 $fm .= "<font color='yellow'>&bull;</font>detected IP\'s on the mail routing way: ".join('<br />', @showIPs)."<br />\n";
-                $fm .= "<font color='yellow'>&bull;</font>detected source IP: $oip<br /><br />\n";
+
+                my ($asn,$rip,$mask) = getASData($oip);
+
+                $fm .= "<font color='yellow'>&bull;</font>detected source IP: $oip";
+                $fm .= " - ASN: $asn , RIP/Mask: $rip/$mask" if ($asn && $rip && $mask);
+                $fm .= "<br /><br />\n";
             }
         } else {
             $fm .= "<b><font color='red'>enhanced Originated IP detection is disabled</font></b><br />\n";
@@ -56810,6 +56860,10 @@ sub ConfigIPAction {
     }
 
     if ($addr && ! $wrongaddr) {
+        my ($ASN,$rip,$net);
+        if (! $local && (($ASN,$rip,$net) = getASData($addr))){
+            $s .= "<b>ASN information for $addr :</b><br />ASN: $ASN , RIP/Mask: $rip/$net\n<br /><hr>";
+        }
         $s .= "<br /><br /><b>general IP-matches for $addr :</b><br /><br />\n";
         foreach (sort {lc($main::a) cmp lc($main::b)} keys %MakeIPRE) {
             next unless &canUserDo($WebIP{$ActWebSess}->{user},'cfg',$_);
