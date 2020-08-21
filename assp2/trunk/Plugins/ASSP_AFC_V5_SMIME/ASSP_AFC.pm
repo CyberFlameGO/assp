@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.19 2020/07/30 12:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.21 2020/08/21 11:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -270,7 +270,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.19 2020/07/30 12:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.21 2020/08/21 11:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -369,7 +369,12 @@ sub new {
     my $key;
     if (exists $main::Config{VirusTotalAPIKey} && $CanVT) {
         $key = defined $main::VirusTotalAPIKey ? $main::VirusTotalAPIKey : undef;
-        $key ||= ($main::globalClientName && $main::globalClientPass) ? sprintf("%016x%016x%016x%016x",($main::char4vt[0] << 1)+1,$main::char4vt[1] << 2,$main::char4vt[2] << 1,$main::char4vt[3] << 3) : undef;
+        if (! $key && $main::globalClientName && $main::globalClientPass && "@main::char4vt" ne '1 1 1 1') {
+            my $licdate = join('',reverse(split(/\./o,$main::globalClientLicDate)));
+            if ($licdate >= &main::timestring(undef, 'd', 'YYYYMMDD')) {
+                $key = sprintf("%016x%016x%016x%016x",($main::char4vt[0] << 1)+1,$main::char4vt[1] << 2,$main::char4vt[2] << 1,$main::char4vt[3] << 3);
+            }
+        }
     }
     $self->{vtapi} = ASSP_VirusTotal_API->new(key => $key, timeout => 10) if $CanVT && $key && ($main::ASSP_AFCDoVirusTotalVirusScan); #  || $main::ASSP_AFCDoVirusTotalURLScan
     if ($self->{vtapi}) {
