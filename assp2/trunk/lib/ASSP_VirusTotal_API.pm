@@ -1,5 +1,5 @@
 # ASSP API to VirusTotal
-# copyright Thomas Eckardt 15/05/2019 , 2019
+# copyright Thomas Eckardt 15/05/2019 , since 2019
 #
 # This module has to be installed in the lib path of the assp directory
 
@@ -12,7 +12,7 @@ use JSON qw(from_json);
 use HTTP::Request::Common;
 use LWP::UserAgent();
 
-our $VERSION = '1.01';
+our $VERSION = '1.02';
 
 sub new {
     croak('Options to API should be key/value pairs, not HASH reference') if ref($_[1]) eq 'HASH';
@@ -29,6 +29,7 @@ sub new {
     $self->{url_report_url} = delete $opts{url_report_url} || 'https://www.virustotal.com/vtapi/v2/url/report';
     $self->{url_scan_url} = delete $opts{url_scan_url} || 'https://www.virustotal.com/vtapi/v2/url/scan';
     $self->{domain_report_url} = delete $opts{domain_report_url} || 'https://www.virustotal.com/vtapi/v2/domain/report';
+    $self->{callcount} = 0;
 
     my $ua = delete $opts{ua} || {};
 
@@ -120,6 +121,7 @@ sub get_domain_report {
 
 sub _parse_json {
     my ($self) = @_;
+    ++$self->{callcount};
     return if !defined $self->{res};
 
     my $parsed;
