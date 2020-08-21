@@ -5,6 +5,13 @@
 # Created by for current statistic
 # assp public@$localhostip
 
+# change this file to your needs
+# open it in an editor and replace the follwing strings in the complete file
+
+# *systemip* => the IP of your assp system
+# *systemname* => the hostname of your assp system
+# *community* => the readonly SNMP community of your assp system
+# *asspName* => the config value of 'myName' of your assp system
 
 ### Global Config Options
 
@@ -42,7 +49,11 @@ EOT
             my $nameid = $sortedOIDs[$i];
             $nameid =~ s/0$/1/o;
             my $name = $tl.&SNMPderefVal($subOID{$nameid});
-            $name =~ s/_/-/go;
+            $name =~ s/-+//go;               # remove -
+            $name =~ s/:+/-/go;              # replace :: with - in module names
+            $name =~ s/\&amp;/And/go;        # replace &amp; with And
+            $name =~ s/\&[a-z]{2,5};//go;    # remove HTML tags
+            $name =~ s/[^a-zA-Z0-9\-]+//go;  # remove any other character
             next if $name =~ /^current(?:mailCount|avgdamped|cpuAvg|cpuBusyTime|cpuTime|damptime|msgPerDay|nextUpload|smtpConcurrentSessions|smtpMaxConcurrentSessions|starttime|statstart|uptime|version|memoryUsage)$/io;
             $nameid =~ s/1$/2/o;
             my $desc;
