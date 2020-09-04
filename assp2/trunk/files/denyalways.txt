@@ -1,6 +1,21 @@
 #
-# denyalways
+#  denyalways
 #
+# reserved by IANA
+100.64.0.0/10        # rfc6598
+192.0.0.0/24         # rfc5736
+192.0.2.0/24         # rfc5737
+192.88.99.0/24       # rfc3068
+198.18.0.0/15        # rfc2544
+198.51.100.0/24      # rfc5737
+203.0.113.0/24       # rfc5737
+#224.0.0.0/4          # rfc3171
+#240.0.0.0/4          # rfc1112
+#255.255.255.255/32   # rfc919
+
+# common block list
+#1.0.0.0/8           # old bogon
+#2.0.0.0/8           # old bogon
 #5.0.0.0/8           # old bogon
 #14.0.0.0/8          # old bogon
 #23.0.0.0/8          # old bogon
@@ -64,7 +79,7 @@
 82.119.204.236/32   # Interconsult
 82.141.128.0/18     # AS12301 HU/HU INVITEL Invitel, Hungary
 82.200.128.0/19     # AS9198 KZ/KZ KAZTELECOM-AS Kazakhtelecom Corporate Sales Administration
-83.0.0.0/11         # AS5617 PL/PL TPNET Polish Telecom_s commercial IP network
+#83.0.0.0/11         # AS5617 PL/PL TPNET Polish Telecom_s commercial IP network
 83.136.144.0/21     # mailupnet.it (Italy)
 83.217.0.0/20       # AS31138 RU/RU PROEKT-AS IP Telecom (LTD _Proekt_) AS
 83.244.96.0/20      # AS12975 PS/PS PALTEL-AS PALTEL Autonomous System
@@ -239,3 +254,30 @@
 222.136.0.0/13      # AS4837 CN/CN CHINA169-BACKBONE CNCGROUP China169 Backbone
 222.139.152.0/24    # AS4837 CN/CN CHINA169-BACKBONE CNCGROUP China169 Backbone
 222.252.96.0/19     # AS7643 VN/VN VNN-AS-AP Vietnam Posts and Telecommunications (VNPT)
+
+67.210.105.216/32   # dl16h00013.lunarmania.com
+76.96.62.24/32      # comcast.net
+12.130.136.153      # omp.email.landsend.com
+179.188.30.0/24     # globo.com
+
+# hacking
+85.187.183.180
+50.73.24.93
+5.215.87.93
+146.185.239.194
+14.176.160.174
+203.153.46.254
+191.185.4.13
+91.195.2.230
+113.161.196.47
+119.184.127.19
+165.255.139.128
+186.223.174.103
+41.60.196.178
+92.241.15.88
+24.112.221.166
+37.124.8.168
+187.45.116.166
+212.28.77.85
+176.108.15.41
+179.219.139.221
