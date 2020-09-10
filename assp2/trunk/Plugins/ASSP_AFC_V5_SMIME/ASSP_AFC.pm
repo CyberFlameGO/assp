@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.21 2020/08/21 11:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.23 2020/09/10 12:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -111,9 +111,10 @@ our %PDFtags = (          # PDF objects to analyze
 # ignore single VirusTotal results from these vendors to prevent false postives - define vendors in lowercase letters
 our %VirusTotalIgnoreVendor = (
                        'trapmine' => 1,
-                       'qhioo-360' => 1,
+                       'qihoo-360' => 1,
                        'maxsecure' => 1,
-                       'sentinelone' => 1
+                       'sentinelone' => 1,
+                       'microsoft' => 1
 );
 
 # ignore single VirusTotal results from these vendors to prevent false postives - define vendors in perl regular expression (e.g. to support wildcards)
@@ -270,7 +271,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.21 2020/08/21 11:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.23 2020/09/10 12:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
