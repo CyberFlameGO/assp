@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.23 2020/09/10 12:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.24 2020/09/19 11:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -271,7 +271,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.23 2020/09/10 12:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.24 2020/09/19 11:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -434,7 +434,7 @@ sub get_config {
  'This plugin is an addon to the default attachment- and ClamAV- engine of ASSP. The default engines only scannes the first MaxBytes/ClamAVBytes of an email. If you enable this plugin, the complete mail will be scanned for bad attachments and/or viruses!<br />
  The default engine(s) will be disabled by this enhanced version. Before you enable this plugin, please go to the configuration section(s) and configure the values for attachments and/or ClamAV! This plugin requires an installed <a href="http://search.cpan.org/search?query=Email::MIME" rel="external">Email::MIME</a> module in PERL.<br />
  This plugin is designed for- and running in call/run level '.$self->{runlevel}.'!',undef,undef,'msg100000','msg100001'],
-[$self->{myName}.'Select','Select the '.$self->{myName}.' Plugin Action','1:do attachments|2:do ClamAV and FileScan|3:do both',\&main::listbox,3,'(\d*)',\&configChangeSelect,
+[$self->{myName}.'Select','Select the '.$self->{myName}.' Plugin Action','1:do attachments|2:do ClamAV, FileScan and VirusTotal|3:do both',\&main::listbox,3,'(\d*)',\&configChangeSelect,
  'If you enable one or both options of this plugin, the complete mail will be scanned for bad attachments and/or viruses!',undef,undef,'msg100010','msg100011'],
 [$self->{myName}.'Priority','the priority of the Plugin',5,\&main::textinput,'6','(\d+)',undef,
  'Sets the priority of this Plugin within the call/run-level '.$self->{runlevel}.'. The Plugin with the lowest priority value is processed first!',undef,undef,'msg100020','msg100021'],
