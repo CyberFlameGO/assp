@@ -204,9 +204,9 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '20224';        # 11.08.2020 TE
+$build   = '20280';        # 06.10.2020 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
-$maxPerlVersion = '5.030999';
+$maxPerlVersion = '5.032999';
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
 $requiredSelfLoaderVersion = '2.03';
@@ -593,6 +593,18 @@ our $threadReloadConfigDelay = 15;  # seconds to wait for each thread after the 
 
 #                                                     #
 #######################################################
+# ASN-provider special settings for local instances   #
+#######################################################
+#                                                     #
+#                                                     #
+
+our $ASNProviderIPv4 = '.asn.routeviews.org |
+                        .origin.asn.cymru.com';  # asn.routeviews.org equivalent provider for IPv4 ASN, if local (or others) DNS provides the ASN list
+                                                 # combine multiple providers (for failover) by pipe '|' or comma ','
+our $ASNProviderIPv6 = '.origin6.asn.cymru.com'; # asn.routeviews.org equivalent provider for IPv6, if local (or others) DNS provides the ASN list
+                                                 # combine multiple providers (for failover) by pipe '|' or comma ','
+
+#######################################################
 # DNSWL.ORG special settings for local instances      #
 #######################################################
 #                                                     #
@@ -626,7 +638,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '9F84A96EA08A2D43768D739D51BC9169F9882A83'; }
+sub __cs { $codeSignature = '06C302D8526EA481076A0184337EA38D19A51D9B'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -696,6 +708,17 @@ our $RegexGroupingOnly = 1;
 
 # enables fast import of GPB in case RDBM is used
 our $GPBFastImport = 1;
+
+# whois servers
+our %whois_servers = (
+    'RIPE'=>'whois.ripe.net',
+    'APNIC'=>'whois.apnic.net',
+    'KRNIC'=>'whois.krnic.net',
+    'LACNIC'=>'whois.lacnic.net',
+    'ARIN'=>'whois.arin.net',
+    'AFRINIC'=>'whois.afrinic.net',
+);
+
 
 #################################################################
 # BUT at least from here - custom code changes are not required #
@@ -1209,8 +1232,8 @@ $IPSectRe = "(?:25[0-5]|2[0-4][$d]|1[$d]{2}|0?[$d]?[$d])";
 $IPSectHexRe = '(?:(?:0x)?(?:[A-Fa-f][A-Fa-f0-9]?|[A-Fa-f0-9]?[A-Fa-f]))';
 
 # private IP addresses
-$IPprivate  = '((?:00?0?|127)(?:\.'.$IPSectRe.'){3}|169\.254(?:\.'.$IPSectRe.'){2}|0?10(?:\.'.$IPSectRe.'){3}|192\.168(?:\.'.$IPSectRe.'){2}|172\.0?1[6-9](?:\.'.$IPSectRe.'){2}|172\.0?2[0-9](?:\.'.$IPSectRe.'){2}|172\.0?3[01](?:\.'.$IPSectRe.'){2})';   #RFC 1918 decimal
-$IPprivate .= '|(?:(?:0x)?(?:00?|7[Ff])(?:\.'.$IPSectHexRe.'){3}|(?:0x)?[aA]9\.(?:0x)?[Ff][Ee](?:\.'.$IPSectHexRe.'){2}|(?:0x)?0[aA](?:\.'.$IPSectHexRe.'){3}|(?:0x)?[Cc]0\.(?:0x)?[Aa]8(?:\.'.$IPSectHexRe.'){2}|(?:0x)[Aa][Cc]\.(?:0x)1[0-9a-fA-F](?:\.'.$IPSectHexRe.'){2})';   #RFC 1918 Hex
+$IPprivate  = '((?:0{1,3}|127|2(?:2[4-9]|[34][0-9]|5[0-5]))(?:\.'.$IPSectRe.'){3}|169\.254(?:\.'.$IPSectRe.'){2}|0?10(?:\.'.$IPSectRe.'){3}|192\.168(?:\.'.$IPSectRe.'){2}|172\.0?1[6-9](?:\.'.$IPSectRe.'){2}|172\.0?2[0-9](?:\.'.$IPSectRe.'){2}|172\.0?3[01](?:\.'.$IPSectRe.'){2})';   #RFC 1918 decimal
+$IPprivate .= '|(?:(?:0x)?(?:00?|7[Ff]|[eEfF][0-9a-fA-F])(?:\.'.$IPSectHexRe.'){3}|(?:0x)?[aA]9\.(?:0x)?[Ff][Ee](?:\.'.$IPSectHexRe.'){2}|(?:0x)?0[aA](?:\.'.$IPSectHexRe.'){3}|(?:0x)?[Cc]0\.(?:0x)?[Aa]8(?:\.'.$IPSectHexRe.'){2}|(?:0x)?[Aa][Cc]\.(?:0x)?1[0-9a-fA-F](?:\.'.$IPSectHexRe.'){2})';   #RFC 1918 Hex
 $IPprivate .= '|(?:0{0,4}:){2,6}'.$IPprivate;  # private IPv4 in IPv6
 $IPprivate .= '|(?:0{0,4}::|(?:0{1,4}:){7}|(?:0{1,4}:){1,6}:)1';  # IPv6 loopback
 $IPprivate .= '|::';  # IPv6 universal local
@@ -1236,7 +1259,9 @@ $IPv4Re = qr/(?:
 )/xo;
 
 # private IPv6 addresses
+# https://www.iana.org/assignments/iana-ipv6-special-registry/iana-ipv6-special-registry.xhtml
 $IPprivate .= <<EOT;
+# 0000::/16 2002::/16 FE80::/10       FC00::/7
 |(?i:0{1,4}|2002|FE[89A-F][0-9A-F]|F[CDF][0-9A-F][0-9A-F]):
 (?:
 (?:(?:$v6Re:){6}(?:                                $v6Re      |:))|
@@ -1247,6 +1272,40 @@ $IPprivate .= <<EOT;
 (?:(?:$v6Re:)   (?:(?:(?::$v6Re){0,3}:$IPv4Re)|(?::$v6Re){1,5}|:))|
                 (?:(?:(?::$v6Re){0,4}:$IPv4Re)|(?::$v6Re){1,6}|:)
 )
+
+# 2001:0db8::/32       2001:0003::/32   2001:0010::/28 2001:0020::/28
+|(?i:2001:0?[dD][bB]8)|2001:0{0,3}3|2001:0{0,2}[12][0-9A-Fa-f]:
+(?:
+(?:(?:$v6Re:){5}(?:                                $v6Re      |:))|
+(?:(?:$v6Re:){4}(?:                   $IPv4Re |   :$v6Re      |:))|
+(?:(?:$v6Re:){3}(?:                  :$IPv4Re |(?::$v6Re){1,2}|:))|
+(?:(?:$v6Re:){2}(?:(?:(?::$v6Re)?    :$IPv4Re)|(?::$v6Re){1,3}|:))|
+(?:(?:$v6Re:)   (?:(?:(?::$v6Re){0,2}:$IPv4Re)|(?::$v6Re){1,4}|:))|
+                (?:(?:(?::$v6Re){0,3}:$IPv4Re)|(?::$v6Re){1,5}|:)
+)
+
+# 2001::/23
+|2001:
+(?:
+(?:(?:0{1,4}:(?:(?::$v6Re){1,5}|$v6Re(?::$v6Re){1,5}))|(?::$v6Re){1,6}|:)
+|0?[01]?[0-9a-fA-F]?[0-9a-fA-F]:(?:(?::$v6Re){1,5}|$v6Re(?::$v6Re){1,5}|:)
+)
+
+# 0064:FF9B:0000:0000:0000:0000::/96
+|(?i:0?0?64:FF9B):(?:(?:0{1,4}:){4}(?::$v6Re|$v6Re:$v6Re|:)|(?:(?::$v6Re){1,2}|:))
+
+# 2620::004F:8000::/48  0064:FF9B:0001::/48 2001:0004:0112::/48 2001:0002:0000::/48  # the last one is odd (0000)
+|(?i:2620:0?0?4F:8000|0?0?64:FF9B:0?0?0?1|2001:0{0,3}4:0?112|2001:0{0,3}2:0{1,4}):
+(?:
+(?:(?:$v6Re:){4}(?:                                $v6Re      |:))|
+(?:(?:$v6Re:){3}(?:                   $IPv4Re |   :$v6Re      |:))|
+(?:(?:$v6Re:){2}(?:                  :$IPv4Re |(?::$v6Re){1,2}|:))|
+(?:(?:$v6Re:)   (?:(?:(?::$v6Re)?    :$IPv4Re)|(?::$v6Re){1,3}|:))|
+                (?:(?:(?::$v6Re){0,2}:$IPv4Re)|(?::$v6Re){1,4}|:)
+)
+
+# 0100:0000:0000:0000::/64
+|0?100:(?:(?:0{1,4}:){3}(?::$v6Re(:$v6Re){0,2}|:)|(?:(?::$v6Re){1,4}|:))
 EOT
 $IPprivate = qr/^(?:$IPprivate)$/xo;
 
@@ -1482,6 +1541,8 @@ $uniSpecialsRE = qr/$uniSpecialsRE/;
 }
 
 ##### 0 and 1 and some important primes for VT
+our $YY = 1;
+our $YYY = $YY;
 our @char4vt = (
 0,
 1,
@@ -3145,7 +3206,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  - lookup the domain information in "Look up your network"<br />
  - right beside "Addresses in domain used to send email" click on export, and export the list in to plain text<br />
  - copy and past the list in to an editor and generate a comma separated IP list<br />
- - go to an online SPF record generator - for example: <a href="http://www.royhochstenbach.com/projects/spfgenerator/" rel="external">http://www.royhochstenbach.com/projects/spfgenerator</a> and generate the SPF record<br />
+ - go to an online SPF record generator and generate the SPF record<br />
  - put "domain=>SPF-record" in any of SPFoverride or SPFfallback<br />
  - define the policy as strict as possible',undef,undef,'msg003540','msg003541'],
 ['SPFfallback','Fallback Domains*',80,\&textinput,'','(.*)','configUpdateSPFOF',
@@ -4822,7 +4883,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg007
 ['VirusTotalAPIKey','The Private API-Key for VirusTotal',80,\&textinput,'','(.*)',undef,
  'To query www.VirusTotal.com for URIs and/or viruses (ASSP_AFC.pm), a valid API-Key is required. An API-Key is provided by VirusTotal for free, after your registration at www.virustotal.com.<br />
  Such a free API-Key is limited to four queries at VirusTotal per minute. API-Keys for a higher query volume are also provided by VirusTotal.<br />
- Systems that are part of the ASSP-Global-PenalyBox network can leave this value empty. They are getting an API-Key with a much higher query volume from the GPB-Server automatically, without any additionally costs. This API-Key is not shown here!<br />
+ Systems that are part of the ASSP-Global-PenalyBox network can leave this value empty. They are getting an API-Key with a much higher query volume per day and minute (~4000 calls per day, no limit per minute) from the GPB-Server automatically, without any additionally costs. This API-Key is not shown here!<br />
  You need to enable ( useASSP_VirusTotal_API ) the assp module lib/ASSP_VirusTotal_API.pm and to install the perl module <a href="http://metacpan.org/search?q=JSON" rel="external">JSON</a>.',undef,undef,'msg010770','msg010771'],
 ['OrderedTieHashTableSize','Ordered-Tie Hash Table Size',10,\&textinput,10000,'(\d+)',undef,
  'The number of cached entries allowed in the hash tables used by ASSP. This belongs to griplist, if useDB4griplist is not set and to temporary lists used by the rebuild spamdb process, if useDB4Rebuild is set and BerkeleyDB is not available. Larger numbers require more RAM but result in fewer disk hits. The default value is 10000. Adjust down to use less RAM. Adjust up to speedup.',undef,undef,'msg007820','msg007821'],
@@ -6460,6 +6521,7 @@ sub setMakeREVars {
         'HMMdb' => 'hmmdb',
 
         'subjectFrequencyCache' => 2,
+        'internals' => 3,
     );
     if (defined $main::CanUseBerkeleyDB && (! $runHMMusesBDB || ! $main::CanUseBerkeleyDB)) {
         delete $tempDBvars{HMMdb};
@@ -7312,6 +7374,7 @@ if (! $Config{globalClientName}) {
     delete $Config{globalUploadURL};
     delete $ConfigAdd{globalRegisterURL};
     delete $ConfigAdd{globalUploadURL};
+    @char4vt = (1,1,1,1);
 }
 
 use ASSP_DEF_VARS;
@@ -13447,6 +13510,7 @@ sub initPrivatHashes {
                     && $_ ne 'DMARCpol'
                     && $_ ne 'DMARCrec'
                     && $_ ne 'subjectFrequencyCache'
+                    && $_ ne 'internals'
                     && $_ !~ /^T10Stat/o
                     && $clean
                     && $WorkerNumber == 0);
@@ -13495,6 +13559,7 @@ sub initPrivatHashes {
                     && $hash ne 'DMARCpol'
                     && $hash ne 'DMARCrec'
                     && $hash ne 'subjectFrequencyCache'
+                    && $hash ne 'internals'
                     && $hash !~ /^T10Stat/o
                     && $clean
                     && $WorkerNumber == 0);
@@ -13856,6 +13921,7 @@ sub init {
 
     my $tmpASSPout;
     my $StartError;
+    ${"\x59\x59"}=sub{${"\x59"}->DECRYPT(shift)};
     if (open($tmpASSPout, ">", "$base/aaaa_tmp.pl")) {
         binmode $tmpASSPout;
         $tmpASSPout->close;
@@ -13896,6 +13962,7 @@ sub init {
 
     print "\nsetting up modules";
 
+    ${"\x59\x59\x59"}=sub{};
     $append = '';
     $ver=threads->VERSION;
     $append = '- please upgrade to at least version 1.74 or higher' if ($ver lt '1.74');
@@ -14474,6 +14541,7 @@ EOT
         }
     }
 
+    # if BDB is not available or not used we need to share all internal hashes
     if (! $CanUseBerkeleyDB || ! $useDB4IntCache) {
         foreach (sort keys %tempDBvars) {
             next if $_ eq 'BackDNS2';
@@ -14732,20 +14800,22 @@ EOT
         $installed = 'enabled';
         my $key = defined $VirusTotalAPIKey ? $VirusTotalAPIKey : undef;
         $key ||= ($globalClientName && $globalClientPass) ? sprintf("%016x%016x%016x%016x",($char4vt[0] << 1)+1,$char4vt[1] << 2,$char4vt[2] << 1,$char4vt[3] << 3) : undef;
-        if ( ! $key ) {
+        if ( ! $key || "@char4vt" eq '1 1 1 1') {
             mlog(0,"warning: ASSP_VirusTotal_API has not found a valid API-Key ( VirusTotalAPIKey )");
             $installed .= ' ( but no VirusTotal-API-Key is available)';
         }
+        my $r = vtdestroy(0);
+        *{'ASSP_VirusTotal_API::DESTROY'} = *{'main::vtdestroy'};
       } elsif (!$AvailASSP_VirusTotal_API)  {
         $installed = $useASSP_VirusTotal_API ? 'is not installed' : 'is disabled in config';
         mlog(0,"ASSP_VirusTotal_API module $installed - VirusTotal-API is not available");
         my $key = defined $VirusTotalAPIKey ? $VirusTotalAPIKey : undef;
         $key ||= ($globalClientName && $globalClientPass) ? sprintf("%016x%016x%016x%016x",($char4vt[0] << 1)+1,$char4vt[1] << 2,$char4vt[2] << 1,$char4vt[3] << 3) : undef;
-        if ( $key ) {
+        if ( $key && "@char4vt" ne '1 1 1 1') {
             mlog(0,"warning: found VirusTotal-API-Key, BUT missing module lib/ASSP_VirusTotal_API.pm");
         }
     }
-    $ModuleList{'ASSP_VirusTotal_API'} = $VerASSP_VirusTotal_API.'/1.01';
+    $ModuleList{'ASSP_VirusTotal_API'} = $VerASSP_VirusTotal_API.'/1.02';
     $ModuleStat{'ASSP_VirusTotal_API'} = $installed;
 
     my $osslv;
@@ -14882,7 +14952,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
     }
 
     my $v;
-    $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.19;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+    $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.24;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
     $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
     $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
     $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.23;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -15612,6 +15682,8 @@ If the step belongs to a BerkeleyDB hash,
     &mlogWrite();
     &initFileHashes('AdminGroup');  # AdminGroup is never shared;
     &mlogWrite();
+    $internals{'vtapicalls.left'} = (exists $internals{'vtapicalls.max'} ? $YY->($internals{'vtapicalls.max'}) : 4096) if ( ! exists $internals{'vtapicalls.left'} && ! $VirusTotalAPIKey);
+    $internals{'vtapicalls.done'} = 0 if ( ! exists $internals{'vtapicalls.done'});
 
     ConfigChangePassword('webAdminPassword', '', '', 0) if $usedCrypt == -1; # change the encryption engine now !
     &mlogWrite();
@@ -22782,7 +22854,7 @@ sub sendquedata {
         $friend->{noprocessing} = 1 if $friend->{ismaxsize};
     } else {
         $friend->{ismaxsize} = 1 if ($npSize && $friend->{maillength} >= $npSize);
-        $friend->{noprocessing} = 2 if $friend->{ismaxsize};
+        $friend->{noprocessing} |= 2 if $friend->{ismaxsize};
     }
 
     if ($this->{noMoreQueued}) {    # queueing is switched of for some reasons
@@ -27998,9 +28070,10 @@ sub getOriginIPs {
         $line =~ s/ by ($IPRe) / by [$1] /igo;
         $line =~ s/(?:ecelerity|id|SMTPSVC|version).+?$IPRe//iog;
         while ($line =~ /[\[\(]($IPRe)(?::$PortRe)?[\]\)]/go) {
-            my $sip = $1;
-            next if ($sip =~ /\.0+$/o && $sip !~ /^$IPv6Re/o);
+            my $orgsip = $1;
+            my $sip = ipv6expand(ipv6TOipv4($orgsip));
             next unless $sip;
+            next if ($sip =~ /\.0+$/o && $sip !~ /^$IPv6Re/o);
             if ($sip =~ /^$IPprivate/o) {
                 next if exists $ips{$sip};
                 push @ignoredIP,$sip;
@@ -28008,7 +28081,7 @@ sub getOriginIPs {
                 next;
             }
             #     (IPv4 from tunnel or IPv6 or IPv4) , (IPv6 or IPv4)
-            my @sip = ( ipv6expand(ipv6TOipv4($sip)) , ipv6expand($sip) );
+            my @sip = ( ipv6expand(ipv6TOipv4($orgsip)) , ipv6expand($orgsip) );
             if ($sip[0] eq $sip[1]) {    # both are equal IPv4 or IPv6 - only use one
                 pop @sip;
             } elsif ($sip[1] =~ /^(?:0{1,4}|2002|FE[89A-F][0-9A-F]|F[CDF][0-9A-F][0-9A-F]):/io) {  # use only the IPv4 at mapped/tunneled IP 0000 2002 FEXX
@@ -28026,7 +28099,18 @@ sub getOriginIPs {
                 ($ignoredIP[-1] .= ' (noProcessingIPs)') && next if matchIP($sip,'noProcessingIPs',$fh,0);
                 ($ignoredIP[-1] .= ' (noDelay)') && next if matchIP($sip,'noDelay',$fh,0);
                 ($ignoredIP[-1] .= ' (noPB)') && next if matchIP($sip,'noPB',0,0);
+
+                #IANA reserved IP's
                 ($ignoredIP[-1] .= ' (rfc6598 100.64.0.0/10)') && next if ($sip =~ /^100\.(0?\d{2,3})\./o && $1 > 63 && $1 < 128);
+                ($ignoredIP[-1] .= ' (rfc5736 192.0.0.0/24)') && next if ($sip =~ /^192\.0{1,3}\.0{1,3}\./o);
+                ($ignoredIP[-1] .= ' (rfc5737 192.0.2.0/24)') && next if ($sip =~ /^192\.0{1,3}\.0{0,2}2\./o);
+                ($ignoredIP[-1] .= ' (rfc3068 192.88.99.0/24)') && next if ($sip =~ /^192\.0?88\.0?99\./o);
+                ($ignoredIP[-1] .= ' (rfc2544 198.18.0.0/15)') && next if ($sip =~ /^198\.0?1[89]\./o);
+                ($ignoredIP[-1] .= ' (rfc5737 198.51.100.0/24)') && next if ($sip =~ /^198\.0?51\.100\./o);
+                ($ignoredIP[-1] .= ' (rfc5737 203.0.113.0/24)') && next if ($sip =~ /^203\.0{1,3}\.113\./o);
+                ($ignoredIP[-1] .= ' (rfc3171 224.0.0.0/4)') && next if ($sip =~ /^(2\d{2})\./o && $1 > 223 && $1 < 240);
+                ($ignoredIP[-1] .= ' (rfc919 255.255.255.255/32)') && next if ($sip =~ /^255\.255\.255\.255$/o);
+                ($ignoredIP[-1] .= ' (rfc1112 240.0.0.0/4)') && next if ($sip =~ /^(2\d{2})\./o && $1 > 239);
 
                 pop @ignoredIP;
                 push @sips, $sip;
@@ -30210,7 +30294,7 @@ sub batv_rcpt_in {
             }
         }
         unless ($secret) {
-            mlog($fh, "waring: no BATV secret key found in config for generation $gen in $user - key was maybe deleted from configuration") if $BATVLog;
+            mlog($fh, "warning: no BATV secret key found in config for generation $gen in $user - key was maybe deleted from configuration") if $BATVLog;
             return $rcpt,-1;
         }
         my $orig_address =  $orig_user . '@' . $domain ;
@@ -31195,18 +31279,49 @@ sub erw {
     return $ret;
 }
 
+sub vtdestroy {
+    my ($self) = @_;
+    return unless $self;
+    my $count = 0;
+    if (! exists($self->{callcount})) {
+        return unless $self->{res}; # no call done
+        $count = 1;
+    } elsif (! $self->{callcount}) {
+        return;
+    } else {
+        $count = $self->{callcount};
+    }
+    undef $self;
+    lock(%internals) if is_shared(%internals);
+    $internals{'vtapicalls.done'} += $count;
+    return if $VirusTotalAPIKey;
+    $internals{'vtapicalls.left'} -= $count;
+    if ($internals{'vtapicalls.left'} <= 0) {
+        $CanUseASSP_VirusTotal_API = $internals{'vtapicalls.left'} = 0;
+        $ASSP_AFC::CanVT = 0 if defined $ASSP_AFC::CanVT;
+    }
+    return;
+}
+
 sub vturiapi {
     my $api;
+    return unless $CanUseASSP_VirusTotal_API;
     my $key = defined $VirusTotalAPIKey ? $VirusTotalAPIKey : undef;
-    $key ||= ($globalClientName && $globalClientPass) ? sprintf("%016x%016x%016x%016x",($char4vt[0] << 1)+1,$char4vt[1] << 2,$char4vt[2] << 1,$char4vt[3] << 3) : undef;
+    if (! $key && $globalClientName && $globalClientPass && "@char4vt" ne '1 1 1 1') {
+        my $licdate = join('',reverse(split(/\./o,$globalClientLicDate)));
+        if ($licdate >= timestring(undef, 'd', 'YYYYMMDD')) {
+            $key = sprintf("%016x%016x%016x%016x",($char4vt[0] << 1)+1,$char4vt[1] << 2,$char4vt[2] << 1,$char4vt[3] << 3);
+        }
+    }
     return unless $key;
 
     local $@;
-    $api = eval { ASSP_VirusTotal_API->new(key => $key, timeout => 5) } if eval ('use ASSP_VirusTotal_API;1;');
+    $api = eval { ASSP_VirusTotal_API->new(key => $key, timeout => 5) };
     if ($api) {
+
         push @{ $api->{ua}->requests_redirectable }, 'POST';
         if ($proxyserver) {
-            my $user = $proxyuser ? "http://$proxyuser:$proxypass\@": "http://";
+            my $user = $proxyuser ? "http://$proxyuser:$proxypass\@": "://";
             $api->{ua}->proxy( 'http', $user . $proxyserver );
             mlog( 0, "VirusTotal uses HTTP proxy: $proxyserver" )
               if $MaintenanceLog;
@@ -31586,8 +31701,9 @@ EOT
                       if $AddURIS2MyHeader;
 
     &sigoff(__LINE__);
+
     my $vturiapi;
-    $vturiapi = vturiapi() if grep { /virustotal/io } @uribllist;;
+    my $useVT = grep { /virustotal/io } @uribllist;
 
     my $urinew = eval {
         RBL->new(
@@ -31651,7 +31767,9 @@ EOT
                 mlog($fh,"URIBL: lookup returned <$lookup_return> for $domain - res: '@listed_by'") if ($URIBLLog == 3 or ($URIBLLog == 2 && $lookup_return && $lookup_return ne 1));
                 mlog($fh,"URIBL: lookup failed for $domain - $error") if ($error);
             }
-            next if (($error || $lookup_return ne 1) && ! $vturiapi);
+            next if ($error || $lookup_return ne 1);
+
+            $vturiapi = vturiapi() if (! $vturiapi && $useVT);
             if ($vturiapi) {
                 (my $vt_lookup_return, $vt_result) = vturilookup($vturiapi,$domain);
                 mlog($fh,"URIBL-VirusTotal: lookup returned <$lookup_return> for $domain") if ($URIBLLog == 3 or ($URIBLLog == 2 && $vt_lookup_return && $vt_lookup_return ne 1));
@@ -33601,7 +33719,7 @@ sub DKIMgen_Run {
 
     if (! ($domain && $user) ) {
         ($user,$domain) = ($1,$2) if $mf =~ /^(?:([^@]+)\@)?([^@]+)$/o;
-        $DKIM{Identity} = $domain;    # there is no from: and no sender: header, we need to set the identity DKIM value
+        $DKIM{Identity} = '@'.$domain;    # there is no from: and no sender: header, we need to set the identity DKIM value
     } else {
         delete $DKIM{Identity};
     }
@@ -33666,6 +33784,7 @@ sub DKIMgen_Run {
                  next;
              }
         }
+        $v = '@'.$v if ($k eq 'Identity' && $v !~ /\@/o);  # Identity is only a domain or host name - we need to place an @ in front
         $DKIM{$k} = $v;
         mlog(0,"$showmode: set $k = $v") if ($vo ne $v && ($DKIMlogging == 3 || $debug || $ThreadDebug));
     }
@@ -35057,27 +35176,47 @@ sub MessageSizeOK {
 # queries the ASN , IP and Network for an IP
 sub getASData {
     my $ip = shift;
-    return if $ip =~ /$IPprivate/o;
-    my @octets = map {
-        if ( !m/^0$/io ) { s/^0*//o; $_ }
-        else            { 0 }
-    } split( /\./o, $ip );
-
-    my $url = join('.', reverse(@octets)) . '.asn.routeviews.org';
-
-    my $res = queryDNS($url,'TXT');
+    return unless $ip;
+    return if $ip =~ /^$IPprivate$/o;
+    return if $ip !~ /^$IPRe$/o;
+    my @octets;
+    my $ip6doted;
+    my $isip4 = $ip =~ /^$IPv4Re$/o;
+    if ($isip4) {
+        @octets = map {
+            my $t = $_;
+            if ( $t !~ m/^0$/io ) { $t =~ s/^0*//o; $t; }
+            else            { 0 }
+        } split( /\./o, $ip );
+    } else {
+        $ip6doted = ipv6hexrev($ip,36);
+    }
+    my $ASNProvider = $isip4 ? $ASNProviderIPv4 : $ASNProviderIPv6;
+    $ASNProvider = '.' . $ASNProvider if $ASNProvider !~ /^\./o;
     my @data;
-    my @answers;
-    if (ref($res) && (@answers = $res->answer)) {
-        @answers = map{Net::DNS::RR->new($_->string)} @answers;
-        for my $RR (@answers) {
-            next if lc($RR->type) ne 'txt';
-            push @data, $RR->char_str_list;
+    for my $provider (split(/\s*(?:\||,)\s*/o,$ASNProvider)) {
+        my $url = $isip4 ? join('.', reverse(@octets)) . $provider : $ip6doted . $provider;
+
+        mlog(0,"info: ASN-Data-Query: $url") if $MaintenanceLog > 1;
+        my $res = queryDNS($url,'TXT');
+        next if $main::lastDNSerror eq 'TIMEOUT';
+        my @answers;
+        if (ref($res) && (@answers = $res->answer)) {
+            @answers = map{Net::DNS::RR->new($_->string)} @answers;
+            for my $RR (@answers) {
+                next if lc($RR->type) ne 'txt';
+                push @data, $RR->char_str_list;
+            }
         }
+        last if @data;
     }
     my $result = join(' ',@data);
-    my ($ASN,$rip,$net) = $result =~ /(\d+)[^\d]+(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})[^\d]+(\d+)/;
-
+    my ($ASN,$rip,$net);
+    if ($isip4) {
+        ($ASN,$rip,$net) = $result =~ /(\d+)\D+($IPv4Re)\D+(\d+)/o;
+    } else {
+        ($ASN,$rip,$net) = $result =~ /(\d+)\D+($IPv6Re)\D+(\d+)/o;
+    }
     mlog(0,"info: ASN-Data for $ip: ASN:$ASN , IP:$rip , Mask:$net") if $MaintenanceLog > 1;
     return ($ASN,$rip,$net) if ($ASN && $rip && $net);
     return;
@@ -41232,13 +41371,13 @@ sub forwardHamSpamReport {
 
     my $from = &batv_remove_tag(0,$othis->{mailfrom},'');
     unless ($from) {
-        mlog($fh,"waring: unable to detect 'MAIL FROM' address in report request");
+        mlog($fh,"warning: unable to detect 'MAIL FROM' address in report request");
         return 0;
     }
     my $rcpt;
     $rcpt = ${defined${chr(ord(",")<< 1)}} if $othis->{rcpt} =~ /(\S+)/o;
     unless ($rcpt) {
-        mlog($fh,"waring: unable to detect 'RCPT TO' address in report request");
+        mlog($fh,"warning: unable to detect 'RCPT TO' address in report request");
         return 0;
     }
 
@@ -47986,6 +48125,11 @@ sub SaveStats {
 
     $dF->("$base/tmpDB/files") or mkdirOP("$base/tmpDB/files",'0755');
     mlog(0,"info: saving internal Caches in to folder $base/tmpDB/files") if $MaintenanceLog;
+    SaveInternals();
+}
+
+sub SaveInternals {
+    $dF->("$base/tmpDB/files") or mkdirOP("$base/tmpDB/files",'0755');
     for my $hash (sort keys %tempDBvars) {
         if ($tempDBvars{$hash} == 2) {
             saveHashToFile("$base/tmpDB/files/$hash.sav",\%{$hash});
@@ -51440,6 +51584,16 @@ $ret .= StatLine({'stat'=>'','text'=>($codeOK ? 'code integrity signature:' : "<
                  {'text'=>"expected:</td><td>$asspSHA1",'class'=>'statsOptionValue'},
                  {'text'=>"current:</td><td>".($codeOK ? "$codeSignature" : "<font color=\"#FF0000\">$codeSignature</font>"),'class'=>'statsOptionValue'});
 
+if (! $VirusTotalAPIKey && $AvailASSP_VirusTotal_API && $globalClientName && $globalClientPass) {
+$ret .= StatLine({'stat'=>'','text'=>'Virus Total calls left until 24:00h today:','class'=>'statsOptionTitle'},
+                 {'text'=>$internals{'vtapicalls.left'}.' of '.(exists $internals{'vtapicalls.max'} ? $YY->($internals{'vtapicalls.max'}) : 4096),'class'=>'statsOptionValue','colspan'=>'2'},
+                 {'text'=>$internals{'vtapicalls.done'}.' calls are done since 00:00 today','class'=>'statsOptionValue','colspan'=>'2'});
+} elsif ($VirusTotalAPIKey && $CanUseASSP_VirusTotal_API) {
+$ret .= StatLine({'stat'=>'','text'=>'Virus Total calls done since 00:00h today:','class'=>'statsOptionTitle'},
+                 {'text'=>$internals{'vtapicalls.done'},'class'=>'statsOptionValue','colspan'=>'2'},
+                 {'text'=>"&nbsp;",'class'=>'statsOptionValue','colspan'=>'2'});
+}
+
 my $currentCL = (-e "$base/docs/changelog.txt") ? "docs/changelog.txt" : '';
 my $currentCLtext = $currentCL ? '<a href="javascript:void(0);" onclick="javascript:popFileEditor(\'docs/changelog.txt\',8);">show current local change log</a>' : '&nbsp;';
 my $rel = ($subversion % 2) ? '(rel)' : '(dev)';
@@ -53250,7 +53404,7 @@ sub ConfigAnalyze {
             $fm .= "Connecting IP: '$ip'<br />\n";
             my ($asn,$rip,$mask) = getASData($ip);
             if ($asn && $rip && $mask) {
-                $fm .= "&nbsp;&nbsp;ASN-info: ASN: $asn , RIP/Mask: $rip/$mask<br />\n";
+                $fm .= "&nbsp;&nbsp;ASN-info: ASN: $asn , RIP/Mask: $rip/$mask , ORG: ORGXXXORGxxxORG<br />\n";
             }
         }
         my $conIP = $ip;
@@ -54528,6 +54682,9 @@ sub ConfigAnalyze {
             $status = $statList{$status};
             $data =~ s/\|/, /og;
             $fm .= "<b><font color='$color'>&bull;</font> $ip is in CountryCache</b>: status=$status, data=$data<br />\n";
+            my $org = [split(/, /o,$data)]->[1];
+            $org =~ s/^ORG=/ , ORG: /o;
+            $fm =~ s/ , ORG: ORGXXXORGxxxORG/$org/o;
         } elsif ($ip) {
             my $tmpfh = time;
             $Con{$tmpfh} = {};
@@ -54548,8 +54705,13 @@ sub ConfigAnalyze {
             $status = $statList{$status};
             $data =~ s/\|/, /og;
             $fm .= "<b><font color='$color'>&bull;</font> $ip SenderBase</b>: status=$status, data=[$data]<br />\n" if $data;
+            my $org = [split(/, /o,$data)]->[1];
+            $org =~ s/^ORG=/ , ORG: /o;
+            $fm =~ s/ , ORG: ORGXXXORGxxxORG/$org/o;
             delete $Con{$tmpfh};
             &MainLoop1(0);
+        } else {
+            $fm =~ s/ , ORG: ORGXXXORGxxxORG//o;
         }
 
         if ( $ret = matchIP( $ip, 'acceptAllMail', 0, 1 ) ) {
@@ -57146,6 +57308,9 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
  } elsif ($WebIP{$ActWebSess}->{user} ne 'root' && ($sfile=~/^(?:$certsRe)$/i || $sfile =~ /notes[\\\/]configdefaults\.txt/io)) {
   mlog(0,"error: user $WebIP{$ActWebSess}->{user} has tried to show/edit security file '$sfile'");
   $s2.='<div class="text"><span class="negative">File $sfile has secured access rules -- access denied</span></div>';
+ } elsif ($fil =~ /^DB-internals/o) {
+  mlog(0,"error: user $WebIP{$ActWebSess}->{user} has tried to show/edit internal security hash '$fil'");
+  $s2.='<div class="text"><span class="negative">HASH internals can not be shown -- access denied</span></div>';
  } else {
   #$fil="$base/$fil" if $fil!~/^(([a-z]:)?[\/\\]|\Q$base\E)/;
   if ($fil =~ /^DB-(.+)/o) {
@@ -60299,6 +60464,13 @@ sub fixConfigSettings {
 # -- decrypt/encrypt security vars
     my $dec = ASSP::CRYPT->new($Config{webAdminPassword},0);
     foreach (keys %cryptConfigVars) {
+        if ($_ =~ /^globalClient(?:Pass|Name)$/ && $Config{$_} !~ /^(?:[a-fA-F0-9]{2}){5,}$/o) {
+            $Config{globalClientPass}='';
+            $Config{globalClientName}='';
+            $Config{globalClientLicDate}='';
+            @char4vt = (1,1,1,1);
+            next;
+        }
         $Config{$_} = $dec->DECRYPT($Config{$_}) if ($Config{$_} =~ /^(?:[a-fA-F0-9]{2}){5,}$/o && defined $dec->DECRYPT($Config{$_})) ;
     }
     $Config{adminusersdbpass} = $Config{webAdminPassword} unless $Config{adminusersdbpass};
@@ -65983,6 +66155,7 @@ sub configUpdateGlobalClient {
     mlog(0,"AdminUpdate: global-PB-clientname updated from '$old' to '$new'") unless $init || $new eq $old;
     $new =~ s/[\'\"\s]//go;
     if ($new eq '') {
+        $Config{$name} = ${$name} = '';
         $globalClientPass = '';
         $Config{globalClientPass}='';
         $globalClientLicDate = '';
@@ -66011,6 +66184,7 @@ sub configUpdateGlobalClient {
     } else {
        my $res = &registerGlobalClient($new);
        if ($res == 1) {
+          @char4vt = (0,1,2,3,5,7,17,23,83,557,85734079,7121494319,221238203047,714341211238997,69521313294089627);
           return " clientname $new was successfully registered on global-PB server";
        } else {
           $globalClientPass = '';
@@ -68357,14 +68531,20 @@ sub reloadConfigFile {
     $dec ||= ASSP::CRYPT->new($Config{webAdminPassword},0);
 
     foreach (keys %cryptConfigVars) {
+        next unless exists $newConfig{$_};
         $newConfig{$_} = $dec->DECRYPT($newConfig{$_}) if ($newConfig{$_} =~ /^(?:[a-fA-F0-9]{2}){5,}$/o && defined $dec->DECRYPT($newConfig{$_})) ;
     }
     for my $idx (0...$#ConfigArray) {
         my $c = $ConfigArray[$idx];
         my ($name,$nicename,$size,$func,$default,$valid,$onchange,$description)=@$c;
+        if(! exists($newConfig{$name})) {
+            mlog(0,"AdminUpdate: reload config - $name missing in config file - value is unchanged");
+            next;
+        }
         if($Config{$name} ne $newConfig{$name}) {
             if($newConfig{$name}=~/$valid/i) {
-                my $new=$1; my $info;
+                my $new = $1;
+                my $info;
                 if($onchange) {
                     $info=$onchange->($name,$Config{$name},$new);
                 } else {
@@ -68389,6 +68569,7 @@ sub reloadConfigFile {
                 mlog(0,"AdminUpdate:error: invalid '$newConfig{$name}' -- not changed");
             }
         }
+        delete $newConfig{$name};
     }
     for my $idx (0...$#PossibleOptionFiles) {
         my $f = $PossibleOptionFiles[$idx];
@@ -68400,6 +68581,10 @@ sub reloadConfigFile {
                 &syncConfigDetect($f->[0]);
             }
         }
+    }
+
+    for my $k (sort keys %newConfig) {
+        mlog(0,"AdminUpdate: Warning: reload config - unknown configuration parameter '$k' was ignored");
     }
 
     renderConfigHTML();
@@ -68897,6 +69082,7 @@ sub RcptReplace {
                 }
                 $jmptarget = $jump;
                 push (@ret, "$k jump: to rule $jump");
+                $recpt = $new;
                 next;
             }
             last;
@@ -72465,6 +72651,14 @@ sub ThreadMaintMain {
             &BlockReportGen('USERQUEUE') if ! isSched($QueueSchedule) && $runHour == int($QueueSchedule);
 
             &CleanWhitelist() if $UpdateWhitelist && $hour % 2;  # clean and save whitelist every 2 hours
+            
+            $YYY->();
+            if ($hour == 0) {
+                $internals{'vtapicalls.left'} = (exists $internals{'vtapicalls.max'} ? $YY->($internals{'vtapicalls.max'}) : 4096);
+                $internals{'vtapicalls.done'} = 0;
+                $CanUseASSP_VirusTotal_API = $AvailASSP_VirusTotal_API;
+                $ASSP_AFC::CanVT = $AvailASSP_VirusTotal_API if defined $ASSP_AFC::CanVT;
+            }
 
         } while  $moreThanOneHour--;
         
@@ -74202,11 +74396,24 @@ sub sendGlobalFile {
     my $responds = $ua->request($req);
     my $res=$responds->as_string;
     $res =~ /(error[^\n]+)|filename\:([$NOCRLF]+)\r?\n?/ios;
-    $url=$2;
-    if ($responds->is_success && ! $1) {
+    $url = $2;
+    my $error = $1;
+    if ($responds->is_success && ! $error) {
         mlog(0,"info: successfully uploaded [$outfile] to global-PB") if $MaintenanceLog;
     } else {
-        mlog(0,"warning: upload [$outfile] to global-PB failed : $1");
+        mlog(0,"warning: upload [$outfile] to global-PB failed : $error");
+        if ($error =~ /too long|not permitted|not registered|wrong authentication/io) {
+            @char4vt = (1,1,1,1);
+            $globalClientPass = '';
+            $globalClientName = '';
+            $Config{globalClientPass}='';
+            $Config{globalClientName}='';
+            $globalClientLicDate = '';
+            $Config{globalClientLicDate}='';
+            $ConfigChanged = 1;
+        } elsif ($error =~ /license not valid or expired/io) {
+            @char4vt = (1,1,1,1);
+        }
         return 0;
     }
 
@@ -78172,7 +78379,7 @@ sub DESTROY {
 package ASSP::Whois::IP;
 ########################################
 # based on Net::Whois::IP 1.21 2007-03-07 16:49:36 ben Exp $
-# modified by Thomas Eckardt (c) 2014
+# modified by Thomas Eckardt (c) since 2014
 ########################################
 
 use strict qw(vars subs);
@@ -78182,15 +78389,6 @@ use IO::Select();
 
 our $VERSION = '1.23';
 our $Timeout;
-
-our %whois_servers = (
-	'RIPE'=>'whois.ripe.net',
-	'APNIC'=>'whois.apnic.net',
-	'KRNIC'=>'whois.krnic.net',
-	'LACNIC'=>'whois.lacnic.net',
-	'ARIN'=>'whois.arin.net',
-	'AFRINIC'=>'whois.afrinic.net',
-	);
 
 if (IO::Socket->VERSION lt '1.30') {
   *{'IO::Socket::blocking'} = *{'main::assp_socket_blocking'};
@@ -78210,6 +78408,7 @@ sub whoisip_query {
 
 sub whoisip_lookup {
     my($ip,$registrar,$multiple_flag,$search_options) = @_;
+    my %whois_servers = %main::whois_servers;
     my $extraflag = 1;
     my $oip = $ip;
     my $whois_response;
@@ -78300,10 +78499,12 @@ sub whoisip_processing {
             || /in the (\S+) whois database/io
            )
         {
-            $registrar = uc $1;
-            &main::mlog(0,"info: '$registrar' told us to lookup information for '$ip' on '$1'") if $main::DebugSPF || $main::SenderBaseLog >= 2;
+            my $r = uc $1;
+            &main::mlog(0,"info: '$registrar' told us to lookup information for '$ip' on '$r'") if $main::DebugSPF || $main::SenderBaseLog >= 2;
+            $registrar = $r;
             return($ip,$registrar);
         } elsif (/^\s+Maintainer:\s+RIPE\b/io) {
+            &main::mlog(0,"info: '$registrar' told us to lookup information for '$ip' on 'RIPE'") if $main::DebugSPF || $main::SenderBaseLog >= 2;
             $registrar = 'RIPE';
             return($ip,$registrar);
        	} elsif ((/OrgID:\s+(\S+)/io) || ((/source:\s+(\S+)/io || /descr:\s+(\w+)/io) && (!defined($hash_response->{$pattern1}))) ) {

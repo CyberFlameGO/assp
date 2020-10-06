@@ -1,3 +1,38 @@
+2020-10-06
+fixed in assp 2.6.4 *SPAM-Evaporator* build 20280:
+
+- whoisIP - queries were not working if ASSP_Selfloader was disabled
+
+- the noprocessing flag caused by ip-addresses and/or email-addresses/domains was wrong set to a lower priority, if 'npSize' was reached
+
+- the VirusTotal API was not working if a proxy server was defined but no proxyuser
+
+- if the DKIM-Identity was not set in the DKIM-configuration, the identiy was calculated without the leading '@' (and possibly rjected by the receiver)
+
+- the receipient-replacement feature returned the orignal email address instead of the expected replacement, if a match was found but the next jump target rule has not matched
+
+
+
+changed:
+
+- Perl 5.32 is now supported
+
+- ASN-Provider can now be configured in hidden variables
+our $ASNProviderIPv4 = '.asn.routeviews.org |
+                        .origin.asn.cymru.com';  # asn.routeviews.org equivalent provider for IPv4 ASN, if local (or others) DNS provides the ASN list
+                                                 # combine multiple providers (for failover) by pipe '|' or comma ','
+our $ASNProviderIPv6 = '.origin6.asn.cymru.com'; # asn.routeviews.org equivalent provider for IPv6, if local (or others) DNS provides the ASN list
+                                                 # combine multiple providers (for failover) by pipe '|' or comma ','
+
+- all IANA-reserved IPv4 and IPv6 addresses are now treaded as private IP-addresses (igored in IP checks)
+
+- The free VirusTotal queries for GPB-Clients are now restricted to 4096 per day
+
+- the origin ip-address detection is improved (eg. 255.255.255.255 used by some cloud providers, caused mistakes)
+
+
+
+
 2020-08-11
 fixed in assp 2.6.4 *SPAM-Evaporator* build 20224:
 
