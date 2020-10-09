@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '20280';        # 06.10.2020 TE
+$build   = '20283';        # 09.10.2020 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.032999';
 $MAINVERSION = $version . $modversion;
@@ -638,7 +638,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '06C302D8526EA481076A0184337EA38D19A51D9B'; }
+sub __cs { $codeSignature = '923ABCE17BAB56BF811D4024D383347A605DA66F'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -31318,20 +31318,25 @@ sub vturiapi {
     local $@;
     $api = eval { ASSP_VirusTotal_API->new(key => $key, timeout => 5) };
     if ($api) {
-
-        push @{ $api->{ua}->requests_redirectable }, 'POST';
-        if ($proxyserver) {
-            my $user = $proxyuser ? "http://$proxyuser:$proxypass\@": "://";
-            $api->{ua}->proxy( 'http', $user . $proxyserver );
-            mlog( 0, "VirusTotal uses HTTP proxy: $proxyserver" )
-              if $MaintenanceLog;
-            my $la = getLocalAddress('HTTP',$proxyserver);
-            $api->{ua}->local_address($la) if $la;
-        } else {
-            mlog( 0, "VirusTotal uses direct HTTP connection" ) if $MaintenanceLog;
-            my $host = $api->{url_report_url} =~ /^\w+:\/\/([^\/]+)/o;
-            my $la = getLocalAddress('HTTP',$host);
-            $api->{ua}->local_address($la) if $la;
+        eval {
+            push @{ $api->{ua}->requests_redirectable }, 'POST';
+            if ($proxyserver) {
+                my $user = $proxyuser ? "http://$proxyuser:$proxypass\@": "http://";
+                $api->{ua}->proxy( 'http', $user . $proxyserver );
+                mlog( 0, "VirusTotal uses HTTP proxy: $proxyserver" )
+                  if $MaintenanceLog;
+                my $la = getLocalAddress('HTTP',$proxyserver);
+                $api->{ua}->local_address($la) if $la;
+            } else {
+                mlog( 0, "VirusTotal uses direct HTTP connection" ) if $MaintenanceLog;
+                my $host = $api->{url_report_url} =~ /^\w+:\/\/([^\/]+)/o;
+                my $la = getLocalAddress('HTTP',$host);
+                $api->{ua}->local_address($la) if $la;
+            }
+        };
+        if ($@) {
+            mlog(0, "error: VirusTotal-API can't be configured - $@");
+            return;
         }
     }
 
