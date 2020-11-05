@@ -1,3 +1,36 @@
+2020-11-05
+fixed in assp 2.6.4 *SPAM-Evaporator* build 20310:
+
+- trailing digits in the hostname (like 'mx.microsoft.com 1') in ARC-header lines were leading in to a 'notmatch' for trusted forwarer definitions
+
+
+
+changed:
+
+- The rebuildspamdb.pm module is upgraded to version 8.03. It provides faster rebuild processing, and much shorter locking times for HMMdb and SpamDB.
+
+- performance improvement for the import/export database feature
+
+- if email addresses and IP-addresses are managed using the GUI, a given reason and the date are written to the comment of the modified line
+
+- improved MIME-header fixup for missing boundary definitions
+
+- improved database cache handling
+
+
+added:
+
+'RebuildUsesFileModel','Build a Model from all processed emails for faster processing'
+
+ The rebuild task builds a content model (in memory or BerkelyDB only) of all processed files, and uses this model at the next rebuild for faster processing.
+ The time to process the mail-files is reduced down to a tenth (if BerkeleyDB is not used ( useDB4Rebuild OFF )), but requires a large amount of additional memory - eg. 2GB.
+ The time to process the mail-files is reduced to a half, if BerkeleyDB is used ( useDB4Rebuild ON ).
+ The default setting is ON
+ The first rebuild after setting this to ON will run at a normal speed - all the next rebuild tasks will run faster.
+
+
+
+
 2020-10-09
 fixed in assp 2.6.4 *SPAM-Evaporator* build 20283:
 

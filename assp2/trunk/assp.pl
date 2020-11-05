@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '20283';        # 09.10.2020 TE
+$build   = '20310';        # 05.11.2020 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.032999';
 $MAINVERSION = $version . $modversion;
@@ -638,7 +638,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '923ABCE17BAB56BF811D4024D383347A605DA66F'; }
+sub __cs { $codeSignature = 'C271BB389C9F391F1A9DA453692F5B95F680A58A'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1757,7 +1757,7 @@ sub assp_socket_blocking {
 }
 
 sub defConfigArray {
- # last used msg number 010771
+ # last used msg number 010781
 
  # still unused msg numbers
  #
@@ -2696,9 +2696,11 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['noMsgID','Don\'t Validate Message-IDs for these IPs*',80,\&textinput,'127.0.0.|192.168.|10.','(\S*)','ConfigMakeIPRe','Enter IP addresses that you don\'t want to be Message-ID validated, separated by pipes (|). For example: 127.0.0.1|192.168.',undef,'7','msg001710','msg001711'],
 ['validMsgIDRe','Regular Expression to Validate Format of Message-ID*',80,\&textinput,'^.+\@.+\..+$','(.*)','ConfigCompileRe',
   'Check Message IDs will check incoming messages for valid Message-IDs. <br />
-  For example: ^.+\@.+\..+$  ',undef,undef,'msg001720','msg001721'],
+  For example: ^.+\@.+\..+$  <br />
+  or less strict: ^.+\@.+$  ',undef,undef,'msg001720','msg001721'],
 ['invalidMsgIDRe','Regular Expression to Invalidate Format of Message-ID**',80,\&textinput,'','(.*)','ConfigCompileRe',
-  'Check Message IDs will check incoming messages for invalid Message-IDs.',undef,undef,'msg001730','msg001731'],
+  'Check Message IDs will check incoming messages for invalid Message-IDs.<br />
+  For example: \@localhost$ ',undef,undef,'msg001730','msg001731'],
 
 ['DoNoValidLocalSender','Validate Remote Sender with Local Domain Address','0:disabled|1:block|2:monitor|3:score|4:testmode',\&listbox,1,'(\d*)',undef,
   'If activated, each remote sender  with a local domain is checked against the <i>Local Addresses File</i> and/or LDAP. ',undef,undef,'msg001740','msg001741'],
@@ -5020,10 +5022,16 @@ Examples:<br />
 <br />
 In addition, ranges or lists of names are allowed.<br />
 If you want to define multiple entries separate them by "|"',undef,undef,'msg008070','msg008071'],
-['useDB4Rebuild','Use BerkeleyDB/DB_File or orderedtie for the RebuildSpamDB Internal Caches',0,\&checkbox,'1','(.*)','configChangeDB',
- 'The RebuildSpamDB thread creates some internal temporary caches, which can grow to a very large number of entries. Switch this on (default), if you want this thread to use less memory and to be possibly a little (~30%) slower.<br />
+['useDB4Rebuild','Use BerkeleyDB or DB_File for the RebuildSpamDB Internal Caches',0,\&checkbox,'1','(.*)','configChangeDB',
+ 'The RebuildSpamDB thread creates some internal temporary caches, which can grow to a very large number of entries. Switch this on (default), if you want this thread to use less memory at the cost of speed.<br />
  Adjust RebuildThreadCycleTime to a lower value (between 0 and 30) to speed up the RebuildSpamDB thread.<br />
- The perl module <a href="http://metacpan.org/search?q=BerkeleyDB" rel="external">BerkeleyDB</a> version 0.34 or higher and BerkeleyDB version 4.5 or higher is required to use this feature. DB_File (Berkeley V1) will be used if BerkeleyDB is not available - this is not recommended! If both BerkeleyDB and DB_File are not available, the rebuild thread will hold all temporary data in RAM - the same way, this option were set to "OFF".',undef,undef,'msg008080','msg008081'],
+ The perl module <a href="http://metacpan.org/search?q=BerkeleyDB" rel="external">BerkeleyDB</a> version 0.34 or higher and BerkeleyDB version 4.5 or higher is required to use this feature. DB_File (Berkeley V1) will be used if BerkeleyDB is not available - this is highly not recommended! If both BerkeleyDB and DB_File are not available, the rebuild thread will hold all temporary data in RAM - the same way, this option were set to "OFF".',undef,undef,'msg008080','msg008081'],
+['RebuildUsesFileModel','Build a Model from all processed emails for faster processing',0,\&checkbox,'1','(.*)',undef,
+ 'The rebuild task builds a content model (in memory or BerkelyDB only) of all processed files, and uses this model at the next rebuild for faster processing.<br />
+ The time to process the mail-files is reduced down to a tenth (if BerkeleyDB is not used ( useDB4Rebuild OFF )), but requires a large amount of additional memory - eg. 2GB.<br />
+ The time to process the mail-files is reduced to a half, if BerkeleyDB is used ( useDB4Rebuild ON ).
+ The default setting is ON<br />
+ The first rebuild after setting this to ON will run at a normal speed - all the next rebuild tasks will run faster.',undef,undef,'msg010780','msg010781'],
 ['ReplaceOldSpamdb','Replace the old Records in Spamdb and Spamdb.helo',0,\&checkbox,'1','(.*)',undef,
   'If selected (default), the new created records for Spamdb and Spamdb.helo will replace the old (belongs not to HMM, which is replaced every time). If not seleted, the new records will be added to Spamdb and Spamdb.helo .',undef,undef,'msg008090','msg008091'],
 ['doMove2Num','Do move2num Before Rebuild',0,\&checkbox,'','(.*)',undef,'Renames files to numbers before the rebuild is started. If this is done, some other features like \'MailLogTail\' and \'Block-Report\' will be unable to find the files! Setting this option to "ON" is not recommended!',undef,undef,'msg008100','msg008101'],
@@ -5643,9 +5651,9 @@ To prevent permantly copying the changed mib/ASSP-MIB file to your net-snmp deam
   <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/pop3collect.txt\',3);" />',undef,undef,'msg009090','msg009091']
 );
 
-# last used msg number 010771
+# last used msg number 010781
 
-    &loadModuleVars;
+    &loadModuleVars();
     -d "$base/language" or mkdirOP("$base/language",'0755');
     open my $DEF ,'>',"$base/language/default_en_msg.txt";
     binmode $DEF;
@@ -8372,7 +8380,7 @@ if ($@) {
     goto MLOOP if $error =~ /Malformed UTF-?8 character/io;
     print $LOG "$exmsg\n" if fileno($LOG);
     &downASSP('try restarting ASSP on exception');
-    &_assp_try_restart;
+    &_assp_try_restart();
 }
 
 # END_OF_MAIN_CODE
@@ -8385,7 +8393,7 @@ if ($@) {
 sub write_rebuild_module {
 my $curr_version = shift;
 
-my $rb_version = '7.52';
+my $rb_version = '8.03';
 my $keepVersion;
 
 if (open my $ADV, '<',"$base/lib/rebuildspamdb.pm") {
@@ -8498,6 +8506,11 @@ our $CanUseUnicodeNormalize = $main::CanUseUnicodeNormalize && require Unicode::
 our $PortRe = $main::PortRe;
 our $disclaimerRe;
 our $disclaimerCount;
+our %FileModel;
+our $FileModelObj;
+our $RebuildUsesFileModel = $main::RebuildUsesFileModel;
+our %tmp;
+our $tmpObject;
 
 sub rb_run {         ## no critic
 no warnings;
@@ -8693,6 +8706,26 @@ eval (<<'EOT');
                                      (-Filename => "$DBDir/rb_HMMres.bdb" ,
                                       -Flags => DB_CREATE,
                                       -Env => $BDBEnv);
+
+            if ($RebuildUsesFileModel) {
+                $main::lastd{$Iam} = "mounting BerkeleyDB $DBDir/FileModel.bdb";
+                $FileModelObj=tie %FileModel,'BerkeleyDB::Hash',
+                                         (-Filename => "$DBDir/FileModel.bdb" ,
+                                          -Flags => DB_CREATE,
+                                          -Env => $BDBEnv);
+                $FileModelObj->filter_fetch_value( sub { defined $_ && ($_ = ${Storable::thaw($_)}) } );
+                $FileModelObj->filter_store_value( sub { defined $_ && ($_ = Storable::nfreeze(\$_)) } );
+
+                if (exists $FileModel{Version} && $FileModel{Version} ne $main::requiredDBVersion{Spamdb}) {
+                    rb_mlog("RebuildSpamDB uses the internal FileModel (BDB) to speedup processing - because of a version mismatch, a new FileModel will be created ($main::requiredDBVersion{Spamdb}), this will take some more time");
+                    push @dbhint , "-RebuildSpamDB uses the internal FileModel (BDB) to speedup processing - because of a version mismatch, a new FileModel will be created ($main::requiredDBVersion{Spamdb}), this will take some more time";
+                    rb_deleteFileModel();
+                } else {
+                    my $c = rb_maintFileModel();
+                    rb_mlog("RebuildSpamDB reloaded and uses the internal FileModel (BDB with $c entries) to speedup processing");
+                    push @dbhint , "-RebuildSpamDB reloaded and uses the internal FileModel (BDB with $c entries) to speedup processing";
+                }
+            }
 EOT
             if ($@ or $BerkeleyDB::Error !~ /: 0\s*$/o) {
                 rb_mlog("BerkeleyDB-ERROR: in $main::lastd{$Iam} - $@ - BDB:$BerkeleyDB::Error");
@@ -8702,7 +8735,7 @@ EOT
             %HMMres = ();
     } elsif ($main::CanUseDB_File && $main::useDB4Rebuild) {
         eval('use DB_File;');
-        rb_mlog("RebuildSpamDB uses DB_File for temporary hashes");
+        rb_mlog("RebuildSpamDB uses DB_File for temporary hashes - the FileModel is not available using DB_File!");
 eval (<<'EOT');
         $spamObj = tie %spam, 'DB_File', "$DBDir/rb_spam.bdb";
         $newspamObj = tie %newspam, 'DB_File', "$DBDir/rb_newspam.bdb";
@@ -8720,9 +8753,11 @@ EOT
             $have_error = 1;
         }
     } elsif ($main::useDB4Rebuild) {
-        rb_mlog("RebuildSpamDB uses the internal 'orderedtie' for temporary hashes (deprecated !)");
-        push @dbhint , "warning: 'useDB4Rebuild' is set to on, but 'BerkeleyDB' nor 'DB_File' are available - the rebuild spamdb process uses the internal 'orderedtie' and will possibly require much more time and a large amount of memory - check 'OrderedTieHashTableSize'!";
+        rb_mlog("RebuildSpamDB - using the internal 'orderedtie' for temporary hashes is no longer supported");
+        push @dbhint , "warning: 'useDB4Rebuild' is set to on, but 'BerkeleyDB' nor 'DB_File' are available - using the internal 'orderedtie' for temporary hashes is no longer supported";
 eval (<<'EOT');
+        die "using the internal 'orderedtie' in rebuildspamdb for temporary hashes is no longer supported - configure 'BerkeleyDB' to be used, or switch off 'useDB4Rebuild'\n";
+
         $spamObj = tie %spam, 'orderedtie', "$DBDir/rb_spam.bdb";
         $newspamObj = tie %newspam, 'orderedtie', "$DBDir/rb_newspam.bdb";
         $HeloObj = tie %Helo, 'orderedtie', "$DBDir/rb_Helo.bdb";
@@ -8741,7 +8776,37 @@ EOT
     } else {
         $TrashlistObj = undef;
         rb_Load_Trashlist();
-        push @dbhint , "warning: 'useDB4Rebuild' is NOT set to on - the rebuild spamdb process will possibly require a very large amount of memory - but it will run very fast!";
+        push @dbhint , "info: 'useDB4Rebuild' is NOT set to on - the rebuild spamdb process will possibly require a large amount of memory - but it will run very fast!";
+
+        if ($RebuildUsesFileModel) {
+            my $mem = &main::memoryUsage();
+            rb_mlog("try to load the internal FileModel from file $DBDir/FileModel.store in to memory to speedup processing");
+            eval{ %FileModel = %{Storable::retrieve("$DBDir/FileModel.store")} if $main::eF->("$DBDir/FileModel.store") };
+            if ($@) {
+                rb_mlog("ERROR loading the internal FileModel to speedup processing - $@");
+                push @dbhint , "-ERROR loading the internal FileModel to speedup processing - $@";
+                $RebuildUsesFileModel = 0;
+                $main::unlink->("$DBDir/FileModel.store");
+                rb_deleteFileModel();
+            } else {
+                if (exists $FileModel{Version} && $FileModel{Version} ne $main::requiredDBVersion{Spamdb}) {
+                    rb_mlog("RebuildSpamDB uses the internal FileModel to speedup processing - because of a version mismatch, a new FileModel will be created ($main::requiredDBVersion{Spamdb}), this will take some more time");
+                    push @dbhint , "-RebuildSpamDB uses the internal FileModel to speedup processing - because of a version mismatch, a new FileModel will be created ($main::requiredDBVersion{Spamdb}), this will take some more time";
+                    rb_deleteFileModel();
+                } else {
+                    my $c = rb_maintFileModel();
+                    rb_mlog("RebuildSpamDB reloaded and uses the internal FileModel (with $c entries) to speedup processing");
+                    push @dbhint , "-RebuildSpamDB reloaded and uses the internal FileModel (with $c entries) to speedup processing";
+                }
+            }
+            $mem = int((&main::memoryUsage() - $mem)/(1024 * 1024) + 0.5);
+            if ($mem > 10) {
+                $mem = &main::formatNumDataSize($mem);
+                rb_mlog("RebuildSpamDB allocated $mem of RAM to load the internal FileModel");
+                push @dbhint , "-RebuildSpamDB allocated $mem of RAM to load the internal FileModel";
+            }
+        }
+
     }
 
     if ($DoHMM && $main::CanUseBerkeleyDB && $main::useDB4Rebuild) {
@@ -9157,13 +9222,18 @@ EOT
 
     if ($DoHMM) {
         if ($main::spamdb eq 'DB:' or $main::runHMMusesBDB or $main::HMM4ISP) {
-            $main::lockHMM = 1;
-            &rb_mlog( "try to lock HMM databases in 5 second(s)" );
-            sleep 5;
-            $main::ThreadIdleTime{$main::WorkerNumber} += 5;
-            &rb_printlog( "\nStart populating Hidden Markov Model. HMM-check is disabled for this time!\n" );
-            &rb_mlog( "Start populating Hidden Markov Model. HMM-check is disabled for this time!" );
+            if ($main::DBusedDriver ne 'BerkeleyDB' && ! $main::runHMMusesBDB && ! $main::HMM4ISP) {
+                # locking is done later
+            } else {
+                &rb_printlog( "\nStart populating Hidden Markov Model. HMM-check is disabled for this time!\n" );
+                &rb_mlog( "Start populating Hidden Markov Model. HMM-check is disabled for this time!" );
+                $main::lockHMM = 1;
+                &rb_mlog( "try to lock HMM databases in 5 second(s)" );
+                sleep 5;
+                $main::ThreadIdleTime{$main::WorkerNumber} += 5;
+            }
             rb_populate_HMM();
+            $main::lockHMM = 0;
             &rb_printlog( "Finished populating Hidden Markov Model. HMM-check is now enabled again!\n" );
             &rb_mlog( "Finished populating Hidden Markov Model! HMM-check is now enabled again!" );
             $main::cleanHMM = '';
@@ -9210,22 +9280,20 @@ EOT
             &rb_printlog("\nRebuild processed $fps files per second.\n");
             &rb_mlog("Rebuild processed $fps files per second.");
         }
-        if ($main::useDB4Rebuild) {
-            &rb_printlog("\nAfter finishing the Rebuild process, the $main::base/tmpDB folder contains $used.\n");
-            &rb_mlog("After finishing the Rebuild process, the $main::base/tmpDB folder contains $used.");
-            if ($main::CanUseASSP_FC && eval('require ASSP_FC;')) {
-                $ASSP_FC::freespace_kbl = 0;
-                $ASSP_FC::totalspace_kbl = 0;
-                if ( &ASSP_FC::getDriveInfo("$main::base/tmpDB",'l') && $ASSP_FC::totalspace_kbl ) {
-                    $ASSP_FC::freespace_kbl =~ s/[.,]//go;
-                    $ASSP_FC::totalspace_kbl =~ s/[.,]//go;
-                    $ASSP_FC::freespace_kbl = &main::formatNumDataSize($ASSP_FC::freespace_kbl * 1024);
-                    $ASSP_FC::totalspace_kbl = &main::formatNumDataSize($ASSP_FC::totalspace_kbl * 1024);
-                    &rb_printlog("\nAfter finishing the Rebuild process, the drive that contains the $main::base/tmpDB folder has $ASSP_FC::freespace_kbl free space from total $ASSP_FC::totalspace_kbl.\n");
-                    &rb_mlog("After finishing the Rebuild process, the drive that contains the $main::base/tmpDB folder has $ASSP_FC::freespace_kbl free space from total $ASSP_FC::totalspace_kbl.");
-                }
-                eval('no ASSP_FC;');
+        &rb_printlog("\nAfter finishing the Rebuild process, the $main::base/tmpDB folder contains $used.\n");
+        &rb_mlog("After finishing the Rebuild process, the $main::base/tmpDB folder contains $used.");
+        if ($main::CanUseASSP_FC && eval('require ASSP_FC;')) {
+            $ASSP_FC::freespace_kbl = 0;
+            $ASSP_FC::totalspace_kbl = 0;
+            if ( &ASSP_FC::getDriveInfo("$main::base/tmpDB",'l') && $ASSP_FC::totalspace_kbl ) {
+                $ASSP_FC::freespace_kbl =~ s/[.,]//go;
+                $ASSP_FC::totalspace_kbl =~ s/[.,]//go;
+                $ASSP_FC::freespace_kbl = &main::formatNumDataSize($ASSP_FC::freespace_kbl * 1024);
+                $ASSP_FC::totalspace_kbl = &main::formatNumDataSize($ASSP_FC::totalspace_kbl * 1024);
+                &rb_printlog("\nAfter finishing the Rebuild process, the drive that contains the $main::base/tmpDB folder has $ASSP_FC::freespace_kbl free space from total $ASSP_FC::totalspace_kbl.\n");
+                &rb_mlog("After finishing the Rebuild process, the drive that contains the $main::base/tmpDB folder has $ASSP_FC::freespace_kbl free space from total $ASSP_FC::totalspace_kbl.");
             }
+            eval('no ASSP_FC;');
         }
     }
 
@@ -9245,8 +9313,12 @@ EOT
           "$main::base/rebuildrun.txt");
     }
 
-    }  # end if ($onlyNewCorrected)
+    }  # end if ($onlyNewCorrected)  ... elsif () ...
 
+    if ($RebuildUsesFileModel) {
+        my $c = rb_maintFileModel();
+    }
+    
     rb_undefVars();
     
 eval (<<'EOT');
@@ -9257,6 +9329,46 @@ EOT
 ##########################################
 #       run/main script ends here
 ##########################################
+
+sub rb_maintFileModel {
+    my @todelete;
+    my $count = 0;
+    while (my ($k,$v) = each(%FileModel)) {
+        next if $k eq 'Version';
+        $count++;
+        push(@todelete,$k) if ! $main::eF->($k);
+    }
+    map { rb_removeFileModelEntry($_); $count--;} @todelete;
+    $FileModel{Version} = $main::requiredDBVersion{Spamdb};
+
+    unless (tied(%FileModel)) {
+        eval{Storable::nstore(\%FileModel, "$DBDir/FileModel.store");};
+        &rb_mlog( "internal FileModel was stored in file $DBDir/FileModel.store" );
+    }
+    &rb_mlog( "internal FileModel has $count entries after maintenance" );
+
+    return $count;
+}
+
+sub rb_deleteFileModel {
+    %FileModel = ('Version' => $main::requiredDBVersion{Spamdb});
+    unless (tied(%FileModel)) {
+        eval{Storable::nstore(\%FileModel, "$DBDir/FileModel.store");};
+        &rb_mlog( "a new empty internal FileModel was stored in file $DBDir/FileModel.store" );
+    }
+    &rb_mlog( "the internal FileModel is now empty" );
+}
+
+sub rb_removeFileModelEntry {
+    my $fn = shift;
+    my $this = $FileModel{$fn};
+    if (exists $this->{FileHash}) {
+        delete $SpamHash{$this->{FileHash}} if --$SpamHash{$this->{FileHash}} < 1;
+        delete $HamHash{$this->{FileHash}} if --$HamHash{$this->{FileHash}} < 1;
+    }
+    undef $this;
+    delete $FileModel{$fn};
+}
 
 sub rb_powerofftwo {
     my $c = shift;
@@ -9274,6 +9386,7 @@ sub rb_undefVars {
     undef $GpOKObj;
     undef $TrashlistObj;
     undef $HMMresObj;
+    undef $FileModelObj;
 
     untie %spam;
     undef %spam;
@@ -9305,6 +9418,9 @@ sub rb_undefVars {
     undef $hamHMM;
     undef $spamHMM;
 
+    untie %FileModel;
+    undef %FileModel;
+
     undef $BDBEnv;
 
     unlink "$DBDir/rb_HMMres.bdb";
@@ -9318,7 +9434,7 @@ sub rb_undefVars {
 sub rb_populate_HMM {                 # rb_populate_HMM
     delete $HMMres{''};
     return rb_populate_HMM_DB() if $main::DBusedDriver ne 'BerkeleyDB' && ! $main::runHMMusesBDB && ! $main::HMM4ISP;
-    %main::HMMdb = ();                # clear the main hash
+    %main::HMMdb = () unless $main::RebuildTestMode;                # clear the main hash
 
     my $obj;
     if ($obj = tied %main::HMMdb) {
@@ -9329,10 +9445,11 @@ sub rb_populate_HMM {                 # rb_populate_HMM
         $tot = defined $HMMresObj ? &rb_commify($HMMresObj->db_stat()->{hash_ndata}) : &rb_commify(scalar keys %HMMres);
 EOT
 
-    my $count = $main::haveHMM = 0;
+    my $count = 0;
+    $main::haveHMM = 0 unless $main::RebuildTestMode;
     &rb_printlog( "start populating Hidden Markov Model with $tot records!\n" );
     &rb_mlog( "start populating Hidden Markov Model with $tot records!" );
-    $main::cleanHMM = 1;
+    $main::cleanHMM = 1 unless $main::RebuildTestMode;
     while (my ($k,$v) = each %HMMres) {
         next unless defined $v;
         if ($count%1000==0) {
@@ -9342,9 +9459,9 @@ EOT
         $main::HMMdb{$k} = $v unless $main::RebuildTestMode;
         $count++;
     }
-    $main::currentDBVersion{HMMdb} = $main::HMMdb{'***DB-VERSION***'} = $main::requiredDBVersion{HMMdb};
+    $main::currentDBVersion{HMMdb} = $main::HMMdb{'***DB-VERSION***'} = $main::requiredDBVersion{HMMdb} unless $main::RebuildTestMode;
     &main::BDB_filter($obj) if $obj && ! $main::HMM4ISP;
-    $main::haveHMM = $count;
+    $main::haveHMM = $count unless $main::RebuildTestMode;
     $main::cleanHMM = '' if $count;
     $count = &rb_commify($count);
 
@@ -9356,10 +9473,13 @@ EOT
 
 sub rb_populate_HMM_DB {                 # rb_populate_HMM_DB;
     my ($tot,$totn);
+    $main::lockHMM = 0;
     eval (<<'EOT');
         $totn = defined $HMMresObj ? $HMMresObj->db_stat()->{hash_ndata} : scalar keys %HMMres;
         $tot = &rb_commify($totn);
 EOT
+
+    my $mysqlTable = $main::DBvars{'HMMdb'};
 
     &rb_printlog( "start populating Hidden Markov Model with $tot records!\n" );
     &rb_mlog( "start populating Hidden Markov Model with $tot records!" );
@@ -9372,16 +9492,74 @@ EOT
     }
     die "warning: got stop request from MainThread" unless $main::ComWorker{$Iam}->{run};
 
-    $main::haveHMM = 0;
-    $main::cleanHMM = 1;
-    $main::RunTaskNow{ImportMysqlDB} = $Iam;
     $main::lastd{$Iam} = "populating HMM - $tot records";
-    &main::importDB('main::HMMdb','',$main::DBvars{'HMMdb'},\%HMMres,$totn, 1/2) unless $main::RebuildTestMode;
-    $main::RunTaskNow{ImportMysqlDB} = '';
-    $main::cleanHMM = 0 if ($main::haveHMM = &main::getDBCount('main::HMMdb','main::spamdb'));
-    delete $main::HMMdb{''};
-    $main::currentDBVersion{HMMdb} = $main::HMMdb{'***DB-VERSION***'} = $main::requiredDBVersion{HMMdb};
-    $main::HMMdb{'***COUNT***'} = $main::haveHMM;
+
+    if (! $main::RebuildTestMode && "$main::HMMdbObject" =~ /Tie::RDBM/o) {
+        eval {
+        $main::cleanHMM = 1;
+        $main::RunTaskNow{ImportMysqlDB} = $Iam;
+        my $dbh = DBI->connect("DBI:$main::DBusedDriver:".($main::mydb ? "database=$main::mydb;" : '').($main::myhost ? "$main::DBhostTag=$main::myhost" : '' )."$main::DBOption", $main::myuser, $main::mypassword,
+                                { PrintError=>0,
+                			      ChopBlanks=>1,
+                			      Warn=>0 }
+                			  );
+        %tmp = ();
+        $tmpObject = tie %{'rebuildspamdb::tmp'},'Tie::RDBM',{db=>$dbh,table=>$mysqlTable.'tmp',create=>1,DEBUG=>$main::DataBaseDebug};
+
+        delete $HMMres{'***lockHMMdb***'};
+        &main::importDB('rebuildspamdb::tmp','',$mysqlTable.'tmp',\%HMMres,$totn, 1/2);
+
+        untie %tmp;
+        undef $tmpObject;
+        undef $dbh;
+        %tmp = ();
+        $main::haveHMM = 0;
+        &rb_printlog( "Enable new Hidden Markov Model. HMM-check is disabled for this time!\n" );
+        &rb_mlog( "Enable new Hidden Markov Model. HMM-check is disabled for this time!" );
+        $main::lockHMM = 1;
+        $main::HMMdb{'***lockHMMdb***'} = 1;
+        &rb_mlog( "try to lock HMM databases in 5 second(s)" );
+        sleep 5;
+        $main::ThreadIdleTime{$main::WorkerNumber} += 5;
+        if ($main::preventBulkImport) {
+            &rb_printlog( "preventBulkImport is set to ON - can't drop table $mysqlTable - need to move records\n" );
+            &rb_mlog( "preventBulkImport is set to ON - can't drop table $mysqlTable - need to move records" );
+            &rb_printlog( "clearing table $mysqlTable\n" );
+            &rb_mlog( "clearing table $mysqlTable" );
+            %main::HMMdb = ('***lockHMMdb***' => 1);
+            &rb_printlog( "move data from ".$mysqlTable."tmp to $mysqlTable\n" );
+            &rb_mlog( "move data from ".$mysqlTable."tmp to $mysqlTable" );
+            $main::HMMdbObject->RunSTM('copyhmmdb','INSERT INTO $mysqlTable SELECT * FROM '.$mysqlTable.'tmp');
+            delete $main::HMMdb{'***lockHMMdb***'};
+            $main::HMMdbObject->RunSTM('drophmmdbtmp','DROP TABLE '.$mysqlTable.'tmp');
+        } else {
+            &rb_printlog( "dropping table $mysqlTable\n" );
+            &rb_mlog( "dropping table $mysqlTable" );
+            $main::HMMdbObject->RunSTM('drophmmdb','DROP TABLE '.$mysqlTable);
+            &rb_printlog( "rename table ".$mysqlTable."tmp to $mysqlTable\n" );
+            &rb_mlog( "rename table ".$mysqlTable."tmp to $mysqlTable" );
+            $main::HMMdbObject->RunSTM('renamehmmdb','ALTER TABLE '.$mysqlTable.'tmp RENAME TO '.$mysqlTable);
+            delete $main::HMMdb{'***lockHMMdb***'};
+        }
+        @{'main::'.$mysqlTable} = ();   # clean the hmmdb cache;
+        $main::cleanHMM = 0 if ($main::haveHMM = &main::getDBCount('main::HMMdb','main::spamdb'));
+        delete $main::HMMdb{''};
+        $main::currentDBVersion{HMMdb} = $main::HMMdb{'***DB-VERSION***'} = $main::requiredDBVersion{HMMdb};
+        $main::HMMdb{'***COUNT***'} = $main::haveHMM;
+        };
+        if ($@) {
+            &rb_printlog( "ERROR populating Hidden Markov Model! - $@\n" );
+            &rb_mlog( "ERROR populating Hidden Markov Model! - $@" );
+        }
+        $main::lockHMM = 0;
+        delete $main::HMMdb{'***lockHMMdb***'};
+        $main::RunTaskNow{ImportMysqlDB} = '';
+    } elsif ($main::RebuildTestMode) {
+        # in testmode nothing is published
+    } else {
+        &rb_printlog( "\nERROR: don't know how to publish HMMdb with $tot records! The database is not tied to Tie::RDBM\n" );
+        &rb_mlog( "ERROR: don't know how to publish HMMdb with $tot records! The database is not tied to Tie::RDBM" );
+    }
     &rb_printlog( "Finished populating Hidden Markov Model with $tot records!\n" );
     &rb_mlog( "Finished populating Hidden Markov Model with $tot records!" );
     &main::checkDBCon() if ($main::CanUseTieRDBM && $main::DBisUsed);
@@ -9391,12 +9569,11 @@ EOT
 sub rb_populate_Spamdb {
     my ($hashref, $totn) = @_;
 
-    my $mainhashname = 'main::Spamdb';
     my $mysqlTable = $main::DBvars{'Spamdb'};
     my $tot = &rb_commify($totn);
 
-    &rb_printlog( "start populating Spamdb with $tot records - Bayesian check is now disabled!\n" );
-    &rb_mlog( "start populating Spamdb with $tot records - Bayesian check is now disabled!" );
+    &rb_printlog( "start populating Spamdb with $tot records!\n" );
+    &rb_mlog( "start populating Spamdb with $tot records!" );
     $main::lastd{$Iam} = "start populating Spamdb with $tot records!" ;
 
     while ($main::ComWorker{$Iam}->{run} && $main::RunTaskNow{ImportMysqlDB}) {
@@ -9407,16 +9584,68 @@ sub rb_populate_Spamdb {
     }
     die "warning: got stop request from MainThread" unless $main::ComWorker{$Iam}->{run};
 
-    $main::RunTaskNow{ImportMysqlDB} = $Iam;
-    $main::lockBayes = 1;
-    &rb_mlog( "try to lock Spamdb database in 5 second(s)" );
-    sleep 5;
-    $main::ThreadIdleTime{$main::WorkerNumber} += 5;
-    $main::lastd{$Iam} = "populating Spamdb - $tot records";
-    &main::importDB($mainhashname,'',$mysqlTable,$hashref,$totn, 1/2) unless $main::RebuildTestMode;
-    $main::Spamdb{'***COUNT***'} = $totn;
-    $main::lockBayes = '';
-    $main::RunTaskNow{ImportMysqlDB} = '';
+    if (! $main::RebuildTestMode && "$main::SpamdbObject" =~ /Tie::RDBM/o) {
+        eval {
+        $main::RunTaskNow{ImportMysqlDB} = $Iam;
+        $main::lastd{$Iam} = "populating Spamdb - $tot records";
+        my $dbh = DBI->connect("DBI:$main::DBusedDriver:".($main::mydb ? "database=$main::mydb;" : '').($main::myhost ? "$main::DBhostTag=$main::myhost" : '' )."$main::DBOption", $main::myuser, $main::mypassword,
+                                { PrintError=>0,
+                			      ChopBlanks=>1,
+                			      Warn=>0 }
+                			  );
+        %tmp = ();
+        $tmpObject = tie %{'rebuildspamdb::tmp'},'Tie::RDBM',{db=>$dbh,table=>$mysqlTable.'tmp',create=>1,DEBUG=>$main::DataBaseDebug};
+
+        delete $tmp{'***lockSpamdb***'};
+        &main::importDB('rebuildspamdb::tmp','',$mysqlTable.'tmp',$hashref,$totn, 1/2);
+
+        untie %tmp;
+        undef $tmpObject;
+        undef $dbh;
+        %tmp = ();
+        &rb_printlog( "Enable new Spamdb - Bayesian-check is disabled for this time!\n" );
+        &rb_mlog( "Enable new Spamdb - Bayesian-check is disabled for this time!" );
+        $main::lockBayes = 1;
+        $main::Spamdb{'***lockSpamdb***'} = 1;
+        &rb_mlog( "try to lock Spamdb database in 5 second(s) - Bayesian check is now disabled" );
+        sleep 5;
+        $main::ThreadIdleTime{$main::WorkerNumber} += 5;
+        if ($main::preventBulkImport) {
+            &rb_printlog( "preventBulkImport is set to ON - can't drop table $mysqlTable - need to move records\n" );
+            &rb_mlog( "preventBulkImport is set to ON - can't drop table $mysqlTable - need to move records" );
+            &rb_printlog( "clearing table $mysqlTable\n" );
+            &rb_mlog( "clearing table $mysqlTable" );
+            %main::Spamdb = ('***lockSpamdb***' => 1);
+            &rb_printlog( "move records from ".$mysqlTable."tmp to $mysqlTable\n" );
+            &rb_mlog( "move records from ".$mysqlTable."tmp to $mysqlTable" );
+            $main::SpamdbObject->RunSTM('copyspamdb','INSERT INTO $mysqlTable SELECT * FROM '.$mysqlTable.'tmp');
+            delete $main::Spamdb{'***lockSpamdb***'};
+            $main::SpamdbObject->RunSTM('dropspamdbtmp','DROP TABLE '.$mysqlTable.'tmp');
+        } else {
+            &rb_printlog( "dropping table $mysqlTable\n" );
+            &rb_mlog( "dropping table $mysqlTable" );
+            $main::SpamdbObject->RunSTM('dropspamdb','DROP TABLE '.$mysqlTable);
+            &rb_printlog( "rename table ".$mysqlTable."tmp to $mysqlTable\n" );
+            &rb_mlog( "rename table ".$mysqlTable."tmp to $mysqlTable" );
+            $main::SpamdbObject->RunSTM('renamespamdb','ALTER TABLE '.$mysqlTable.'tmp RENAME TO '.$mysqlTable);
+            delete $main::Spamdb{'***lockSpamdb***'};
+        }
+        @{'main::'.$mysqlTable} = ();   # clean the hmmdb cache;
+        $main::Spamdb{'***COUNT***'} = $totn;
+        };
+        if ($@) {
+            &rb_printlog( "ERROR populating Spamdb! - $@\n" );
+            &rb_mlog( "ERROR populating Spamdb! - $@" );
+        }
+        $main::lockBayes = '';
+        delete $main::Spamdb{'***lockSpamdb***'};
+        $main::RunTaskNow{ImportMysqlDB} = '';
+    } elsif ($main::RebuildTestMode) {
+        # in testmode nothing is published
+    } else {
+        &rb_printlog( "\nERROR: don't know how to publish Spamdb with $tot records! The database is not tied to Tie::RDBM\n" );
+        &rb_mlog( "ERROR: don't know how to publish Spamdb with $tot records! The database is not tied to Tie::RDBM" );
+    }
 
     &rb_printlog( "Finished populating Spamdb with $tot records - Bayesian check is now enabled!\n" );
     &rb_mlog( "Finished populating Spamdb with $tot records - Bayesian check is now enabled!" );
@@ -10098,25 +10327,34 @@ sub rb_hash {
 }
 
 sub rb_dospamhash {
-    my ( $FileName, $msgText ) = @_;
-    $SpamHash{ &rb_hash($msgText) }++;
+    my ( $FileName, $msgText, $this ) = @_;
+    my $hash = &rb_hash($msgText);
+    $SpamHash{ $hash }++;
+    $this->{FileHash} = $hash if $RebuildUsesFileModel;
     return 0;
 }
 
 sub rb_dohamhash {
-    my ( $FileName, $msgText ) = @_;
-    $HamHash{ &rb_hash($msgText) }++;
+    my ( $FileName, $msgText, $this ) = @_;
+    my $hash = &rb_hash($msgText);
+    $HamHash{ $hash }++;
+    $this->{FileHash} = $hash if $RebuildUsesFileModel;
     return 0;
 }
 
 sub rb_donohash {
+    my ( $FileName, $msgText, $this ) = @_;
+    $this->{FileHash} = &rb_hash($msgText) if $RebuildUsesFileModel;
     return 0;
 }
 
 sub rb_checkspam {
-    my ( $FileName, $msgText ) = @_;
+    my ( $FileName, $msgText, $this ) = @_;
     my ( $return, $reason );
-    if ( defined( $HamHash{ &rb_hash($msgText) } ) ) {
+    my $hash = &rb_hash($msgText);
+    $this->{FileHash} = $hash if $RebuildUsesFileModel;
+    
+    if ( defined( $HamHash{ $hash } ) ) {
 
 # we've found a message in the spam database that is the same as one in the corrected Ham group
         &rb_deletefile( $FileName, ' - same file found in corrected ham' );
@@ -10135,9 +10373,12 @@ sub rb_checkspam {
 }
 
 sub rb_checkham {
-    my ( $FileName, $msgText ) = @_;
+    my ( $FileName, $msgText, $this ) = @_;
     my ( $return, $reason );
-    if ( defined( $SpamHash{ &rb_hash($msgText) } ) ) {
+    my $hash = &rb_hash($msgText);
+    $this->{FileHash} = $hash if $RebuildUsesFileModel;
+
+    if ( defined( $SpamHash{ $hash } ) ) {
 
 # we've found a message in the ham database that is the same as one in the corrected spam group
         &rb_deletefile( $FileName, ' - same file found in corrected spam' );
@@ -10273,10 +10514,11 @@ sub rb_deletefile {
     } else {
         rb_printlog("\ncannot remove " . $reason . " message " . $fn8 . ": no such file" );
     }
+    rb_removeFileModelEntry($fn);
 }
 
 sub rb_get {
-    my ( $fn, $sub , $factor) = @_;
+    my ( $fn, $sub , $factor, $this) = @_;
     my $message;
     my $count;
     my $numreadchars;
@@ -10309,9 +10551,12 @@ sub rb_get {
     } else {
         return;
     }
-    return if $sub->( $fn, \substr($message, 0, $headlen + $mBytes ) );   # did I read this before?
-
+    if ($sub->( $fn, \substr($message, 0, $headlen + $mBytes ), $this )) {   # did I read this before?
+        return;
+    }
+    
     $processedBytes += length $message;
+    $this->{processedBytes} = length $message if $RebuildUsesFileModel;
     return \$message, $headlen;
 }
 
@@ -10329,10 +10574,159 @@ sub rb_add {
     return if $main::dF->( $fn );
     $isspam ||= 0;
     my $startTime = Time::HiRes::time();
-    my ($content,$headerlen) = &rb_get( $fn, $sub , $factor);
-    return unless $content;
-    return if (rb_checkRunTime($startTime,"reached $movetime s after getting $fn"));
+    my $imgHash;
+    my ( $curHelo, $CurWord, $PrevWord, $sfac, $tfac, $cip, $cipHelo );
+    my ($reportedBy,$domain);
+    my $BayesCont = $main::BayesCont;
+    my @HMMWords;
+    my $ret = 1;
+    my $sfactor = ($isspam == 1) ? $factor : 0;
+    my $words = 0;
+    my $maxWords = $main::HMMDBWords;
+    my $i = 0;
+    my $this;
+    $this = $FileModel{$fn} if $RebuildUsesFileModel && exists $FileModel{$fn};
+    
+    # process available FileModel data
+    if (   $RebuildUsesFileModel
+        && $this
+        && ! exists $Trashlist{&main::de8($fn)}
+        && ($heloOnly || @{$this->{words}})
+        && (   $sub eq \&rb_dospamhash || $sub eq \&rb_dohamhash || $sub eq \&rb_donohash          # corrections
+            || ($sub eq \&rb_checkspam && ! defined( $HamHash{$this->{FileHash}} ))      # spam
+            || ($sub eq \&rb_checkham && ! defined( $SpamHash{$this->{FileHash}} ))      # ham
+           )
+       )
+    {
+        $HamHash{$this->{FileHash}}++ if $sub eq \&rb_dohamhash;
+        $SpamHash{$this->{FileHash}}++ if $sub eq \&rb_dospamhash;
+        $cipHelo = $this->{cipHelo};
+        $curHelo = $this->{curHelo};
+        $cipHelo = '' if $cipHelo eq $curHelo;
+        $Helo{ $cipHelo } += ( $isspam * 999999 + 1 ) * $factor if ( $cipHelo );
+        $Helo{ $curHelo } += ( $isspam * 999999 + 1 ) * $factor if ( $curHelo );
+        return 1 if $heloOnly;
 
+        $disclaimerCount += $this->{disclaimerCount};
+
+        $domain = $this->{domain};
+        $reportedBy = $this->{reportedBy};
+
+        $i = 0;
+        foreach (keys %{$this->{imgHash}}) {
+            if   ($isspam == 1) { $SpamWordCount += $factor;}
+            else                { $HamWordCount  += $factor;}
+
+            ( $sfac, $tfac ) = unpack( "LL" , $spam->{ $_ } );
+            $sfac += ($isspam == 1) ? ($factor * 2) : 0;
+            $tfac += ($factor * 2);
+            $spam->{ $_ } = pack( "LL", $sfac, $tfac);
+            $i++;
+            if ($reportedBy) {
+                ( $sfac, $tfac ) = unpack( "LL" , $spam->{ "$reportedBy $_" } );
+                $sfac += ($isspam == 1) ? $factor : 0;
+                $tfac += $factor;
+                $spam->{ "$reportedBy $_" } = pack( "LL", $sfac, $tfac);
+            }
+            if ($domain) {
+                ( $sfac, $tfac ) = unpack( "LL" , $spam->{ "$domain $_" } );
+                $sfac += ($isspam == 1) ? $factor : 0;
+                $tfac += $factor;
+                $spam->{ "$domain $_" } = pack( "LL", $sfac, $tfac);
+            }
+        }
+        $attachments += $i;
+        if ($doattach && $i) {
+            rb_d("$i ".(($isspam == 1) ? 'spam-' : 'ham-')."attachment/image entries processed in file $fn");
+        }
+
+        $i = 0;
+        $PrevWord = undef;
+        map {
+            $CurWord = $_;
+            if ($CurWord) {
+                if ( $PrevWord ) {
+                    # increment global weights, they are not really word counts
+                    $words += $factor;
+
+                    my $tag = "$PrevWord $CurWord";
+                    ( $sfac, $tfac ) = unpack( "LL", $spam->{ $tag } );
+                    $sfac += $sfactor;
+                    $tfac += $factor;
+                    $spam->{ $tag } = pack( "LL", $sfac, $tfac);
+                    if ($reportedBy) {
+                        my $rtag = "$reportedBy $tag";
+                        ( $sfac, $tfac ) = unpack( "LL", $spam->{ $rtag } );
+                        $sfac += $sfactor;
+                        $tfac += $factor;
+                        $spam->{ $rtag } = pack( "LL", $sfac, $tfac);
+                    }
+                    if ($domain) {
+                        my $dtag = "$domain $tag";
+                        ( $sfac, $tfac ) = unpack( "LL", $spam->{ $dtag } );
+                        $sfac += $sfactor;
+                        $tfac += $factor;
+                        $spam->{ $dtag } = pack( "LL", $sfac, $tfac);
+                    }
+                }
+                push(@HMMWords,$CurWord) if $DoHMM && ($i++ < $maxWords);
+                $PrevWord = $CurWord;
+            }
+        } @{$this->{words}};
+
+        if ($isspam == 1) {
+            $SpamWordCount += $words;
+        } else {
+            $HamWordCount  += $words;
+        }
+
+        if ($DoHMM) {
+            my @privacy;
+            push @privacy, $domain if $domain;
+            push @privacy, $reportedBy if $reportedBy;
+
+            if ($isspam == 1) {
+                if (@HMMWords > $main::HMMSequenceLength) {$spamHMM->seed(symbols => \@HMMWords, count => $factor, privacy => \@privacy);}
+            } else {
+                if (@HMMWords > $main::HMMSequenceLength) { $hamHMM->seed(symbols => \@HMMWords, count => $factor, privacy => \@privacy);}
+            }
+        }
+
+        $processedBytes += $this->{processedBytes};
+
+        return $ret;
+
+    } elsif (exists $Trashlist{&main::de8($fn)}) {
+        rb_removeFileModelEntry($fn);
+        return;
+    } elsif ($RebuildUsesFileModel) {
+    # initialize the FileModel for this file;
+        $this = {};
+        rb_removeFileModelEntry($fn);
+        $this->{cipHelo} = '';
+        $this->{curHelo} = '';
+        $this->{disclaimerCount} = 0;
+        $this->{domain} = '';
+        $this->{reportedBy} = '';
+        $this->{imgHash} = {};
+        $this->{words} = [];
+        $this->{processedBytes} = 0;
+    } else {
+        $this = {};
+    }
+    # end of fast processing from the FileModel
+
+    # process the file
+    my ($content,$headerlen) = &rb_get( $fn, $sub , $factor, $this);
+    if (! $content) {
+        rb_removeFileModelEntry($fn);
+        return;
+    }
+    if (rb_checkRunTime($startTime,"reached $movetime s after getting $fn")) {
+        rb_removeFileModelEntry($fn);
+        return;
+    }
+    
     my $header;
     $header = substr($$content,0,$headerlen);
     if ($header =~ /(?:^|\n)subject:($main::HeaderValueRe)/ios) {
@@ -10341,15 +10735,16 @@ sub rb_add {
         $sub =~ s/\r|\n|\t//go;
         $sub = &main::decodeMimeWords2UTF8($sub);
         if ($sub =~ /$main::DMARCReportSubjectRe/io) {
-            rb_d("file '$fn' was skipped - it is a DMARC report" );
+            rb_d("file '$fn' is removed - it is a DMARC report" );
+            &rb_deletefile( $fn, ' - is a DMARC report' );
             return;
         }
     }
 
-    my $imgHash;
     if ($doattach && ! $heloOnly && ((my $fsize = &main::fsize( $fn )) < $main::npSize) && ! exists $Trashlist{&main::de8($fn).'.att'}) {
-        $imgHash = &main::AttachMD5File($fn);
+        $this->{imgHash} = $imgHash = &main::AttachMD5File($fn);
         $processedBytes += $fsize - length($$content);
+        $this->{processedBytes} += $fsize - length($$content);
         if (rb_checkRunTime($startTime,"reached $movetime s after AttachMD5File on $fn")) {
             $Trashlist{&main::de8($fn).'.att'} = time + (3600 * 24 * 5);
             $startTime = Time::HiRes::time();
@@ -10359,10 +10754,8 @@ sub rb_add {
     } elsif ($doattach && ! $heloOnly && ($fsize < $main::npSize)) {
         rb_d("file '$fn' will was skipped from attachment processing" );
     }
-    my ( $curHelo, $CurWord, $PrevWord, $sfac, $tfac, $cip, $cipHelo );
 
     my $IPprivate = $main::IPprivate;
-    my ($reportedBy,$domain);
     if ($header) {
         my $r;
         $reportedBy = lc ($r || $1) if (   $header =~ /X-Assp-Reported-By:\s*($main::EmailAdrRe\@$main::EmailDomainRe)/io
@@ -10447,26 +10840,40 @@ sub rb_add {
             }
         }
     }
-    return if (rb_checkRunTime($startTime,"reached $movetime s after HELO parsing on $fn"));
-
+    if (rb_checkRunTime($startTime,"reached $movetime s after HELO parsing on $fn")) {
+        rb_removeFileModelEntry($fn);
+        return;
+    }
+    
+    $this->{domain} = $domain;
+    $this->{reportedBy} = $reportedBy;
+    
     $cipHelo = lc($cipHelo);
     $curHelo = lc($curHelo);
     $cipHelo = '' if $cipHelo eq $curHelo;
+    $this->{cipHelo} = $cipHelo;
+    $this->{curHelo} = $curHelo;
     $Helo{ $cipHelo } += ( $isspam * 999999 + 1 ) * $factor if ( $cipHelo );
     $Helo{ $curHelo } += ( $isspam * 999999 + 1 ) * $factor if ( $curHelo );
-    return 1 if $heloOnly;
+    if ($heloOnly) {
+        $FileModel{$fn} = $this if ($RebuildUsesFileModel);
+        return 1;
+    }
 
     $$content =~ s/(?:X-Assp-Reported-By|X-Assp-Intended-For|X-Forwarded-For):$main::HeaderValueRe//gois;
     my $OK;
     ($content,$OK) = &main::clean($content);
-    return if (rb_checkRunTime($startTime,"reached $movetime s after content cleanup on $fn"));
+    if (rb_checkRunTime($startTime,"reached $movetime s after content cleanup on $fn")) {
+        rb_removeFileModelEntry($fn);
+        return;
+    }
     if ($disclaimerRe && eval{$content =~ s/$disclaimerRe//g}) {
         rb_d("disclaimer removed in file $fn");
         $disclaimerCount++;
+        $this->{disclaimerCount} = 1;
     }
-    my $BayesCont = $main::BayesCont;
-    my @HMMWords;
-    my $i = 0;
+
+    $i = 0;
     foreach (keys %$imgHash) {
         if   ($isspam == 1) { $SpamWordCount += $factor;}
         else                { $HamWordCount  += $factor;}
@@ -10494,11 +10901,7 @@ sub rb_add {
         rb_d("$i ".(($isspam == 1) ? 'spam-' : 'ham-')."attachment/image entries processed in file $fn");
     }
     rb_checkRunTime($startTime,"reached $movetime s in Bayes word pairs on $fn");
-    my $ret = 1;
     $i = 0;
-    my $sfactor = ($isspam == 1) ? $factor : 0;
-    my $words = 0;
-    my $maxWords = $main::HMMDBWords;
     $PrevWord = undef;
     map {
         $CurWord = substr($_,0,37);
@@ -10529,6 +10932,7 @@ sub rb_add {
                 }
             }
             push(@HMMWords,$CurWord) if $DoHMM && ($i++ < $maxWords);
+            push(@{$this->{words}},$CurWord);
             $PrevWord = $CurWord;
         }
     } map { &main::BayesWordClean($_); } $content =~ /([$BayesCont]{2,})/go;
@@ -10552,6 +10956,8 @@ sub rb_add {
         }
 #        rb_d("after file $fn , spam - totals: ".keys(%{$spamHMM->{totals}}).' , chains: '.keys(%{$spamHMM->{chains}}).', ham - totals: '.keys(%{$hamHMM->{totals}}).' , chains: '.keys(%{$hamHMM->{chains}}));
     }
+
+    $FileModel{$fn} = $this if ($RebuildUsesFileModel);
 
     return $ret;
 } ## end sub add
@@ -14406,6 +14812,7 @@ sub init {
         *{'Tie::RDBM::EXISTS'}   = *{'main::rdbm_EXISTS'};
         *{'Tie::RDBM::DESTROY'}  = *{'main::rdbm_DESTROY'};
         *{'Tie::RDBM::SCALAR'}   = *{'main::rdbm_COUNT'};
+        *{'Tie::RDBM::RunSTM'}   = *{'main::rdbm_RunSTM'};
         $installed = 'enabled';
     } elsif (!$AvailTieRDBM ) {
         $installed = $useTieRDBM ? 'is not installed' : 'is disabled in config';
@@ -14471,7 +14878,7 @@ sub init {
             unlink "$cd/__db.004";
             unlink "$cd/BDB-cachesize-test-error.txt";
             my $F;
-            while ($BDBMaxCacheSize) {
+            while ($BDBMaxCacheSize > 0) {
                 unless (open ($F ,'>>', "$cd/BDB-cachesize-test-error.txt")) {
                     mlog(0,"error: unable to open file $cd/BDB-cachesize-test-error.txt for writing - $!");
                     $BDBMaxCacheSize = 0;
@@ -14890,7 +15297,7 @@ EOT
         } else {
             if ($osslv) {
                 mlog(0,"info: openssl version $osslv is installed - try to create basic SSL-certificates");
-                &genCerts;
+                &genCerts();
             } else {
                 mlog(0,'info: openssl is not installed on this system - unable to create basic certificates');
             }
@@ -15468,17 +15875,17 @@ EOT3
     if ($CanUseTieRDBM) {
       # %Types is used for creating the data table if it doesn't exist already.
         %Tie::RDBM::Types = (   # key            value            frozen    freeze  keyless
-            'default' => [qw/ varbinary(254)  varbinary(255)   integer   0          0 /],  #others
+            'default' => [qw/ varbinary(254)  varbinary(255)   integer   1          0 /],  #others
             'mysql'   => [qw/ varbinary(254)  varbinary(255)   tinyint   1          0 /],
             'mysqlPP' => [qw/ varbinary(254)  varbinary(255)   tinyint   1          0 /],
             'MariaDB' => [qw/ varbinary(254)  varbinary(255)   tinyint   1          0 /],
-            'mSQL'    => [qw/ char(254)       char(255)        int       0          0 /],
+#            'mSQL'    => [qw/ char(254)       char(255)        int       0          0 /],
             'MSSQL'   => [qw/ varchar(254)    varchar(255)     int       1          0 /],
             'Pg'      => [qw/ varchar(254)    varchar(255)     int       1          0 /],
             'PgPP'    => [qw/ varchar(254)    varchar(255)     int       1          0 /],  # not recommended - use Pg instead
             'Sybase'  => [qw/ varbinary(254)  varbinary(255)   tinyint   1          0 /],
             'Oracle'  => [qw/ varchar(254)    varchar(255)     integer   1          0 /],
-            'Informix'=> [qw/ nchar(254)      nchar(255)       integer   0          0 /],
+#            'Informix'=> [qw/ nchar(254)      nchar(255)       integer   0          0 /],
             'Solid'   => [qw/ varbinary(254)  varbinary(255)   integer   1          0 /],
             'ODBC'    => [qw/ varbinary(254)  varbinary(255)   integer   1          0 /],
             'ADO'     => [qw/ varchar(254)    varchar(255)     int       1          0 /],
@@ -15641,7 +16048,7 @@ If the step belongs to a BerkeleyDB hash,
 
     &mlogWrite();
 
-    &WaitForAllThreads;
+    &WaitForAllThreads();
     &mlogWrite();
 
     $canNotify = 1;
@@ -16033,7 +16440,7 @@ sub loadHashFromFile {
     my $count;
     lock(%$hash) if is_shared(%$hash);
     unless (open($LH, '<',$file)) {
-        mlog(0,"warning: can't open file '$file' to load hash (in loadHashFromFile)");
+        mlog(0,"warning: can't open file '$file' to load hash (in loadHashFromFile) - $!");
         return;
     }
     binmode($LH);
@@ -16070,7 +16477,7 @@ sub saveHashToFile {
          threads->yield();
      }
      unless (open($LH, '>',$file)) {
-         mlog(0,"warning: can't open file '$file' to save hash (in saveHashToFile)");
+         mlog(0,"warning: can't open file '$file' to save hash (in saveHashToFile) - $!");
          return;
      }
      binmode($LH);
@@ -16587,16 +16994,21 @@ sub importDB {
      # do this until all record have been inserted or $DBI::err
             my $old_sec_left;
             my $sec_left;
-            while (my ($k,$v)=each(%{$tempCache})) {
+            my $subcount = 0;
+            delete ${$tempCache}{undef};
+            delete ${$tempCache}{''};
+
+            while (my ($k,$v) = each(%{$tempCache})) {
                 $k = $dbh->quote($k);   # let's DBI do the quoting - depends on the driver
                 $v = $dbh->quote($v);
-                next if (! $k || $k eq 'NULL');
                 $count++;
-                $sep = '' if ($count == $records or int($count/$sqllen) == $count/$sqllen);
+                $subcount++;
                 eval ($id);
-                print $DBG "error in id - $id - $@\n" if $DBG && $@;
-                $sql .= $sql_sm.$sep;
-                if ($count == $records or int($count/$sqllen) == $count/$sqllen) {
+#                print $DBG "error in id - $id - $@\n" if $DBG && $@;
+                if ($subcount == $sqllen || $count == $records) {
+                    $subcount = 0;
+                    $sep = '';
+                    $sql .= $sql_sm;
                     if ($es) {
                         eval ($es);
                         print $DBG "error in es - $es - $@\n" if $DBG && $@;
@@ -16604,9 +17016,12 @@ sub importDB {
                     }
                     print $DBG "SQL: $sql\n" if $DBG;
                     $sth = $dbh->do($sql);
-                    $dbh->commit unless $main::DBautocommit;
                     last if ($DBI::err);
-                    if ($count % 1000 == 0 && ($sec_left = int(( time - $imp_start_time )*($records - $count)/$count)) != $old_sec_left) {
+                    unless ($main::DBautocommit) {
+                        $dbh->commit;
+                        last if ($DBI::err);
+                    }
+                    if ($count % 10000 == 0 && ($sec_left = int(( time - $imp_start_time )*($records - $count)/$count)) != $old_sec_left) {
                         $old_sec_left = $sec_left;
                         mlog_i(0,"added $count of $records records (BULK) for table $mysqlTable - finished in $sec_left sec") if $importDBShowProgress;
                         &checkDBCon() if $WorkerNumber > 0;
@@ -16626,6 +17041,8 @@ sub importDB {
                     if ($sqllen <= $max) {$sqllen = $max;}
                     elsif ($sqllen > $sqlmaxlen) {$sqllen = $sqlmaxlen;}
                     $last_step_time = time;
+                } else {
+                    $sql .= $sql_sm.$sep;
                 }
             }
             if ($DBI::err) {
@@ -16799,15 +17216,16 @@ sub exportDB {
     open($EXP, '>',"$export");
     binmode($EXP);
     print $EXP "\n";
+    $doenc = $doenc && $enc;
     while (my ($k,$v)=each(%$name)) {
-       if ($k) {
-           if ($doenc && $enc) {
-               $k = $enc->ENCRYPT($k);
-               $v = $enc->ENCRYPT($v);
-           }
-           print $EXP "$k\002$v\n";
-           $count++;
+       next unless $k;
+       if ($doenc) {
+           $k = $enc->ENCRYPT($k);
+           $v = $enc->ENCRYPT($v);
        }
+       print $EXP "$k\002$v\n";
+       $count++;
+
        if ($count%1000 == 0) {
            threads->yield();
            ThreadMaintMain2() if $WorkerNumber == 10000;
@@ -18294,11 +18712,11 @@ sub SavePB {
 sub CleanPB {
 # clean Penalty Box Databases
     my $savenoDBCache = $noDBCache; $noDBCache = 1;
-    &SavePB if (!$mysqlSlaveMode || $pbdb!~/DB:/o);
+    &SavePB() if (!$mysqlSlaveMode || $pbdb!~/DB:/o);
     mlog(0,"cleaning penalty records...") if $MaintenanceLog;
-    &cleanBlackPB if $DoPenalty && $PBBlackObject;
-    &cleanWhitePB if $PBWhiteObject;
-    &cleanTrapPB if $PBTrapObject;
+    &cleanBlackPB() if $DoPenalty && $PBBlackObject;
+    &cleanWhitePB() if $PBWhiteObject;
+    &cleanTrapPB() if $PBTrapObject;
     $noDBCache = $savenoDBCache;
 }
 
@@ -18415,7 +18833,7 @@ sub Whitelist {
             if ($DoSQL_LIKE && "$WhitelistObject" =~ /Tie\:\:RDBM/o) {
 #                $toDomain =~ s/([_%])/:$1/go;
 #                $mf =~ s/([_%])/:$1/go;
-#                my $res = $WhitelistObject->rdbm_RunSTM("WLRDOM",
+#                my $res = $WhitelistObject->RunSTM("WLRDOM",
 #"DELETE FROM $WhitelistObject->{table} WHERE $WhitelistObject->{key} LIKE $mf,\%$toDomain ESCAPE ':' AND $WhitelistObject->{value} < '9999999999'");
 #                $res ||= 'NO';
 #                push @WhitelistResult, "$res private records removed from Whitelist<br />"
@@ -18439,7 +18857,7 @@ sub Whitelist {
             ThreadMonitorMainLoop("delete Whitelist $mf,*");
             if ($DoSQL_LIKE && "$WhitelistObject" =~ /Tie\:\:RDBM/o) {
 #                $mf =~ s/([_%])/:$1/go;
-#                my $res = $WhitelistObject->rdbm_RunSTM("WLRALL",
+#                my $res = $WhitelistObject->RunSTM("WLRALL",
 #"DELETE FROM $WhitelistObject->{table} WHERE $WhitelistObject->{key} LIKE $mf,\% ESCAPE ':' AND $WhitelistObject->{value} < '9999999999'");
 #                $res ||= 'NO';
 #                push @WhitelistResult, "$res private records removed from Whitelist<br />"
@@ -19675,7 +20093,13 @@ sub NewSMTPConnection {
         $Stats{delayConnection}++;
         $ScoreStats{'GLOBALPB-Black'}++ if ($reason =~ /GLOBALPB/o);
         $Con{$client}->{type} = 'C';
-        &NoLoopSyswrite($client,"451 4.7.1 Please try again later\r\n",0);
+        my $reply;
+        if ($DelayError) {
+            $reply = $DelayError."\r\n";
+        } else {
+            $reply = "451 4.7.1 Please try again later\r\n";
+        }
+        &NoLoopSyswrite($client,$reply,0);
         $Con{$client}->{error} = '5';
         done($client);
         mlog(0,"delayed ip $ip, because PBBlack($pbval) is higher than DelayIP($DelayIP)- last penalty reason was: $reason", 1) if $ConnectionLog >= 2 || $SessionLog;
@@ -32849,6 +33273,7 @@ sub getARC {
         }
 
         ($this->{arcresult}->{host}, my $autres) = split(/\s*;\s*/o,$highestAAR,2);
+        $this->{arcresult}->{host} = $1 if $this->{arcresult}->{host} =~ /($HostRe)/o;  # eliminate trailing items in host - like 'mx.microsoft.com 1'
         $this->{arcresult}->{autres} = $autres;
         my $trust = matchRE([$this->{arcresult}->{host}],'trustedAuthForwarders') ? ' trusted' : '';
         $this->{arcresult}->{trustedhost} = $this->{arcresult}->{host} if $trust;
@@ -35961,7 +36386,7 @@ sub BombWeight_Run {
                       $weight{highnam} = $subre;
                       $weight{matchlength} = (length($subre) != $matchlength) ? "(matchlength:$matchlength) " : '';
                   }
-                  &ThreadYield;
+                  &ThreadYield();
                   if ($fh && $bombMaxPenaltyVal && $weightsum >= $bombMaxPenaltyVal) {
                       &sigoffTry(__LINE__);
                       last;
@@ -41095,7 +41520,7 @@ sub ListReportExec {
                 && $this->{report} !~ /\Q$ad\E: added to/ )
             {
                 if ($spamLovers =~ /^ *file: *(.+)/io ) {
-                    modifyList('spamLovers' ,'add', "email interface from $this->{mailfrom}" , $ad . $splw);
+                    modifyList('spamLovers' ,'add', "email from $this->{mailfrom}" , $ad . $splw);
                 }
                 else {
                     $this->{report} .= "error: spamLovers is missconfigured (missing file:...) - unable to add $ad\n";
@@ -41127,7 +41552,7 @@ sub ListReportExec {
                 && ! localdomains($ad))
             {
                 if ( $blackListedDomains =~ /^ *file: *(.+)/io ) {
-                    modifyList('blackListedDomains' ,'add', "email interface from $this->{mailfrom}", $ad);
+                    modifyList('blackListedDomains' ,'add', "email from $this->{mailfrom}", $ad);
                 }
                 else {
                     $this->{report} .= "error: blackListedDomains is missconfigured (missing file:...) - unable to add $ad\n";
@@ -41158,7 +41583,7 @@ sub ListReportExec {
                 && $this->{report} !~ /\Q$ad\E: added to/ )
             {
                 if ( $noProcessing =~ /^ *file: *(.+)/io ) {
-                    modifyList('noProcessing' ,'add',"email interface from $this->{mailfrom}", $ad);
+                    modifyList('noProcessing' ,'add',"email from $this->{mailfrom}", $ad);
                 }
                 else {
                     $this->{report} .= "error: noProcessing is misconfigured (missing file:...) - unable to add $ad\n";
@@ -41189,7 +41614,7 @@ sub ListReportExec {
             {
                 my $removed = 0;
                 if ( $noProcessing =~ /^ *file: *(.+)/io ) {
-                    $removed = modifyList('noProcessing' ,'delete', "email interface from $this->{mailfrom}", $ad);
+                    $removed = modifyList('noProcessing' ,'delete', "email from $this->{mailfrom}", $ad);
                 }
                 else {
                     $this->{report} .= "error: noProcessing is misconfigured (missing file:...) - unable to remove $ad\n";
@@ -41224,7 +41649,7 @@ sub ListReportExec {
 
                 my $removed = 0;
                 if ( $blackListedDomains =~ /^ *file: *(.+)/io ) {
-                    $removed = modifyList('blackListedDomains' ,'delete', "email interface from $this->{mailfrom}", $ad);
+                    $removed = modifyList('blackListedDomains' ,'delete', "email from $this->{mailfrom}", $ad);
                 }
                 else {
                     $this->{report} .= "error: blackListedDomains is misconfigured (missing file:...) - unable to remove $ad\n";
@@ -41258,7 +41683,7 @@ sub ListReportExec {
             {          # remove from SL
                 my $removed = 0;
                 if ( $spamLovers =~ /^ *file: *(.+)/io ) {
-                    $removed = modifyList('spamLovers' ,'delete', "email interface from $this->{mailfrom}", $ad);
+                    $removed = modifyList('spamLovers' ,'delete', "email from $this->{mailfrom}", $ad);
                 }
                 else {
                     $this->{report} .= "error: spamLovers is misconfigured (missing file:...) - unable to remove $ad\n";
@@ -44470,6 +44895,10 @@ sub HMMOK {
         mlog($fh,"HMM is not available - hmmdb is still locked by a rebuild task") if $BayesianLog;
         return 1;
     }
+    if (exists $HMMdb{'***lockHMMdb***'}) {
+        mlog($fh,"HMM is not available - hmmdb import is still in progress") if $BayesianLog;
+        return 1;
+    }
     my $this = $Con{$fh};
     my $DoHMM = $DoHMM;
     $DoHMM = $this->{overwritedo} if ($this->{overwritedo});   # overwrite requ by Plugin
@@ -44491,6 +44920,10 @@ sub HMMOK_Run {
     return 1 if $this->{msgidsigok};
     if ($lockHMM) {
         mlog($fh,"HMM is not available - hmmdb is still locked by a rebuild task") if $BayesianLog;
+        return 1;
+    }
+    if (exists $HMMdb{'***lockHMMdb***'}) {
+        mlog($fh,"HMM is not available - hmmdb import is still in progress") if $BayesianLog;
         return 1;
     }
     if (! $haveHMM && !($haveHMM = getDBCount('HMMdb','spamdb'))) {
@@ -45007,6 +45440,12 @@ sub BayesOK {
         @HmmBayWords = ();
         return 1;
     }
+    if (exists $Spamdb{'***lockSpamdb***'}) {
+        mlog($fh,"Bayesian is not available - spamdb import is still in progress") if $BayesianLog;
+        delete $Con{$fh}->{skipBayes};
+        @HmmBayWords = ();
+        return 1;
+    }
     my $this=$Con{$fh};
     my $DoBayesian = $DoBayesian;    # copy the global to local - using local from this point
     $DoBayesian = $this->{overwritedo} if ($this->{overwritedo});   # overwrite requ by Plugin
@@ -45047,6 +45486,10 @@ sub BayesOK_Run {
     }
     if ($lockBayes) {
         mlog($fh,"Bayesian is not available - spamdb is still locked by a rebuild task") if $BayesianLog;
+        return 1;
+    }
+    if (exists $Spamdb{'***lockSpamdb***'}) {
+        mlog($fh,"Bayesian is not available - spamdb import is still in progress") if $BayesianLog;
         return 1;
     }
     my $DoBayesian = $DoBayesian;    # copy the global to local - using local from this point
@@ -45875,8 +46318,12 @@ sub fixUpMIMEHeader {
 # (eg.) attachments and inlines possibly undetected in Email::MIME
     if (! $email->content_type || ! $email->{ct}{attributes}{boundary}) {
         if ($email->body_raw =~ /(?:^|\n)--([$NOCRLF]+)\r?\n$HeaderRe/so) {
+            my $boundary = $1;
+            $boundary =~ s/ //go;
+            $boundary = rand(100000)+10000 unless $boundary;
+            $boundary =~ s/ //go;
             $email->content_type_set( 'multipart/mixed' ) if $email->content_type !~ /multipart|message/io;
-            $email->boundary_set( $1 );
+            $email->boundary_set( $boundary );
             delete $email->{parts};  # force reparsing the parts
             mlog(0,"info: corrected possibly malformed MIME header for mail analyzing - Content-Type and boundary") if $SessionLog > 2;
         }
@@ -56563,6 +57010,9 @@ sub ConfigAddrAction {
     my $wlto;
     $local = localmail($addr) if $addr;
     my $action = $qs{action};
+    my $reason = $qs{reason};
+    $reason =~ s/\r|\n|\t//go;
+    $reason ||= 'no reason';
     my $slo;
     $slo = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="button"  name="showlogout" value="  logout " onclick="window.location.href=\'./logout\';return false;"/></span>' if exists $qs{showlogout};
     my $s = $qs{reloaded} eq 'reloaded' ? '<span class="positive">(page was auto reloaded)</span><br /><br />' : '';
@@ -56599,72 +57049,72 @@ sub ConfigAddrAction {
             $s = &ConfigLists();
             $s =~ s/^.+?<\/h2>(.+?)<form.+$/$1/ois;
         } elsif ($action eq '5' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','noProcessing')) {
-            my $r = $GPBmodTestList->('GUI','noProcessing','add',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','noProcessing','add',$reason,$addr,0);
             $s = ($r > 0) ? "$addr added to noProcessing" : "$addr not added to noProcessing";
         } elsif ($action eq '6' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','noProcessing')) {
-            my $r = $GPBmodTestList->('GUI','noProcessing','delete',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','noProcessing','delete',$reason,$addr,0);
             $s = ($r > 0) ? "$addr removed from noProcessing" : "$addr not removed from noProcessing";
         } elsif ($action eq '7' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','noProcessingFrom')) {
-            my $r = $GPBmodTestList->('GUI','noProcessingFrom','add',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','noProcessingFrom','add',$reason,$addr,0);
             $s = ($r > 0) ? "$addr added to noProcessingFrom" : "$addr not added to noProcessingFrom";
         } elsif ($action eq '8' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','noProcessingFrom')) {
-            my $r = $GPBmodTestList->('GUI','noProcessingFrom','delete',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','noProcessingFrom','delete',$reason,$addr,0);
             $s = ($r > 0) ? "$addr removed from noProcessingFrom" : "$addr not removed from noProcessingFrom";
         } elsif ($mfd && $action eq '9' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','whiteListedDomains')) {
-            my $r = $GPBmodTestList->('GUI','whiteListedDomains','add',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','whiteListedDomains','add',$reason,$addr,0);
             $s = ($r > 0) ? "$addr added to whiteListedDomains" : "$addr not added to whiteListedDomains";
         } elsif ($mfd && $action eq 'A' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','whiteListedDomains')) {
-            my $r = $GPBmodTestList->('GUI','whiteListedDomains','delete',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','whiteListedDomains','delete',$reason,$addr,0);
             $s = ($r > 0) ? "$addr removed from whiteListedDomains" : "$addr not removed from whiteListedDomains";
         } elsif ($mfd && $action eq 'B' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','blackListedDomains')) {
-            my $r = $GPBmodTestList->('GUI','blackListedDomains','add',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','blackListedDomains','add',$reason,$addr,0);
             $s = ($r > 0) ? "$addr added to blackListedDomains" : "$addr not added to blackListedDomains";
         } elsif ($mfd && $action eq 'C' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','blackListedDomains')) {
-            my $r = $GPBmodTestList->('GUI','blackListedDomains','delete',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','blackListedDomains','delete',$reason,$addr,0);
             $s = ($r > 0) ? "$addr removed from blackListedDomains" : "$addr not removed from blackListedDomains";
         } elsif ($action eq 'D' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','spamLovers')) {
-            my $r = $GPBmodTestList->('GUI','spamLovers','add',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','spamLovers','add',$reason,$addr,0);
             $s = ($r > 0) ? "$addr added to spamLovers (All Spam-Lover)" : "$addr not added to spamLovers (All Spam-Lover)";
         } elsif ($action eq 'E' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','spamLovers')) {
-            my $r = $GPBmodTestList->('GUI','spamLovers','delete',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','spamLovers','delete',$reason,$addr,0);
             $s = ($r > 0) ? "$addr removed from spamLovers (All Spam-Lover)" : "$addr not removed from spamLovers (All Spam-Lover)";
         } elsif ($action eq 'F' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','spamHaters')) {
-            my $r = $GPBmodTestList->('GUI','spamHaters','add',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','spamHaters','add',$reason,$addr,0);
             $s = ($r > 0) ? "$addr added to spamHaters (All Spam-Haters)" : "$addr not added to spamHaters (All Spam-Haters)";
         } elsif ($action eq 'G' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','spamHaters')) {
-            my $r = $GPBmodTestList->('GUI','spamHaters','delete',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','spamHaters','delete',$reason,$addr,0);
             $s = ($r > 0) ? "$addr removed from spamHaters (All Spam-Haters)" : "$addr not removed from spamHaters (All Spam-Haters)";
         } elsif ($mfd && $action eq 'H' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','noProcessingDomains')) {
-            my $r = $GPBmodTestList->('GUI','noProcessingDomains','add',' - via MaillogTail',$mfd,0);
+            my $r = $GPBmodTestList->('GUI','noProcessingDomains','add',$reason,$mfd,0);
             $s = ($r > 0) ? "$mfd added to noProcessing Domains" : "$mfd not added to noProcessing Domains";
         } elsif ($mfd && $action eq 'I' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','noProcessingDomains')) {
-            my $r = $GPBmodTestList->('GUI','noProcessingDomains','delete',' - via MaillogTail',$mfd,0);
+            my $r = $GPBmodTestList->('GUI','noProcessingDomains','delete',$reason,$mfd,0);
             $s = ($r > 0) ? "$mfd removed from noProcessing Domains" : "$mfd not removed from noProcessing Domains";
         } elsif ($action eq 'J' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','preHeaderRe')) {
             my $addrRe = quotemeta($addr);
-            my $r = $GPBmodTestList->('GUI','preHeaderRe','add',' - via MaillogTail',$addrRe,0);
+            my $r = $GPBmodTestList->('GUI','preHeaderRe','add',$reason,$addrRe,0);
             $s = ($r > 0) ? "$addr added as regex ($addrRe) to preHeaderRe" : "$addr not added to preHeaderRe";
         } elsif ($action eq 'K' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','preHeaderRe')) {
             my $addrRe = quotemeta($addr);
-            my $r = $GPBmodTestList->('GUI','preHeaderRe','delete',' - via MaillogTail',$addrRe,0);
+            my $r = $GPBmodTestList->('GUI','preHeaderRe','delete',$reason,$addrRe,0);
             $s = ($r > 0) ? "$addr removed as regex ($addrRe) from preHeaderRe" : "$addr not removed from preHeaderRe";
         } elsif ($action eq 'L' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','noScan')) {
-            my $r = $GPBmodTestList->('GUI','noScan','add',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','noScan','add',$reason,$addr,0);
             $s = ($r > 0) ? "$addr added to sDo Not Virus-Scan Messages from/to these Addresses(noScan)" : "$addr not added to Do Not Scan Messages from/to these Addresses(noScan)";
         } elsif ($action eq 'M' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','noScan')) {
-            my $r = $GPBmodTestList->('GUI','noScan','delete',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','noScan','delete',$reason,$addr,0);
             $s = ($r > 0) ? "$addr removed from Do Not Virus-Scan Messages from/to these Addresses(noScan)" : "$addr not Do Not Scan Messages from/to these Addresses(noScan)";
         } elsif ($mfd && $action eq 'N' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','DKIMWLAddresses')) {
-            my $r = $GPBmodTestList->('GUI','DKIMWLAddresses','add',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','DKIMWLAddresses','add',$reason,$addr,0);
             $s = ($r > 0) ? "$addr added to DKIMWLAddresses" : "$addr not added to DKIMWLAddresses";
         } elsif ($mfd && $action eq 'O' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','DKIMWLAddresses')) {
-            my $r = $GPBmodTestList->('GUI','DKIMWLAddresses','delete',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','DKIMWLAddresses','delete',$reason,$addr,0);
             $s = ($r > 0) ? "$addr removed from DKIMWLAddresses" : "$addr not removed from DKIMWLAddresses";
         } elsif ($mfd && $action eq 'P' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','DKIMNPAddresses')) {
-            my $r = $GPBmodTestList->('GUI','DKIMNPAddresses','add',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','DKIMNPAddresses','add',$reason,$addr,0);
             $s = ($r > 0) ? "$addr added to DKIMNPAddresses" : "$addr not added to DKIMNPAddresses";
         } elsif ($mfd && $action eq 'Q' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','DKIMNPAddresses')) {
-            my $r = $GPBmodTestList->('GUI','DKIMNPAddresses','delete',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','DKIMNPAddresses','delete',$reason,$addr,0);
             $s = ($r > 0) ? "$addr removed from DKIMNPAddresses" : "$addr not removed from DKIMNPAddresses";
         } elsif ($action) {
             $s = "<span class=\"negative\">access denied for the selected action</span>";
@@ -56824,7 +57274,7 @@ $headerHTTP
            <div class="optionValue">
             <select size="1" name="action">
              $option
-            </select>
+            </select> reason: <input name="reason" size="30" autocomplete="on" value="$reason"/>
            </div>
           </div>
          </div>
@@ -56876,46 +57326,49 @@ sub ConfigIPAction {
     }
     my $local = $addr =~ /^$IPprivate$/o || $addr eq $localhostip || $addr =~ /$LHNRE/;
     my $action = $qs{action};
+    my $reason = $qs{reason};
+    $reason =~ s/\r|\n|\t//go;
+    $reason ||= 'no reason';
     my $slo;
     $slo = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="button"  name="showlogout" value="  logout " onclick="window.location.href=\'./logout\';return false;"/></span>' if exists $qs{showlogout};
     my $s = $qs{reloaded} eq 'reloaded' ? '<span class="positive">(page was auto reloaded)</span><br /><br />' : '';
 
     if ($addr && $action && $qs{Submit} && ! $wrongaddr) {
         if ($action eq '1' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','noProcessingIPs')) {
-            my $r = $GPBmodTestList->('GUI','noProcessingIPs','add',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','noProcessingIPs','add',$reason,$addr,0);
             $s = ($r > 0) ? "$addr added to noProcessingIPs" : "$addr not added to noProcessingIPs";
         } elsif ($action eq '2' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','noProcessingIPs')) {
-            my $r = $GPBmodTestList->('GUI','noProcessingIPs','delete',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','noProcessingIPs','delete',$reason,$addr,0);
             $s = ($r > 0) ? "$addr removed from noProcessingIPs" : "$addr not removed from noProcessingIPs";
         } elsif ($action eq '3' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','whiteListedIPs')) {
-            my $r = $GPBmodTestList->('GUI','whiteListedIPs','add',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','whiteListedIPs','add',$reason,$addr,0);
             $s = ($r > 0) ? "$addr added to whiteListedIPs" : "$addr not added to whiteListedIPs";
         } elsif ($action eq '4' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','whiteListedIPs')) {
-            my $r = $GPBmodTestList->('GUI','whiteListedIPs','delete',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','whiteListedIPs','delete',$reason,$addr,0);
             $s = ($r > 0) ? "$addr removed from whiteListedIPs" : "$addr not removed from whiteListedIPs";
         } elsif ($action eq '5' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','noDelay')) {
-            my $r = $GPBmodTestList->('GUI','noDelay','add',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','noDelay','add',$reason,$addr,0);
             $s = ($r > 0) ? "$addr added to noDelay" : "$addr not added to noDelay";
         } elsif ($action eq '6' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','noDelay')) {
-            my $r = $GPBmodTestList->('GUI','noDelay','delete',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','noDelay','delete',$reason,$addr,0);
             $s = ($r > 0) ? "$addr removed from noDelay" : "$addr not removed from noDelay";
         } elsif ($action eq '7' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','denySMTPConnectionsFrom')) {
-            my $r = $GPBmodTestList->('GUI','denySMTPConnectionsFrom','add',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','denySMTPConnectionsFrom','add',$reason,$addr,0);
             $s = ($r > 0) ? "$addr added to denySMTPConnectionsFrom" : "$addr not added to denySMTPConnectionsFrom";
         } elsif ($action eq '8' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','denySMTPConnectionsFrom')) {
-            my $r = $GPBmodTestList->('GUI','denySMTPConnectionsFrom','delete',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','denySMTPConnectionsFrom','delete',$reason,$addr,0);
             $s = ($r > 0) ? "$addr removed from denySMTPConnectionsFrom" : "$addr not removed from denySMTPConnectionsFrom";
         } elsif ($action eq '9' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','noBlockingIPs')) {
-            my $r = $GPBmodTestList->('GUI','noBlockingIPs','add',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','noBlockingIPs','add',$reason,$addr,0);
             $s = ($r > 0) ? "$addr added to noBlockingIPs" : "$addr not added to noBlockingIPs";
         } elsif ($action eq 'A' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','noBlockingIPs')) {
-            my $r = $GPBmodTestList->('GUI','noBlockingIPs','delete',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','noBlockingIPs','delete',$reason,$addr,0);
             $s = ($r > 0) ? "$addr removed from noBlockingIPs" : "$addr not removed from noBlockingIPs";
         } elsif ($action eq 'B' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','denySMTPConnectionsFromAlways')) {
-            my $r = $GPBmodTestList->('GUI','denySMTPConnectionsFromAlways','add',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','denySMTPConnectionsFromAlways','add',$reason,$addr,0);
             $s = ($r > 0) ? "$addr added to denySMTPConnectionsFromAlways" : "$addr not added to denySMTPConnectionsFromAlways";
         } elsif ($action eq 'C' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','denySMTPConnectionsFromAlways')) {
-            my $r = $GPBmodTestList->('GUI','denySMTPConnectionsFromAlways','delete',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','denySMTPConnectionsFromAlways','delete',$reason,$addr,0);
             $s = ($r > 0) ? "$addr removed from denySMTPConnectionsFromAlways" : "$addr not removed from denySMTPConnectionsFromAlways";
         } elsif ($action eq 'D' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','pbdb')) {
             my $t = time;
@@ -56958,10 +57411,10 @@ sub ConfigIPAction {
             delete $RWLCache{$addr};
             $s = "$addr removed from RWL Cache";
         } elsif ($action eq 'N' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','noScanIP')) {
-            my $r = $GPBmodTestList->('GUI','noScanIP','add',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','noScanIP','add',$reason,$addr,0);
             $s = ($r > 0) ? "$addr added to Virus-noScanIP" : "$addr not added to Virus-noScanIP";
         } elsif ($action eq 'O' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','noScanIP')) {
-            my $r = $GPBmodTestList->('GUI','noScanIP','delete',' - via MaillogTail',$addr,0);
+            my $r = $GPBmodTestList->('GUI','noScanIP','delete',$reason,$addr,0);
             $s = ($r > 0) ? "$addr removed from Virus-noScanIP" : "$addr not removed from Virus-noScanIP";
         } elsif ($action) {
             $s = "<span class=\"negative\">access denied for the selected action</span>";
@@ -57062,7 +57515,7 @@ $headerHTTP
            <div class="optionValue">
             <select size="1" name="action">
              $option
-            </select>
+            </select> reason: <input name="reason" size="30" autocomplete="on" value="$reason"/>
            </div>
           </div>
          </div>
@@ -69961,7 +70414,7 @@ EOT
 # manage Action permissions
 
     my %ManageActionsDesc = ();
-    $ManageActionsDesc{lists} = 'White/Redlist/Tuplets';
+    $ManageActionsDesc{lists} = 'Whitelist/Redlist/Tuplets';
     $ManageActionsDesc{recprepl} = 'Recipient Replacement Test';
     $ManageActionsDesc{maillog} = 'View Maillog Tail';
     $ManageActionsDesc{analyze} = 'Mail Analyzer';
@@ -69983,8 +70436,8 @@ EOT
     $ManageActionsDesc{editinternals} = 'Edit Internal Caches';
     $ManageActionsDesc{syncedit} = 'Edit Config-Synchronzation Options';
     $ManageActionsDesc{SNMPAPI} = 'allowed to use the SNMP API';
-    $ManageActionsDesc{addraction} = 'take action on email addresses from MaillogTail';
-    $ManageActionsDesc{ipaction} = 'take actions on IP addresses from MaillogTail';
+    $ManageActionsDesc{addraction} = 'take action on email addresses using the GUI';
+    $ManageActionsDesc{ipaction} = 'take actions on IP addresses using the GUI';
     $ManageActionsDesc{statgraph} = 'show graphical statistics';
     $ManageActionsDesc{confgraph} = 'show confidence distribution';
     $ManageActionsDesc{fc} = 'assp file commander';
@@ -70730,7 +71183,7 @@ sub checkReplyRecom {
 ###################################
 
 sub EXITASSP {
-    &RemovePid;
+    &RemovePid();
     exit 1;
 }
 
@@ -70750,21 +71203,21 @@ sub downASSP {
     mlog(0,'initializing shutdown sequence');
     mlogWrite();
     $WorkerName = 'Shutdown';
-    $sequenceOK &&= &closeAllSMTPListeners;
+    $sequenceOK &&= &closeAllSMTPListeners();
     mlogWrite();
     quitHighThreads();
     mlogWrite();
-    $sequenceOK &&= &stopSMTPThreads;
+    $sequenceOK &&= &stopSMTPThreads();
     mlogWrite();
-    $sequenceOK &&= &stopHighThreads;
+    $sequenceOK &&= &stopHighThreads();
     mlogWrite();
-    $sequenceOK && &SaveWhitelist;
+    $sequenceOK && &SaveWhitelist();
     mlogWrite();
-    $sequenceOK && &SavePB;
+    $sequenceOK && &SavePB();
     mlogWrite();
-    $sequenceOK && &SaveStats;
+    $sequenceOK && &SaveStats();
     mlogWrite();
-    &saveRemoteSupport;
+    &saveRemoteSupport();
 #    mlogWrite();
 #    &BDB_sync(1);
     mlog(0,'closing all databases');
@@ -70773,14 +71226,14 @@ sub downASSP {
     mlogWrite();
     &clearDBCon();
     mlogWrite();
-    &closeAllWEBListeners;
+    &closeAllWEBListeners();
     mlogWrite();
     &syncWriteConfig() if $enableCFGShare;
     &removeLeftCrashFile();
     mlog(0,'info: shutdown reason was: '.$text) if $text;
     mlog(0,'info: shutdown - got no reason ?') if ! $text;
     mlog(0,'ASSP finished work');
-    &RemovePid;
+    &RemovePid();
     mlogWrite();
     &printVars();
 }
@@ -71073,7 +71526,7 @@ sub resetFH {
             sockclose($lsn) ||
             mlog(0,"error: unable to close Socket $lsn - $@ - $!");
         }
-        &ThreadWaitFinCon;
+        &ThreadWaitFinCon();
         my ($lsnRelay,$lsnRelayI)=newListen($relayPort,\&ConToThread,1);
         @lsnRelay = @$lsnRelay; @lsnRelayI = @$lsnRelayI;
         for (@$lsnRelayI) {s/:::/\[::\]:/o;}
@@ -71082,7 +71535,7 @@ sub resetFH {
         } else {
             mlog(0,"error: renewing listening for SMTP relay connections on port @$lsnRelayI - after too many errors");
             &downASSP("try restarting ASSP: failed to renew listener on @$lsnRelayI");
-            _assp_try_restart;
+            _assp_try_restart();
         }
         return;
     }
@@ -71097,7 +71550,7 @@ sub resetFH {
             sockclose($lsn) ||
             mlog(0,"error: unable to close Socket $lsn - $@ - $!");
         }
-        &ThreadWaitFinCon;
+        &ThreadWaitFinCon();
         my ($lsn2,$lsn2I) = newListen($listenPort2,\&ConToThread,1);
         @lsn2 = @$lsn2; @lsn2I = @$lsn2I;
         for (@$lsn2I) {s/:::/\[::\]:/o;}
@@ -71106,7 +71559,7 @@ sub resetFH {
         } else {
             mlog(0,"error: renewing listening for additional SMTP connections on port @$lsn2I - after too many errors");
             &downASSP("try restarting ASSP: failed to renew listener on @$lsn2I");
-            _assp_try_restart;
+            _assp_try_restart();
         }
         return;
     }
@@ -71121,7 +71574,7 @@ sub resetFH {
             sockclose($lsn) ||
             mlog(0,"error: unable to close Socket $lsn - $@ - $!");
         }
-        &ThreadWaitFinCon;
+        &ThreadWaitFinCon();
         my ($lsnSSL,$lsnSSLI) = newListenSSL($listenPortSSL,\&ConToThread,1);
         @lsnSSL = @$lsnSSL; @lsnSSLI = @$lsnSSLI;
         for (@$lsnSSLI) {s/:::/\[::\]:/o;}
@@ -71130,13 +71583,13 @@ sub resetFH {
         } else {
             mlog(0,"error: renewing listening for secure SMTP connections on port @$lsnSSLI - after too many errors");
             &downASSP("try restarting ASSP: failed to renew listener on @$lsnSSLI");
-            _assp_try_restart;
+            _assp_try_restart();
         }
         return;
     }
 
     if ($th == 2) {      # renew Proxy listener
-        &ThreadWaitFinCon;
+        &ThreadWaitFinCon();
         while ((my $k,my $v) = each(%Proxy)) {
             if ( $ProxySocket{$k} eq $fh) {
                 delete $SocketCalls{$fh};
@@ -71158,7 +71611,7 @@ sub resetFH {
                 } else {
                     mlog(0,"error: renewing proxy on port @$dummy forwarded to $to$allow - after too many errors");
                     &downASSP("try restarting ASSP: failed to renew proxy on port @$dummy forwarded to $to$allow");
-                    _assp_try_restart;
+                    _assp_try_restart();
                 }
                 last;
             }
@@ -71182,7 +71635,7 @@ sub resetFH {
         sockclose($lsn) ||
         mlog(0,"error: unable to close Socket $lsn - $@ - $!");
     }
-    &ThreadWaitFinCon;
+    &ThreadWaitFinCon();
     my ($lsn,$lsnI) = newListen($listenPort,\&ConToThread,1);
     @lsn = @$lsn; @lsnI = @$lsnI;
     for (@$lsnI) {s/:::/\[::\]:/o;}
@@ -71191,7 +71644,7 @@ sub resetFH {
     } else {
         mlog(0,"error: renewing listening for SMTP connections on port @$lsnI - after too many errors");
         &downASSP("try restarting ASSP: failed to renew listener on @$lsnI");
-        _assp_try_restart;
+        _assp_try_restart();
     }
 }
 
@@ -71689,11 +72142,13 @@ sub ThreadRebuildSpamDBStart {
         &initFileHashes('AdminGroup');  # AdminGroup is never shared;
         mlog(0,"$WorkerName started");
 
-        # switch off RDBM caching in this thread for some Hashes
+        # switch off RDBM caching in this thread for some Hashes and unlock HMMdb and Spamdb
         eval {
             $SpamdbObject->{noRDBMcache} = 1 if ref($SpamdbObject) =~ /RDBM/io;
             $HeloBlackObject->{noRDBMcache} = 1 if ref($HeloBlackObject) =~ /RDBM/io;
             $HMMdbObject->{noRDBMcache} = 1 if ref($HMMdbObject) =~ /RDBM/io;
+            delete $HMMdb{'***lockHMMdb***'};
+            delete $Spamdb{'***lockSpamdb***'};
         };
 
         &sigCentralSet();
@@ -71910,7 +72365,7 @@ sub tellThreadsReReadConfig {
     &SaveConfig() if ($ConfigChanged < 2);
     $recompileAllRe ? &ThreadCompileAllRE(0) : &optionFilesReload();
     $recompileAllRe = 0;
-    &initMaintScheduler if $ScheduleIsChanged;
+    &initMaintScheduler() if $ScheduleIsChanged;
     %LDAPNotFound = ();
     &ConfigOverwriteRe();
     &readNorm();
@@ -72402,7 +72857,7 @@ sub ThreadMaintMain {
         ScheduleMapSet('CleanDelayDBInterval');
         d('ThreadMaintMain - CleanDelayDB');
         if (!$mysqlSlaveMode || $delaydb!~/DB:/o) {
-            &CleanDelayDB;
+            &CleanDelayDB();
             $wasrun = 1;
         }
     }
@@ -72411,7 +72866,7 @@ sub ThreadMaintMain {
         ScheduleMapSet('CleanPBInterval');
         d('ThreadMaintMain - CleanPB');
         if (!$mysqlSlaveMode || $pbdb!~/DB:/o) {
-            &CleanPB;
+            &CleanPB();
             $wasrun = 1;
         }
     }
@@ -72443,7 +72898,7 @@ sub ThreadMaintMain {
         ScheduleMapSet('CleanCacheEvery');
         d('ThreadMaintMain - CleanCache');
         if (!$mysqlSlaveMode || $pbdb!~/DB:/o) {
-            &CleanCache;
+            &CleanCache();
             $wasrun = 1;
         }
     }
@@ -72452,7 +72907,7 @@ sub ThreadMaintMain {
         d('ThreadMaintMain - cleanCacheBATVTag');
         $nextCleanBATVTag = time + 3600;
         if (!$mysqlSlaveMode || $pbdb!~/DB:/o) {
-            &cleanCacheBATVTag;
+            &cleanCacheBATVTag();
             $wasrun = 1;
         }
     }
@@ -72460,7 +72915,7 @@ sub ThreadMaintMain {
     if($exportInterval && time >= $nextExport) {
         d('ThreadMaintMain - exportExtreme');
         ScheduleMapSet('exportInterval');
-        &exportExtreme;
+        &exportExtreme();
         $wasrun = 1;
     }
     return if(! $ComWorker{$Iam}->{run} || $wasrun);
@@ -74796,10 +75251,11 @@ sub GPBSetup {
         $how = 'Email Interface' if lc($how) eq 'email';
         $how = 'Global-Penalty-Box Server' if lc($how) eq 'gpb';
         ($open->($GPBFILE, '>>',"$file")) or (mlog(0,"error: unable to write to file $file for '$parm' to '$whattodo' entry") and return 0);
+        mlog(0,"$how: $value added to $parm - $text");
+        $text .= ' - '.timestring();
         $GPBFILE->binmode;
         print $GPBFILE ( ($cont[-1] =~ /\n$/os) ? '' : "\n" )."$value  # added by $how - $text";
         $GPBFILE->close;
-        mlog(0,"$how: $value added to $parm - $text");
         $ConfigChanged = 1;
         return 1;
     } elsif ($whattodo eq 'check') {
@@ -76102,7 +76558,9 @@ sub rdbm_EXISTS {
     my $result;
     my $error;
     %{$self->{nextvalue}} = ();
+    my $doCache;
     if ($main::DBCacheMaxAge && $main::DBCacheSize && ! $self->{noRDBMcache} && ! $main::noDBCache && exists $self->{tableID}) {
+        $doCache = 1;
         my $time = Time::HiRes::time;
         threads->yield();
         my @c = @{'main::'.lc $self->{table}};  # store the cache in $c->
@@ -76119,7 +76577,7 @@ sub rdbm_EXISTS {
 SELECT $cols FROM $self->{table} WHERE $self->{key}=?
 END
         if ($sth) {
-            $result = $sth->fetchrow_arrayref() if (($rows = $sth->rows) && $main::DBCacheMaxAge);
+            $result = $sth->fetchrow_arrayref() if (($rows = $sth->rows) && $doCache);
             $sth->finish;
         }
     };
@@ -76129,8 +76587,8 @@ END
     &main::mlog(0, $error) if $error;
     &main::mlog(0, "error: exists (".$self->{table}."): $@ - $DBI::errstr") if $evalerror && $main::DataBaseDebug;
     threads->yield();
-    if ($result && $main::DBCacheMaxAge) {
-        my $value = $self->{'canfreeze'} && $result->[1] ? thaw($result->[0]) : $result->[0];
+    if ($result && $doCache) {
+        my $value = $self->{'canfreeze'} && $result->[1] ? Storable::thaw($result->[0]) : $result->[0];
         &main::rdbm_updateCache($self, $key, $value, 2);
     }
     return $rows > 0;
@@ -76144,8 +76602,9 @@ sub rdbm_STORE {
     my $frozen = 0;
     my $res = 0;
     if (ref($value) && $self->{'canfreeze'}) {
-	    $frozen++;
-	    $value = nfreeze($value);
+        $self->{noRDBMcache} = 1;
+        $frozen++;
+	    $value = Storable::nfreeze($value);
     }
     return 1 if &main::rdbm_storedInCache($self, $key, $value);
     eval {
@@ -76218,7 +76677,9 @@ sub rdbm_fetch {
     return unless defined $key;
     return delete $self->{nextvalue}{$key} if (exists $self->{nextvalue}{$key}); # satisfy an each loop
     %{$self->{nextvalue}} = ();
+    my $doCache;
     if ($main::DBCacheMaxAge && $main::DBCacheSize && ! $self->{noRDBMcache} && ! $main::noDBCache && exists $self->{tableID}) {
+        $doCache = 1;
         my $time = Time::HiRes::time;
         threads->yield();
         my @c = @{'main::'.lc $self->{table}};  # store the cache in $c->
@@ -76239,13 +76700,13 @@ END
     };
     &main::mlog(0, "error: Fetch (".$self->{table}."): $@ - $DBI::errstr") if $@ && $main::DataBaseDebug;
     threads->yield();
-    if ($result && $main::DBCacheMaxAge) {
-        my $value = $self->{'canfreeze'} && $result->[1] ? thaw($result->[0]) : $result->[0];
+    if ($result && $doCache) {
+        my $value = $self->{'canfreeze'} && $result->[1] ? Storable::thaw($result->[0]) : $result->[0];
         &main::rdbm_updateCache($self, $key, $value, 2);
     } else {
         return unless $result;
     }
-    return $self->{'canfreeze'} && $result->[1] ? thaw($result->[0]) : $result->[0];
+    return $self->{'canfreeze'} && $result->[1] ? Storable::thaw($result->[0]) : $result->[0];
 }
 
 sub rdbm_delete {
@@ -76328,7 +76789,7 @@ END2
     if ($sth) {
         defined($sth->execute()) || ($error = "error: FIRSTKEY (".$self->{table}."): Can't execute select statement: $DBI::errstr");
         $r = $sth->fetch();
-        my $value = ($r->[2] ? thaw($r->[1]) : $r->[1]);
+        my $value = ($r->[2] ? Storable::thaw($r->[1]) : $r->[1]);
         $self->{nextvalue}{$r->[0]} = $value if defined($value) && defined $r->[0];  # cache the value for the next fetch
     } else {
         $error = "error: FIRSTKEY: Can't get value from select statement (".$self->{table}."): $DBI::errstr";
@@ -76355,7 +76816,7 @@ sub rdbm_nextkey {
             delete $self->{nextvalue};
             return;
         }
-        ($key,$value) = ($r->[0], ($r->[2] ? thaw($r->[1]) : $r->[1]) );
+        ($key,$value) = ($r->[0], ($r->[2] ? Storable::thaw($r->[1]) : $r->[1]) );
         $self->{nextvalue}{$key} = $value if defined($key) && defined($value);  # cache the value for the next fetch
     };
     &main::mlog(0, "error: NEXTKEY (".$self->{table}."): $@ - $DBI::errstr") if $@ && $main::DataBaseDebug;
@@ -77461,15 +77922,15 @@ package ASSP::CRYPT;
 # GOST 28147-89 is a 64-bit symmetric block cipher
 # with a 256-bit key developed in the former Soviet Union .
 #
-# redesigned and improved by Thomas Eckardt (2009,2013)
+# redesigned and improved by Thomas Eckardt (2009,2013,2020)
 ##################################
 
 use strict qw(vars subs);
 
 sub new {
     my ($argument,$pass,$bin,$enh) = @_;
-	   my $class = ref ($argument) || $argument;
-	   my $self = {};
+    my $class = ref ($argument) || $argument;
+    my $self = {};
     &DESTROY();
     use bytes;
     {
@@ -77477,8 +77938,8 @@ sub new {
         $self->{useXS} = (defined($enh) ? $enh : ($main::usedCrypt > 0)) && $pass && eval('use Crypt::GOST();1;');
     }
     $self->{KEY} = [];
-	   $self->{SBOX} = [];
-	   $self->{BIN} = $bin;
+    $self->{SBOX} = [];
+    $self->{BIN} = $bin;
     if ($self->{useXS}) {
         $pass .= $pass x int(32 / length($pass) + 1);
         $pass = substr($pass , 0, 32);
@@ -77497,30 +77958,31 @@ sub _generate_sbox {
    	my $self = shift;
    	my $passphrase = shift;
    	if (ref ($passphrase)) {
-      		@{$self->{SBOX}} = @$passphrase;
+        @{$self->{SBOX}} = @$passphrase;
    	} else {
-      		my ($i, $x, $y, $random, @tmp) = 0;
-      		my @temp = (0..15);
-      		for ($i=0; $i <= (length $passphrase); $i+=4)
-      		    { $random = $random ^ (unpack 'L', pack 'a4', substr ($passphrase, $i, $i+4)) };
-      		srand $random;
-      		for ($i=0; $i < 8; $i++) {
-            @tmp = @temp;
+  		my ($i, $x, $y, $random, @tmp) = 0;
+  		for ($i=0; $i <= (length $passphrase); $i+=4) {
+            $random = $random ^ (unpack 'L', pack 'a4', substr ($passphrase, $i, $i+4))
+        }
+  		srand $random;
+  		for ($i=0; $i < 8; $i++) {
+            @tmp = (0..15);
             map { $x = _rand (15); $y = $tmp[$x]; $tmp[$x] = $tmp[$_]; $tmp[$_] = $y; } (0..15);
             map {$self->{SBOX}->[$i][$_] = $tmp[$_] } (0..15);
-      		}
+  		}
    	}
 }
 
 sub _generate_keys {
    	my ($self, $passphrase) = @_;
    	if (ref ($passphrase)) {
-      		@{$self->{KEY}} = @$passphrase;
+        @{$self->{KEY}} = @$passphrase;
    	} else {
-      		my ($i, $random) = 0;
-      		for ($i=0; $i <= (length $passphrase); $i+=4)
-      		    { $random = $random ^ (unpack 'L', pack 'a4', substr ($passphrase, $i, $i+4))};
-      		srand $random;
+  		my ($i, $random) = 0;
+  		for ($i=0; $i <= (length $passphrase); $i+=4) {
+            $random = $random ^ (unpack 'L', pack 'a4', substr ($passphrase, $i, $i+4))
+        }
+  		srand $random;
         map { $self->{KEY}[$_] = _rand (2**32) } (0..7);
    	}
 }
@@ -77538,7 +78000,7 @@ sub _crypt {
         $data = substr($data,0,length($data)-$cl);
         $l = int(hex(_IH(substr($data,length($data)-$ll,$ll),$bin)));
         $data = substr($data,0,length($data)-$ll);
-	       $data = _HI($data,! $bin);
+	    $data = _HI($data,! $bin);
    	} else {
         $check = _XOR_SYSV($data,$bin);
         $l = length($data);
@@ -77553,15 +78015,15 @@ sub _crypt {
             $return .= ($decrypt) ? $self->{useXS}->decrypt($_) : $self->{useXS}->encrypt($_);
         }
     } else {
-        my @j = 	map { $decrypt ? (($_ >  7) ? (31 - $_) % 8 : ($_ % 8))
-                                : (($_ > 23) ? (31 - $_)     : ($_ % 8));
-      		             } (0..31);
+        my @j = map { $decrypt ? (($_ >  7) ? (31 - $_) % 8 : ($_ % 8))
+                               : (($_ > 23) ? (31 - $_)     : ($_ % 8))
+      		        } (0..31);
         for (unpack('(a8)*',$data)) {
             ($d1,$d2) = unpack 'L2';
             map { ($_ % 2) ? ($d1 ^= _substitute ($self, ($d2 + $self->{KEY}[$j[$_]])))
                            : ($d2 ^= _substitute ($self, ($d1 + $self->{KEY}[$j[$_]])));
-    		          } (0..31);
-    		      $return .= pack 'L2', $d2, $d1;
+    		    } (0..31);
+    		$return .= pack 'L2', $d2, $d1;
         }
    	}
     return _IH($return,! $bin).$l.$check unless ($decrypt);
