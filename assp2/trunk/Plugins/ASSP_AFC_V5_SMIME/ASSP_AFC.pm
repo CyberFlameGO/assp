@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.24 2020/09/19 11:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.26 2020/12/29 09:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -271,7 +271,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.24 2020/09/19 11:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.26 2020/12/29 09:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -1906,12 +1906,14 @@ sub runCMD {
 
 sub mlog {     # sub to main::mlog
     my ( $fh, $comment, $noprepend, $noipinfo ) = @_;
-    &main::mlog( $fh, "$comment", $noprepend, $noipinfo );
+    local $@;
+    eval{&main::mlog( $fh, &main::de8($comment), $noprepend, $noipinfo );};
 }
 
 sub d {        # sub to main::d
     my $debugprint = shift;
-    &main::d("$debugprint");
+    local $@;
+    eval{&main::d(&main::de8($debugprint));};
 }
 
 sub tocheck {
@@ -2453,8 +2455,13 @@ sub isAnEXE {
 # deobviuscate the PDF - https://blog.didierstevens.com/2008/04/29/pdf-let-me-count-the-ways/
         $pdf =~ s{\\\n}{\n}goi;   # remove line continuation
         $pdf =~ s/\\(\d{3})\s*/chr(oct($1))/goie;    # convert octal character representation
-        my $tochr = sub {return join('',map{$_ ?pack 'H*',$_:''}split(/\s+/o,shift));};   # sub to convert hex + spaces to char
-        $pdf =~ s/\<\s*((?:[0-9a-f]{2}\s*)+)\>/'('.$tochr->($1).')'/goie;                # convert hex + spaces to char
+        $pdf =~ s/#([0-9a-f]{2})\s*/chr(hex($1))/goie;    # convert ansi hex character representation
+        my $tochr = sub {return join('',map{
+                                            my $t = $_ ? pack('H*',$_) :'';
+                                            $t =~ s/\000//go;
+                                            $t;
+                                           } split(/\s+/o,shift));};   # sub to convert hex + spaces to char and remove all \x00 from the string
+        $pdf =~ s/\<\s*((?:[0-9a-f]{2}\s*)+)\>/'('.$tochr->($1).')'/goie;                # convert hex + spaces to char <41 42  43> -> (ABC)
 
         return if $sk =~ /:(?:CERT)?PDF/oi && ((grep {$_->[0] =~ /Cert|Sig/o} @PDFsum) || $pdf =~ m{/CERT\s*\[\s*\(}ios);        # a certificate or signature in the PDF (so skip all)
 
@@ -2506,6 +2513,8 @@ sub isAnEXE {
                         (?:
                             /EmbeddedFile\s*/.+?\.$ft\)?/.*?\<\<\s*/JavaScript.*?/OpenAction     # or bad action
                           | /Producer\s*\(?evalString\.fromCharCod
+#                          | /JBIG2Decode
+                          | /Launch
                         )
                       }xios
             )
