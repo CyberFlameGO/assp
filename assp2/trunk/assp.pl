@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '20310';        # 05.11.2020 TE
+$build   = '20364';        # 29.12.2020 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.032999';
 $MAINVERSION = $version . $modversion;
@@ -638,7 +638,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'C271BB389C9F391F1A9DA453692F5B95F680A58A'; }
+sub __cs { $codeSignature = '93E91DDC4E5EC3351F04910B455F6D26306A0C5D'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -6888,7 +6888,7 @@ BEGIN {
     print "ASSP $version$modversion (source: $assp) is ".($^C ? 'compiling' : 'starting')." in directory $base\non host ". hostname() ."\nusing Perl $perl version $] ($mv.$sv.$lv), all Perl features for $::VSTR are enabled\n";
     print $^C ? "compiling code, checking syntax and check code integrity - please wait .....\n" : "compiling code and check code integrity - please wait .....\n";
 
-    push @INC,$base unless grep {/^\Q$base\E$/o} @INC;
+    unshift @INC,$base unless grep {/^\Q$base\E$/o} @INC;
 
     #&printVarsOn();
     #if ($printVars) {
@@ -7407,7 +7407,7 @@ setMainLang();
 #$PBBlackLock = 1 ;   # serialize DB access to these tables per default
 #$PBWhiteLock = 1 ;
 #$LDAPlistLock = 1 ;
-$lockDatabases = 1 if $DBdriver =~ /^mysql/oi; # serialize DB write access to all mysql tables per default
+$lockDatabases = 1 if $DBdriver =~ /^(?:mysql|mariadb)/oi; # serialize DB write access to all mysql/mariadb tables per default
 $lockDatabases = 1 if $DBCacheMaxAge && $DBCacheSize;
 
 our $CanUseCorrectASSPcfg;
@@ -15207,18 +15207,18 @@ EOT
         $installed = 'enabled';
         my $key = defined $VirusTotalAPIKey ? $VirusTotalAPIKey : undef;
         $key ||= ($globalClientName && $globalClientPass) ? sprintf("%016x%016x%016x%016x",($char4vt[0] << 1)+1,$char4vt[1] << 2,$char4vt[2] << 1,$char4vt[3] << 3) : undef;
-        if ( ! $key || "@char4vt" eq '1 1 1 1') {
+        if ( ! $key ) {
             mlog(0,"warning: ASSP_VirusTotal_API has not found a valid API-Key ( VirusTotalAPIKey )");
             $installed .= ' ( but no VirusTotal-API-Key is available)';
         }
         my $r = vtdestroy(0);
         *{'ASSP_VirusTotal_API::DESTROY'} = *{'main::vtdestroy'};
-      } elsif (!$AvailASSP_VirusTotal_API)  {
+    } elsif (!$AvailASSP_VirusTotal_API)  {
         $installed = $useASSP_VirusTotal_API ? 'is not installed' : 'is disabled in config';
         mlog(0,"ASSP_VirusTotal_API module $installed - VirusTotal-API is not available");
         my $key = defined $VirusTotalAPIKey ? $VirusTotalAPIKey : undef;
         $key ||= ($globalClientName && $globalClientPass) ? sprintf("%016x%016x%016x%016x",($char4vt[0] << 1)+1,$char4vt[1] << 2,$char4vt[2] << 1,$char4vt[3] << 3) : undef;
-        if ( $key && "@char4vt" ne '1 1 1 1') {
+        if ( $key ) {
             mlog(0,"warning: found VirusTotal-API-Key, BUT missing module lib/ASSP_VirusTotal_API.pm");
         }
     }
@@ -15359,7 +15359,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
     }
 
     my $v;
-    $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.24;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+    $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.26;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
     $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
     $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
     $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.23;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -22535,7 +22535,7 @@ sub ConCountSync {
 sub ConDone {
     my %isDamping = ();
     my @handles = sort {       $Con{$a}->{type} cmp $Con{$b}->{type}
-                        || $Con{$a}->{timelast} <=> $Con{$b}->{timelast} } keys(%ConDelete);  # clent before server
+                        || $Con{$a}->{timelast} <=> $Con{$b}->{timelast} } keys(%ConDelete);  # client before server
     while ( @handles ) {
         my $con = shift(@handles);
         unless ($con) {
@@ -24094,6 +24094,69 @@ sub LDAPCacheFind {
     d("$how - not found $current_email in $how-cache",1) if $WorkerNumber != 10001;
     mlog(0,"info: $how - $current_email not found in $how-cache (ldaplistdb)") if (${$how.'Log'} >= 2 && $WorkerNumber != 10001);
     return 0;
+}
+
+sub LDAP_explode_dn {
+    my ($dn, %opt) = @_;
+    return [] if $dn eq '' or ! defined $dn;
+
+    my $pair = qr/\\(?:[\\"+,;<> #=]|[0-9A-F]{2})/i;
+
+    my (@dn, %rdn);
+    while (
+    $dn =~ /\G(?:
+      \s*
+      ((?i)[A-Z][-A-Z0-9]*|(?:oid\.)?\d+(?:\.\d+)*)	# attribute type
+      \s*
+      =
+      [ ]*
+      (							# attribute value
+        (?:(?:[^\x00 "\#+,;<>\\\x80-\xBF]|$pair)		# string
+           (?:(?:[^\x00"+,;<>\\]|$pair)*
+              (?:[^\x00 "+,;<>\\]|$pair))?)?
+        |
+        \#(?:[0-9a-fA-F]{2})+				# hex string
+        |
+        "(?:[^\\"]+|$pair)*"				# "-quoted string, only for v2
+      )
+      [ ]*
+      (?:([;,+])\s*(?=\S)|$)				# separator
+      )\s*/gcx)
+    {
+        my($type, $val, $sep) = ($1, $2, $3);
+
+        $type =~ s/^oid\.//i;	#remove leading "oid."
+
+        if ( !$opt{casefold} || $opt{casefold} eq 'upper' ) {
+            $type = uc $type;
+        } elsif ( $opt{casefold} eq 'lower' ) {
+            $type = lc($type);
+        }
+
+        if ( $val =~ s/^#// ) {
+            # decode hex-encoded BER value
+            my $tmp = pack('H*', $val);
+            $val = \$tmp;
+        } else {
+            # remove quotes
+            $val =~ s/^"(.*)"$/$1/;
+            # unescape characters
+            $val =~ s/\\([\\ ",=+<>#;]|[0-9a-fA-F]{2})/length($1)==1 ? $1 : chr(hex($1))/eg;
+        }
+
+        $rdn{$type} = $val;
+
+        unless (defined $sep and $sep eq '+') {
+            if ( $opt{reverse} ) {
+                unshift @dn, { %rdn };
+            } else {
+                 push @dn, { %rdn };
+            }
+            %rdn = ();
+        }
+    }
+
+    return length($dn) == (pos($dn)||0) ? \@dn : [];
 }
 
 sub LDAPerror {
@@ -37410,11 +37473,11 @@ sub PBExtremeOK {
                 if ( $DoDenySMTP == 1 ) {
                     $this->{prepend} = "[DenyIP]";
                     $Stats{denyConnection}++;
-                    $this->{messagereason} = $ip." blocked by $byWhatList '$ret'";
+                    $this->{messagereason} = $ip."blocked by $byWhatList '$ret'";
                     return 0;
                 } elsif ( $DoDenySMTP == 2 ) {
                     $this->{prepend} = "[DenyIP]";
-                    mlog( $fh, "[monitoring] ".$ip." blocked by $byWhatList '$ret'" )
+                    mlog( $fh, "[monitoring] ".$ip."blocked by $byWhatList '$ret'" )
                       if $denySMTPLog || $ConnectionLog >= 2;
                 }
             }
@@ -42130,7 +42193,7 @@ sub RMhelo { my ($fh,$l)=@_;
 }
 sub RMfrom { my ($fh,$l)=@_;
     if($l=~/^ *250 /o) {
-        sendque($fh,"MAIL FROM: ".($Con{$fh}->{from}=~/(<[^<>]+>)/o ? $1 : $Con{$fh}->{from})."\r\n");
+        sendque($fh,"MAIL FROM: ".($Con{$fh}->{from}=~/(<[^<>]+>)/o ? $1 : '<'.$Con{$fh}->{from}.'>')."\r\n");
         $Con{$fh}->{getline}=\&RMrcpt;
         $Con{$fh}->{getlinetxt}='RMrcpt';
     } elsif ($l=~/^ *250-/o) {
@@ -42425,7 +42488,7 @@ sub BlockReportSend {
                 my $blocking = $fh->blocking(0);
                 NoLoopSyswrite($fh,"X-ASSP-Blockreport: YES\r\n"
                                   .orgAuthRes()
-                                  ."date: $time $tz\r\n"
+                                  .($bod =~ /(?:^|\n)date:[^\n]+\n/ois ? '' : "date: $time $tz\r\n")
                                   ."To: $to\r\n"
                                   ."From: $mailfrom\r\n"
                                   ."Subject: $subject\r\n"
@@ -61767,11 +61830,23 @@ sub ConfigMakeGroupRe {
                     my $tmpaddrfilt = $addrfilt;
                     my $addrbase;
                     $addrbase = $1 if $tmpaddrfilt =~ s/^\s*base\s*=>?\s*["']([^"']*)["']\s*,?//oi;
-                    my %attr = split(/[=,]/o,$userid);
-                    while( my ($tag,$val) = (each %attr)) {
-                        my $qtag = quotemeta($tag);
-                        $tmpaddrfilt =~ s/$qtag\=\%USERID\%/$tag=$val/g;
+
+                    # LDAP_explode_dn returns a list of hashes of unescaped values for the complete DN
+                    # the first tag of multiples is used to replace %USERID%
+                    # eg. the DN: CN=David,OU=Europe,OU=xxxx,OU=xxxx,OU=xxxx,OU=xxxx,DC=org,DC=local
+                    # leads in to CN=David,OU=Europe,DC=org
+                    if ($tmpaddrfilt =~ /\=\%USERID\%/o) {
+                        for (@{LDAP_explode_dn($userid)}) {
+                            while (my ($tag,$val) = each(%$_)) {
+                                my $qtag = quotemeta($tag);
+                                $tmpaddrfilt =~ s/$qtag\=\%USERID\%/$tag=$val/g;
+                            }
+                        }
                     }
+
+                    #unescape the DN string
+                    $userid =~ s/\\([\\",=+<>#;]|[0-9a-fA-F]{2})/(length($1)==1) ? $1 : pack('H2', $1)/oge;
+
                     $tmpaddrfilt =~ s/\%USERID\%/$userid/go;
                     $ldap{base} = $addrbase if $addrbase;
                     $ldap{ldapfilt} = $tmpaddrfilt;
@@ -68955,7 +69030,11 @@ sub reloadConfigFile {
     }
     $RCF->close if $RCF;
     delete $newConfig{ConfigSavedOK};
-    
+    delete $newConfig{BerkeleyDB_DBEngine};
+    delete $newConfig{UUID};
+    delete $newConfig{globalRegisterURL};
+    delete $newConfig{globalUploadURL};
+
     my $dec;
     
     # check if the new assp.cfg uses another valid 'webAdminPassword'
@@ -68995,6 +69074,7 @@ sub reloadConfigFile {
     for my $idx (0...$#ConfigArray) {
         my $c = $ConfigArray[$idx];
         my ($name,$nicename,$size,$func,$default,$valid,$onchange,$description)=@$c;
+        next unless $name; # a 'heading' line
         if(! exists($newConfig{$name})) {
             mlog(0,"AdminUpdate: reload config - $name missing in config file - value is unchanged");
             next;

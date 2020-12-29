@@ -1,3 +1,26 @@
+2020-12-29
+fixed in assp 2.6.4 *SPAM-Evaporator* build 20364:
+
+- building groups using LDAP failed for users, if the CN= of a user contained a comma or another unexpected unescaped character
+
+- the internal database locking was skipped, if MariaDB was used instead of MySQL
+
+- the perl module status screen reported a missing VirusTotal-Key even a valid key was configured
+
+- sending reports failed in some cases with a syntax-error in MAIL FROM:
+
+- some times BlockReports contained two date: header lines, which caused some MTA's to reject the report
+
+- replacing the assp.cfg while assp was running caused unexpected warnings in the maillog.txt, even the new configuration was loaded without a mistake
+
+
+changed:
+
+- ASSP_AFC 5.26 is available: it improves the detection of obfuscated executable code in PDF-files
+  fix: under rare conditions some attachments were not analysed because of an internal UTF8 error  
+
+
+
 2020-11-05
 fixed in assp 2.6.4 *SPAM-Evaporator* build 20310:
 
@@ -34,7 +57,7 @@ added:
 2020-10-09
 fixed in assp 2.6.4 *SPAM-Evaporator* build 20283:
 
-- fixes a vtapi ecxeption if the configured proxy is not available
+- fixes a vtapi exception if the configured proxy is not available
 
 
 2020-10-06
