@@ -1,4 +1,4 @@
-# $Id: ASSP_OCR,v 2.23 2019/09/30 17:00:00 TE Exp $
+# $Id: ASSP_OCR,v 2.24 2021/02/06 13:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is an OCR Plugin for ASSP - it returns OCR data for
@@ -37,7 +37,7 @@ use File::Which 'which';
 use File::Spec;
 no warnings qw(uninitialized redefine);
 
-our $VERSION = $1 if('$Id: ASSP_OCR,v 2.23 2019/09/30 17:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+our $VERSION = $1 if('$Id: ASSP_OCR,v 2.24 2021/02/06 13:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINASSPVER = '2.0.0(16.10)';
 our $runningIMG;
 our @fileToRemove;
@@ -349,6 +349,7 @@ sub process {
                                 if ($OCRMOD eq 'PDF::OCR2') {
                                     $self->{tocheck} .= ' ' . $p->_text_from_pdf()
                                        if ($p = PDF::OCR2::Page->new($tmpfile));  # get the text from pdf
+                                    push @fileToRemove, @PDF::OCR2::TRASH, @PDF::OCR2::Page::TRASH; @PDF::OCR2::TRASH = @PDF::OCR2::Page::TRASH = ();
                                 } else {
                                     $self->{tocheck} .= ' ' . $p->get_text
                                        if ($p = PDF::OCR::Thorough->new($tmpfile));  # get the text from pdf
@@ -378,6 +379,7 @@ sub process {
                                             }
                                             chdir "$main::base";
                                         }
+                                        push @fileToRemove, @PDF::OCR2::TRASH, @PDF::OCR2::Page::TRASH; @PDF::OCR2::TRASH = @PDF::OCR2::Page::TRASH = ();
                                     } else {
                                         mlog($fh,"info: PDF::OCR2: no image found in PDF - $@") if ($self->{Log} > 1);
                                     }
@@ -385,6 +387,7 @@ sub process {
                                     my $ocr; my @abs_images;
                                     if (($ocr = eval{PDF::OCR->new($tmpfile);}) && (@abs_images = eval{@{$ocr->abs_images};})) {
                                         foreach (@abs_images) {
+                                            push @fileToRemove, $_;
                                             mlog($fh,"info: processing image $_ extracted with PDF::OCR") if ($self->{Log});
                                             if ([stat($_)]->[7] > $self->{ocrmaxsize}){
                                                 my $size = &main::formatNumDataSize([stat($_)]->[7]);
