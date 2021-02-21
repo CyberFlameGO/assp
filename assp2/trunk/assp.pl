@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.4';
-$build   = '20364';        # 29.12.2020 TE
+$build   = '21052';        # 21.02.2021 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.032999';
 $MAINVERSION = $version . $modversion;
@@ -638,7 +638,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '93E91DDC4E5EC3351F04910B455F6D26306A0C5D'; }
+sub __cs { $codeSignature = '44B32DABFE3105DECB81D9E059D61A91268C6878'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1218,7 +1218,8 @@ $notAllowedSMTP = qr/CHUNKING|PIPELINING|XEXCH50|CHECKPOINT|TRANSID|
                      X-EXPS|X-ADAT|X-DRCP|X-ERCP|EVFY|
                      BINARYMIME|BDAT|
                      AUTH\x20GSSAPI|AUTH\x20NTLM|X-LINK2STATE|
-                     NTLM|XSHADOW|XRDST|X-ANONYMOUSTLS|XSAVETOSENT
+                     NTLM|GSSAPI|XSHADOW|XRDST|X-ANONYMOUSTLS|XSAVETOSENT|
+                     X-STARTTLS
                   /oix;
 
 # skip these addresses from personal black processing
@@ -15359,10 +15360,10 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
     }
 
     my $v;
-    $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.26;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+    $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.29;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
     $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
     $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
-    $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.23;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
+    $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.24;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
     $ModuleList{'Plugins::ASSP_RSS'}    =~ s/([0-9\.\-\_]+)$/$v=1.11;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_RSS'};
     $ModuleList{'Plugins::ASSP_Razor'}  =~ s/([0-9\.\-\_]+)$/$v=1.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_Razor'};
     $ModuleList{'Plugins::ASSP_FakeMX'} =~ s/([0-9\.\-\_]+)$/$v=1.02;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_FakeMX'};
@@ -29979,7 +29980,8 @@ sub SPFok_Run {
     }
 
     $received_spf = "SPF: $spf_result";
-    $received_spf .= " (cache)" if $cachetime;
+    $received_spf .= " (cache)" if $cachetime && $cachetime != 9;
+    $received_spf .= " (RFC822)" if $cachetime == 9;
     $received_spf .= " ip=$ip";
     $received_spf .= " mailfrom=$mf" if ( $mf );
     $received_spf .= " helo=$helo" if ( $helo );
@@ -30203,7 +30205,7 @@ sub BackSctrCheckOK {
     return 1 if ($this->{whitelisted} && !$BackWL);
     return 1 if (($this->{noprocessing} & 1) && !$BackNP);
     return 1 if &matchIP($ip,'noBackSctrIP',$fh,0);
-    return 1 if ! $this->{redre} && $this->{rcpt} =~ /(?:post|web)master\@/io;
+#    return 1 if ! $this->{redre} && $this->{rcpt} =~ /postmaster\@/io;
     return 1 if (&matchSL([$this->{rcpt},$this->{mailfrom}],'noBackSctrAddresses'));
     if ($noBackSctrRe && $this->{header} =~ /(noBackSctrReRE)/) {
        mlogRe($fh,($1||$2),'noBackSctrRe','nobackscatter');
@@ -30516,7 +30518,7 @@ sub MSGIDsigOK_Run {
     return 1 if (($this->{noprocessing} & 1) && !$BackNP);
     return 1 if &matchIP($this->{ip},'noBackSctrIP',$fh,0);
     return 1 if (! matchSLOnly($this->{rcpt},'MSGIDsigAddresses'));
-    return 1 if ! $this->{redre} && $this->{rcpt} =~ /(?:post|web)master\@/io;
+#    return 1 if ! $this->{redre} && $this->{rcpt} =~ /postmaster\@/io;
     return 1 if ( matchSL([$this->{rcpt},$this->{mailfrom}],'noBackSctrAddresses'));
     if ($noBackSctrRe && $this->{header} =~ /(noBackSctrReRE)/) {
        mlogRe($fh,($1||$2),'noBackSctrRe','nobackscatter');
@@ -42727,7 +42729,7 @@ sub BlockReportGen {
     my @lines;
     my $userq;
     d('BlockReportGen');
-	   if (! $CanUseNetSMTP) {
+    if (! $CanUseNetSMTP) {
         my $i = $AvailNetSMTP ? 'enabled' : 'installed';
         mlog(0,"error: module Net::SMTP is not $i - unable to create a BlockReport");
         return;

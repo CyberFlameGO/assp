@@ -1,3 +1,24 @@
+2021-02-21
+fixed in assp 2.6.4 *SPAM-Evaporator* build 21052:
+
+
+changed:
+
+- mails to local postmaster@ and webmaster@ are no longer hardcoded skipped from backscatter checks
+  if you want skip them in future from backscatter checks, add the addresses to 'noBackSctrAddresses'
+
+
+- The SPF check fails if the sender is not RFC822/RFC1522 conform. In this case the SPF result got the tag ...(cache), which was confusing if the SPF cache was disabled.
+  Now SPF check also fails for this case, but the added tag is now ...(RFC822)
+  
+
+- ASSP_AFC.pm version 5.29 is at least recommended
+
+- ASSP_OCR.pm version 2.24 is at least recommended
+
+
+
+
 2020-12-29
 fixed in assp 2.6.4 *SPAM-Evaporator* build 20364:
 
