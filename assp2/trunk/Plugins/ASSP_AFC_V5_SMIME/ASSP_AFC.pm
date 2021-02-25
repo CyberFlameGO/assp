@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.26 2020/12/29 09:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.29 2021/01/26 15:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -98,7 +98,7 @@ our $skipLockyCheck = 0;
 our $setWeb = sub {my ($self,$fh) = @_;};                          # callback to configure the weblink parameters (webprot, webhost, webadminport) - called once for each created item
 ##################################################################
 
-our $maxProcessTime = 40; # max 40 seconds to process the attachments
+our $maxProcessTime = 120; # max 120 seconds to process the attachments
 
 our @PDFsum;
 our %PDFtags = (          # PDF objects to analyze
@@ -271,7 +271,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.26 2020/12/29 09:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.29 2021/01/26 15:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -926,6 +926,7 @@ sub get_MIME_parts {
     my $walk = sub {
         my ($part) = @_;
         $callback->($part);
+        return if $part->header("Content-Disposition") =~ /attachment|inline/io && $part->header("Content-Type") =~ /message\//io;
         for my $part ($part->subparts) {
             $walk_weak->($part);
         }
@@ -1161,7 +1162,8 @@ sub process {
     my $badimage = 0;
     local $@;
     local $SIG{ALRM} = sub { die "__alarm__\n"; };
-    alarm($maxProcessTime);
+    alarm($maxProcessTime + 5);
+    my $maxRunTime = time + $maxProcessTime;
     $ret = eval {
         $Email::MIME::ContentType::STRICT_PARAMS=0;      # no output about invalid CT
         $this->{header} =~ s/\.[\r\n]+$//o;
@@ -1178,6 +1180,7 @@ sub process {
                local $@;
                eval{get_MIME_parts($part, sub {my $p = shift;
                                            push @parts, $p;
+                                           return if $p->header("Content-Disposition") =~ /attachment|inline/io && $p->header("Content-Type") =~ /message\//io;
                                            my @sp = $p->subparts;
                                            return unless @sp;
                                            for my $sp (@sp) {
@@ -1193,6 +1196,12 @@ sub process {
         my $iterateParts = 0;
         while (my @tempParts = (@parts, @addparts)) {   # the array @addparts may be expanded while parts are processed
             last if $iterateParts > $#tempParts;        # all parts were processed
+
+            if (time > $maxRunTime) {                   # timeout
+                alarm(0);
+                die "timeout\n";
+            }
+            
             my $part = $tempParts[$iterateParts++];     # iterate through all elements (eg. parts)
             @tempParts = ();
 
@@ -1259,6 +1268,7 @@ sub process {
                            if ($spart->parts > 1 || $spart->subparts) {
                                eval{get_MIME_parts($spart, sub {my $p = shift;
                                                            push @addparts, $p;
+                                                           return if $p->header("Content-Disposition") =~ /attachment|inline/io && $p->header("Content-Type") =~ /message\//io;
                                                            my @sp = $p->subparts;
                                                            return unless @sp;
                                                            push @addparts,@sp;
@@ -1291,6 +1301,7 @@ sub process {
                    if ($spart->parts > 1 || $spart->subparts) {
                        eval{get_MIME_parts($spart, sub {my $p = shift;
                                                    push @addparts, $p;
+                                                   return if $p->header("Content-Disposition") =~ /attachment|inline/io && $p->header("Content-Type") =~ /message\//io;
                                                    my @sp = $p->subparts;
                                                    return unless @sp;
                                                    push @addparts,@sp;
@@ -1332,6 +1343,7 @@ sub process {
                        local $@;
                        eval{get_MIME_parts($spart, sub {my $p = shift;
                                                    push @addparts, $p;
+                                                   return if $p->header("Content-Disposition") =~ /attachment|inline/io && $p->header("Content-Type") =~ /message\//io;
                                                    my @sp = $p->subparts;
                                                    return unless @sp;
                                                    push @addparts,@sp;
@@ -1608,7 +1620,7 @@ sub process {
         $this->{vtscandone}=1;
         $this->{attachdone}=1;
         my ($package, $file, $line) = caller;
-        if ( $@ =~ /__alarm__/o ) {
+        if ( $@ =~ /__alarm__|timeout/o ) {
             mlog( $fh, "error: timeout in processing attachments after $maxProcessTime seconds - in package - $package, file - $file, line - $line.", 1 );
         } else {
             mlog( $fh, "error: unable to parse message for attachments - $@ - in package - $package, file - $file, line - $line.");
@@ -2511,10 +2523,10 @@ sub isAnEXE {
                         )
                       |                                                      # or has the following content anywhere
                         (?:
-                            /EmbeddedFile\s*/.+?\.$ft\)?/.*?\<\<\s*/JavaScript.*?/OpenAction     # or bad action
+                            /EmbeddedFile\s*/.+?\.$ft\)?/.*?\<\<\s*/J(?:ava)?S(?:cript)?.*?/(?-i:OpenAction|AA|Launch)     # or bad action
                           | /Producer\s*\(?evalString\.fromCharCod
 #                          | /JBIG2Decode
-                          | /Launch
+                          | /(?-i:Launch|OpenAction|AA)[^\n]*?/(?-i:JavaScript|JS)
                         )
                       }xios
             )
@@ -2544,7 +2556,7 @@ sub isAnEXE {
                             )
                           |                                                  # or has the following content anywhere
                             (?:
-                                /S\s*/JavaScript\s*/JS
+                                /(?-i:JavaScript)
                             )
                           }xios
                   )
