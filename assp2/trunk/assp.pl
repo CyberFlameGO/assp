@@ -203,8 +203,8 @@ our $maxPerlVersion;
 
 #
 sub setVersion {
-$version = '2.6.4';
-$build   = '21052';        # 21.02.2021 TE
+$version = '2.6.6';
+$build   = '21074';        # 15.03.2021 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.032999';
 $MAINVERSION = $version . $modversion;
@@ -638,7 +638,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '44B32DABFE3105DECB81D9E059D61A91268C6878'; }
+sub __cs { $codeSignature = '11B72479FD226B886C2BEE5750E1B1A3A2E8EED3'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -4770,7 +4770,8 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg007
   SENDERHELO - the helo text received from the connected host<br /><br />',undef,undef,'msg007560','msg007561'],
 
 ['HideIPandHelo','Hide IP and/or Helo',40,\&textinput,'','(.*)',undef,'Replace any of these information ( ip=127.0.0.1 helo=anyhost.local ) in our received header for outgoing mails. Use the syntax ip=127.0.0.1 and/or helo=anyhost.local .',undef,undef,'msg009830','msg009831'],
-['myGreeting','Override the Server SMTP Greeting',80,\&textinput,'','(.*)',undef,'Send this SMTP greeting (eg. 220 MYNAME is ready - using ASSP VERSION) instead of your MTA\'s SMTP greeting to the client. If not defined (default), the MTA\'s greeting will be sent to the client. The literal MYNAME will be replaced with myName and the literal VERSION will be replaced by the full version string of assp. If the starting \'220 \' is not defined, assp will add it to the greeting.',undef,undef,'msg010260','msg010261'],
+['myGreeting','Override the Server SMTP Greeting',80,\&textinput,'','(.*)',undef,'Send this SMTP greeting (eg. 220 MYNAME is ready - using ASSP VERSION) instead of your MTA\'s SMTP greeting to the client. If not defined (default), the MTA\'s greeting will be sent to the client. The literal MYNAME will be replaced with myName and the literal VERSION will be replaced by the full version string of assp. If the starting \'220 \' is not defined, assp will add it to the greeting.<br />
+Multiline greetings can be defined this way: 220-first greeting line&bsol;r&bsol;n220-second greeting line&bsol;r&bsol;n220-...&bsol;r&bsol;n220 last greeting line',undef,undef,'msg010260','msg010261'],
 ['asspCfg','assp.cfg*',40,\&textnoinput,'file:assp.cfg','(.*)','configUpdateASSPCfg','For internal use only - it is assp.cfg file. Do not change this value.',undef,undef,'msg007570','msg007571'],
 ['AutoReloadCfg','Automatic Reload ConfigFile',0,\&checkbox,'','(.*)','configChangeAutoReloadCfg','If selected and the assp.cfg file is changed externally, ASSP will reload the configuration from the file automatically.',undef,undef,'msg007580','msg007581'],
 ['asspCfgVersion','assp.cfg version',40,\&textnoinput,'','(.*)',undef,'ASSP will identify the assp.cfg file. Do not change this.',undef,undef,'msg007590','msg007591'],
@@ -39697,6 +39698,9 @@ sub reply {
 
 #    $this->{lastEHLOreply} = $l if ($Con{$cli}->{lastcmd} =~ /ehlo/ig);
     
+    if ( $l =~ /^220-/o && ! $Con{$cli}->{greetingSent} && $myGreeting) {
+        return
+    }
     if ( $l =~ /^220[^\-]/o && ! $Con{$cli}->{greetingSent} && $myGreeting) {
         $Con{$cli}->{greetingSent} = 1;
         $l = $myGreeting;
@@ -39705,6 +39709,7 @@ sub reply {
         $l =~ s/VERSION/$MAINVERSION/go;
         $l =~ s/\\r/\r/go;
         $l =~ s/\\n/\n/go;
+        $l =~ s/[\r\n]+/\r\n/go;
         $l =~ s/[\r\n]+$//o;
         d("send to client: $l");
         sendque($cli,"$l\r\n");
@@ -67197,6 +67202,11 @@ sub cleanBlackPB {
         $tdifut=$t-$ut;
         $ips_before++;
 
+        if ($k !~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/o) {
+            delete $PBBlack{$k};
+            next;
+        }
+
         if ($k =~ /$IPprivate/o) {
             delete $PBBlack{$k};
             $ips_deleted++;
@@ -67255,6 +67265,11 @@ sub cleanWhitePB {
         last if $doShutdown > 0 || $doShutdownForce;
         my($ct,$ut,$pbstatus,$reason)=split(/\s+/o,$v);
         $ips_before++;
+
+        if ($k !~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/o) {
+            delete $PBWhite{$k};
+            next;
+        }
 
         if ($pbstatus == 3) {           # an entry from global PB
             if ($t-$ut>=$maxtime1) {
@@ -74719,6 +74734,10 @@ sub genGlobalPBBlack {
     };
     binmode $OUT;
     while (my ($k,$v)=each(%PBBlack)) {
+        if ($k !~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/) {
+            delete $PBBlack{$k};
+            next;
+        }
         my ($ct,$ut,$pbstatus,$score,$sip,$reason)=split(/\s+/o,$v);
         my $tdifc=$t-$ct;
         my $tdifu=$t-$ut;
@@ -74777,6 +74796,10 @@ sub genGlobalPBWhite {
     };
     binmode $OUT;
     while (my ($k,$v)=each(%PBWhite)) {
+        if ($k !~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/) {
+            delete $PBWhite{$k};
+            next;
+        }
         my ($ct,$ut,$pbstatus,$reason)=split(/\s+/o,$v);
         my $tdifc=$t-$ct;
         my $tdifu=$t-$ut;
@@ -75134,6 +75157,7 @@ sub uploadGlobalPB {
                 $r = 0;
             }
             my ($k,$v) = split/\002/o;
+            next if $k !~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
             chomp $v;
             next unless ($k && $v);
             next if (exists $pbwhite->{$k});
@@ -75171,6 +75195,7 @@ sub uploadGlobalPB {
                 $r = 0;
             }
             my ($k,$v) = split/\002/o;
+            next if $k !~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
             chomp $v;
             next if (($pbw = $pbwhite->{$k}) && $pbw !~ /GLOBALPB$/o);
             next if &matchIP($k,'noPBwhite',0,1);

@@ -1,3 +1,13 @@
+2021-03-15
+fixed in assp 2.6.6 *SPAM-Evaporator* build 21074:
+
+- The definition in 'myGreeting' has only replaced the last greeting line (220 text) from the MTA, lines starting with 220-text
+  were not touched. Now all greeting lines are replaced.
+
+- Under rare conditions it was possible, that the penaltybox black and white contained wrong formated entries. Such entries are
+  now removed from these lists.
+
+
 2021-02-21
 fixed in assp 2.6.4 *SPAM-Evaporator* build 21052:
 
