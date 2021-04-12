@@ -1,3 +1,21 @@
+2021-04-12
+fixed in assp 2.6.6 *SPAM-Evaporator* build 21102:
+
+- If the last line of a bomb regular expression file was a comment (#), assp has warned that the regex matches an 'empty' string
+  and 'all' strings - because the resulting regex ended with a pipe (|)
+
+- The rebuild-spamdb-task failed, if MSSQL was used as backend-DB for SpamDB and/or HMMDB - because the standard ANSI-SQL statement
+  to rename the temporary table is not supported by MSSQL. If MSSQL is detected by assp, the right SQL-satement is now used (sp_rename).
+
+changed:
+
+- Several CIDR-perl modules (also Net::CIDR::Lite 0.22) changed their behavior. IP-addresses with leading zeros in IPv4-address octets are no
+  longer allowed (for example: 010.072.100.008 has to be defined as 10.72.100.8). Please have a look in to your manually edited IP lists
+  and correct those cases. Code is added to autocorrect those IP-addresses when IP-lists are read. But there are may be circumstances, when this
+  autocorrection will not take place!
+  A related hint in red color is added to the bottom of the GUI.
+
+
 2021-03-15
 fixed in assp 2.6.6 *SPAM-Evaporator* build 21074:
 

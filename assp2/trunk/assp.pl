@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.6';
-$build   = '21074';        # 15.03.2021 TE
+$build   = '21102';        # 12.04.2021 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.032999';
 $MAINVERSION = $version . $modversion;
@@ -638,7 +638,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '11B72479FD226B886C2BEE5750E1B1A3A2E8EED3'; }
+sub __cs { $codeSignature = '45C8B8E60F24E46482482C1FAAEFFC5D103F9A9E'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -8395,7 +8395,7 @@ if ($@) {
 sub write_rebuild_module {
 my $curr_version = shift;
 
-my $rb_version = '8.03';
+my $rb_version = '8.06';
 my $keepVersion;
 
 if (open my $ADV, '<',"$base/lib/rebuildspamdb.pm") {
@@ -8801,7 +8801,7 @@ EOT
                     push @dbhint , "-RebuildSpamDB reloaded and uses the internal FileModel (with $c entries) to speedup processing";
                 }
             }
-            $mem = int((&main::memoryUsage() - $mem)/(1024 * 1024) + 0.5);
+            $mem = int(&main::memoryUsage() - $mem);
             if ($mem > 10) {
                 $mem = &main::formatNumDataSize($mem);
                 rb_mlog("RebuildSpamDB allocated $mem of RAM to load the internal FileModel");
@@ -9540,7 +9540,13 @@ EOT
             $main::HMMdbObject->RunSTM('drophmmdb','DROP TABLE '.$mysqlTable);
             &rb_printlog( "rename table ".$mysqlTable."tmp to $mysqlTable\n" );
             &rb_mlog( "rename table ".$mysqlTable."tmp to $mysqlTable" );
-            $main::HMMdbObject->RunSTM('renamehmmdb','ALTER TABLE '.$mysqlTable.'tmp RENAME TO '.$mysqlTable);
+
+            my $stm = 'ALTER TABLE '.$mysqlTable.'tmp RENAME TO '.$mysqlTable;
+            # MSSQL  has no ANSI-SQL 'ALTER TABLE ... RENAME TO ...' it uses sp_rename instead
+            $stm = "sp_rename '".$mysqlTable."tmp', '".$mysqlTable."'"
+                if ($main::SpamdbObject->{dbh}->get_info(17) =~ /Microsoft SQL Server/io);
+
+            $main::HMMdbObject->RunSTM('renamehmmdb',$stm);
             delete $main::HMMdb{'***lockHMMdb***'};
         }
         @{'main::'.$mysqlTable} = ();   # clean the hmmdb cache;
@@ -9629,7 +9635,13 @@ sub rb_populate_Spamdb {
             $main::SpamdbObject->RunSTM('dropspamdb','DROP TABLE '.$mysqlTable);
             &rb_printlog( "rename table ".$mysqlTable."tmp to $mysqlTable\n" );
             &rb_mlog( "rename table ".$mysqlTable."tmp to $mysqlTable" );
-            $main::SpamdbObject->RunSTM('renamespamdb','ALTER TABLE '.$mysqlTable.'tmp RENAME TO '.$mysqlTable);
+
+            my $stm = 'ALTER TABLE '.$mysqlTable.'tmp RENAME TO '.$mysqlTable;
+            # MSSQL  has no ANSI-SQL 'ALTER TABLE ... RENAME TO ...' it uses sp_rename instead
+            $stm = "sp_rename '".$mysqlTable."tmp', '".$mysqlTable."'"
+                if ($main::SpamdbObject->{dbh}->get_info(17) =~ /Microsoft SQL Server/io);
+
+            $main::SpamdbObject->RunSTM('renamespamdb',$stm);
             delete $main::Spamdb{'***lockSpamdb***'};
         }
         @{'main::'.$mysqlTable} = ();   # clean the hmmdb cache;
@@ -11804,7 +11816,7 @@ $lngmsghint{'msg500013'} = '# main form buttom hint 3';
 $lngmsg{'msg500013'} = '<div id="iphint">IP ranges are defined as for example 182.82.10. CIDR notation is accepted (182.82.10.0/24).' ;
 
 $lngmsghint{'msg500014'} = '# main form buttom hint 4';
-$lngmsg{'msg500014'} = '<br />Text after the range (and before a number sign) will be accepted as comment to be shown in a match. For example:<br />182.82.10.0/24 Yahoo #comment to be removed<br />The short notation like 182.82.10. is only allowed for IPv4 addresses, IPv6 addresses must be fully defined as for example 2201:1::1 or 2201:1::/96<br />You may define a hostname instead of an IP, in this case the hostname will be replaced by all DNS-resolved IP-addresses, each with a /32 or /128 netmask. For example:<br />mta5.am0.yahoodns.net Yahoo #comment to be removed -&gt; 66.94.238.147/32 Yahoo|... Yahoo|... Yahoo<br /></div>' ;
+$lngmsg{'msg500014'} = '<br />Text after the range (and before a number sign) will be accepted as comment to be shown in a match. For example:<br />182.82.10.0/24 Yahoo #comment to be removed<br />The short notation like 182.82.10. is only allowed for IPv4 addresses, IPv6 addresses must be fully defined as for example 2201:1::1 or 2201:1::/96<br /><span class="negative">NEVER EVER include leading zeros in to IPv4 octets - like 010.200.001.078 (use 10.200.1.78 instead), this will lead in to unexpected errors in several used perl modules!</span><br />You may define a hostname instead of an IP, in this case the hostname will be replaced by all DNS-resolved IP-addresses, each with a /32 or /128 netmask. For example:<br />mta5.am0.yahoodns.net Yahoo #comment to be removed -&gt; 66.94.238.147/32 Yahoo|... Yahoo|... Yahoo<br /></div>' ;
 
 $lngmsghint{'msg500015'} = '# main form buttom hint 5';
 $lngmsg{'msg500015'} = 'If Net::CIDR::Lite is installed, hyphenated ranges can be used (182.82.10.0-182.82.10.255).';
@@ -15361,7 +15373,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
     }
 
     my $v;
-    $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.29;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+    $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.31;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
     $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
     $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
     $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.24;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -21111,6 +21123,7 @@ sub SetRE {
                     while ($r =~ s/\<\<\<(.*?)\>\>\>\|?//o) {
                         push @noOpt, $1;
                     }
+                    $r =~ s/\|$//;
                     my ($pre,$post) = $r =~ m{^(\^?).*(\$?)$}o;
                     $r =~ s/^\^?\$?$//;
                     my $noOpt;
@@ -34631,6 +34644,15 @@ sub ipNetwork {
         my $mask = unpack 'N', pack 'B*', '1' x $netblock . '0' x (32 - $netblock );
         return join '.', unpack 'CCCC', pack 'N', $u32 & $mask;
     }
+}
+
+# IP-address normalization
+# remove leading zreos from IPV4 octets, masks and CIDR - 010.001.2.0 -> 10.1.2.0 , 192.168.002.000/024 -> 192.168.2.0/24 , 255.255.000.000 -> 255.255.0.0
+# remove leading zeros from IPv6 words, masks and CIDR - 2001::0001 -> 2001::1 , 0200:0010::0100 -> 200:10::100 , 0200:0010::0000/032 -> 200:10::0/32
+sub ipN {
+    my $ip = shift;
+    while ($ip =~ s/(^|[^0-9a-f])0([0-9a-f])/$1$2/i) {}
+    return $ip;
 }
 
 # retrieve the trailing IPv4 address from a tunneled or IPv4 expanded IPv6address
@@ -62673,7 +62695,7 @@ sub ConfigMakeIPRe {
 
         if ($CanUseCIDRlite && $l=~/^$IPRe-$IPRe/o ) {
 
-            $l=~s/($IPRe)-($IPRe)(.*)/ipv6expand($1).'-'.ipv6expand($2)/oe;
+            $l=~s/($IPRe)-($IPRe)(.*)/ipv6expand(ipN($1)).'-'.ipv6expand(ipN($2))/oe;
             my $desc=$3;
             $desc =~ s/\s+/ /go;
             $desc =~ s/ $//o;
