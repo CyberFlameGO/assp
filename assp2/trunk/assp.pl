@@ -204,9 +204,9 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.6';
-$build   = '21102';        # 12.04.2021 TE
+$build   = '21147';        # 27.05.2021 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
-$maxPerlVersion = '5.032999';
+$maxPerlVersion = '5.034999';
 $MAINVERSION = $version . $modversion;
 $MajorVersion = substr($version,0,1);
 $requiredSelfLoaderVersion = '2.03';
@@ -376,6 +376,24 @@ our %maxStatsAndDwnlAge = (
     'GraphStats' => 366,
 );
 
+# skip the reply explanation (addErrorReplyExplanation) for the following reply codes
+# there are much more things you can do with a reply - have a look in to sub replaceLiterals
+our %noReplyExplain;
+BEGIN {            # noReplyExplain is referenced in the GUI - so we have to set the values at begin
+%noReplyExplain = (
+    '500' => 1,    # syntax error / command not implemented / bad sequence
+    '501' => 1,
+    '502' => 1,
+    '503' => 1,
+    '504' => 1,
+
+    '521' => 1,    # finaly closing transmission
+
+    '534' => 1,    # AUTH required / error
+    '535' => 1,
+    '538' => 1
+);
+}
 # *********************************************************************************************************************************************
 # hidden configuration variables:
 #    that can be changed using the module lib/CorrectASSPcfg.pm sub set
@@ -437,6 +455,9 @@ our $BlockReportAdminPassword = {};      # the password must be anywhere startin
                                          # passwords are NOT checked if SMIME is configured and is valid
                                          # passwords are ignored if SMIME failed
 our $enableBRtoggleButton = 1;           # (0/1) show the "toggle view" button in HTML BlockReports
+our $TargetBlank = {                     # where to include 'target="_blank"' in to HTML links - set the value to '' if 'target="_blank"' makes problems
+    'BlockReport' => ' target="_blank"'  # BlockReports in WebMail-Clients like thunderbird, Roundcube Webmail and possibly others will need to set this to '' to make the resendlinks working
+};
 
 # some more
 our $enablePermanentSSLContext = 1;      # (0/1) enable usage of permanent SSL Context - maxunused ($SSLContextMaxUnused) = 8 hours, max lifetime ($SSLContextMaxAge) = 1 day (default = 1)
@@ -638,7 +659,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '45C8B8E60F24E46482482C1FAAEFFC5D103F9A9E'; }
+sub __cs { $codeSignature = '1C42AF0515CB3BE13D952D2CE1E916E132449AAA'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1758,7 +1779,7 @@ sub assp_socket_blocking {
 }
 
 sub defConfigArray {
- # last used msg number 010781
+ # last used msg number 010791
 
  # still unused msg numbers
  #
@@ -4772,6 +4793,16 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg007
 ['HideIPandHelo','Hide IP and/or Helo',40,\&textinput,'','(.*)',undef,'Replace any of these information ( ip=127.0.0.1 helo=anyhost.local ) in our received header for outgoing mails. Use the syntax ip=127.0.0.1 and/or helo=anyhost.local .',undef,undef,'msg009830','msg009831'],
 ['myGreeting','Override the Server SMTP Greeting',80,\&textinput,'','(.*)',undef,'Send this SMTP greeting (eg. 220 MYNAME is ready - using ASSP VERSION) instead of your MTA\'s SMTP greeting to the client. If not defined (default), the MTA\'s greeting will be sent to the client. The literal MYNAME will be replaced with myName and the literal VERSION will be replaced by the full version string of assp. If the starting \'220 \' is not defined, assp will add it to the greeting.<br />
 Multiline greetings can be defined this way: 220-first greeting line&bsol;r&bsol;n220-second greeting line&bsol;r&bsol;n220-...&bsol;r&bsol;n220 last greeting line',undef,undef,'msg010260','msg010261'],
+['addErrorReplyExplanation','Add an Error-Reply-Explanation',80,\&textinput,'','(.*)',undef,'The text defined here will be added to every permanent SMTP-error-reply (starting with 5xx - except '.join(', ',sort keys(%noReplyExplain)).'). For example to add a web link, where blocking reasons are explained.<br />
+e.g.:<br />
+- error explanations at https://your.web.domain/block-reasons<br />
+or<br />
+- error explanations at https://your.web.domain/block-reasons?session=SESSIONID&amp;ip=IPCONNECTED<br /><br />
+The text (and possibly a clickable link) will become visible to blocked senders in the NDR (No Delivery Report) of the blocked mail.<br />
+In the second example the assp session-id and the connected IP-address are part of the link. The web server can extract the log entries for the mail from the maillog.txt and can explain much better and/or check the database for the IP reputation and ... and ...  .<br />
+If you want to skip this addition for any configurable SMTP-reply, write the literal NOEXPLAIN at the end of the configured SMTP-reply definition. To force the addition for any of the above shown exceptions, add the literal FORCEEXPLAIN to the reply definition. Both literals will be removed from the reply before it is sent.<br />
+For example, to skip the addition in SpamError: 554 5.7.1 Mail appears to be unsolicited -- send error reports to postmaster@LOCALDOMAIN NOEXPLAIN<br />
+Keep in mind, that the maximum length of a complete SMTP reply line should not exceed 512 byte (XXX text [CR][LF]).',undef,undef,'msg010790','msg010791'],
 ['asspCfg','assp.cfg*',40,\&textnoinput,'file:assp.cfg','(.*)','configUpdateASSPCfg','For internal use only - it is assp.cfg file. Do not change this value.',undef,undef,'msg007570','msg007571'],
 ['AutoReloadCfg','Automatic Reload ConfigFile',0,\&checkbox,'','(.*)','configChangeAutoReloadCfg','If selected and the assp.cfg file is changed externally, ASSP will reload the configuration from the file automatically.',undef,undef,'msg007580','msg007581'],
 ['asspCfgVersion','assp.cfg version',40,\&textnoinput,'','(.*)',undef,'ASSP will identify the assp.cfg file. Do not change this.',undef,undef,'msg007590','msg007591'],
@@ -5653,7 +5684,7 @@ To prevent permantly copying the changed mib/ASSP-MIB file to your net-snmp deam
   <input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/pop3collect.txt\',3);" />',undef,undef,'msg009090','msg009091']
 );
 
-# last used msg number 010781
+# last used msg number 010791
 
     &loadModuleVars();
     -d "$base/language" or mkdirOP("$base/language",'0755');
@@ -8395,7 +8426,7 @@ if ($@) {
 sub write_rebuild_module {
 my $curr_version = shift;
 
-my $rb_version = '8.06';
+my $rb_version = '8.10';
 my $keepVersion;
 
 if (open my $ADV, '<',"$base/lib/rebuildspamdb.pm") {
@@ -11078,7 +11109,7 @@ sub rb_uploadgriplist {
         next unless (open( my $FLogFile, '<', "$File" ));
         while (<$FLogFile>) {
             my ($auth,$fake,$DoS);
-            if ( ( $ip, $auth, $fake, $DoS ) = /(?:$gooddays) .*?\s($IPRe)[ \]](?:.*? to: \S+|(- too many AUTH errors \(\d+\)|warning: SMTP authentication failed|(info: faked authentication success for honeypot)|(info: SSL DoS using consecutive renegotiations detected)))/i) {
+            if ( ( $ip, $auth, $fake, $DoS ) = /(?:$gooddays) .*?\s($IPRe)[ \]](?:.*? to: \S+|(too many \(\d+\) AUTH errors|warning: SMTP authentication failed|(info: faked authentication success for honeypot)|(info: SSL DoS using consecutive renegotiations detected)))/i) {
                 next if $ip =~ /$IPprivate/o;                         # ignore private IP ranges
                 next if &main::matchIP($ip,'acceptAllMail',0,1);
                 $ip = &main::ipNetwork($ip, 1);
@@ -11139,7 +11170,7 @@ sub rb_uploadgriplist {
     my ($n6, $n4) = (0,0);
     while (my ($k,$v) = each %GpCnt) {
         next if (!$v);
-        if (/:/o) {
+        if ($k =~ /:/o) {
             $n6++;
         }
         else {
@@ -11157,8 +11188,8 @@ sub rb_uploadgriplist {
         $val = int($val * 255);
         if ($k =~ /:/o) {
             my $ip = $k;
-            $ip =~ s/([0-9a-f]*):/0000$1:/gio;
-            $ip =~ s/0*([0-9a-f]{4}):/$1:/gio;
+            $ip =~ s/([0-9a-f]*)(:|$)/0000$1$2/gio;
+            $ip =~ s/0*([0-9a-f]{4})(:|$)/$1$2/gio;
             $st6 .= pack("H4H4H4H4", split(/:/o, $ip));
             $st6 .= pack("C", $val);
         } else {
@@ -16344,8 +16375,10 @@ sub initDBHashes {
                                     			      Warn=>0 }
                                     			  );
                             die "unable to connect to database $mydb for $mysqlTable on host $myhost using DBI::$DBusedDriver - $DBI::err: $DBI::errstr\n" unless $dbh;
-                            mlog(0, "Warning: the database driver DBD::$DBusedDriver does not support the required '_async_check' function - $@ - please consider to use another database driver") unless eval{$dbh->func('_async_check')};
-                            # the MaintThread is the first one which call this function - other threads don't need to do this again
+                            if ($DBusedDriver eq 'mysql' or $DBusedDriver eq 'MariaDB') {
+                                mlog(0, "Warning: the database driver DBD::$DBusedDriver does not support the required '_async_check' function - $@ - please consider to use another database driver") unless eval{$dbh->func('_async_check')};
+                            }
+                            # the MaintThread is the first one which calls this function - other threads don't need to do this again
                             checkAndRenameTable($dbh,$mysqlTable) if ($WorkerNumber == 10000 && ($DBusedDriver eq 'mysql' or $DBusedDriver eq 'MariaDB'));
                             if ($dbGroup ne 'AdminGroup') {
                                 d("DB (initDBHashes) - $KeyName");
@@ -19370,9 +19403,9 @@ sub mlog {
 
     if ($CanUseCorrectASSPcfg && defined &CorrectASSPcfg::custom_mlog) {
         if (@m) {
-            &CorrectASSPcfg::custom_mlog($fh,$_) for (@m);
+            eval{&CorrectASSPcfg::custom_mlog($fh,$_) for (@m);};
         } else {
-            &CorrectASSPcfg::custom_mlog($fh,$m);
+            eval{&CorrectASSPcfg::custom_mlog($fh,$m);};
         }
     }
     
@@ -21293,10 +21326,47 @@ sub PopB4Merak {
 
 sub replaceLiterals {
     my ($fh,$str) = @_;
-    $$str =~ s/SESSIONID/$Con{$fh}->{msgtime} $Con{$fh}->{SessionID}/go;
-    $$str =~ s/MYNAME/$myName/go;
-    $$str =~ s/IPCONNECTED/$Con{$fh}->{ip}/go;
-    $$str =~ s/IPORIGIN/$Con{$fh}->{cip}/go;
+    return if ! ($fh && exists $Con{$fh});
+    my $this = $Con{$fh};
+    # call CorrectASSPcfg::custom_reply if it is defined - this sub may set $this->{skipLiterals} and/or $this->{skipReplyExplain} to rule the next lines of code
+    # if $this->{skipLiterals} is set, the removal of the literals NOEXPLAIN, FORCEXPLAIN, SESSIONID, MYNAME, IPCONNECTED and IPORIGIN has to be done by
+    # the sub custom_reply !!!
+    # the %noReplyExplain hash is set at startup and can be changed by CorrectASSPcfg::set
+    if ($CanUseCorrectASSPcfg && defined &CorrectASSPcfg::custom_reply && ! $this->{skipCustomReply}) {
+        my $reply = $$str;
+        eval{&CorrectASSPcfg::custom_reply($this,$str);};
+        if ($@) {
+            mlog($fh,"error: failed in call to CorrectASSPcfg::custom_reply, future calls in this connection are skipped from now - $@");
+            $$str = $reply;
+            delete $Con{$fh}->{skipLiterals};
+            delete $Con{$fh}->{skipReplyExplain};
+            $this->{skipCustomReply} = 1;
+        }
+    }
+    # add the explanation to each 5xx client reply line - there ca be more than one line !
+    if ($addErrorReplyExplanation && $this->{type} eq 'C' && ! $this->{skipReplyExplain}) {
+        my $crlf;
+        $crlf = $1 if $$str =~ s/([\r\n]+)$//o;
+        $$str = join("\r\n", map {
+                                   my $l = $_;
+                                   $l .= $addErrorReplyExplanation if ( $l =~ /^(5\d\d) /o && (! $noReplyExplain{$1} || $l =~ /FORCEEXPLAIN/o) && $l !~ /NOEXPLAIN/o);
+                                   $l;
+                                 } split(/\r?\n/o,$$str)
+                    ).$crlf;
+    }
+    if (! $this->{skipLiterals}) {
+        # remove the 'NOEXPLAIN' and 'FORCEEXPLAIN' literals if any of them is left over
+        $$str =~ s/ ?(?:NO|FORCE)EXPLAIN//go;
+
+        # replace the following literals
+        $$str =~ s/SESSIONID/$Con{$fh}->{msgtime} $Con{$fh}->{SessionID}/go;
+        $$str =~ s/MYNAME/$myName/go;
+        $$str =~ s/IPCONNECTED/$Con{$fh}->{ip}/go;
+        $$str =~ s/IPORIGIN/$Con{$fh}->{cip}/go;
+    }
+    # cleanup temp settings possibly made by CorrectASSPcfg::custom_reply
+    delete $Con{$fh}->{skipLiterals};
+    delete $Con{$fh}->{skipReplyExplain};
 }
 
 sub NoLoopSyswrite {
@@ -21322,10 +21392,9 @@ sub NoLoopSyswrite {
     
     if (   exists $Con{$fh}
         && $Con{$fh}->{type} eq 'C'       # is a client SMTP connection?
-        && ($replyLogging == 2 or ($replyLogging == 1 && $out =~ /^[45]/o))
-        && $out =~ /^(?:[1-5]\d\d\s+[$NOCRLF]+\r\n)+$/o)    # is a reply?
+        && $out =~ /^(?:[1-5]\d\d +[$NOCRLF]+\r\n)+$/o)    # is a reply?
     {
-        replaceLiterals($fh,\$out);
+        replaceLiterals($fh,\$out) if $out =~ /^[45]/o;
         my @reply = split(/(?:\r?\n)+/o,$out);
         for (@reply) {
             next unless $_;
@@ -21334,7 +21403,7 @@ sub NoLoopSyswrite {
                 $what = ($1 == 5) ? 'Error' : 'Status';
             }
             $out =~ s/NOTSPAMTAG/NotSpamTagGen($fh)/ge if $what eq 'Error';
-            mlog( $fh, "[SMTP $what] $_", 1, 1 );
+            mlog( $fh, "[SMTP $what] $_", 1, 1 ) if ($replyLogging == 2 or ($replyLogging == 1 && $out =~ /^[45]/o));
         }
     }
     $utf8off->(\$out);
@@ -22964,8 +23033,7 @@ sub sendque {
     d("sendque: $fh $Con{$fh}->{ip} l=$l");
 
     if (   $Con{$fh}->{type} eq 'C'       # is a client SMTP connection?
-        && ($replyLogging == 2 or ($replyLogging == 1 && $$outmessage =~ /^[45]/o))
-        && $$outmessage =~ /^[1-5]\d\d\s+[$NOCRLF]+\r\n$/o)    # is a reply?
+        && $$outmessage =~ /^[1-5]\d\d +[$NOCRLF]+\r\n$/o)    # is a reply?
     {
         my $what = 'Reply';
         replaceLiterals($fh,$outmessage);
@@ -22975,7 +23043,7 @@ sub sendque {
         $$outmessage =~ s/NOTSPAMTAG/NotSpamTagGen($fh)/ge if $what eq 'Error';
         my $reply = $$outmessage;
         $reply =~ s/\r?\n//o;
-        mlog( $fh, "[SMTP $what] $reply", 1, 1 );
+        mlog( $fh, "[SMTP $what] $reply", 1, 1 ) if ($replyLogging == 2 or ($replyLogging == 1 && $$outmessage =~ /^[45]/o));
     }
 
     &dopoll($fh,$writable,POLLOUT) unless exists $SMTPwriteFail{$fh};
@@ -24816,12 +24884,15 @@ sub resend_mail {
             next;
         }
         my $message;
+        $FMAIL->binmode;
         $FMAIL->read($message,fsize($file));
         $FMAIL->close;
         if (! length($message)) {
             mlog(0,"*x*(re)send - no content read from file $file") if $MaintenanceLog;
             next;
         }
+        $message =~ s/\r([^\n]|$)/\r\n$1/go;
+        $message =~ s/\r?\n/\r\n/go;
         $message =~ s/[\r?\n]\.[\r?\n]+(?:QUIT\r\n)?$/\r\n/so;
         my $MIMEfile = &encodeMimeWord($file);
 
@@ -26598,9 +26669,9 @@ sub getline {
 
         $this->{nocollect} ||= matchSL( $mf, 'noCollecting' );
 
-        if ($this->{mailfrom}=~/$BSRE/) {
+        if ($this->{mailfrom}=~/($BSRE)/) {
             $this->{prepend} = '[isbounce]';
-            mlog($fh,"bounce message detected");
+            mlog($fh,"bounce message detected by BounceSenders for '$1' in $this->{mailfrom}");
             $this->{isbounce}=1;
         }
 
@@ -27182,7 +27253,7 @@ sub getline {
                     $this->{backsctrdone} = $this->{msgidsigdone} = $this->{isbounce} = 1;
                     $this->{nodelay} = 'SRS bounce';
                     $this->{prepend} = '[isbounce]';
-                    mlog($fh,"bounce message detected");
+                    mlog($fh,"bounce message detected for SRS0");
                     $this->{prepend} = '';
                     if ($e =~ /$EmailAdrRe\@($EmailDomainRe)/io && ! localmail($1)) {
                         $foreignSRS = 1;   # our SRS was done for a foreign domain
@@ -27207,7 +27278,7 @@ sub getline {
                         $this->{backsctrdone} = $this->{msgidsigdone} = $this->{isbounce} = 1;
                         $this->{nodelay} = 'SRS bounce';
                         $this->{prepend} = '[isbounce]';
-                        mlog($fh,"bounce message detected");
+                        mlog($fh,"bounce message detected for SRS1");
                         $this->{prepend} = '';
                         if ($e =~ /$EmailAdrRe\@($EmailDomainRe)/io && ! localmail($1)) {
                             $foreignSRS = 1;  # our SRS was done for a foreign domain
@@ -27225,7 +27296,7 @@ sub getline {
                             $this->{backsctrdone} = $this->{msgidsigdone} = $this->{isbounce} = 1;
                             $this->{nodelay} = 'SRS bounce';
                             $this->{prepend} = '[isbounce]';
-                            mlog($fh,"bounce message detected");
+                            mlog($fh,"bounce message detected for SRS01");
                             $this->{prepend} = '';
                             if ($e =~ /$EmailAdrRe\@($EmailDomainRe)/io && ! localmail($1)) {
                                 $foreignSRS = 1;  # our SRS was done for a foreign domain
@@ -39709,7 +39780,10 @@ sub reply {
 
     $l = decodeMimeWords2UTF8($l) if ($l =~ /=\?[^\?]+\?[qb]\?[^\?]*\?=/io);
 
-    eval{&CorrectASSPcfg::translateReply($this,\$l);} if $CanUseCorrectASSPcfg && defined &{'CorrectASSPcfg::translateReply'};
+    if ($CanUseCorrectASSPcfg && defined &{'CorrectASSPcfg::translateReply'}) {
+        eval{&CorrectASSPcfg::translateReply($this,\$l);};
+        mlog(0,"error: failed in call to CorrectASSPcfg::translateReply - $@") if $@;
+    }
 
     $Con{$cli}->{inerror} = ($l=~/^5[05][0-9]/o);
     $Con{$cli}->{intemperror} = ($l=~/^4\d{2}/o);
@@ -43054,6 +43128,7 @@ sub BlockReasonsGet {
     my $fromRe;
     my %exceptRe;
     my $prot =  $enableWebAdminSSL && $CanUseIOSocketSSL? 'https' : 'http';
+    my $targetblank = $TargetBlank->{'BlockReport'};
     my $host = $BlockReportHTTPName ? $BlockReportHTTPName : $localhostname ? $localhostname : 'please_define_BlockReportHTTPName';
     my @webAdminPort = map {my $t = $_; $t =~ s/\s//go; $t;} split(/\s*\|\s*/o,$webAdminPort);
     my $webAdminPort;
@@ -43507,19 +43582,19 @@ WHITCHWORKER
                 }
                 if ( $inclResendLink == 2 or $inclResendLink == 3 ) {
                     $line =~
-s/($gooddays)($timeformat)/<span class="date"><a href="$prot:\/\/$host:$webAdminPort\/edit?file=$filename&note=m&showlogout=1" target="_blank" title="open this mail in the assp fileeditor">$1$2<\/a><\/span>/ if $is_admin;
+s/($gooddays)($timeformat)/<span class="date"><a href="$prot:\/\/$host:$webAdminPort\/edit?file=$filename&note=m&showlogout=1"$targetblank title="open this mail in the assp fileeditor">$1$2<\/a><\/span>/ if $is_admin;
                     $line =~
-s/(\[OIP: )?($IPRe)(\])?/my($p1,$e,$p2)=($1,$2,$3);($e!~$IPprivate)?"<span name=\"tohid\" class=\"ip\"><a href=\"$prot:\/\/$host:$webAdminPort\/ipaction?ip=$e\&showlogout=1\" target=\"_blank\" title=\"take an action via web on ip $e\">$p1$e$p2<\/a><\/span>":"<span name=\"tohid\">$p1$e$p2<\/span>";/goe if $is_admin;
+s/(\[OIP: )?($IPRe)(\])?/my($p1,$e,$p2)=($1,$2,$3);($e!~$IPprivate)?"<span name=\"tohid\" class=\"ip\"><a href=\"$prot:\/\/$host:$webAdminPort\/ipaction?ip=$e\&showlogout=1\"$targetblank title=\"take an action via web on ip $e\">$p1$e$p2<\/a><\/span>":"<span name=\"tohid\">$p1$e$p2<\/span>";/goe if $is_admin;
                     $line =~
-s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockReportDomain\?subject=add\%20to\%20whitelist&body=$1\%0D\%0A" title="add this email address to whitelist" target="_blank">$1<\/a>/go
+s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockReportDomain\?subject=add\%20to\%20whitelist&body=$1\%0D\%0A" title="add this email address to whitelist"$targetblank>$1<\/a>/go
                       if (! $faddress && ! $is_admin);
                     $line =~
-s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockReportDomain\?subject=add\%20to\%20whitelist&body=$1\%0D\%0A" title="add this email address to whitelist" target="_blank">$1<\/a>&nbsp;<a href="$prot:\/\/$host:$webAdminPort\/addraction?address=$1&showlogout=1" target="_blank" title="take an action via web on address $1">\@<\/a>/go
+s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockReportDomain\?subject=add\%20to\%20whitelist&body=$1\%0D\%0A" title="add this email address to whitelist"$targetblank>$1<\/a>&nbsp;<a href="$prot:\/\/$host:$webAdminPort\/addraction?address=$1&showlogout=1"$targetblank title="take an action via web on address $1">\@<\/a>/go
                       if (! $faddress && $is_admin);
                     $line =~ s/\[spam found\](\s*\(.*?\))( \Q$subjectStart\E)/<span name="tohid"><br \/><span class="spam">spam reason: <\/span>$1<\/span>$2/;
                     $line =~ s/($SpamTagRE|\[(?:TLS-(?:in|out)|SSL-(?:in|out)|PersonalBlack)\])/<span name="tohid">$1<\/span>/gio;
-                    my $leftbut = '<a href="mailto:'.$EmailBlockReport.$EmailBlockReportDomain.'?subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$myName.'&body=%23%23%23'.$filename.'%23%23%23'.$addWhiteHint.$addFileHint.$addScanHint.'%0D%0A" class="reqlink" target="_blank" title="request ASSP on '.$myName.' to resend this blocked email"><img src=cid:1000 alt="request ASSP on '.$myName.' to resend this blocked email" /> Resend </a>';
-                    my $rightbut = '<a href="mailto:'.$ofilename.$EmailBlockReportDomain.'?&subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$myName.'" class="reqlink" target="_blank" title="request ASSP on '.$myName.' to resend this blocked email"><img src=cid:1000 alt="request ASSP on '.$myName.' to resend this blocked email" /> Resend </a>';
+                    my $leftbut = '<a href="mailto:'.$EmailBlockReport.$EmailBlockReportDomain.'?subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$myName.'&body=%23%23%23'.$filename.'%23%23%23'.$addWhiteHint.$addFileHint.$addScanHint.'%0D%0A" class="reqlink"'.$targetblank.' title="request ASSP on '.$myName.' to resend this blocked email"><img src=cid:1000 alt="request ASSP on '.$myName.' to resend this blocked email" /> Resend </a>';
+                    my $rightbut = '<a href="mailto:'.$ofilename.$EmailBlockReportDomain.'?&subject=request%20ASSP%20to%20resend%20blocked%20mail%20from%20ASSP-host%20'.$myName.'" class="reqlink"'.$targetblank.' title="request ASSP on '.$myName.' to resend this blocked email"><img src=cid:1000 alt="request ASSP on '.$myName.' to resend this blocked email" /> Resend </a>';
                     my $checkaddress = $receipient ? $receipient : $address;
 
                     # which resendlink should be removed - all or left or right
@@ -43537,12 +43612,12 @@ s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockRep
                     $line =~ s/\[spam found\](\s*\(.*?\))( \Q$subjectStart\E)/<span name="tohid"><br \/><span class="spam">spam reason: <\/span>$1<\/span>$2/;
                     $line =~ s/($SpamTagRE|\[(?:TLS-(?:in|out)|SSL-(?:in|out)|PersonalBlack)\])/<span name="tohid">$1<\/span>/gio;
                     $line =~
-s/(\[OIP: )?($IPRe)(\])?/my($p1,$e,$p2)=($1,$2,$3);($e!~$IPprivate)?"<span name=\"tohid\" class=\"ip\"><a href=\"$prot:\/\/$host:$webAdminPort\/ipaction?ip=$e\&showlogout=1\" target=\"_blank\" title=\"take an action via web on ip $e\">$p1$e$p2<\/a><\/span>":"<span name=\"tohid\">$p1$e$p2<\/span>";/goe if $is_admin;
+s/(\[OIP: )?($IPRe)(\])?/my($p1,$e,$p2)=($1,$2,$3);($e!~$IPprivate)?"<span name=\"tohid\" class=\"ip\"><a href=\"$prot:\/\/$host:$webAdminPort\/ipaction?ip=$e\&showlogout=1\"$targetblank title=\"take an action via web on ip $e\">$p1$e$p2<\/a><\/span>":"<span name=\"tohid\">$p1$e$p2<\/span>";/goe if $is_admin;
                     $line =~
-s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockReportDomain\?subject=add\%20to\%20whitelist&body=$1\%0D\%0A" title="add this email address to whitelist" target="_blank">$1<\/a>/go
+s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockReportDomain\?subject=add\%20to\%20whitelist&body=$1\%0D\%0A" title="add this email address to whitelist"$targetblank>$1<\/a>/go
                       if (! $faddress && ! $is_admin);
                     $line =~
-s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockReportDomain\?subject=add\%20to\%20whitelist&body=$1\%0D\%0A" title="add this email address to whitelist" target="_blank">$1<\/a>&nbsp;<a href="$prot:\/\/$host:$webAdminPort\/addraction?address=$1&showlogout=1" target="_blank" title="take an action via web on address $1">\@<\/a>/go
+s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockReportDomain\?subject=add\%20to\%20whitelist&body=$1\%0D\%0A" title="add this email address to whitelist"$targetblank>$1<\/a>&nbsp;<a href="$prot:\/\/$host:$webAdminPort\/addraction?address=$1&showlogout=1"$targetblank title="take an action via web on address $1">\@<\/a>/go
                       if (! $faddress && $is_admin);
                     $line =~ s/^(.+\)\s*)(\Q$subjectStart\E.+?\Q$subjectEnd\E.*)$/$1<br\/><strong>$2<\/strong>/ unless $faddress;
                     $line =~ s/(.*)/\n<tr$bgcolor>\n<td class="leftlink">&nbsp;<img src=cid:1000 style="display: none;" \/>\n<\/td>\n<td class="inner">$1\n<\/td>\n<td class="rightlink">&nbsp;<img src=cid:1000 style="display: none;" \/>\n<\/td>\n<\/tr>/o;
@@ -43553,12 +43628,12 @@ s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockRep
                 $line =~ s/\[spam found\](\s*\(.*?\))( \Q$subjectStart\E)/<span name="tohid"><br \/><span class="spam">spam reason: <\/span>$1<\/span>$2/;
                 $line =~ s/($SpamTagRE|\[(?:TLS-(?:in|out)|SSL-(?:in|out)|PersonalBlack)\])/<span name="tohid">$1<\/span>/gio;
                 $line =~
-s/(\[OIP: )?($IPRe)(\])?/my($p1,$e,$p2)=($1,$2,$3);($e!~$IPprivate)?"<span name=\"tohid\" class=\"ip\"><a href=\"$prot:\/\/$host:$webAdminPort\/ipaction?ip=$e\&showlogout=1\" target=\"_blank\" title=\"take an action via web on ip $e\">$p1$e$p2<\/a><\/span>":"<span name=\"tohid\">$p1$e$p2<\/span>";/goe if $is_admin;
+s/(\[OIP: )?($IPRe)(\])?/my($p1,$e,$p2)=($1,$2,$3);($e!~$IPprivate)?"<span name=\"tohid\" class=\"ip\"><a href=\"$prot:\/\/$host:$webAdminPort\/ipaction?ip=$e\&showlogout=1\"$targetblank title=\"take an action via web on ip $e\">$p1$e$p2<\/a><\/span>":"<span name=\"tohid\">$p1$e$p2<\/span>";/goe if $is_admin;
                 $line =~
-s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockReportDomain\?subject=add\%20to\%20whitelist&body=$1\%0D\%0A" title="add this email address to whitelist" target="_blank">$1<\/a>/go
+s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockReportDomain\?subject=add\%20to\%20whitelist&body=$1\%0D\%0A" title="add this email address to whitelist"$targetblank>$1<\/a>/go
                   if (! $faddress && ! $is_admin);
                 $line =~
-s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockReportDomain\?subject=add\%20to\%20whitelist&body=$1\%0D\%0A" title="add this email address to whitelist" target="_blank">$1<\/a>&nbsp;<a href="$prot:\/\/$host:$webAdminPort\/addraction?address=$1&showlogout=1" target="_blank" title="take an action via web on address $1">\@<\/a>/go
+s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockReportDomain\?subject=add\%20to\%20whitelist&body=$1\%0D\%0A" title="add this email address to whitelist"$targetblank>$1<\/a>&nbsp;<a href="$prot:\/\/$host:$webAdminPort\/addraction?address=$1&showlogout=1"$targetblank title="take an action via web on address $1">\@<\/a>/go
                   if (! $faddress && $is_admin);
                 $line =~ s/^(.+\)\s*)(\Q$subjectStart\E.+?\Q$subjectEnd\E.*)$/$1<br\/><strong>$2<\/strong>/ unless $faddress;
                 $line =~ s/(.*)/\n<tr$bgcolor>\n<td class="leftlink">&nbsp;\n<\/td>\n<td class="inner">$1\n<\/td>\n<td class="rightlink">&nbsp;\n<\/td>\n<\/tr>/o;
@@ -43614,8 +43689,8 @@ EOT2
     if ($DoT10Stat && $isadmin == 1) {
         ($t10html,$t10text) = T10StatOut();
         my $ire = qr/^(?:$IPRe|[\d\.]+)$/o;
-        $t10html =~ s/((?:$EmailAdrRe\@)?$EmailDomainRe)/my$e=$1;($e!~$ire)?"<a href=\"$prot:\/\/$host:$webAdminPort\/addraction?address=$e\&showlogout=1\" target=\"_blank\" title=\"take an action via web on address $e\">$e<\/a>":$e/goe;
-        $t10html =~ s/($IPRe)/my$e=$1;($e!~$IPprivate)?"<a href=\"$prot:\/\/$host:$webAdminPort\/ipaction?ip=$e\&showlogout=1\" target=\"_blank\" title=\"take an action via web on ip $e\">$e<\/a>":$e;/goe;
+        $t10html =~ s/((?:$EmailAdrRe\@)?$EmailDomainRe)/my$e=$1;($e!~$ire)?"<a href=\"$prot:\/\/$host:$webAdminPort\/addraction?address=$e\&showlogout=1\"$targetblank title=\"take an action via web on address $e\">$e<\/a>":$e/goe;
+        $t10html =~ s/($IPRe)/my$e=$1;($e!~$IPprivate)?"<a href=\"$prot:\/\/$host:$webAdminPort\/ipaction?ip=$e\&showlogout=1\"$targetblank title=\"take an action via web on ip $e\">$e<\/a>":$e;/goe;
     }
     if (   matchSL( $this->{mailfrom}, 'EmailAdmins', 1 )
         or matchSL( $this->{mailfrom}, 'BlockReportAdmins', 1 )
@@ -48732,7 +48807,7 @@ sub maillogFilename {
         $sub = d8($sub);
         $sub =~ s/[^a-zA-Z0-9]/_/go if (! ($UseUnicode4MaillogNames && $canUnicode));
         $sub =~ s/^\P{IsAlnum}+/_/go;
-        $sub =~ s/[\^\s\<\>\?\"\'\:\|\\\/\*\&\.]|\p{Currency_Symbol}/_/igo;  # remove not allowed characters and spaces from file name
+        $sub =~ s/[\^\s\<\>\?\"\'\:\|\\\/\*\&\.\+]|\p{Currency_Symbol}/_/igo;  # remove not allowed characters and spaces from file name
         $sub =~s/\.{2,}/./go;
         $sub =~s/_{2,}/_/go;
         $sub =~s/[ _\.]+$//o;
@@ -51333,10 +51408,10 @@ sub ConfigStats {
 
  $currStat = &StatusASSP();
  my $currStatus = ($currStat =~ /not healthy/io)
-   ? '<a href="./statusassp" target="blank" onmouseover="showhint(\'<table BORDER CELLSPACING=0 CELLPADDING=4 WIDTH=\\\'100%\\\'><tr><td>ASSP '.$version.$modversion.($codename?" ( code name $codename )":'').' is running not healthy! Click to show the current detail thread status.</td></tr></table>\', this, event, \'450px\', \'\'); return true;"><b><font color=\'red\'>&bull;</font></b></a>'
+   ? '<a href="./statusassp" target="_blank" onmouseover="showhint(\'<table BORDER CELLSPACING=0 CELLPADDING=4 WIDTH=\\\'100%\\\'><tr><td>ASSP '.$version.$modversion.($codename?" ( code name $codename )":'').' is running not healthy! Click to show the current detail thread status.</td></tr></table>\', this, event, \'450px\', \'\'); return true;"><b><font color=\'red\'>&bull;</font></b></a>'
    : (scalar(keys(%Recommends)) && (time - $seenRecommends > 3600))
-      ? '<a href="./statusassp" target="blank" onmouseover="showhint(\'<table BORDER CELLSPACING=0 CELLPADDING=4 WIDTH=\\\'100%\\\'><tr><td>ASSP '.$version.$modversion.($codename?" ( code name $codename )":'').' is running healthy, but there are recommendations! Click to show the current detail thread status.</td></tr></table>\', this, event, \'450px\', \'\'); return true;"><font color=#FFFF00>&bull;</font></a>'
-      : '<a href="./statusassp" target="blank" onmouseover="showhint(\'<table BORDER CELLSPACING=0 CELLPADDING=4 WIDTH=\\\'100%\\\'><tr><td>ASSP '.$version.$modversion.($codename?" ( code name $codename )":'').' is running healthy. Click to show the current detail thread status.</td></tr></table>\', this, event, \'450px\', \'\'); return true;"><font color=#66CC66>&bull;</font></a>';
+      ? '<a href="./statusassp" target="_blank" onmouseover="showhint(\'<table BORDER CELLSPACING=0 CELLPADDING=4 WIDTH=\\\'100%\\\'><tr><td>ASSP '.$version.$modversion.($codename?" ( code name $codename )":'').' is running healthy, but there are recommendations! Click to show the current detail thread status.</td></tr></table>\', this, event, \'450px\', \'\'); return true;"><font color=#FFFF00>&bull;</font></a>'
+      : '<a href="./statusassp" target="_blank" onmouseover="showhint(\'<table BORDER CELLSPACING=0 CELLPADDING=4 WIDTH=\\\'100%\\\'><tr><td>ASSP '.$version.$modversion.($codename?" ( code name $codename )":'').' is running healthy. Click to show the current detail thread status.</td></tr></table>\', this, event, \'450px\', \'\'); return true;"><font color=#66CC66>&bull;</font></a>';
 
  my $currAvgDamp = ($Stats{damping} && $DoDamping) ? sprintf("(%.2f%% avg of accepted connections)",($Stats{damping} / ($Stats{smtpConn} ? $Stats{smtpConn} : 1)) * 100) : '';
  my $allAvgDamp  = ($AllStats{smtpConn} && $DoDamping) ? sprintf("(%.2f%% avg of accepted connections)",($AllStats{damping} / ($AllStats{smtpConn} ? $AllStats{smtpConn} : 1)) * 100) : '';
@@ -58724,10 +58799,10 @@ $cidr = $WebIP{$ActWebSess}->{lng}->{'msg500016'} || $lngmsg{'msg500016'} if $Ca
 
 $currStat = &StatusASSP();
 my $currStatus = ($currStat =~ /not healthy/io)
-   ? '<a href="./statusassp" target="blank" onmouseover="showhint(\'<table BORDER CELLSPACING=0 CELLPADDING=4 WIDTH=\\\'100%\\\'><tr><td>ASSP '.$version.$modversion.($codename?" ( code name $codename )":'').' is running not healthy! Click to show the current detail thread status.</td></tr></table>\', this, event, \'450px\', \'\'); return true;"><b><font color=\'red\'>&bull;</font></b></a>'
+   ? '<a href="./statusassp" target="_blank" onmouseover="showhint(\'<table BORDER CELLSPACING=0 CELLPADDING=4 WIDTH=\\\'100%\\\'><tr><td>ASSP '.$version.$modversion.($codename?" ( code name $codename )":'').' is running not healthy! Click to show the current detail thread status.</td></tr></table>\', this, event, \'450px\', \'\'); return true;"><b><font color=\'red\'>&bull;</font></b></a>'
    : (scalar(keys(%Recommends)) && (time - $seenRecommends > 3600))
-      ? '<a href="./statusassp" target="blank" onmouseover="showhint(\'<table BORDER CELLSPACING=0 CELLPADDING=4 WIDTH=\\\'100%\\\'><tr><td>ASSP '.$version.$modversion.($codename?" ( code name $codename )":'').' is running healthy, but there are recommendations! Click to show the current detail thread status.</td></tr></table>\', this, event, \'450px\', \'\'); return true;"><font color=#FFFF00>&bull;</font></a>'
-      : '<a href="./statusassp" target="blank" onmouseover="showhint(\'<table BORDER CELLSPACING=0 CELLPADDING=4 WIDTH=\\\'100%\\\'><tr><td>ASSP '.$version.$modversion.($codename?" ( code name $codename )":'').' is running healthy. Click to show the current detail thread status.</td></tr></table>\', this, event, \'450px\', \'\'); return true;"><font color=#66CC66>&bull;</font></a>';
+      ? '<a href="./statusassp" target="_blank" onmouseover="showhint(\'<table BORDER CELLSPACING=0 CELLPADDING=4 WIDTH=\\\'100%\\\'><tr><td>ASSP '.$version.$modversion.($codename?" ( code name $codename )":'').' is running healthy, but there are recommendations! Click to show the current detail thread status.</td></tr></table>\', this, event, \'450px\', \'\'); return true;"><font color=#FFFF00>&bull;</font></a>'
+      : '<a href="./statusassp" target="_blank" onmouseover="showhint(\'<table BORDER CELLSPACING=0 CELLPADDING=4 WIDTH=\\\'100%\\\'><tr><td>ASSP '.$version.$modversion.($codename?" ( code name $codename )":'').' is running healthy. Click to show the current detail thread status.</td></tr></table>\', this, event, \'450px\', \'\'); return true;"><font color=#66CC66>&bull;</font></a>';
 
  my $lFoptions = "<option value=\"default\">default</option>";
  my @DIR = Glob("$base/language/*");
@@ -71961,7 +72036,7 @@ sub getBestWorker {
         &ThreadMonitorMainLoop('MainThread list possible workers');
         if( $worker == 0) {           # there was no accessable worker
             mlog(0,"info: unable to detect any running worker for a new connection - wait (max $ConnectionTransferTimeOut seconds)") unless $error_was_logged & 1;
-            $error_was_logged &= 1;
+            $error_was_logged |= 1;
             &MainLoop2();             # keep the GUI running
             if (time - $trytime > $ConnectionTransferTimeOut) {   # the connection transfer timeout is reached
                 &ThreadYield();
@@ -72016,7 +72091,7 @@ sub getBestWorker {
             &ThreadYield();
         }
         mlog(0,"info: $WorkerName is unable to interrupt any worker for new connection - wait for available worker (max $ConnectionTransferTimeOut seconds)") if ($WorkerLog >= 2 && $error_was_logged & 2);
-        $error_was_logged &= 2;
+        $error_was_logged |= 2;
         $worker = 0;
         &MainLoop2();        # keep the GUI running
         if (time - $trytime > $ConnectionTransferTimeOut) {    # the connection transfer timeout is reached

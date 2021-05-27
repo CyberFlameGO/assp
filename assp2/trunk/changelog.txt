@@ -1,3 +1,59 @@
+2021-05-27
+fixed in assp 2.6.6 *SPAM-Evaporator* build 21147:
+
+- All links in Blockreports are containing the HTML directive 'target="_blank"' to open the link in a new window.
+  This causes problems in some Web-Mail-Clients to provide the resend request mail.
+  The hidden variable 
+
+our $TargetBlank = {                     # where to include 'target="_blank"' in to HTML links - set the value to '' if 'target="_blank"' makes problems
+    'BlockReport' => ' target="_blank"'  # BlockReports in WebMail-Clients like thunderbird, Roundcube Webmail and possibly others will need to set this to '' to make the resendlinks working
+};
+
+  can be used, to skip this directive in the links.
+  
+  Another possible solution is to remove the directive from the html part using lib/BlockReport/modify.pm by adding the following
+  line to the %toReplace hash in sub modify - like:
+
+&makeRe('target=3D"_blank"') =>  '', 
+
+
+- IPv6 addresses were not reported correctly to the Griplist-Server and because of this, these addresses were not provided by griplist downloads.
+
+- If database drivers others than 'mysql' or 'MariaDB' were used, assp warned about the missing driver function '_async_check'.
+  The warning is no longer logged in this case.
+
+- Resent mails were sometimes rejected by local MTA's, if assp is running on nix systems. This was caused by wrong line endings ([LF] only)
+  in the resent mails, which were not corrected by assp.
+
+
+changed:
+
+- '+' signs in mail subjects caused problems in Blockreports in Web-Mail-Clients. The file name of the file to resend was wrong parsed
+  and the '+' signs were replaced by spaces. Because of this, assp was unable to find the file in the filesystem.
+  '+' signs are no longer used in (eml) file names to prevent this.
+
+
+added:
+
+'addErrorReplyExplanation','Add an Error-Reply-Explanation'
+'The text defined here will be added to every permanent SMTP-error-reply (starting with 5xx - except 500, 501, 502, 503, 504, 521, 534, 535, 538).
+ For example to add a web link, where blocking reasons are explained.
+e.g.:
+- error explanations at https://your.web.domain/block-reasons
+or
+- error explanations at https://your.web.domain/block-reasons?session=SESSIONID&amp;ip=IPCONNECTED
+
+The text (and possibly a clickable link) will become visible to blocked senders in the NDR (No Delivery Report) of the blocked mail.
+In the second example the assp session-id and the connected IP-address are part of the link. The web server can extract the log entries
+for the mail from the maillog.txt and can explain much better and/or check the database for the IP reputation and ... and ...  .
+If you want to skip this addition for any configurable SMTP-reply, write the literal NOEXPLAIN at the end of the configured SMTP-reply definition.
+To force the addition for any of the above shown exceptions, add the literal FORCEEXPLAIN to the reply definition.
+Both literals will be removed from the reply before it is sent.
+For example, to skip the addition in SpamError: 554 5.7.1 Mail appears to be unsolicited -- send error reports to postmaster@LOCALDOMAIN NOEXPLAIN
+Keep in mind, that the maximum length of a complete SMTP reply line should not exceed 512 byte (XXX text [CR][LF])
+
+
+
 2021-04-12
 fixed in assp 2.6.6 *SPAM-Evaporator* build 21102:
 
