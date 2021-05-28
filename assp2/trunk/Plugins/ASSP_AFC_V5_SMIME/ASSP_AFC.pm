@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.29 2021/01/26 15:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.31 2021/03/18 12:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -137,40 +137,37 @@ sub validateModule {
 }
 
 BEGIN {
-  $main::ModuleList{'Archive::Zip'} = '/1.59';
-  $main::ModuleList{'Archive::Extract'} = '/0.80';
-  $main::ModuleList{'Archive::Rar::Passthrough'} = '/2.00';
-  $main::ModuleList{'Archive::Libarchive::XS'} = '/0.09';
-  $main::ModuleList{'Archive::Libarchive::XS(libarchive-version)'} = '/3.3.1';
-  $main::ModuleList{'File::Type'} = '/0.22';
+    $main::ModuleList{'Archive::Zip'} = '/1.59';
+    $main::ModuleList{'Archive::Extract'} = '/0.80';
+    $main::ModuleList{'Archive::Rar::Passthrough'} = '/2.00';
+    $main::ModuleList{'Archive::Libarchive::XS'} = '/0.09';
+    $main::ModuleList{'Archive::Libarchive::XS(libarchive-version)'} = '/3.3.1';
+    $main::ModuleList{'File::Type'} = '/0.22';
 
-  $z7zRe  = '7z|7zip|AR|ARJ|BZ2|BZIP2|CAB|CHM|CPIO|CramFS|';
-  $z7zRe .= 'DMG|EAR|EXT|FAT|GPT|GZIP|GZ|HFS|IHEX|ISO|JAR|';
-  $z7zRe .= 'LBR|LHA|LRZ|LZ|LZ4|LZH|LZMA|LZR|';
-  $z7zRe .= 'MBR|MSI|NSIS|NTFS|';
-  $z7zRe .= 'PAR|QCOW2|RAR|RPM|SquashFS|';
-  $z7zRe .= 'TAR|TBZ|TBZ2|UDF|UEFI|';
-  $z7zRe .= 'VDI|VHD|VMDK|WAR|WIM|XAR|Z|ZIP';
+    $z7zRe  = '7z|7zip|AR|ARJ|BZ2|BZIP2|CAB|CHM|CPIO|CramFS|';
+    $z7zRe .= 'DMG|EAR|EXT|FAT|GPT|GZIP|GZ|HFS|IHEX|ISO|JAR|';
+    $z7zRe .= 'LBR|LHA|LRZ|LZ|LZ4|LZH|LZMA|LZR|';
+    $z7zRe .= 'MBR|MSI|NSIS|NTFS|';
+    $z7zRe .= 'PAR|QCOW2|RAR|RPM|SquashFS|';
+    $z7zRe .= 'TAR|TBZ|TBZ2|UDF|UEFI|';
+    $z7zRe .= 'VDI|VHD|VMDK|WAR|WIM|XAR|Z|ZIP';
 
-  $LibArchRe  = '7z|7zip|AR|ARJ|BZ2|BZIP2|CPIO|';
-  $LibArchRe .= 'EAR|EXT|GZIP|GZ|IHEX|ISO|JAR|';
-  $LibArchRe .= 'LBR|LHA|LRZ|LZ|LZ4|LZH|LZMA|LZR|';
-  $LibArchRe .= 'NSIS|';
-  $LibArchRe .= 'PAR|PAX|QCOW2|RAR|RPM|SquashFS|';
-  $LibArchRe .= 'TAR|TBZ|TBZ2|UDF|';
-  $LibArchRe .= 'WAR|XAR|Z|ZIP';
+    $LibArchRe  = '7z|7zip|AR|ARJ|BZ2|BZIP2|CPIO|';
+    $LibArchRe .= 'EAR|EXT|GZIP|GZ|IHEX|ISO|JAR|';
+    $LibArchRe .= 'LBR|LHA|LRZ|LZ|LZ4|LZH|LZMA|LZR|';
+    $LibArchRe .= 'NSIS|';
+    $LibArchRe .= 'PAR|PAX|QCOW2|RAR|RPM|SquashFS|';
+    $LibArchRe .= 'TAR|TBZ|TBZ2|UDF|';
+    $LibArchRe .= 'WAR|XAR|Z|ZIP';
 
-  $CanSHA = validateModule('Digest::SHA()') ? Digest::SHA->VERSION : undef;
-  $CanCAMPDF = validateModule('CAM::PDF()') ? CAM::PDF->VERSION : undef;
-  $CanOLE = validateModule('OLE::Storage_Lite()') ? OLE::Storage_Lite->VERSION : undef;
-  $CanEOM = validateModule('Email::Outlook::Message()') ? Email::Outlook::Message->VERSION : undef;
-  
-  $CanVT = validateModule('ASSP_VirusTotal_API()') ? ASSP_VirusTotal_API->VERSION : undef;
+    $CanSHA = validateModule('Digest::SHA()') ? Digest::SHA->VERSION : undef;
+    $CanCAMPDF = validateModule('CAM::PDF()') ? CAM::PDF->VERSION : undef;
+    $CanOLE = validateModule('OLE::Storage_Lite()') ? OLE::Storage_Lite->VERSION : undef;
+    $CanEOM = validateModule('Email::Outlook::Message()') ? Email::Outlook::Message->VERSION : undef;
 
-  $CanSMIME = (validateModule('Crypt::SMIME()') + validateModule('Net::SSLeay()') == 2) ? Crypt::SMIME->VERSION : undef;
+    $CanVT = validateModule('ASSP_VirusTotal_API()') ? ASSP_VirusTotal_API->VERSION : undef;
 
-  if ($CanFileType = validateModule('File::Type()') + validateModule('MIME::Types()') == 2 ) {
-    $main::ModuleList{'File::Type'} = File::Type->VERSION.'/0.22';
+    $CanSMIME = (validateModule('Crypt::SMIME()') + validateModule('Net::SSLeay()') == 2) ? Crypt::SMIME->VERSION : undef;
 
     $CanZIPCheck = validateModule('Archive::Zip()') + validateModule('Archive::Extract()') == 2;
     if ($CanZIPCheck) {
@@ -230,7 +227,7 @@ BEGIN {
         $LibArchVer =~ s/(\d+)(\d{3})(\d{3})$/$1.$2.$3/o;
         $LibArchVer =~ s/\.0{1,2}/./go;
         $CanLACheck = 1;
-        $formatsRe = $LibArchRe;
+        $formatsRe = $LibArchRe if $formatsRe ne $z7zRe;
         $main::ModuleList{'Archive::Libarchive::XS'} = Archive::Libarchive::XS->VERSION.'/0.09';
         $main::ModuleList{'Archive::Libarchive::XS(libarchive-version)'} = $LibArchVer.'/3.3.1';
     } else {          # set dummy constants in case Archive::Libarchive::XS is not available
@@ -249,7 +246,6 @@ BEGIN {
                 ARCHIVE_EXTRACT_SECURE_NOABSOLUTEPATHS
                 ARCHIVE_EXTRACT_SECURE_NODOTDOT
                 ARCHIVE_EXTRACT_SECURE_SYMLINKS
-
                 )
             )
         {
@@ -257,8 +253,17 @@ BEGIN {
             print "$@\n" if $@;
         }
     }
-  }
-  if ($^C) {print "WARNING in Plugins/ASSP_AFC.pm:\n$LoadError{$_}\n" for (keys(%LoadError));}
+
+    if ($CanFileType = validateModule('File::Type()') + validateModule('MIME::Types()') == 2 ) {
+        $main::ModuleList{'File::Type'} = File::Type->VERSION.'/0.22';
+    } else {
+        $CanZIPCheck = undef;
+        $CanRARCheck = undef;
+        $Can7zCheck = undef;
+        $CanLACheck = undef;
+    }
+
+    if ($^C) {print "WARNING in Plugins/ASSP_AFC.pm:\n$LoadError{$_}\n" for (keys(%LoadError));}
 }
 
 our $old_CheckAttachments;
@@ -271,7 +276,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.29 2021/01/26 15:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.31 2021/03/18 12:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -3520,6 +3525,11 @@ sub getPDFSum {
    return 0 if ! $self->{KnownGoodEXE};
 
    my $doc = eval{ CAM::PDF->new((ref($pdf) ? $$pdf : $pdf) , {'prompt_for_password' => 0, 'fault_tolerant' => 1}) } || return 0;
+
+#   if ($doc->{trailer}->{Encrypt}) {
+#        push @{$self->{isEncrypt}}, $self->{attname};
+#        mlog($self->{this}->{self},"info: encrypted content found in PDF") if $main::AttachmentLog > 1;
+#   }
 
    my $attachname = $self->{showattname} . ($self->{attname} ? " : $self->{attname}" : '');
 
