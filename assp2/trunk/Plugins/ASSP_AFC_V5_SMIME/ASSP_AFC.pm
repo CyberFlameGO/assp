@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.31 2021/03/18 12:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.32 2021/06/12 11:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -73,7 +73,7 @@ our $VBAcheck = 1;     # enable(1)/disable(0) the executable VBA script check
 
 our %libarchiveFatal = (                   # if these FATAL values are returned by libachive, try to use the next decompression engine instead detecting a wrong attachment
 -30 => 'Unrecognized archive format|can\'t set extraction path for entry',      # first the error number
--25 => 'Unsupported.+?method'              # second a regex for the error text
+-25 => 'Unsupported'                                                            # second a regex for the error text
 );
 
 our %libarchiveWarn = (                    # if these WARN values are returned by libachive, try to use the next decompression engine instead detecting a wrong attachment
@@ -276,7 +276,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.31 2021/03/18 12:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.32 2021/06/12 11:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
