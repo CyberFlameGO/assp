@@ -1,3 +1,22 @@
+2021-06-16
+fixed in assp 2.6.6 *SPAM-Evaporator* build 21167:
+
+- Downloaded Griplist-IPv6 addresses were not correctly merged in to the local griplist.
+- Under certain conditions the local griplist was cleared at startup, which caused a full download of the griplist.
+- The BerkeleyDB engine has shown errors, even there was no BerkeleyDB-Error condition.
+- Gripvalues were not shown (or not correcty shown) in the analyzer
+- Blockreports initiated by an admin or schedule and send to a regular user unexpected contained links to open the blocked mail in the assp GUI.
+- If 'ispgripvalue' was cleaned (set to empty), there was no related calculated value (x) in the Griplist available.
+
+changed:
+
+- IPBlocking and IPExtremeBlocking are now separated checks - but there are no functional changes.
+- If SessionLog or ConnectionLog are set to at least verbose and a check is skipped for a mail, this is now shown in the maillog.txt.
+
+- ASSP_AFC.pm version 5.32 improves the detection of error conditions in libarchive (fatalerror -25), where an archive entry can't be extracted because of required but
+  unsupported extraction methodes. 
+
+
 2021-05-27
 fixed in assp 2.6.6 *SPAM-Evaporator* build 21147:
 

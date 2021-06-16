@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.6';
-$build   = '21147';        # 27.05.2021 TE
+$build   = '21167';        # 16.06.2021 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.034999';
 $MAINVERSION = $version . $modversion;
@@ -659,7 +659,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '1C42AF0515CB3BE13D952D2CE1E916E132449AAA'; }
+sub __cs { $codeSignature = '066A9D54F820B700AC65E3EC63246F10D95DFB70'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -8426,7 +8426,7 @@ if ($@) {
 sub write_rebuild_module {
 my $curr_version = shift;
 
-my $rb_version = '8.10';
+my $rb_version = '8.11';
 my $keepVersion;
 
 if (open my $ADV, '<',"$base/lib/rebuildspamdb.pm") {
@@ -8673,7 +8673,7 @@ EOT
         }
 eval (<<'EOT');
             $main::lastd{$Iam} = "building BerkeleyDB ENV";
-            $BDBEnv = BerkeleyDB::Env->new(-Flags => DB_CREATE | DB_INIT_MPOOL,
+            $BDBEnv = BerkeleyDB::Env->new(-Flags => DB_CREATE | DB_INIT_MPOOL ,
                                            -Cachesize => $cachesize ,
                                            -Home    => "$DBDir",
                                            -ErrFile => "$DBDir/BDB-error.txt" ,
@@ -8681,7 +8681,7 @@ eval (<<'EOT');
                                                         DB_LOG_DIR  => "$DBDir",
                                                         DB_TMP_DIR  => "$DBDir"}
                                           );
-            die("can't create BDB-ENV for rebuild - see $DBDir/BDB-error.txt\n") if (! $BDBEnv || $BerkeleyDB::Error !~ /: 0\s*$/o);
+            die("can't create BDB-ENV for rebuild - see $DBDir/BDB-error.txt\n") if (! $BDBEnv || &main::BDB_error());
 
             $main::lastd{$Iam} = "mounting BerkeleyDB $DBDir/rb_spam.bdb";
             $spamObj=tie %spam,'BerkeleyDB::Hash',
@@ -8760,7 +8760,7 @@ eval (<<'EOT');
                 }
             }
 EOT
-            if ($@ or $BerkeleyDB::Error !~ /: 0\s*$/o) {
+            if ($@ || &main::BDB_error()) {
                 rb_mlog("BerkeleyDB-ERROR: in $main::lastd{$Iam} - $@ - BDB:$BerkeleyDB::Error");
                 push @dbhint , "-BerkeleyDB-ERROR: in $main::lastd{$Iam} - $@ - BDB:$BerkeleyDB::Error";
                 $have_error = 1;
@@ -13594,7 +13594,7 @@ sub createBDBEnv {
     $bdbf ||= "tmpDB/$hash/$hash";
 
     eval (<<'EOT');
-    $env = BerkeleyDB::Env->new(-Flags => DB_INIT_CDB | DB_INIT_MPOOL | DB_CREATE ,
+    $env = BerkeleyDB::Env->new(-Flags => DB_INIT_CDB | DB_INIT_MPOOL | DB_CREATE,
                                 -LockDetect => DB_LOCK_DEFAULT,
                                 -Home => "$bdbdir",
                                 -ErrFile => "$bdbdir/BDB-error.txt" ,
@@ -13605,7 +13605,7 @@ sub createBDBEnv {
                                  %userenv
                                );
     mlog(0,"BerkeleyDB-CRT-ENV-ERROR (1) in HASH $hash , on file $base/$bdbf.bdb : BDB:$BerkeleyDB::Error")
-        if ($BerkeleyDB::Error !~ /: 0\s*$/o);
+        if (BDB_error());
 
     if ($WorkerNumber == 10000 && $BerkeleyDB::Error =~ /DB_RUNRECOVERY|Bad file descriptor/oi) {
         undef $env;
@@ -13654,13 +13654,13 @@ sub createBDBEnv {
                                     -Home => "$bdbdir",
                                     -ErrFile => "$bdbdir/BDB-error.txt" ,
                                     -Config => {DB_DATA_DIR => "$bdbdir",
-                                               DB_LOG_DIR  => "$bdbdir",
+                                                DB_LOG_DIR  => "$bdbdir",
                                                 DB_TMP_DIR  => "$bdbdir"
                                                },
                                      %userenv
                                    );
         mlog(0,"BerkeleyDB-CRT-ENV-ERROR (2) in HASH $hash , on file $base/$bdbf.bdb : BDB:$BerkeleyDB::Error")
-            if ($BerkeleyDB::Error !~ /: 0\s*$/o);
+            if (BDB_error());
 
 
         if ($BerkeleyDB::Error =~ /DB_RUNRECOVERY|Bad file descriptor/oi) {
@@ -13679,7 +13679,7 @@ sub createBDBEnv {
     $env->set_timeout(1000000,DB_SET_LOCK_TIMEOUT) if $env;
 EOT
     }
-    if ($@ || $BerkeleyDB::Error !~ /: 0\s*$/o || ! $env) {
+    if ($@ || BDB_error() || ! $env) {
          mlog(0,"BerkeleyDB-ENV-ERROR $hash: $@ - BDB:$BerkeleyDB::Error");
          $ComWorker{$WorkerNumber}->{run} = 0 if $WorkerNumber > 0;
          $ComWorker{$WorkerNumber}->{inerror} = 1 if $WorkerNumber > 0;
@@ -13702,15 +13702,28 @@ eval (<<'EOT');
                        (-Filename => "$file",
                         -Flags => DB_CREATE,
                         -Env => $env);
-    BDB_filter(${$Object});
 EOT
-    if ($@ or $BerkeleyDB::Error !~ /: 0\s*$/o) {
+    if ($@ || BDB_error()) {
         mlog(0,"BerkeleyDB-TIE-ERROR $hash: $@ - BDB:$BerkeleyDB::Error");
         $ComWorker{$WorkerNumber}->{run} = 0 if $WorkerNumber > 0;
         $ComWorker{$WorkerNumber}->{inerror} = 1 if $WorkerNumber > 0;
         die "$@\n";
     }
-    BDB_getRecordCount($hash);
+eval (<<'EOT');
+    BDB_filter(${$Object});
+EOT
+    if ($@ || BDB_error()) {
+        mlog(0,"BerkeleyDB-TIE-ERROR setting filter for $hash: $@ - BDB:$BerkeleyDB::Error");
+    }
+    my $r = BDB_getRecordCount($hash);
+    mlog(0,"info: $hash has $r records in BerkeleyDB") if $WorkerNumber == 0 && ($MaintenanceLog > 1 || ($MaintenanceLog && !$r));
+    return $r;
+}
+
+sub BDB_error {
+    return 0 unless $BerkeleyDB::Error; # there is no error
+    return 0 if $BerkeleyDB::Error =~ /: *0\s*$/o;  # older versions may set '...: 0'
+    return 1;
 }
 
 sub BDB_sync {
@@ -13761,7 +13774,7 @@ sub BDB_sync_hash {
              $res = ${$dbo}->db_sync();
         };
     }
-    if ($@ or ($res != 0 && $BerkeleyDB::error)) {
+    if ($@ or ($res != 0 && BDB_error())) {
         mlog(0,"warning: unable to write cache of BerkeleyDB hash $hash to disk - $@ - BDB:$BerkeleyDB::error");
         return 0;
     } else {
@@ -13810,7 +13823,7 @@ EOT
                                     );
 EOT
     }
-    if ($@ or ($res != 0 && $BerkeleyDB::error)) {
+    if ($@ or ($res != 0 && BDB_error())) {
         mlog(0,"warning: unable to compact file $base/$bdbf.bdb of BerkeleyDB hash $hash - $@ - BDB:$BerkeleyDB::error");
         return 0;
     } else {
@@ -13854,7 +13867,8 @@ EOT
 
 sub showBDBstatus {
     my @hashes = @_;
-    while (shift @hashes) {
+    while (@hashes) {
+        $_ = shift @hashes;
         unless (exists $BerkeleyDBHashes{$_}) {
             mlog(0,"info: showBDBstatus - hash $_ is not a BerkeleyDB hash");
             next;
@@ -13865,7 +13879,7 @@ sub showBDBstatus {
             mlog(0,"hash: $_ is not tied");
             return;
         }
-        mlog(0,"BDB statistic for BerkeleDB hash $_ on $dbo");
+        mlog(0,"BDB statistic for BerkeleyDB hash $_ on $dbo");
         my $statref;
         if ("$$dbo" =~ /assp::/io) {
             eval (<<'EOT');
@@ -13881,7 +13895,7 @@ EOT
             $out .= $_ . (' ' x (16 - length($_))) . ": ${$statref}{$_}\n";
         }
         mlog(0,$out);
-        mlog(0, "lock status for BerkleyDB hash $_ on $dbo");
+        mlog(0, "lock status for BerkeleyDB hash $_ on $dbo");
         if ($VerBerkeleyDB lt '0.42') {
             ${${$dbo}}[1]->lock_stat_print;
         } else {
@@ -13914,7 +13928,11 @@ sub initPrivatHashes {
         if ($GriplistDriver eq 'BerkeleyDB::Hash' && $useDB4griplist) {
             my $file = "$base/$griplist";
             d("BDB-DB (initPrivatHashes) - Griplist , $file.bdb");
-            &tieToBDB('Griplist', "$file.bdb", &createBDBEnv('Griplist'));
+            my $r = &tieToBDB('Griplist', "$file.bdb", &createBDBEnv('Griplist'));
+            if (! $r && -e $file && $WorkerNumber == 10000) {
+                $r = loadHashFromFile($file,\%Griplist) || 0;
+                mlog(0,"info: initialized Griplist-BDB with $r records") if $MaintenanceLog;
+            }
         } else {
             $GriplistObj=tie %Griplist,$GriplistDriver,$GriplistFile;
             $GriplistObj->resetCache();
@@ -13945,6 +13963,7 @@ sub initPrivatHashes {
 
         foreach (sort keys %tempDBvars) {
             next if $_ eq 'BackDNS2';
+            next if $_ eq 'Griplist';
             next if $_ =~ /^HMM/oi;
 #            next if $WorkerNumber == 10001;
             my $file = "$base/tmpDB/$_/$_.bdb";
@@ -14011,6 +14030,7 @@ sub initPrivatHashes {
                     && $hash ne 'DMARCrec'
                     && $hash ne 'subjectFrequencyCache'
                     && $hash ne 'internals'
+                    && $hash ne 'Griplist'
                     && $hash !~ /^T10Stat/o
                     && $clean
                     && $WorkerNumber == 0);
@@ -14933,7 +14953,7 @@ sub init {
                 print $F &timestring()."\n";
                 print $F "BDB cachesize test for $BDBMaxCacheSize MB\n";
                 eval (<<'EOT');
-                $BDBEnv = BerkeleyDB::Env->new(-Flags => DB_INIT_CDB | DB_CREATE | DB_INIT_MPOOL,
+                $BDBEnv = BerkeleyDB::Env->new(-Flags => DB_INIT_CDB | DB_CREATE | DB_INIT_MPOOL ,
                                                -Cachesize => ($BDBMaxCacheSize * 1024 * 1024),
                                                -Home    => "$cd",
                                                -ErrFile => $F,
@@ -14942,7 +14962,7 @@ sub init {
                                                             DB_TMP_DIR  => "$cd"}
                                               );
 EOT
-                if ($@ or $BerkeleyDB::Error !~ /: 0\s*$/o) {
+                if ($@ || BDB_error()) {
                     undef $BDBEnv;
                     unlink "$cd/__db.001";
                     unlink "$cd/__db.002";
@@ -15404,7 +15424,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
     }
 
     my $v;
-    $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.31;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+    $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.32;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
     $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
     $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
     $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.24;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -16484,7 +16504,7 @@ sub loadHashFromFile {
         return;
     }
     my $LH;
-    my $count;
+    my $count = 0;
     lock(%$hash) if is_shared(%$hash);
     unless (open($LH, '<',$file)) {
         mlog(0,"warning: can't open file '$file' to load hash (in loadHashFromFile) - $!");
@@ -16495,7 +16515,7 @@ sub loadHashFromFile {
     while (<$LH>) {
         my ($k,$v) = split/\002/o;
         $v =~ s/(?:\r|\n)$//go;
-        if ($k && $v) {
+        if ($k && defined($v)) {
             $hash->{$k}=$v;
             $count++;
         }
@@ -21343,7 +21363,7 @@ sub replaceLiterals {
             $this->{skipCustomReply} = 1;
         }
     }
-    # add the explanation to each 5xx client reply line - there ca be more than one line !
+    # add the explanation to each 5xx client reply line - there can be more than one line !
     if ($addErrorReplyExplanation && $this->{type} eq 'C' && ! $this->{skipReplyExplain}) {
         my $crlf;
         $crlf = $1 if $$str =~ s/([\r\n]+)$//o;
@@ -24181,7 +24201,7 @@ sub LDAPCacheFind {
 
 sub LDAP_explode_dn {
     my ($dn, %opt) = @_;
-    return [] if $dn eq '' or ! defined $dn;
+    return [] if $dn eq '' || ! defined $dn;
 
     my $pair = qr/\\(?:[\\"+,;<> #=]|[0-9A-F]{2})/i;
 
@@ -25540,6 +25560,7 @@ sub stateReset {
     $this->{invalidSenderDomain} = '';
     $this->{invalidSRSBounce} = '';
     $this->{invalidhelodone} = '';
+    $this->{IPBlockingOK} = '';
     $this->{isbounce} = '';
     $this->{ispip} = '';
     $this->{isDKIM} = '';
@@ -29323,6 +29344,15 @@ sub getheader {
         }
         if (&MsgScoreTooHigh($fh,$done)) {$this->{skipnotspam} = 0;return;}
 
+        if (! IPBlockingOK( $fh, $this->{ip} ) ) {
+            my $slok = $this->{allLovePBSpam} == 1;
+            my $er = $SpamError;
+            $er = $PenaltyError if $PenaltyError;
+            thisIsSpam( $fh, $this->{messagereason}, $spamPBLog, $er,($allTestMode || $pbTestMode), $slok, 0 );
+            if ($this->{error}) {$this->{skipnotspam} = 0;return;}
+        }
+        if (&MsgScoreTooHigh($fh,$done)) {$this->{skipnotspam} = 0;return;}
+
         if (! PBExtremeOK( $fh, $this->{ip} ) ) {
             my $slok = $this->{allLovePBSpam} == 1;
             my $er = $SpamError;
@@ -29336,6 +29366,8 @@ sub getheader {
             mlog($fh,"info: check IP's on mail route for IP-blocking") if $ConnectionLog >= 2;
             my $res = 1;
             foreach my $ip (@{$this->{sip}}) {
+               $res &= IPBlockingOK( $fh, $ip , 1);
+               last unless $res;
                $res &= PBExtremeOK( $fh, $ip , 1);
                last unless $res;
             }
@@ -30167,6 +30199,7 @@ sub GRIPvalue_Run {
     $this->{messagereason} = '';
     my	$ipnet = &ipNetwork($ip, 1);
     $ipnet =~ s/\.0+$//o;
+    $ipnet =~ s/(:0){4}$//o;
     my $v;
     if ($this->{ispip} && ! $this->{cip}) {
         $v = defined $ispgripvalue ? $ispgripvalue : $Griplist{x};
@@ -30177,7 +30210,7 @@ sub GRIPvalue_Run {
     }
     return 1 unless defined $v;
     return 1 if $v <= 0.7 and $v >= 0.3;
-    $this->{messagereason} = $ipnet.".0 in griplist ($v)" unless $this->{messagereason};
+    $this->{messagereason} = $ipnet.($ipnet =~ /:/o ? '::' : '.0')." in griplist ($v)" unless $this->{messagereason};
     if ($v > 0.7) {
         pbAdd( $fh, $ip, ([int((($v - 0.7) / 0.3) * ${'gripValencePB'}[0]),int((($v - 0.7) / 0.3) * ${'gripValencePB'}[1])]), 'griplist', 1 ) ;
         return 0;
@@ -31042,6 +31075,17 @@ sub skipCheck {
     $s->{rw} = $t->{rwlok} % 2;
     my $r;
     map{$r||=(ref($_)?eval{$_->();}:($t->{$f->{$_}}||$t->{$_}||$s->{$_}));}@c;
+    my $log = $SessionLog;
+    $log = $ConnectionLog if $ConnectionLog > $log;
+    if ($log > 1) {
+        my $Subroutine = [caller(1)]->[3];
+        $Subroutine =~ s/_run$//oi;
+        if (! $r && $log > 2) {
+            mlog(0,"Info: no skip condition detected for check: $Subroutine");
+        } elsif ($r) {
+            mlog(0,"Info: skip condition detected for check: $Subroutine");
+        }
+    }
     return $r;
 }
 
@@ -37508,19 +37552,17 @@ sub PBOK_Run {
     return 0;
 }
 
-sub PBExtremeOK {
+sub IPBlockingOK {
     my ( $fh, $myip, $skipcip) = @_;
     my $this = $Con{$fh};
     if (! $skipcip) {
+        return 1 if $this->{IPBlockingOK};
+        $this->{IPBlockingOK} = 1;
         $myip = $this->{cip} if $this->{ispip} && $this->{cip};
-        return 1 if $this->{PBExtremeOK};
-        $this->{PBExtremeOK} = 1;
     }
-    d('PBExtremeOK - IP-blocking');
+    d('IPBlockingOK');
     my $ip = ($myip eq $this->{ip} || $myip eq $this->{cip}) ? '' : "(OIP: $myip) ";
-    my $slok = $this->{allLovePBSpam} == 1;
 
-    # IP-blocking
     if (! matchIP( $myip, 'noBlockingIPs',$fh,0)) {
         my $byWhatList = 'denySMTPConnectionsFromAlways';
         if (! $denySMTPstrictEarly || $skipcip) {
@@ -37579,7 +37621,20 @@ sub PBExtremeOK {
             }
         }
     }
-    
+
+    return 1;
+}
+
+sub PBExtremeOK {
+    my ( $fh, $myip, $skipcip) = @_;
+    my $this = $Con{$fh};
+    if (! $skipcip) {
+        return 1 if $this->{PBExtremeOK};
+        $this->{PBExtremeOK} = 1;
+        $myip = $this->{cip} if $this->{ispip} && $this->{cip};
+    }
+    my $ip = ($myip eq $this->{ip} || $myip eq $this->{cip}) ? '' : "(OIP: $myip) ";
+
     # PB-extreme IP-scrore blocking
     d('PBExtremeOK - IP-extrem-blocking');
 
@@ -37652,9 +37707,12 @@ sub Delayok_Run {
     my $time=$UseLocalTime ? localtime() : gmtime();
     my $tz=$UseLocalTime ? tzStr() : '+0000';
     $time=~s/... (...) +(\d+) (........) (....)/$2 $1 $4 $3/o;
-    my $ipnet = &ipNetwork($this->{ip}, 1);
-    $ipnet =~ s/\.0$//o;
+
+    my	$ipnet = &ipNetwork($this->{ip}, 1);
+    $ipnet =~ s/\.0+$//o;
+    $ipnet =~ s/(:0){4}$//o;
     my $v = $Griplist{$ipnet};
+
     if (!$DelayWL && $this->{whitelisted}) {
 
        # add to our header; merge later, when client sent own headers  (per msg)
@@ -43491,20 +43549,22 @@ WHITCHWORKER
 
             my $is_admin = $isadmin;
             $is_admin = 1
-              if ($isadmin eq 'user' &&
+              if ($is_admin eq 'user' &&
                   (   matchSL( $address, 'EmailAdmins', 1 )
                    or matchSL( $address, 'BlockReportAdmins', 1 )
                    or lc( $address ) eq lc($EmailAdminReportsTo)
                    or lc( $address ) eq lc($EmailBlockTo)
                   )
                  );
+            $is_admin = 0 if $is_admin eq 'user';
+            
             if (! $is_admin && ! $faddress && ! &localmail($address)) {
                 mlog(0,"info: BlockReport ignoring $address - address is not a valid local mail address") if $ReportLog >= 2 && ! $ignoreAddr{ lc($address) };
                 $ignoreAddr{ lc($address) } = 1;
                 next;
             }
-            my $addWhiteHint = (   ($autoAddResendToWhite > 1 && $isadmin)
-                                or ($autoAddResendToWhite && $autoAddResendToWhite != 2 && ! $isadmin)
+            my $addWhiteHint = (   ($autoAddResendToWhite > 1 && $is_admin)
+                                or ($autoAddResendToWhite && $autoAddResendToWhite != 2 && ! $is_admin)
                                ) ? '%5Bdo%20not%5D%20autoadd%20sender%20to%20whitelist%20' : '';
 
             my $filename;
@@ -43513,14 +43573,14 @@ WHITCHWORKER
 
             my $addFileHint = (   $correctednotspam
                                && $DelResendSpam
-                               && $isadmin
+                               && $is_admin
                                && (   ($spamlog && $filename =~ /\/\Q$spamlog\E\// )
                                    || ($discarded && $filename =~ /\/\Q$discarded\E\// )  )
                               ) ? '%5Bdo%20not%5D%20move%20file%20to%20'.$correctednotspam : '';
             $addFileHint = '%2C' . $addFileHint if $addFileHint && $addWhiteHint;
 
             my $addScanHint = (   $FileLogScan
-                               && $isadmin
+                               && $is_admin
                                && $viruslog
                                && $filename =~ /\/\Q$viruslog\E\//
                               ) ? '%5Bno%5D%20scan%20'.$correctednotspam : '';
@@ -43582,9 +43642,11 @@ WHITCHWORKER
                 }
                 if ( $inclResendLink == 2 or $inclResendLink == 3 ) {
                     $line =~
-s/($gooddays)($timeformat)/<span class="date"><a href="$prot:\/\/$host:$webAdminPort\/edit?file=$filename&note=m&showlogout=1"$targetblank title="open this mail in the assp fileeditor">$1$2<\/a><\/span>/ if $is_admin;
+s/($gooddays)($timeformat)/<span class="date"><a href="$prot:\/\/$host:$webAdminPort\/edit?file=$filename&note=m&showlogout=1"$targetblank title="open this mail in the assp fileeditor">$1$2<\/a><\/span>/
+                      if $is_admin;
                     $line =~
-s/(\[OIP: )?($IPRe)(\])?/my($p1,$e,$p2)=($1,$2,$3);($e!~$IPprivate)?"<span name=\"tohid\" class=\"ip\"><a href=\"$prot:\/\/$host:$webAdminPort\/ipaction?ip=$e\&showlogout=1\"$targetblank title=\"take an action via web on ip $e\">$p1$e$p2<\/a><\/span>":"<span name=\"tohid\">$p1$e$p2<\/span>";/goe if $is_admin;
+s/(\[OIP: )?($IPRe)(\])?/my($p1,$e,$p2)=($1,$2,$3);($e!~$IPprivate)?"<span name=\"tohid\" class=\"ip\"><a href=\"$prot:\/\/$host:$webAdminPort\/ipaction?ip=$e\&showlogout=1\"$targetblank title=\"take an action via web on ip $e\">$p1$e$p2<\/a><\/span>":"<span name=\"tohid\">$p1$e$p2<\/span>";/goe
+                      if $is_admin;
                     $line =~
 s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockReportDomain\?subject=add\%20to\%20whitelist&body=$1\%0D\%0A" title="add this email address to whitelist"$targetblank>$1<\/a>/go
                       if (! $faddress && ! $is_admin);
@@ -43605,21 +43667,24 @@ s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockRep
                     $rightbut = '<img src=cid:1000 style="display: none;" />' if ($nolink || $matchleft  || (($BlockResendLink & 1) && ! $matchright));
                     $leftbut  = '<img src=cid:1000 style="display: none;" />' if ($nolink || $matchright || (($BlockResendLink & 2) && ! $matchleft));
 
-                    $line =~ s/^(.+\)\s*)(\Q$subjectStart\E.+?\Q$subjectEnd\E.*)$/$1<br\/><strong>$2<\/strong>/ unless $faddress;
+                    $line =~ s/^(.+\)\s*)(\Q$subjectStart\E.+?\Q$subjectEnd\E.*)$/$1<br\/><strong>$2<\/strong>/
+                      unless $faddress;
                     $line =~ s/(.*)/\n<tr$bgcolor>\n<td class="leftlink">$leftbut\n<\/td>\n<td class="inner">$1\n<\/td>\n<td class="rightlink">$rightbut\n<\/td>\n<\/tr>/o;
                     push( @{ $buser->{ lc($address) }{html} }, $line);
                 } else {
                     $line =~ s/\[spam found\](\s*\(.*?\))( \Q$subjectStart\E)/<span name="tohid"><br \/><span class="spam">spam reason: <\/span>$1<\/span>$2/;
                     $line =~ s/($SpamTagRE|\[(?:TLS-(?:in|out)|SSL-(?:in|out)|PersonalBlack)\])/<span name="tohid">$1<\/span>/gio;
                     $line =~
-s/(\[OIP: )?($IPRe)(\])?/my($p1,$e,$p2)=($1,$2,$3);($e!~$IPprivate)?"<span name=\"tohid\" class=\"ip\"><a href=\"$prot:\/\/$host:$webAdminPort\/ipaction?ip=$e\&showlogout=1\"$targetblank title=\"take an action via web on ip $e\">$p1$e$p2<\/a><\/span>":"<span name=\"tohid\">$p1$e$p2<\/span>";/goe if $is_admin;
+s/(\[OIP: )?($IPRe)(\])?/my($p1,$e,$p2)=($1,$2,$3);($e!~$IPprivate)?"<span name=\"tohid\" class=\"ip\"><a href=\"$prot:\/\/$host:$webAdminPort\/ipaction?ip=$e\&showlogout=1\"$targetblank title=\"take an action via web on ip $e\">$p1$e$p2<\/a><\/span>":"<span name=\"tohid\">$p1$e$p2<\/span>";/goe
+                      if $is_admin;
                     $line =~
 s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockReportDomain\?subject=add\%20to\%20whitelist&body=$1\%0D\%0A" title="add this email address to whitelist"$targetblank>$1<\/a>/go
                       if (! $faddress && ! $is_admin);
                     $line =~
 s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockReportDomain\?subject=add\%20to\%20whitelist&body=$1\%0D\%0A" title="add this email address to whitelist"$targetblank>$1<\/a>&nbsp;<a href="$prot:\/\/$host:$webAdminPort\/addraction?address=$1&showlogout=1"$targetblank title="take an action via web on address $1">\@<\/a>/go
                       if (! $faddress && $is_admin);
-                    $line =~ s/^(.+\)\s*)(\Q$subjectStart\E.+?\Q$subjectEnd\E.*)$/$1<br\/><strong>$2<\/strong>/ unless $faddress;
+                    $line =~ s/^(.+\)\s*)(\Q$subjectStart\E.+?\Q$subjectEnd\E.*)$/$1<br\/><strong>$2<\/strong>/
+                      unless $faddress;
                     $line =~ s/(.*)/\n<tr$bgcolor>\n<td class="leftlink">&nbsp;<img src=cid:1000 style="display: none;" \/>\n<\/td>\n<td class="inner">$1\n<\/td>\n<td class="rightlink">&nbsp;<img src=cid:1000 style="display: none;" \/>\n<\/td>\n<\/tr>/o;
                     push( @{ $buser->{ lc($address) }{html} }, $line );
                 }
@@ -43628,14 +43693,16 @@ s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockRep
                 $line =~ s/\[spam found\](\s*\(.*?\))( \Q$subjectStart\E)/<span name="tohid"><br \/><span class="spam">spam reason: <\/span>$1<\/span>$2/;
                 $line =~ s/($SpamTagRE|\[(?:TLS-(?:in|out)|SSL-(?:in|out)|PersonalBlack)\])/<span name="tohid">$1<\/span>/gio;
                 $line =~
-s/(\[OIP: )?($IPRe)(\])?/my($p1,$e,$p2)=($1,$2,$3);($e!~$IPprivate)?"<span name=\"tohid\" class=\"ip\"><a href=\"$prot:\/\/$host:$webAdminPort\/ipaction?ip=$e\&showlogout=1\"$targetblank title=\"take an action via web on ip $e\">$p1$e$p2<\/a><\/span>":"<span name=\"tohid\">$p1$e$p2<\/span>";/goe if $is_admin;
+s/(\[OIP: )?($IPRe)(\])?/my($p1,$e,$p2)=($1,$2,$3);($e!~$IPprivate)?"<span name=\"tohid\" class=\"ip\"><a href=\"$prot:\/\/$host:$webAdminPort\/ipaction?ip=$e\&showlogout=1\"$targetblank title=\"take an action via web on ip $e\">$p1$e$p2<\/a><\/span>":"<span name=\"tohid\">$p1$e$p2<\/span>";/goe
+                  if $is_admin;
                 $line =~
 s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockReportDomain\?subject=add\%20to\%20whitelist&body=$1\%0D\%0A" title="add this email address to whitelist"$targetblank>$1<\/a>/go
                   if (! $faddress && ! $is_admin);
                 $line =~
 s/($EmailAdrRe\@$EmailDomainRe)/<a href="mailto:$EmailWhitelistAdd$EmailBlockReportDomain\?subject=add\%20to\%20whitelist&body=$1\%0D\%0A" title="add this email address to whitelist"$targetblank>$1<\/a>&nbsp;<a href="$prot:\/\/$host:$webAdminPort\/addraction?address=$1&showlogout=1"$targetblank title="take an action via web on address $1">\@<\/a>/go
                   if (! $faddress && $is_admin);
-                $line =~ s/^(.+\)\s*)(\Q$subjectStart\E.+?\Q$subjectEnd\E.*)$/$1<br\/><strong>$2<\/strong>/ unless $faddress;
+                $line =~ s/^(.+\)\s*)(\Q$subjectStart\E.+?\Q$subjectEnd\E.*)$/$1<br\/><strong>$2<\/strong>/
+                  unless $faddress;
                 $line =~ s/(.*)/\n<tr$bgcolor>\n<td class="leftlink">&nbsp;\n<\/td>\n<td class="inner">$1\n<\/td>\n<td class="rightlink">&nbsp;\n<\/td>\n<\/tr>/o;
                 push( @{ $buser->{ lc($address) }{html} }, $line );
             }
@@ -47234,12 +47301,11 @@ foreach my $binF (@binFiles) {
     my $x6 = 0;
     for (my $i = 0; $i < $n6; $i++) {
         my ($bip, $grey) = unpack("x[N2] x[N] x$x6 a8 C", $buf);
-        my $ip = join(":", unpack("H4H4H4H4", $bip)) . ":";
+        my $ip = join(":", unpack("H4H4H4H4", $bip));
         $ip =~ s/:0+([0-9a-f])/:$1/gio;
-        $ip =~ s/:0:$/::/o;
 
-        #                $grip{$ip} = $grey / 255;
-        #                $gripdelta{$ip} = $grey / 255 if $deltayonly;
+        $grip{$ip} = $grey / 255;
+        $gripdelta{$ip} = $grey / 255 if $deltayonly;
         $x6 += 9;
     }
 
@@ -47254,7 +47320,6 @@ foreach my $binF (@binFiles) {
     }
 
     &gmlog("Griplist binary $action OK: $binF, $n6 IPv6 addresses, $n4 IPv4 addresses");
-#    &gmlog("Griplist binary $action OK: $binF, $n4 IPv4 addresses");
     $action = "merge";
 }
 
@@ -47269,8 +47334,8 @@ my ($buf6, $buf4);
 while ( my ($ip,$v) = each %grip) {
     if ($ip =~ /:/o) {
         my $ip2 = $ip;
-        $ip2 =~ s/([0-9a-f]*):/0000$1:/gio;
-        $ip2 =~ s/0*([0-9a-f]{4}):/$1:/gio;
+        $ip2 =~ s/([0-9a-f]*)(:|$)/0000$1$2/gio;
+        $ip2 =~ s/0*([0-9a-f]{4})(:|$)/$1$2/gio;
         $buf6 .= pack("H4H4H4H4", split(/:/o, $ip2));
         $buf6 .= pack("C", int($v * 255));
         $n6++;
@@ -47352,7 +47417,7 @@ EOT
             -d "$base/tmpDB/gripdelta" or mkdirOP("$base/tmpDB/gripdelta",'0775');
 
 eval (<<'EOT');
-          $bdbenv = BerkeleyDB::Env->new(-Flags => DB_CREATE | DB_INIT_MPOOL,
+          $bdbenv = BerkeleyDB::Env->new(-Flags => DB_CREATE | DB_INIT_MPOOL ,
                                       -Cachesize => 5242880 ,
                                       -Home => "$base/tmpDB/gripdelta",
                                       -ErrFile => "$base/tmpDB/gripdelta/BDB-error.txt" ,
@@ -47367,7 +47432,7 @@ eval (<<'EOT');
                                       -Env => $bdbenv);
 EOT
 
-            if ($@ or $BerkeleyDB::Error !~ /: 0\s*$/o) {
+            if ($@ || BDB_error()) {
                 mlog(0,"BerkeleyDB-ENV-ERROR gripdelta: $@ - BDB:$BerkeleyDB::Error");
             }
         } elsif ($CanUseDB_File && $useDB4IntCache) {
@@ -47388,7 +47453,7 @@ EOT
         while (<$TEMPFILE>) {
             my ($k,$v) = split/\002/o;
             chomp $v;
-            next unless ($k && $v);
+            next unless ($k && defined($v));
             next if $k =~ /$IPprivate/o;
             if ($k =~ /:/o) {
                 $n6++;
@@ -47414,10 +47479,10 @@ EOT
             $nd = 0;
             while ( my ($ip,$v) = each %Griplist) {
                 if (! exists $gripdelta{$ip}
-                    && $ip ne 'x'
-                    && $ip ne '255.255.255.255'
-                    && $ip ne '255.255.255.254'
-                    && $ip ne '255.255.255.253')
+                    && $ip ne 'x'                   # ISP GripValue
+                    && $ip ne '255.255.255.255'     # last full download
+                    && $ip ne '255.255.255.254'     # last download
+                    && $ip ne '255.255.255.253')    # NextGriplistUpload
                 {
                     delete $Griplist{$ip};
                     $nd++;
@@ -47445,16 +47510,16 @@ EOT
 
         $Griplist{'255.255.255.255'} = time if (! $dodelta || ! $Griplist{'255.255.255.255'});  # last full download
         $Griplist{'255.255.255.254'} = time;               # last download
-        if ($ispgripvalue eq '') {
+        if ($baysProbability) {
             mlog(0,"Griplist - calculating ISP grey value") if $MaintenanceLog;
             my $ns = 0;
             my $nh = 0;
             my $nd = 0;
             while ( my ($ip,$v) = each %Griplist) {
-                next if $ip eq '255.255.255.255';
-                next if $ip eq '255.255.255.254';
-                next if $ip eq '255.255.255.253';
-                next if $ip eq 'x';
+                next if $ip eq '255.255.255.255';     # last full download
+                next if $ip eq '255.255.255.254';     # last download
+                next if $ip eq '255.255.255.253';     # NextGriplistUpload
+                next if $ip eq 'x';                   # ISP GripValue
                 if ($v > $baysProbability) {$ns++;} else {$nh++;}
                 $nd++;
                 if ($nd%1000 == 0) {
@@ -47466,7 +47531,7 @@ EOT
             if($ComWorker{$Iam}->{run}) {
                 my $x = sprintf("%.3f", $ns / ($ns + $nh + 1) );
                 $x = 0.99 if $x >= 1;
-                mlog(0,"Griplist - ISP grey value is set to $x (s:$ns , h:$nh)") if $MaintenanceLog;
+                mlog(0,"Griplist x - ISP grey value is set to $x (s:$ns , h:$nh)".(defined($ispgripvalue) ? ", but ispgripvalue $ispgripvalue is currently used" : '')) if $MaintenanceLog;
                 $Griplist{x} = $x;
             }
         }
@@ -47480,7 +47545,7 @@ EOT
             binmode $F;
             print $F "\n";
             while ( my ($ip,$v) = each %Griplist) {
-                print $F "$ip\002$v\n" if $ip && $v;
+                print $F "$ip\002$v\n" if $ip && defined($v);
             }
             $F->close;
         }
@@ -49745,8 +49810,8 @@ sub scanFile4VirusOK {
     if ($buf) {
         $Con{$fh}->{scanfile} = de8($Con{$fh}->{maillogfilename});
         mlog(($fh =~ /^\d+$/o ? 0 : $fh),'info: scanning stored file '.$Con{$fh}->{scanfile}.' for virus ( forced by ClamAVLogScan and/or FileLogScan )') if $ScanLog > 1 && ($ClamAVLogScan > 1 || $FileLogScan > 1);
-        if (    ( $ClamAVLogScan > 1 && ! ClamScanOK_Run($fh, bodyWrap(\$buf,length($buf))) )
-             || ( $FileLogScan   > 1 && ! FileScanOK_Run($fh, bodyWrap(\$buf,length($buf))) ) )
+        if (    ( $UseAvClamd && $CanUseAvClamd && $ClamAVLogScan > 1 && ! ClamScanOK_Run($fh, bodyWrap(\$buf,length($buf))) )
+             || ( $DoFileScan && $FileScanCMD   && $FileLogScan   > 1 && ! FileScanOK_Run($fh, bodyWrap(\$buf,length($buf))) ) )
         {
             my $vfile = $Con{$fh}->{maillogfilename};
             if ($viruslog && $SpamVirusLog != 0) {
@@ -53849,7 +53914,7 @@ sub linkToConfig {
 }
 
 sub ConfigAnalyze {
-    my ( $ba, $st, $fm, %fm, %to, %wl, $ip, $helo, $text, $ip3, $received , $emfd, $mailfrom, $rcptto, $hasheader, $headTo, $org_headTo);
+    my ( $ba, $st, $fm, %fm, %to, %wl, $ip, $helo, $text, $received , $emfd, $mailfrom, $rcptto, $hasheader, $headTo, $org_headTo);
     &MainLoop1(0);
     @AnalyzeLog = (1);
     my $checkRegex = ! $silent && $AnalyzeLogRegex;
@@ -54027,7 +54092,6 @@ sub ConfigAnalyze {
             }
         }
         my $conIP = $ip;
-        $ip3 = ipNetwork($ip,1);
         if (!$helo && ! $header && $mail =~ /(?:^[\s\r\n]*|\r?\n)\s*helo\s*=\s*([$NOCRLF]+)/ios ) {
             $helo = $1;
             $helo =~ s/\)$//o;
@@ -54068,7 +54132,6 @@ sub ConfigAnalyze {
                     $received = 'Received:'.$r;
                     $ispHost = $ih;
                     $ip = ipv6expand(ipv6TOipv4($i));
-                    $ip3 = ipNetwork($ip,1);
                     $foundReceived = 1;
                 }
                 if ($val =~ /\s*from\s+(?:(\S+)\s)?(?:.+?)($IPRe)(?:.{1,80})by\s+($HostRe).+?with\s+(E?SMTPS?A)/gio ) {
@@ -55124,6 +55187,7 @@ sub ConfigAnalyze {
             if ( pbBlackFind($iip) ) {
                 my $nip = &ipNetwork( $iip, $PenaltyUseNetblocks );
                 $nip =~ s/\.d+$/.0/o;
+                $nip =~ s/(?::[0-9a-f]{1,4}){4}$/::/oi;
                 my ( $ct, $ut, $pbstatus, $value, $sip, $reason ) = split( ' ', $PBBlack{$iip} );
                 ( $ct, $ut, $pbstatus, $value, $sip, $reason ) = split( ' ', $PBBlack{$nip} ) unless $ct;
                 $fm .=
@@ -55378,24 +55442,33 @@ sub ConfigAnalyze {
 "<b><font color='red'>&bull;</font> IP $iip is in ".linkToConfig('droplist')."($ret)</b><br />\n";
             }
         }
-        my $v;
-		if ($ip !~ /$IPprivate/o && defined($v = $Griplist{$ip3})) {
-		    $v = 0.01 if $v < 0.01;
-		    $v = 0.99 if  $v > 0.99;
-    	}
-    	if ($griplist && ( !$mystatus ||  $mystatus eq "ip" )) {
-            if ( $ispip  && matchIP( $ip, 'ispip', 0, 1 ) ) {
-            	if ($ispgripvalue ne '') {
-                    $v = $ispgripvalue;
-                } else {
-                    $v=$Griplist{x};
-                }
+
+        if ($griplist) {
+            foreach my $iip (@sips) {
+                my $v;
+                my $ip3 = ipNetwork($iip,1);
+                $ip3 =~ s/\.0+$//o;
+                $ip3 =~ s/(:0){4}$//o;
+
+                # mlog(0,"ip: $iip , net: $ip3".($ip3 =~ /:/o ? '::/64' : '.0/24')." , gripvalue: $Griplist{$ip3}");
+        		if ($iip !~ /$IPprivate/o && defined($v = $Griplist{$ip3})) {
+        		    $v = 0.01 if $v < 0.01;
+        		    $v = 0.99 if $v > 0.99;
+            	}
+            	if ( !$mystatus || $mystatus eq "ip" ) {
+                    if ( $ispip  && matchIP( $iip, 'ispip', 0, 1 ) ) {
+                    	if ($ispgripvalue ne '') {
+                            $v = $ispgripvalue;
+                        } else {
+                            $v = $Griplist{x};
+                        }
+                    }
+
+                    $fm .= "<b><font color='gray'>&bull;</font> $ip3".($ip3 =~ /:/o ? '::/64' : '.0/24')." has a Griplist value of $v</b><br />\n" if defined $v;
+            	}
             }
-
-            $fm .= "<b><font color='gray'>&bull;</font> $ip3 has a Griplist value of $v</b><br />\n" if defined $v;
-
-    	}
-
+        }
+        
         if (@AnalyzeLog > 1) {
             shift(@AnalyzeLog);
             $fm .= "<br /><b><font color=\"#003366\">Feature Matching Log:</font></b><br /><br />\n";
