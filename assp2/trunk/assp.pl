@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.6';
-$build   = '21167';        # 16.06.2021 TE
+$build   = '21168';        # 17.06.2021 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.034999';
 $MAINVERSION = $version . $modversion;
@@ -659,7 +659,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '066A9D54F820B700AC65E3EC63246F10D95DFB70'; }
+sub __cs { $codeSignature = '0897980A601FBDCEB7F04FFF76439915CC98A4FD'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -34218,7 +34218,9 @@ sub DKIMOK_Run {
               mlog($fh,"info: remove IP-score from $this->{cip} - this mail passed the DKIM check") if ($SessionLog || $ValidateSenderLog) && $this->{cip} && exists $PBBlack{$this->{cip}};
               pbBlackDelete($fh, $this->{ip});
           }
-          if ($identity = lc ($dkim->{signature}->identity || $this->{arcresult}->{host})) {
+          $identity = eval{$dkim->{signature} ? lc($dkim->{signature}->identity) : undef};
+          $identity ||= $this->{arcresult}->{host};
+          if ($identity) {
               $this->{dkimidentity} = $identity if ! $fh;
               mlog($fh,"info: found DKIM signature identity '$identity'") if (($ValidateSenderLog && ($DKIMWLAddresses || $DKIMNPAddresses)) || $ValidateSenderLog > 1 || $SessionLog > 1);
               $this->{myheader} .= "X-ASSP-DKIMidentity: $identity\r\n" if $AddDKIMHeader;
@@ -34244,7 +34246,7 @@ sub DKIMOK_Run {
           } else {
               mlog($fh,"error: can't get DKIM signature identity - $@");
           }
-          $this->{dkimheaders} = $dkim->{signature}->headerlist;
+          eval{$this->{dkimheaders} = $dkim->{signature}->headerlist if $dkim->{signature};};
       }
       mlog($fh,"$tlit DKIM signature $this->{dkimverified} - $detail$identity - sender policy is: $dkimwhy_s - author policy is: $dkimwhy_a$changed") if $ValidateSenderLog && $DoDKIM>=2;
       $this->{messagereason}="DKIM $result";
