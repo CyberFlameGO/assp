@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.32 2021/06/12 11:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.35 2021/06/18 10:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -121,6 +121,70 @@ our %VirusTotalIgnoreVendor = (
 # replace $neverMatch with your own regular expression
 our $VirusTotalIgnoreVendorRe = qr/$neverMatch/i;
 
+# regex to indentify files for which the VT scan be skipped
+our $VirusTotal_Skipped_Fileextension = qr/\.(?:
+
+gif|tiff?|w?bmp|(?:x-)?png|ico[n_]?|(?:m-)?jpe?g|mng|pcx|rgb|webp|yuv|[ew]mf|  # Grafiken und Bilder
+pem|cr[lt]|csr|cert|der|p12|   # Zertifikate udg.
+key(?:store)?     |   # alle Key Dateien
+[xc]?html? |   # html Datei
+ybhtm   |   # yBook HTML
+nclk    |   # HTMLted Text
+me      |   # read.me
+mml     |   # MathML math embedded HTML
+latex   |   # Latex Text und Layout Dokument
+json    |   # JSON objects
+txt     |   # text Datei
+csv     |   # csv excel sheets
+xml     |   # xml Datei
+x\d\d   |   # xml Datei
+fpage   |   # xml Datei
+pages   |   # xml Datei
+odttf   |   # font datei
+fdseq   |   # xml Datei
+fdoc    |   # xml Datei
+dict    |   # dictionary
+rels    |   # xml relations
+xslt?   |   # XML stylesheet
+xsd     |   # XML schema description
+pkcs\d* |   # SMIME signature
+p7s     |   # SMIME signature
+dwg     |   # Autocat
+dur     |   # Krankenkasse Datenaustausch
+auf     |   # Krankenkasse Datenaustausch
+sh[px]  |   # AutoCad
+cpg     |   # Autocad
+db[fd]? |   # Datenbanken
+[pd]83  |   # OctoWare
+oct     |   # OctoWare
+mso     |   # Office Plain Text
+ics     |   # Kalendereintrag oder Einladung
+cdr     |   # Corel-Draw Datei
+ic[cm]  |   # Corel-Draw Datei - srgb color space profile
+gms     |   # Corel-Draw Datei
+curve   |   # Corel-Draw Datei
+emz     |   # gepackte Grafikdatei
+sb[nx]  |   # ArcGIS
+data?   |   # Daten Datei
+obj     |   # Object Datei
+prj     |   # Projektdatei
+qpj     |   # Projektdatei-Zusatz
+vcd     |   # Vistenkarte
+vml     |   # vector markup language
+lyr     |   # Grafikdatei
+wdp     |   # AutoCad or WordPerfect
+savf    |   # OS400 SaveFile
+desc    |   # description file from .msg extraction
+n[st]f  |   # Lotus Notes
+123     |   # Lotus 123
+eml     |   # RFC822 Email-Files
+ds_store|   # MACOS Datei
+
+bin     |   # generic binaries, e.g. ms printer.settings
+encrypt |   # encrypted
+unknown     # files marked as unknown by any extractor
+)$/xi;
+
 sub validateModule {
     my $module = shift;
     $module =~ s/^\s*use\s+//o;
@@ -156,7 +220,7 @@ BEGIN {
     $LibArchRe .= 'EAR|EXT|GZIP|GZ|IHEX|ISO|JAR|';
     $LibArchRe .= 'LBR|LHA|LRZ|LZ|LZ4|LZH|LZMA|LZR|';
     $LibArchRe .= 'NSIS|';
-    $LibArchRe .= 'PAR|PAX|QCOW2|RAR|RPM|SquashFS|';
+    $LibArchRe .= 'PAR|PAX|QCOW2|RPM|SquashFS|';
     $LibArchRe .= 'TAR|TBZ|TBZ2|UDF|';
     $LibArchRe .= 'WAR|XAR|Z|ZIP';
 
@@ -227,7 +291,8 @@ BEGIN {
         $LibArchVer =~ s/(\d+)(\d{3})(\d{3})$/$1.$2.$3/o;
         $LibArchVer =~ s/\.0{1,2}/./go;
         $CanLACheck = 1;
-        $formatsRe = $LibArchRe if $formatsRe ne $z7zRe;
+        $LibArchRe .= '|RAR' if ! $Can7zCheck && ! $CanRARCheck; # use the bad RAR implementaion in libarchive only, if this the only option for RAR
+        $formatsRe = $LibArchRe if $formatsRe ne $z7zRe;         # 7z can do the same and some more types
         $main::ModuleList{'Archive::Libarchive::XS'} = Archive::Libarchive::XS->VERSION.'/0.09';
         $main::ModuleList{'Archive::Libarchive::XS(libarchive-version)'} = $LibArchVer.'/3.3.1';
     } else {          # set dummy constants in case Archive::Libarchive::XS is not available
@@ -276,7 +341,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.32 2021/06/12 11:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.35 2021/06/18 10:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -445,7 +510,8 @@ sub get_config {
  'Sets the priority of this Plugin within the call/run-level '.$self->{runlevel}.'. The Plugin with the lowest priority value is processed first!',undef,undef,'msg100020','msg100021'],
 
 [$self->{myName}.'DoVirusTotalVirusScan','Enable VirusTotal Virus Scan',0,\&main::checkbox,0,'(.*)',undef,
-'If a VirusTotalAPIKey is provided and this option is enabled, all MIME-parts will be (in addition to ClamAV and/or FileScan) checked by www.virustotal.com.<br />
+'If a VirusTotalAPIKey is provided and this option is enabled, MIME-parts will be (in addition to ClamAV and/or FileScan) checked by www.virustotal.com.<br />
+ To reduce the usage (costs) of your VirusTotalAPIKey, text files, pictures and other well known innocent binary files (detected by there content) are skipped for VirusTotal.<br />
  There will be no mail content sent to VirusTotal, only hashes are queried!',undef,undef,'msg100170','msg100171'],
 
 [$self->{myName}.'blockEncryptedZIP','Block Encrypted Compressed Attachments',0,\&main::checkbox,0,'(.*)',undef,
@@ -490,7 +556,7 @@ sub get_config {
  Depending on your Perl distribution, it could be possible that you must install additionally \'IO::Compress::...\' (for example: IO::Compress:Lzma) modules to support the compression methodes with Archive::Extract.<br />
  If the perl module Archive::Rar and a rar or unrar binary for your OS are installed (in PATH), the RAR format is also supported.<br />
  If the perl module Archive::Rar and a 7z/7za/7zip or p7zip executable is available at the system (in PATH), the following formats are supported: 7z, XZ, BZIP2, BZ2, GZIP, GZ, TAR.GZ, TAR, ZIP, WIM, AR, ARJ, CAB, CHM, CPIO, CramFS, DMG, EXT, FAT, GPT, HFS, IHEX, ISO, LHA, LZH, LZMA, MBR, MSI, NSIS, NTFS, QCOW2, RAR, RPM, SquashFS, UDF, UEFI, VDI, VHD, VMDK, WIM, XAR, Z.<br />
- If the perl module Archive::Libarchive::XS is available , the following formats are supported: 7z, XZ, BZIP2, BZ2, GZIP, GZ, TAR.GZ, TAR, ZIP, WIM, AR, ARJ, CPIO, EXT, IHEX, ISO, LHA, LZH, LZMA, NSIS, QCOW2, RAR, RPM, SquashFS, UDF, XAR, Z.<br /><br />
+ If the perl module Archive::Libarchive::XS is available , the following formats are supported: 7z, XZ, BZIP2, BZ2, GZIP, GZ, TAR.GZ, TAR, ZIP, WIM, AR, ARJ, CPIO, EXT, IHEX, ISO, LHA, LZH, LZMA, NSIS, QCOW2, RPM, SquashFS, UDF, XAR, Z.<br /><br />
  For performance reasons it is strongly recommended to install the module Archive::Libarchive::XS!<br />
  Currently supported compression formats are: '.$formats.'<br />
  Detected decompression executables are: '.$exe.'<br />
@@ -1969,6 +2035,29 @@ sub max {
     return [sort {$main::b <=> $main::a} @_]->[0];
 }
 
+# nearly the the same like detectFileType
+sub detectFileType4VT {
+    my ($self,$file,$ScanLog) = @_;
+    my $mimetype = eval{my $ft = File::Type->new(); $ft->mime_type($file);};
+    $mimetype  ||= eval{my $ft = File::Type->new(); $ft->mime_type(&main::d8($file));};
+    $mimetype = check_type($file) if !$mimetype || $mimetype eq 'application/octet-stream';
+    mlog(0,"info: VT - MIME-type '$mimetype' detected") if $ScanLog > 1 && $mimetype;
+    return () if !$mimetype || $mimetype eq 'application/octet-stream';
+    my $t = eval{MIME::Types->new()->type($mimetype);};
+    return () unless $t;
+    my @ext = map {my $t = '.'.$_;$t;} eval{$t->extensions;};
+    if (! @ext && $mimetype eq 'application/x-gzip') {
+        push(@ext,'.gz','.gzip','.emz');
+    } elsif ($mimetype eq 'application/x-gzip') {
+        push(@ext,'.emz');
+    }
+    if (! @ext && $mimetype eq 'application/encrypted') {
+        push(@ext,'.encrypt');
+    }
+    mlog(0,"info: VT - file-extensions for $mimetype: @ext") if $ScanLog > 1 && @ext;
+    return @ext;
+}
+
 sub vt_file_is_ok {
     my ($self,$file) = @_;
     return 1 unless $CanVT;
@@ -1982,6 +2071,19 @@ sub vt_file_is_ok {
     $self->{vtapi}->reset();
     local $@;
 
+    # do we need to scan the file with VT - are those exceptions defined? and is the file matching?
+    if ($VirusTotal_Skipped_Fileextension) {
+        my @ext;
+        eval {@ext = grep {/$VirusTotal_Skipped_Fileextension/i} detectFileType4VT($self, $file, $ScanLog);};
+        if ($@) {
+            mlog(0,"error: wrong regular expression in \$ASSP_AFC::VirusTotal_Skipped_Fileextension - $@");
+        }
+        if (@ext) {
+            mlog(0,"info: skipped VirusTotal check for file '$file'") if $ScanLog > 1;
+            return 1;
+        }
+    }
+    
     my $res = eval{$self->{vtapi}->is_file_bad($file)};
     mlog($fh,"VirusTotal: scan finished - ".($res==1 ? 'virus found':'OK'),1)
         if($res == 1 && $ScanLog ) || $ScanLog >= 2;
@@ -3091,13 +3193,15 @@ sub run_ext_cmd {
         open (STDOUT, '>', \$o);
         open (STDERR, '>', \$e);
     }
+    local $@;
     my $ret = eval { $obj->run(@_); };
+    my $evalerr = $@;
     if ($main::SAVEOUT && $main::SAVEERR) {
         STDOUT->close;
         STDERR->close;
     }
     &main::sigonTry(__LINE__);
-    return $ret;
+    return ($ret,$evalerr);
 }
 
 sub getExtMatch {
@@ -3110,8 +3214,21 @@ sub getExtMatch {
     return $res;
 }
 
-sub getSep {
-    return $main::isWIN ? '"' : "'";
+sub recreateFile {
+    my ($file,$content) = @_;
+    if (! $main::eF->($file)) { # if the file no longer exists (was removed by an extracter) recreate it
+        local $\ = undef;
+        my $F;
+        if (! $main::open->($F,'>', $file )) {
+            mlog(0,"error: can't recreate 'file' after it was unexpected removed by the last used extraction methode - $!");
+            return 0;
+        }
+        $F->binmode;
+        $F->print($$content);
+        $F->close;
+        mlog(0,"warning: recreated 'file' after it was unexpected removed by the last used extraction methode") if $main::AttachmentLog;
+    }
+    return 1;
 }
 
 sub X_decompress {
@@ -3123,17 +3240,24 @@ sub X_decompress {
     my $z7z = 0;
     my $la = 0;
     my $zip = 0;
+
+    my $content;  # keep the content
+    $main::open->(my $F,'<', $file ) or return -1;
+    $F->binmode;
+    $F->read($content,&main::fsize($file));
+    $F->close;
+
     if ($CanLACheck && ($mtype = getExtMatch($LibArchRe,$extension))) {
-        $la = 1;
-        $type = "$mtype for libarchive";
+        $type = $mtype . ($main::AttachmentLog < 2 ? " for libarchive" : '');
+        $la = 'libarchive';
     }
     if ($CanRARCheck && ($mtype = getExtMatch('rar',$extension))) {
         $type ||= 'RAR';
-        $rar = 1;
+        $rar = 'rar';
     }
     if ($Can7zCheck && ($mtype = getExtMatch($z7zRe,$extension))) {
-        $type ||= "$mtype for 7z";
-        $z7z = 1;
+        $type ||= $mtype . ($main::AttachmentLog < 2 ? " for 7z" : '');
+        $z7z = '7z';
     }
     if ($CanZIPCheck) {
       $mtype =
@@ -3148,7 +3272,7 @@ sub X_decompress {
         grep {/\.(?:txz|tar\.xz)$/io} @$extension             ? 'TXZ' :
         grep {/\.xz$/oi} @$extension                          ? 'XZ'  :
         '';
-        $zip = 1 if $mtype;
+        $zip = 'zip' if $mtype;
         $type ||= $mtype;
     }
     mlog(0,"info: found compressed file with type: '$type'") if $main::AttachmentLog > 1 && $type;
@@ -3172,10 +3296,17 @@ sub X_decompress {
     return 0 if (@{$self->{isEncrypt}} && $self->{blockEncryptedZIP}); # a failed content was already detected
 
     d("file: $file");
+    if ($main::AttachmentLog > 1) {
+        my $methodes = join(', ',($la,$rar,$z7z,$zip));
+        $methodes =~ s/, 0//go;
+        $methodes =~ s/^0, //o;
+        $methodes ||= 'NONE';
+        mlog(0,"info: the following extraction methodes are available for the file '$file' with type '$type': $methodes");
+    }
     my $loop = 1;
-    while ($loop) {
+    while ($loop) {  # one loop cycle for each extraction methode
         my $ae;
-        $loop = undef; # normaly we will only need one loop - on exception loop will be set to 1 again
+        $loop = undef; # normaly we will only need one loop - on an exception, loop will be set to 1 again
         # find the not available archive exctraction methodes
         if ($la) {
             $ae = eval{archive_read_new();};
@@ -3208,11 +3339,11 @@ sub X_decompress {
             }
         }
         if ($zip && ! $ae) {
-            $ae = eval{Archive::Extract->new( archive => $file , type => $type);} if $zip;
+            $ae = eval{Archive::Extract->new( archive => $file , type => $type);};
             if (ref($ae)) {
                 mlog(0,"info: using Archive::Extract to extract '$file'") if $main::AttachmentLog > 1;
             } else {
-                mlog(0,"warning: can't get instance of Archive::Extract - $@") if $main::AttachmentLog > 1;
+                mlog(0,"warning: can't get instance of Archive::Extract for file '$file' - $@") if $main::AttachmentLog > 1;
                 $zip = undef;
                 $ae = undef;
             }
@@ -3230,6 +3361,7 @@ sub X_decompress {
         if ($la) {
             $la = 0;
             $ok = eval{getarc($self,$ae,$tmpdir,$file);};
+            my $evalerr = $@;
             my $error = delete $self->{$ae};
             if (defined $ok) {
                 if ($ok == ARCHIVE_OK) {
@@ -3265,7 +3397,7 @@ sub X_decompress {
                     }
                 }
             } else {
-                mlog(0,"warning: can't extract '$file' using libarchive - $@");
+                mlog(0,"warning: can't extract '$file' using libarchive - $evalerr");
                 $ok = undef;      # force a retry with rar or 7z or ZIP for this compression format
                 $ae = undef;
                 $la = undef;
@@ -3273,12 +3405,11 @@ sub X_decompress {
             }
         } elsif ($rar) {
             $rar = 0;
-            my $sep = getSep();
-            $ok = run_ext_cmd($ae,
+            ($ok,my $evalerr) = run_ext_cmd($ae,
                 'command' => 'x',
-                'archive' => $sep.$file.$sep,
+                'archive' => $file,
                 'switches' => ['-y', '-o+', '-ol' , '-p-', '--'],
-                'path' => $sep.$tmpdir.$sep
+                'path' => "$tmpdir/"
                 );
             if (defined $ok) {
                 my $ret = $ok;
@@ -3288,7 +3419,11 @@ sub X_decompress {
                 if (! $ok) {
                     if ($err != 3 && $err != 10) {  # 3 = CRC error or encryption in member - 10 in file
                         mlog(0,"warning: possibly virus infected file (can't extract archive using rar [$ret]) '$file' - $! - ".$ae->explain_error($err));
-                    } elsif ($err) {
+                        $ok = undef; # force a retry with 7z or ZIP for this compression format
+                        $ae = undef;
+                        $rar = undef;
+                        $loop = 1;
+                    } else {
                         my $stderr = $ae->{stderr};
                         if ($stderr =~ /encrypted file [^\r\n]+?\. Corrupt file or wrong password\./oi) {
                             my $f = $file;
@@ -3307,7 +3442,7 @@ sub X_decompress {
                     mlog(0,"info: extracted '$file' - used RAR") if $main::AttachmentLog > 1;
                 }
             } else {
-                mlog(0,"warning: can't extract '$file' using rar - $@");
+                mlog(0,"warning: can't extract '$file' using rar - $evalerr");
                 $ok = undef;      # force a retry with 7z or ZIP for this compression format
                 $ae = undef;
                 $rar = undef;
@@ -3315,11 +3450,10 @@ sub X_decompress {
             }
         } elsif ($z7z) {
             $z7z = 0;
-            my $sep = getSep();
-            $ok = run_ext_cmd($ae,
+            ($ok,my $evalerr) = run_ext_cmd($ae,
                 'command' => 'x',
-                'archive' => $sep.$file.$sep,
-                'switches' => ['-y', "-o$sep$tmpdir$sep", '-bd', '-snh', '-snl', '-p', '-aoa' , '--']
+                'archive' => $file,
+                'switches' => ['-y', "-o$tmpdir/", '-bd', '-snh', '-snl', '-p', '-aoa' , '--']
                 );
             if (defined $ok) {
                 my $ret = $ok;
@@ -3329,9 +3463,13 @@ sub X_decompress {
                 if (! $ok) {
                     if ($err != 2) {  # 2 = CRC error or encryption in member or file
                         mlog(0,"warning: possibly virus infected file (can't extract archive using 7z [$ret]) '$file' - $! - ".$ae->{stderr});
+                        $ok = undef; # force a retry with ZIP for this compression format
+                        $ae = undef;
+                        $z7z = undef;
+                        $loop = 1;
                     } else {
                         my $stderr = $ae->{stderr};
-                        my @ret = $stderr =~ /ERROR: Data Error in encrypted file. Wrong password\? :\s*([^\r\n]+)/goi;
+#                        my @ret = $stderr =~ /ERROR: Data Error in encrypted file. Wrong password\? :\s*([^\r\n]+)/goi;
                         if ($stderr =~ /ERROR: Data Error in encrypted file. Wrong password\? :\s*[^\r\n]+/oi) {
                             my $f = $file;
                             $f =~ s/^.*?([^\/\\]+)$/$1/o;
@@ -3349,7 +3487,7 @@ sub X_decompress {
                     mlog(0,"info: extracted '$file' - used 7z") if $main::AttachmentLog > 1;
                 }
             } else {
-                mlog(0,"warning: can't extract '$file' using 7z - $@");
+                mlog(0,"warning: can't extract '$file' using 7z - $evalerr");
                 $ok = undef;      # force a retry with ZIP for this compression format
                 $ae = undef;
                 $z7z = undef;
@@ -3378,9 +3516,11 @@ sub X_decompress {
             }
             mlog(0,"warning: Archive::Extract detected an error for '$file' - ".$ae->error) if $ae->error && $ok && $ae->error !~ /not chdir back to start/oi;
         } else {  # should never be reached
+            recreateFile($file,\$content);
             return -1;
         }
         mlog(0,"info: try next provided extraction methode") if $loop && $main::AttachmentLog > 1 && ($rar + $z7z + $la + $zip) > 0;
+        last unless recreateFile($file,\$content);
     }
     return defined $ok ? $ok : -1;
 }
