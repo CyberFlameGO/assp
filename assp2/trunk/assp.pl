@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.6';
-$build   = '21168';        # 17.06.2021 TE
+$build   = '21198';        # 17.07.2021 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.034999';
 $MAINVERSION = $version . $modversion;
@@ -659,7 +659,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '0897980A601FBDCEB7F04FFF76439915CC98A4FD'; }
+sub __cs { $codeSignature = 'E8E4923D54823E1C45242FE0A4F5D78B883A7DE7'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -3019,7 +3019,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['PBTrapInterval','Invalid Addresses Refresh Interval',4,\&textinput,3,'(\d+\.?\d*|)',undef,
   'Addresses will be removed after this interval in days. For example 3. <input type="button" value=" Show Invalid Addresses" onclick="javascript:popFileEditor(\''.$newDB.'pb/pbdb.trap.db\',5);" />',undef,undef,'msg002440','msg002441'],
 ['PenaltyUseNetblocks','Use IP Netblocks',0,\&checkbox,'1','(.*)',undef,
-  'Perform the IP address checks of the sending host based on the /24 subnet  rather than on the specific IP.',undef,undef,'msg002450','msg002451'],
+  'Perform the IP address checks of the sending host based on the /24 (IPv4) - /64 (IPv6) subnet rather than on the specific IP.',undef,undef,'msg002450','msg002451'],
 ['PenaltyError','Penalty Reply',80,\&textinput,'554 5.7.1 Error, send your mail to postmaster@LOCALDOMAIN to ensure delivery','^([245]\d\d .*|)$',undef,
   'If set SMTP reply for Penalty Deny. eg: \'554 5.7.1 Error, send your mail to postmaster@LOCALDOMAIN to ensure delivery\'. The literal LOCALDOMAIN will be replaced by the recipient domain. The literal LOCALUSER will be replaced by the recipient user part. For example:554 5.7.1 Mail appears to be unsolicited -- send error reports to postmaster@LOCALDOMAIN.',undef,undef,'msg002460','msg002461'],
 ['PenaltyDuration','Penalty Interval',4,\&textinput,60,'(\d?\d?\d?\d?)','updatePenaltyDuration',
@@ -3164,7 +3164,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['DelayExpiryTime','Expiry Time',5,\&textinput,36,'(\d+)',undef,
   'Enter the number of days for which whitelisted \'tuplet\' is considered valid. Default is 36 days.',undef,undef,'msg003350','msg003351'],
 ['DelayUseNetblocks','Use IP Netblocks',0,\&checkbox,1,'(.*)',undef,
-  'Perform the IP address checks of the sending host based on the /24 subnet it is at rather than the specific IP. <br />
+  'Perform the IP address checks of the sending host based on the /24 (IPv4) - /64 (IPv6) subnet it is at rather than the specific IP. <br />
   This feature may be useful for legitimate mail systems that shuffle messages among SMTP clients between retransmissions.',undef,undef,'msg003360','msg003361'],
 ['DelayNormalizeVERPs','Normalize VERP Addresses',0,\&checkbox,1,'(.*)',undef,
   'Some mailing lists (such as Ezmlm) try to track bounces to individual mails, rather than just individual recipients, which creates a variation on the VERP method where each email has its own unique envelope sender. Since the automatic whitelisting (called savelisting to make a difference to the standard whitelisting) that is built into Greylisting depends on the envelope addresses for subsequent mails being the same, the greylisting filter will attempt to normalize the unique sender addresses, when this option is checked.',undef,undef,'msg003370','msg003371'],
@@ -4497,7 +4497,7 @@ For example: mysql/dbimport<br />
   '',undef,undef,'msg007060','msg007061'],
 ['URIBLLog','Enable URIBL logging','0:nolog|1:standard|2:verbose|3:diagnostic',\&listbox,1,'(.*)',undef,
   '',undef,undef,'msg007070','msg007071'],
-['ScanLog','Enable ClamAV logging','0:nolog|1:standard|2:verbose|3:diagnostic',\&listbox,1,'(.*)',undef,
+['ScanLog','Enable VirusScan logging','0:nolog|1:standard|2:verbose|3:diagnostic',\&listbox,1,'(.*)',undef,
   '',undef,undef,'msg007080','msg007081'],
 ['DKIMlogging','Enable DKIM logging','0:nolog|1:standard|2:verbose|3:diagnostic',\&listbox,1,'(.*)',undef,
   'DKIM and ARC signing log level. Set to diagnostic, the generated signatures will be veryfied after creation.',undef,undef,'msg007090','msg007091'],
@@ -15424,7 +15424,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
     }
 
     my $v;
-    $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.32;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+    $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.36;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
     $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
     $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
     $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.24;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -26100,7 +26100,7 @@ sub getline {
                     mlog($fh,'got '.uc($this->{lastcmd})." $v host or domain name$e");
                 }
             }
-        } elsif ($invalidHeloRe && $l =~ /$invalidHeloReRE/i) {
+        } elsif ($invalidHeloRe && ($helo =~ /$invalidHeloReRE/i || $l =~ /$invalidHeloReRE/i)) {  # the host in HELO or the helo line
             pbWhiteDelete( $fh , $this->{ip} );
             pbAdd( $fh, $this->{ip}, 'ihValencePB', "InvalidHELO" );
             $this->{prescore} += ${'ihValencePB'}[0];
@@ -34219,7 +34219,7 @@ sub DKIMOK_Run {
               pbBlackDelete($fh, $this->{ip});
           }
           $identity = eval{$dkim->{signature} ? lc($dkim->{signature}->identity) : undef};
-          $identity ||= $this->{arcresult}->{host};
+          $identity ||= lc $this->{arcresult}->{host};
           if ($identity) {
               $this->{dkimidentity} = $identity if ! $fh;
               mlog($fh,"info: found DKIM signature identity '$identity'") if (($ValidateSenderLog && ($DKIMWLAddresses || $DKIMNPAddresses)) || $ValidateSenderLog > 1 || $SessionLog > 1);
@@ -34752,11 +34752,11 @@ sub ipNetwork {
     $ip = ITR($ip);
     if ($ip =~ /:[^:]*:/o) {
         return ipv6expand($ip) if (!$netblock);
-        $netblock = 64 if $netblock == 1;
+        $netblock = 64 if $netblock == 1 or $netblock > 128;
         return join ':', map{my $t = sprintf("%x", oct("0b$_"));$t;} unpack 'a16' x 8, ipv6binary($ip,$netblock) . '0' x (128 - $netblock);
     } else {
         return $ip if (!$netblock);
-        $netblock = 24 if $netblock == 1;
+        $netblock = 24 if $netblock == 1 or $netblock > 32;
         my $u32 = unpack 'N', pack 'CCCC', split /\./o, $ip;
         my $mask = unpack 'N', pack 'B*', '1' x $netblock . '0' x (32 - $netblock );
         return join '.', unpack 'CCCC', pack 'N', $u32 & $mask;
@@ -34764,7 +34764,7 @@ sub ipNetwork {
 }
 
 # IP-address normalization
-# remove leading zreos from IPV4 octets, masks and CIDR - 010.001.2.0 -> 10.1.2.0 , 192.168.002.000/024 -> 192.168.2.0/24 , 255.255.000.000 -> 255.255.0.0
+# remove leading zeros from IPV4 octets, masks and CIDR - 010.001.2.0 -> 10.1.2.0 , 192.168.002.000/024 -> 192.168.2.0/24 , 255.255.000.000 -> 255.255.0.0
 # remove leading zeros from IPv6 words, masks and CIDR - 2001::0001 -> 2001::1 , 0200:0010::0100 -> 200:10::100 , 0200:0010::0000/032 -> 200:10::0/32
 sub ipN {
     my $ip = shift;
@@ -48873,7 +48873,7 @@ sub maillogFilename {
         $sub2 = $sub;
         $sub = d8($sub);
         $sub =~ s/[^a-zA-Z0-9]/_/go if (! ($UseUnicode4MaillogNames && $canUnicode));
-        $sub =~ s/^\P{IsAlnum}+/_/go;
+        $sub =~ s/\P{IsAlnum}+/_/go;
         $sub =~ s/[\^\s\<\>\?\"\'\:\|\\\/\*\&\.\+]|\p{Currency_Symbol}/_/igo;  # remove not allowed characters and spaces from file name
         $sub =~s/\.{2,}/./go;
         $sub =~s/_{2,}/_/go;
@@ -54443,7 +54443,7 @@ sub ConfigAnalyze {
         $Con{$tmpfh} = {};
         $Con{$tmpfh}->{ip} = $ip;
         $Con{$tmpfh}->{mailfrom} = $mailfrom;
-        $Con{$tmpfh}->{header} = $completeMail;
+        $Con{$tmpfh}->{header} = $header ? $header : $completeMail;
 
         FromStrictOK_Run($tmpfh);
 

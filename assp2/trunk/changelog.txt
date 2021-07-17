@@ -1,3 +1,12 @@
+2021-07-17
+fixed in assp 2.6.6 *SPAM-Evaporator* build 21198:
+
+- the '^° and '$' were not working in 'invalidHeloRe'
+
+- invalid UTF8 characters in a mail subject may caused SEGV errors in 'Win32::Unicode::Dir' on windows systems
+
+
+
 2021-06-17
 fixed in assp 2.6.6 *SPAM-Evaporator* build 21168:
 
