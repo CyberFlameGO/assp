@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.6';
-$build   = '21198';        # 17.07.2021 TE
+$build   = '21202';        # 21.07.2021 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.034999';
 $MAINVERSION = $version . $modversion;
@@ -659,7 +659,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'E8E4923D54823E1C45242FE0A4F5D78B883A7DE7'; }
+sub __cs { $codeSignature = '17C197AB3DA177249A3C4AEDAE64E54FE8FB930C'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -686,6 +686,16 @@ our $minOpenSSLLibVersion = '1.0.2s';
 our $SSL_read_ahead = 1;            # try the SSL readahead
 our $SSL_read_ahead_wait = 2;       # poll/select socket wait time in milliseconds for the read ahead
 our $SSL_read_ahead_max_time = 50;  # time in milliseconds used for read ahead
+
+# SSL/TLS assp will try to do a fast bulk (boost) write using the following values
+# the max framesize of SSL is 16384 byte - for the time given in SSL_write_boost_max_time, assp will try to send as much SSL frames as possible
+# be carefull changing any of these values !
+our $SSL_write_boost = 0;           # (0/1/2) 0 - disabled - possibly auto enabled   (default)
+                                    #         1 - enabled  - possibly auto disabled
+                                    #         2 - permanently enabled (never automatically changed)
+                                    # try the SSL boost - automatically set to 1 in ConfigChangeTCPBuf if $maxTCPSNDbufSSL > 16384
+                                    #                     automatically set to 0 in ConfigChangeTCPBuf if $maxTCPSNDbufSSL <= 16384
+our $SSL_write_boost_max_time = 100;# time in milliseconds used for SSL write boost (default 100)
 
 # the SSL/TLS renegotiation counter will be reset after this number of seconds without a renegotiation request and any regular data are sent or received
 our $maxSSLRenegDuration = 10;
@@ -4922,20 +4932,29 @@ Keep in mind, that the maximum length of a complete SMTP reply line should not e
  You need to enable ( useASSP_VirusTotal_API ) the assp module lib/ASSP_VirusTotal_API.pm and to install the perl module <a href="http://metacpan.org/search?q=JSON" rel="external">JSON</a>.',undef,undef,'msg010770','msg010771'],
 ['OrderedTieHashTableSize','Ordered-Tie Hash Table Size',10,\&textinput,10000,'(\d+)',undef,
  'The number of cached entries allowed in the hash tables used by ASSP. This belongs to griplist, if useDB4griplist is not set and to temporary lists used by the rebuild spamdb process, if useDB4Rebuild is set and BerkeleyDB is not available. Larger numbers require more RAM but result in fewer disk hits. The default value is 10000. Adjust down to use less RAM. Adjust up to speedup.',undef,undef,'msg007820','msg007821'],
-['TCPBufferSize','TCP and SSL Read/Write Buffer Size',80,\&textinput,'','(^(?:\s*(?:tcprcv|tcpsnd|sslrcv|sslsnd)\s*=\s*(?:819[2-9]|8[2-9]\d\d|9\d\d\d|[1-9]\d{4,6}|0)\s*)(?:\s*,\s*(?:tcprcv|tcpsnd|sslrcv|sslsnd)\s*=\s*(?:819[2-9]|8[2-9]\d\d|9\d\d\d|[1-9]\d{4,6}|0)\s*){0,3}$|)','ConfigChangeTCPBuf',
+['TCPBufferSize','TCP and SSL Read/Write Buffer Size',80,\&textinput,'','(^(?:\s*(?:tcprcv|tcpsnd|sslrcv|sslsnd)\s*=\s*(?:819[2-9]|8[2-9]\d\d|9\d\d\d|[1-9]\d{4,7}|0)\s*)(?:\s*,\s*(?:tcprcv|tcpsnd|sslrcv|sslsnd)\s*=\s*(?:819[2-9]|8[2-9]\d\d|9\d\d\d|[1-9]\d{4,7}|0)\s*){0,3}$|)','ConfigChangeTCPBuf',
   'Define the buffer size in byte used for TCP- and SSL socket read and write operations - defaults to empty.<br />
   Any or all of the following four values can be defined:<br /><br />
-  tcprcv - TCP receive buffer size<br />
-  tcpsnd - TCP send buffer size<br />
-  sslrcv - SSL receive buffer size<br />
-  sslsnd - SSL send buffer size<br /><br />
+  tcprcv - TCP receive buffer size (currently: $maxTCPRCVbuf)<br />
+  tcpsnd - TCP send buffer size (currently: $maxTCPSNDbuf)<br />
+  sslrcv - SSL receive buffer size (currently: $maxTCPRCVbufSSL)<br />
+  sslsnd - SSL send buffer size (currently: $maxTCPSNDbufSSL)<br /><br />
+  SSL-Write-Boost (currently: $SSL_write_boost)<br /><br />
   Multiple value definition have to be separated by comma or pipe, like: tcprcv = 65536, tcpsnd = 65536, ...<br />
-  Possible size values are 8192-9999999 , special value for sslrcv and sslsnd is zero.<br />
-  If a value is not specified for tcprcv or tcpsnd, the according TCP buffer size reported by the system is used - but at least 8192 byte.<br />
+  Possible size values are 8192 (8KB) to 99999999 (~95MB), special value for sslrcv and sslsnd is zero.<br />
+  Do NOT write dots in to the number values - like tcprcv = 1.048.576 , those values are not accepted!<br />
+  If a value is not specified for tcprcv, the TCP receive buffer size reported by the system is used - but at least 8192 byte.<br />
+  If a value is not specified for tcpsnd, the value is set to 99999999.<br />
   If a value is not specified for sslrcv or sslsnd, a value of 16384 byte is used, which is the maximum size of a single SSL frame of the SSL layer.<br />
-  If a value of zero is specified for sslrcv or sslsnd, the according system TCP socket buffer size is used.<br />
-  Under normal conditions any setting here will be not required. But, if you notice a bad SSL transmission performance in relation to the speed of plan TCP sockets, it may help to set both SSL buffer size to the size of the according system TCP buffer.<br />
-  like: sslrcv = 0, sslsnd = 0
+  If a value of zero is specified for sslrcv or sslsnd, the according TCP socket buffer size is used.<br />
+  If the configured or calculated value for sslsnd is larger than 16384, the buffer for sslsnd is set to the (SSL)-maximum of 16384 byte and SSL-Write-Boost will be enabled.<br />
+  If SSL-Write-Boost is enabled assp sends for a maximum of $SSL_write_boost_max_time milliseconds in each SSL/TLS-connection as much data as possible in a single thread loop.<br />
+  Under normal conditions any setting here is not required - or better, is at least safe for all operating systems.<br />
+  But, if you notice a too low transmission speed (eg. for large mails) of plan TCP-sockets or SSL-sockets, it may help to set (increase) the according buffer values.<br />
+  like: tcprcv = 1048576, tcpsnd = 10485760, sslrcv = 0, sslsnd = 0<br /><br />
+  To monitor your settings, set SessionLog to diagnostic and watch the maillog.<br />
+  Notice: setting any receive buffers too high may cause the operating system to fall back to very low values (eg. 8KB), which will slow down the transmission speed dramatically.<br />
+  On most systems the TCP send buffers size can safely be set to the maximum supported value of 99999999 (tcprcv default).
   ',undef,undef,'msg006200','msg006201'],
 ['neverQueueSize','Never internaly Queue Mails larger than this Size',10,\&textinput,20971520,'(\d{7,})',undef,
  'Default is 20971520 (20MB) - lowest possible value is 1000000. Any mail that is announced to be or grows larger than this size in byte, will not be queued for actions and checks that requires the complete mail to be internaly queued.<br />
@@ -16282,10 +16301,11 @@ If the step belongs to a BerkeleyDB hash,
              &mlogWrite();
          }
     }
-    mlog(0,"info: system TCP-socket receive buffer is $maxTCPRCVbuf byte");
-    mlog(0,"info: system TCP-socket send buffer is $maxTCPSNDbuf byte");
-    mlog(0,"info: SSL-layer receive buffer is $maxTCPRCVbufSSL byte");
-    mlog(0,"info: SSL-layer send buffer is $maxTCPSNDbufSSL byte");
+    mlog(0,"info: system TCP-socket receive buffer is $maxTCPRCVbuf byte (".formatNumDataSize($maxTCPRCVbuf).')');
+    mlog(0,"info: system TCP-socket send buffer is $maxTCPSNDbuf byte (".formatNumDataSize($maxTCPSNDbuf).')');
+    mlog(0,"info: SSL-layer receive buffer is $maxTCPRCVbufSSL byte (".formatNumDataSize($maxTCPRCVbufSSL).')');
+    mlog(0,"info: SSL-layer send buffer is $maxTCPSNDbufSSL byte (".formatNumDataSize($maxTCPSNDbufSSL).')');
+    mlog(0,'info: SSL-Write-Boost is '.($SSL_write_boost ? 'enabled' : 'disabled'));
     my $isproxy = scalar(keys %ProxySocket) ? ' and Proxy':'';
     mlog(0,"warning : DisableSMTPNetworking is switch on - SMTP$isproxy listeners will be switched off") if ($DisableSMTPNetworking);
 
@@ -20814,11 +20834,12 @@ sub SMTPWrite {
     return if exists $SMTPwriteFail{$fh};
     mlog($fh,"error: internal processing error - UTF8 flag is set for outgoing data") if $SessionLog > 2 && Encode::is_utf8($Con{$fh}->{outgoing});
     $utf8off->(\$Con{$fh}->{outgoing});
+    my $written;
+    my $isSSL = "$fh" =~ /SSL/io;
     my $l = length($Con{$fh}->{outgoing});
     if($l) {
         $thread_nolog = 0;
         $fh->blocking(0) if $fh->blocking;
-        my $written;
         my $towrite = min($Con{$fh}->{SNDBUF}, $l);
         if (exists $Con{$fh}->{sslwritestate}) {
             $towrite = $Con{$fh}->{sslwritestate} ; # we need to repeat a SSL write
@@ -20832,16 +20853,16 @@ sub SMTPWrite {
         $werr = ' - '.$! if $!;
         $werr = ' - '.$@ if $@;
         &sigon(__LINE__);
-        if ("$fh" =~ /SSL/io && $IO::Socket::SSL::SSL_ERROR eq eval('SSL_WANT_READ')) {
+        if ($isSSL && $IO::Socket::SSL::SSL_ERROR eq eval('SSL_WANT_READ')) {
             $written = 0;
             $werr = ' - SSL_WANT_READ';
             &dopoll($fh,$readable,POLLIN);
             $Con{$fh}->{sslwritestate} = $towrite;
-        } elsif ("$fh" =~ /SSL/io && $IO::Socket::SSL::SSL_ERROR eq eval('SSL_WANT_WRITE')) {
+        } elsif ($isSSL && $IO::Socket::SSL::SSL_ERROR eq eval('SSL_WANT_WRITE')) {
             $written = 0;
             $werr = ' - SSL_WANT_WRITE';
             $Con{$fh}->{sslwritestate} = $towrite;
-        } elsif ("$fh" =~ /SSL/io) {
+        } elsif ($isSSL) {
             delete $Con{$fh}->{sslwritestate};
         }
 
@@ -20892,7 +20913,7 @@ sub SMTPWrite {
         delete $Con{$fh}->{sslwantrw} if $written;
 
         if (!$written && $werr) {
-            if ("$fh" =~ /SSL/io) {
+            if ($isSSL) {
                 my $text = $werr =~ /SSL_WANT_/o ? 'renegotiation in progress' : 'error';
                 mlog($fh,"info: ssl-write $text$werr",1) if $ConnectionLog > 1 && $Con{$fh}->{lastWriteError} ne $werr;
                 $Con{$fh}->{lastWriteError} = $werr;
@@ -20915,13 +20936,17 @@ sub SMTPWrite {
                 return;
             }
         } elsif (! $werr) {
-            if ((my $e = delete $Con{$fh}->{lastWriteError}) && $ConnectionLog > 1 && "$fh" =~ /SSL/io) {
+            if ((my $e = delete $Con{$fh}->{lastWriteError}) && $ConnectionLog > 1 && $isSSL) {
                 mlog($fh,"info: ssl-write renegotiation finished - recovered from$e") if $e =~ /SSL_WANT_/o;
             }
         }
         if ($written) {
             $Con{$fh}->{lastwritten} = time;
-            mlog($fh, "info: wrote $written byte to server") if $SessionLog > 2 && $Con{$fh}->{type} ne 'C' && $written;
+            if ($SessionLog > 2 && $Con{$fh}->{type} ne 'C') {
+                my $ip = ITR($fh->peerhost());
+                my $port = $fh->peerport();
+                mlog($fh, "info: wrote $written byte to server $ip:$port");
+            }
         }
         if($debug or $ThreadDebug) {
             my $w = $written || 0;
@@ -20959,15 +20984,15 @@ sub SMTPWrite {
         {
             $Con{$Con{$fh}->{friend}}->{writtenDataToFriend} += $written;
         }
-        if ($l == 0 && ("$fh" !~ /SSL/io || ("$fh" =~ /SSL/io && $Con{$fh}->{lastWriteError} !~ /SSL_WANT_WRITE/o && $Con{$fh}->{lastSSLReadError} !~ /SSL_WANT_WRITE/o))) {
+        if ($l == 0 && (! $isSSL || ($isSSL && $Con{$fh}->{lastWriteError} !~ /SSL_WANT_WRITE/o && $Con{$fh}->{lastSSLReadError} !~ /SSL_WANT_WRITE/o))) {
             &unpoll($fh,$writable);
         }
     } else {  # nothing to write
-        if ("$fh" !~ /SSL/io || ("$fh" =~ /SSL/io && $Con{$fh}->{lastWriteError} !~ /SSL_WANT_WRITE/o && $Con{$fh}->{lastSSLReadError} !~ /SSL_WANT_WRITE/o)) {
+        if (! $isSSL || ($isSSL && $Con{$fh}->{lastWriteError} !~ /SSL_WANT_WRITE/o && $Con{$fh}->{lastSSLReadError} !~ /SSL_WANT_WRITE/o)) {
             &unpoll($fh,$writable);
         }
     }  # end if $l
-    return;
+    return $written;
 }
 
 sub checkSMTPKeepAlive {
@@ -21484,6 +21509,7 @@ sub NoLoopSyswrite {
             return 0;
         }
         if ($written) {
+            mlog(0,"info: wrote $written byte to $ip:$port") if $SessionLog > 2;
             $out = substr($out,$written);
             $Con{$fh}->{lastwritten} = time if exists $Con{$fh};
         }
@@ -23112,7 +23138,7 @@ sub unpoll_force {
         if (exists $Con{$fhh} && $ConTimeOutDebug) {
             my $how = $action eq $readable ? 'readable' : 'writable';
             my $m = &timestring();
-              my ($package, $file, $line) = caller;
+            my ($package, $file, $line) = caller;
             if ($Con{$fhh}->{type} eq 'C'){
                 my $d = "$m client $fhh unselect ($how) from $package $file $line\n";
                 $Con{$fhh}->{contimeoutdebug} .= $d;
@@ -64506,6 +64532,7 @@ EOT
             $sysdef{tcprcv} = $sysdef{tcpsnd} = $fallBackTcpBuf;
         }
         $sysdef{sslrcv} = $sysdef{sslsnd} = $fallBackSSLBuf;
+        $sysdef{tcpsnd} = 99999999;
     }
     $new =~ s/\s//go;
     my %entry = split(/[=,\|]/o,lc $new);
@@ -64515,8 +64542,8 @@ EOT
             next;
         }
         if ($entry{$tag} == 0 && $tag =~/^ssl/o) {
-            $entry{$tag} = $sysdef{tcprcv} if $tag eq 'sslrcv';
-            $entry{$tag} = $sysdef{tcpsnd} if $tag eq 'sslsnd';
+            $entry{$tag} = $entry{tcprcv} || $sysdef{tcprcv} if $tag eq 'sslrcv';
+            $entry{$tag} = $entry{tcpsnd} || $sysdef{tcpsnd} if $tag eq 'sslsnd';
         } elsif ($entry{$tag} < 8192) {
             $ret .= ConfigShowError(0,"info: $name - value for '$tag' was set to $sysdef{$tag} byte, the setting of $entry{$tag} byte is too less");
             $entry{$tag} = $sysdef{$tag};
@@ -64524,13 +64551,20 @@ EOT
     }
 
     $maxTCPRCVbuf = $entry{tcprcv};
-    $ret .= ConfigShowError(0,"info: $name - TCP Receive Buffer is set to $maxTCPRCVbuf byte") if $WorkerNumber == 0;
+    $ret .= ConfigShowError(0,"info: $name - TCP Receive Buffer is set to $maxTCPRCVbuf byte (".formatNumDataSize($maxTCPRCVbuf).')') if $WorkerNumber == 0;
     $maxTCPSNDbuf = $entry{tcpsnd};
-    $ret .= ConfigShowError(0,"info: $name - TCP Send Buffer is set to $maxTCPSNDbuf byte") if $WorkerNumber == 0;
+    $ret .= ConfigShowError(0,"info: $name - TCP Send Buffer is set to $maxTCPSNDbuf byte (".formatNumDataSize($maxTCPSNDbuf).')') if $WorkerNumber == 0;
     $maxTCPRCVbufSSL = $entry{sslrcv};
-    $ret .= ConfigShowError(0,"info: $name - SSL Receive Buffer is set to $maxTCPRCVbufSSL byte") if $WorkerNumber == 0;
-    $maxTCPSNDbufSSL = $entry{sslsnd};
-    $ret .= ConfigShowError(0,"info: $name - SSL Send Buffer is set to $maxTCPSNDbufSSL byte") if $WorkerNumber == 0;
+    $ret .= ConfigShowError(0,"info: $name - SSL Receive Buffer is set to $maxTCPRCVbufSSL byte (".formatNumDataSize($maxTCPRCVbufSSL).')') if $WorkerNumber == 0;
+    if ($entry{sslsnd} > 16384) {
+        $maxTCPSNDbufSSL = 16384;
+        $SSL_write_boost ||= 1 if $SSL_write_boost < 2;
+    } else {
+        $maxTCPSNDbufSSL = $entry{sslsnd};
+        $SSL_write_boost = 0 if $SSL_write_boost < 2;
+    }
+
+    $ret .= ConfigShowError(0,"info: $name - SSL Send Buffer is set to $maxTCPSNDbufSSL byte (".formatNumDataSize($maxTCPSNDbufSSL).')') if $WorkerNumber == 0;
     return $ret;
 }
 
@@ -74317,10 +74351,24 @@ sub ThreadMain {
         }
         $ThreadDebug = $Con{$fh}->{debug};
         d("$fh $Con{$fh}->{ip} l=".length($Con{$fh}->{outgoing}));
-        SMTPWrite($fh);
-        if(length($Con{$fh}->{outgoing})==0) {
-              unpoll($fh,$writable);
+        my $written = 1;
+        my $boostwrite = 0;
+        my $loop = 0;
+        my $lastwritetime = Time::HiRes::time() + (min($SSL_write_boost_max_time, 100) / 1000);
+        while ($written) {
+            $written = SMTPWrite($fh);
+            $boostwrite += $written;
+            $loop++;
+            if(length($Con{$fh}->{outgoing})==0) {
+                  unpoll($fh,$writable);
+                  last;
+            }
+            last if "$fh" !~ /SSL/io;
+            last if ! $SSL_write_boost;
+            last if Time::HiRes::time() > $lastwritetime;
         }
+        mlog($fh,"info: SSL-boost-write has written $boostwrite byte in $loop loops - ".length($Con{$fh}->{outgoing}).' byte are pending for send')
+            if $SessionLog > 2 && $SSL_write_boost && $loop > 1 && "$fh" =~ /SSL/io;
         done2($fh) if $Con{$fh}->{closeafterwrite};
         $ThreadDebug = 0;
     }
@@ -74564,10 +74612,24 @@ sub ThreadMain2 {
         next unless(fileno($fh));
         $ThreadDebug = $Con{$fh}->{debug};
         d("$fh $Con{$fh}->{ip} l=".length($Con{$fh}->{outgoing}));
-        SMTPWrite($fh);
-        if(length($Con{$fh}->{outgoing})==0) {
-              unpoll($fh,$writable);
+        my $written = 1;
+        my $boostwrite = 0;
+        my $loop = 0;
+        my $lastwritetime = Time::HiRes::time() + (min($SSL_write_boost_max_time, 100) / 1000);
+        while ($written) {
+            $written = SMTPWrite($fh);
+            $boostwrite += $written;
+            $loop++;
+            if(length($Con{$fh}->{outgoing})==0) {
+                  unpoll($fh,$writable);
+                  last;
+            }
+            last if "$fh" !~ /SSL/io;
+            last if ! $SSL_write_boost;
+            last if Time::HiRes::time() > $lastwritetime;
         }
+        mlog($fh,"info: SSL-boost-write has written $boostwrite byte in $loop loops - ".length($Con{$fh}->{outgoing}).' byte are pending for send')
+            if $SessionLog > 2 && $SSL_write_boost && $loop > 1 && "$fh" =~ /SSL/io;
         $ThreadDebug = 0;
     }
     &ThreadYield();

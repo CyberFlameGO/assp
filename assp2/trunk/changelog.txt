@@ -1,3 +1,53 @@
+2021-07-21
+fixed in assp 2.6.6 *SPAM-Evaporator* build 21202:
+
+
+added:
+
+# SSL/TLS assp will try to do a fast bulk (boost) write using the following values
+# the max framesize of SSL is 16384 byte - for the time given in SSL_write_boost_max_time, assp will try to send as much SSL frames as possible
+# be carefull changing any of these values !
+our $SSL_write_boost = 0;           # (0/1/2) 0 - disabled - possibly auto enabled   (default)
+                                    #         1 - enabled  - possibly auto disabled
+                                    #         2 - permanently enabled (never automatically changed)
+                                    # try the SSL boost - automatically set to 1 in ConfigChangeTCPBuf if $maxTCPSNDbufSSL > 16384
+                                    #                     automatically set to 0 in ConfigChangeTCPBuf if $maxTCPSNDbufSSL <= 16384
+
+our $SSL_write_boost_max_time = 100;# time in milliseconds used for SSL write boost (default 100)
+
+
+changed:
+
+'TCPBufferSize','TCP and SSL Read/Write Buffer Size'
+  Define the buffer size in byte used for TCP- and SSL socket read and write operations - defaults to empty.
+  Any or all of the following four values can be defined:
+  
+  tcprcv - TCP receive buffer size
+  tcpsnd - TCP send buffer size
+  sslrcv - SSL receive buffer size
+  sslsnd - SSL send buffer size
+  
+  SSL-Write-Boost (currently: 1)
+  
+  Multiple value definition have to be separated by comma or pipe, like: tcprcv = 65536, tcpsnd = 65536, ...
+  Possible size values are 8192 (8KB) to 99999999 (~95MB), special value for sslrcv and sslsnd is zero.
+  Do NOT write dots in to the number values - like tcprcv = 1.048.576 , those values are not accepted!
+  If a value is not specified for tcprcv, the TCP receive buffer size reported by the system is used - but at least 8192 byte.
+  If a value is not specified for tcpsnd, the value is set to 99999999.
+  If a value is not specified for sslrcv or sslsnd, a value of 16384 byte is used, which is the maximum size of a single SSL frame of the SSL layer.
+  If a value of zero is specified for sslrcv or sslsnd, the according TCP socket buffer size is used.
+  If the configured or calculated value for sslsnd is larger than 16384, the buffer for sslsnd is set to the (SSL)-maximum of 16384 byte and SSL-Write-Boost will be enabled.
+  If SSL-Write-Boost is enabled assp sends for a maximum of 100 milliseconds in each SSL/TLS-connection as much data as possible in a single thread loop.
+  Under normal conditions any setting here is not required - or better, is at least safe for all operating systems.
+  But, if you notice a too low transmission speed (eg. for large mails) of plan TCP-sockets or SSL-sockets, it may help to set (increase) the according buffer values.
+  like: tcprcv = 1048576, tcpsnd = 10485760, sslrcv = 0, sslsnd = 0
+  To monitor your settings, set SessionLog to diagnostic and watch the maillog.
+  Notice: setting any receive buffers too high may cause the operating system to fall back to very low values (eg. 8KB), which will slow down the transmission speed dramatically.
+  On most systems the TCP send buffers size can safely be set to the maximum supported value of 99999999 (tcprcv default).
+
+
+
+
 2021-07-17
 fixed in assp 2.6.6 *SPAM-Evaporator* build 21198:
 
