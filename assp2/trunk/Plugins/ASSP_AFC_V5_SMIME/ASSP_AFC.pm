@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.35 2021/06/18 10:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.36 2021/06/21 10:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -341,7 +341,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.35 2021/06/18 10:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.36 2021/06/21 10:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -2038,9 +2038,18 @@ sub max {
 # nearly the the same like detectFileType
 sub detectFileType4VT {
     my ($self,$file,$ScanLog) = @_;
+    my $isFile = 1;
+    if (ref($file)) {   # if file is a ref, it contains a ref to plain data
+        $isFile = 0;
+        $file = $$file;
+    }
     my $mimetype = eval{my $ft = File::Type->new(); $ft->mime_type($file);};
-    $mimetype  ||= eval{my $ft = File::Type->new(); $ft->mime_type(&main::d8($file));};
-    $mimetype = check_type($file) if !$mimetype || $mimetype eq 'application/octet-stream';
+    if ($isFile) {
+        $mimetype  ||= eval{my $ft = File::Type->new(); $ft->mime_type(&main::d8($file));};
+        $mimetype = check_type($file) if !$mimetype || $mimetype eq 'application/octet-stream';
+    } else {
+        $mimetype = check_type_contents(\substr($file,0,512)) if !$mimetype || $mimetype eq 'application/octet-stream';
+    }
     mlog(0,"info: VT - MIME-type '$mimetype' detected") if $ScanLog > 1 && $mimetype;
     return () if !$mimetype || $mimetype eq 'application/octet-stream';
     my $t = eval{MIME::Types->new()->type($mimetype);};
@@ -2079,7 +2088,7 @@ sub vt_file_is_ok {
             mlog(0,"error: wrong regular expression in \$ASSP_AFC::VirusTotal_Skipped_Fileextension - $@");
         }
         if (@ext) {
-            mlog(0,"info: skipped VirusTotal check for file '$file'") if $ScanLog > 1;
+            mlog(0,"info: skipped VirusTotal check for extension '@ext'") if $ScanLog > 1;
             return 1;
         }
     }
