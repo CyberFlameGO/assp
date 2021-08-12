@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.6';
-$build   = '21202';        # 21.07.2021 TE
+$build   = '21218';        # 06.08.2021 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.034999';
 $MAINVERSION = $version . $modversion;
@@ -659,7 +659,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '17C197AB3DA177249A3C4AEDAE64E54FE8FB930C'; }
+sub __cs { $codeSignature = 'FC2663740FD31D4AD1FD72DCF8FBC6A4A6D87570'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1239,6 +1239,7 @@ $NONASCII = qr/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\xFF]/o;
 $complexREStart = '^(?=.*?(((?!)';
 $complexREEnd = '(?!)).*?(?!\g{-1})){';
 $notAllowedSMTP = qr/CHUNKING|PIPELINING|XEXCH50|CHECKPOINT|TRANSID|
+                     PIPE_CONNECT|
                      SMTPUTF8|UTF8REPLY|
                      UTF8SMTP|UTF8SMTPA|UTF8SMTPS|UTF8SMTPAS|
                      UTF8LMTP|UTF8LMTPA|UTF8LMTPS|UTF8LMTPAS|
