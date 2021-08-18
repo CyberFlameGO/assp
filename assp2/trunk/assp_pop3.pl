@@ -1,5 +1,5 @@
 #!/usr/local/bin/perl
-# $Id: assp_pop3.pl,v 1.22 2019/01/02 14:00:00 TE Exp $
+# $Id: assp_pop3.pl,v 1.23 2021/03/27 15:00:00 TE Exp $
 #
 # perl pop3 collector for assp
 # (c) Thomas Eckardt since 2010 under the terms of the GPL
@@ -21,7 +21,7 @@ use Time::Local;
 
 STDOUT->autoflush;
 STDERR->autoflush;
-our $VERSION = $1 if('$Id: assp_pop3.pl,v 1.22 2019/01/02 14:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+our $VERSION = $1 if('$Id: assp_pop3.pl,v 1.23 2021/03/27 15:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 
 ##############################################################################
 # set the next values to 1 if you want to test your POP3 collection externaly
@@ -369,6 +369,19 @@ EOT
                             redo ACCNT;
                         }
                     }
+                }
+            } else {
+                print "POP3: error - can't send message nbr($msgnum) to SMTP server $accounts{$accnt}->{SMTPserver} ,from $mf , to @TO\n";
+                mkdir "$base/POP3error" ,0755;
+                if (open(my $FM, '>', "$base/POP3error/$accnt.$msgnum.".time.'.eml')) {
+                    binmode($FM);
+                    print $FM join('',@$msg);
+                    close $FM;
+                    print "POP3: message nbr($msgnum) for user $accnt was stored in file $base/POP3error/$accnt.$msgnum.".time.".eml\n";
+                    $pop->delete($msgnum);
+                    $uidlOK{$accnt}->{$uidl} = $msgnum;
+                } else {
+                    print "POP3: message nbr($msgnum) for user $accnt could not be stored in file $base/POP3error/$accnt.$msgnum.".time.".eml - $!\n";
                 }
             }
             };
