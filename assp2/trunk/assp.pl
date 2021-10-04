@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.6';
-$build   = '21218';        # 06.08.2021 TE
+$build   = '21277';        # 04.10.2021 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.034999';
 $MAINVERSION = $version . $modversion;
@@ -659,7 +659,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'FC2663740FD31D4AD1FD72DCF8FBC6A4A6D87570'; }
+sub __cs { $codeSignature = 'EAE969E26FF8AAA91ACB2CD13663AAB86AF63104'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -4238,6 +4238,7 @@ For example: mysql/dbimport<br />
  If possible, assp will compress the config files, option files and the AdminUsersRight and AdminUsers to the file \'config.zip\' in the  \"exportDBDir\" directory.<br />
  If possible, assp will encrypt the config.zip to config.zip.aes using openssl or Crypt::CBC. To decrypt this file, use the OS commandline:<br /><br />
  <b>openssl enc -d -aes-256-cbc [-md md5|sha256] -in config.zip.aes -out config.zip -pass pass:PASSWORD</b><br /><br />
+ Before you move assp to another system or you want to archive the export - check that you are able to decrypt the file config.zip.aes to config.zip and to unzip config.zip successfully!<br />
  Notice: The default hash used by openssl enc for password-based key derivation changed in version 1.1.0 to SHA256 versus MD5 in lower versions. ASSP uses the default hash algorythm of the currently installed OpenSSL version. It may possible, that you need to define '-md md5' or '-md sha256' to decrypt exports made by other OpenSSL versions!<br />
  The created file config.zip[.aes] will also contain an assp support summary with important files, folders, history-, runtime- and schedule- information. This file may requested by the assp support stuff - but it can also be used as a full configuration backup. <span class=\"negative\">Keep in mind, that certificate information (certs and keys) will be never exported!</span> Keep them safe outside assp.<br /><br />
  <span class=\"negative\">NOTICE: The password / key, used for the export encryption function, may change at the next assp start or if the assp.cfg gets an external update! Record the password after each export!</span><br /><br />
@@ -8195,7 +8196,7 @@ our $DoHeloNPw;
 our $setpro = 1;
 #
 
-# each ScheduleMap key nedds the related gloval variable to be decleared !
+# each ScheduleMap key needs the related global variable to be decleared !
 $ScheduleMap{'backupDBInterval'}          = &share([]); @{$ScheduleMap{'backupDBInterval'}}          = (3600,'nextDBBackup');
 $ScheduleMap{'BlockReportSchedule'}       = &share([]); @{$ScheduleMap{'BlockReportSchedule'}}       = (24 * 3600,'nextBlockReportSchedule');
 $ScheduleMap{'CleanCacheEvery'}           = &share([]); @{$ScheduleMap{'CleanCacheEvery'}}           = (3600,'nextCleanCache');
@@ -17550,7 +17551,7 @@ sub exportConfig {
             my $res = qx("openssl enc -e -aes-256-cbc -in $q$export.zip$q -out $q$export.zip.aes$q -pass pass:$dftExpSec 2>&1");
             if (($? >> 8) == 0 && $eF->("$export.zip.aes")) {
                 $unlink->("$export.zip");
-                mlog( 0, "export finished - compressed file '$export.zip' is now -aes-256-cbc encryped to '$export.zip.aes' - read the GUI for 'ExportMysqlDB' for decrypting this file" ,1) if $MaintenanceLog;
+                mlog( 0, "export finished - compressed file '$export.zip' is now -aes-256-cbc encryped to '$export.zip.aes' - used openssl enc -e -aes-256-cbc - read the GUI for 'ExportMysqlDB' for decrypting this file" ,1) if $MaintenanceLog;
             } elsif (eval{require Crypt::CBC;} && eval{$cipher = Crypt::CBC->new('-key' => $dftExpSec, '-cipher' => "Crypt::OpenSSL::AES")}) {
                 my ($plaintext,$COL);
                 $open->($COL,'<',"$export.zip");
@@ -17563,7 +17564,7 @@ sub exportConfig {
                 $COL->close;
                 if ($eF->("$export.zip.aes") && fsize("$export.zip.aes")) {
                     $unlink->("$export.zip");
-                    mlog( 0, "export finished - compressed file '$export.zip' is now aes-256-cbc encryped to '$export.zip.aes' - read the GUI for 'ExportMysqlDB' for decrypting this file" ,1) if $MaintenanceLog;
+                    mlog( 0, "export finished - compressed file '$export.zip' is now aes-256-cbc encryped to '$export.zip.aes' - used Crypt::CBC->Crypt::OpenSSL::AES - read the GUI for 'ExportMysqlDB' for decrypting this file" ,1) if $MaintenanceLog;
                 } else {
                     mlog( 0, "export finished - compressed file '$export.zip' can not be encryped (using: openssl enc -e -aes-256-cbc or Crypt::CBC->Crypt::OpenSSL::AES) to '$export.zip.aes' - $@" ,1);
                 }
@@ -17572,7 +17573,7 @@ sub exportConfig {
             }
         }
     } else {
-        mlog(0,"warning: the export function has left the folder '$export' uncompressed and unencrypred!");
+        mlog(0,"warning: the export function has left the folder '$export' uncompressed and unencrypted!");
     }
 }
 
@@ -20274,7 +20275,7 @@ sub NewSMTPConnection {
             threads->yield();
             if(ref($server) && eval{$peerhost = ITR($server->peerhost()); $peerport = $server->peerport();$peerhost && $peerport;} ) {
                 $destination=$destinationA;
-                $useSSL .= ' - ' .$server->get_sslversion() .' , '. $server->get_cipher() if $useSSL;
+                $useSSL .= ' - ' .$server->get_sslversion() .' , '. $server->get_cipher() if $useSSL && "$server" =~ /SSL/o;
                 d("connected to server $server at $peerhost:$peerport$useSSL");
                 mlog(0,"info: connected to server at $peerhost:$peerport$useSSL") if $ConnectionLog >= 2;
                 last;
@@ -25967,6 +25968,39 @@ sub getline {
     $this->{crashbuf} .= $l if $Con{$fh}->{crashfh};
     d("getline: <$l>");
 
+    if ($friend && $friend->{getline} eq \&replyEHLO) {
+        $friend->{getline} = \&reply;
+        $friend->{getlinetxt} = 'reply';
+    }
+
+    if ( ! $this->{lastcmd} || $this->{lastcmd} eq 'STARTTLS') {   # an early SSL-talker or STARTTLS is used without a STARTTLS EHLO-offer
+        my %ssl = ('3.0' => 'SSLv3', '3.1' => 'TLSv1', '3.2' => 'TLSv1_1', '3.3' => 'TLSv1_2', '3.4' => 'TLSv1_3');
+        if ( $l =~ /^\x16([\x00-\xFF])([\x00-\xFF])[\x00-\xFF]{2}(\x01|\x02)/os) {     # a SSLv3/TLS handshake Client-Helo-Frame - this should be never seen here
+            my ($major, $minor, $what)  = (int(iso2hex($1)), int(iso2hex($2)), iso2hex($3));                           # SSLv3   TLS1.0   TLS1.1  TLS1.2  TLS1.3
+            $what = $what eq '01' ? 'Client' : 'Server';                                                     #  3.0      3.1      3.2     3.3     3.4
+            my $close = $ignoreEarlySSLClientHelo ? 'this frame is ignored' : 'the connection will be closed';
+            mlog($fh,"warning: got an unexpected ".$ssl{"$major.$minor"}." handshake $what"."-Helo-Frame of version ($major.$minor) from IP '$this->{ip}' at local IP '$this->{localip}' and Port '$this->{localport}' - $close");
+            $SMTPbuf = $this->{_} = undef;
+            if (! $ignoreEarlySSLClientHelo) {
+                pbAdd($fh, $this->{ip}, 'etValencePB', "EarlyTalker");
+                done($fh);
+            }
+            return;
+        }
+        if ( $l =~ /^\x80[\x00-\xFF](\x01|\x02)([\x00-\xFF])([\x00-\xFF])/os) {      # a SSLv2/TLS handshake Client-Helo-Frame - this should be never seen here
+            my ($what, $major, $minor)  = (int(iso2hex($1)), int(iso2hex($2)), iso2hex($3));
+            $what = $what eq '01' ? 'Client' : 'Server';
+            my $close = $ignoreEarlySSLClientHelo ? 'this frame is ignored' : 'the connection will be closed';
+            mlog($fh,"warning: got an unexpected SSLv2 handshake $what"."-Helo-Frame of version ($major.$minor) from IP '$this->{ip}' at local IP '$this->{localip}' and Port '$this->{localport}' - $close");
+            $SMTPbuf = $this->{_} = undef;
+            if (! $ignoreEarlySSLClientHelo) {
+                pbAdd($fh, $this->{ip}, 'etValencePB', "EarlyTalker");
+                done($fh);
+            }
+            return;
+        }
+    }
+
     {
         my $ll = $l;
         fixCRLF(\$l);
@@ -25976,8 +26010,8 @@ sub getline {
             my $lc = $l;
             $lc =~ s/\r/[CR]/gos;
             $lc =~ s/\n/[LF]/gos;
-            $ll =~ s/$NONASCII/\?/go;
-            $lc =~ s/$NONASCII/\?/go;
+            $ll =~ s/($NONASCII)/iso2hex($1).' '/goe;
+            $lc =~ s/($NONASCII)/iso2hex($1).' '/goe;
             mlog($fh,"info: bad line-end sequence in '$ll' from $this->{ip} was corrected to '$lc'") if $ConnectionLog;
 
             if ( ! $this->{relayok} && $checkCRLF )
@@ -25992,11 +26026,6 @@ sub getline {
                 }
             }
         }
-    }
-
-    if ($friend && $friend->{getline} eq \&replyEHLO) {
-        $friend->{getline} = \&reply;
-        $friend->{getlinetxt} = 'reply';
     }
 
     if($l=~/^ *STARTTLS\s*\r\n/io) { # client requests TLS
@@ -26028,31 +26057,6 @@ sub getline {
         return;
     }
 
-    if ( ! $this->{lastcmd} && $l =~ /^\x16([\x00-\xFF])([\x00-\xFF])[\x00-\xFF]{2}(\x01|\x02)/os) {     # a SSLv3/TLS handshake Client-Helo-Frame - this should be never seen here
-        my ($major, $minor, $what)  = (iso2hex($1), iso2hex($2), iso2hex($3));
-        $what = $what eq '01' ? 'Client' : 'Server';
-        my $close = $ignoreEarlySSLClientHelo ? 'this frame is ignored' : 'the connection will be closed';
-        mlog($fh,"warning: got an unexpected SSLv3/TLS handshake $what"."-Helo-Frame of version ($major.$minor) from IP '$this->{ip}' at local IP '$this->{localip}' and Port '$this->{localport}' - $close");
-        $SMTPbuf = $this->{_} = undef;
-        if (! $ignoreEarlySSLClientHelo) {
-            pbAdd($fh, $this->{ip}, 'etValencePB', "EarlyTalker");
-            done($fh);
-        }
-        return;
-    }
-    if ( ! $this->{lastcmd} && $l =~ /^\x80[\x00-\xFF](\x01|\x02)([\x00-\xFF])([\x00-\xFF])/os) {      # a SSLv2/TLS handshake Client-Helo-Frame - this should be never seen here
-        my ($what, $major, $minor)  = (iso2hex($1), iso2hex($2), iso2hex($3));
-        $what = $what eq '01' ? 'Client' : 'Server';
-        my $close = $ignoreEarlySSLClientHelo ? 'this frame is ignored' : 'the connection will be closed';
-        mlog($fh,"warning: got an unexpected SSLv2/TLS handshake $what"."-Helo-Frame of version ($major.$minor) from IP '$this->{ip}' at local IP '$this->{localip}' and Port '$this->{localport}' - $close");
-        $SMTPbuf = $this->{_} = undef;
-        if (! $ignoreEarlySSLClientHelo) {
-            pbAdd($fh, $this->{ip}, 'etValencePB', "EarlyTalker");
-            done($fh);
-        }
-        return;
-    }
-    
     if (   ! $this->{greetingSent}
         && ! $this->{relayok}
         && ! $disableEarlyTalker
@@ -38682,6 +38686,24 @@ sub makeMyheader {
         $this->{myheader} .= "X-Assp-Spam-Level: $stars\r\n";
     }
     $utf8off->(\$this->{myheader});
+
+    if (defined &CorrectASSPcfg::modMyHeader) {
+        d('CorrectASSPcfg::modMyHeader');
+        my $myheader = $this->{myheader};
+        local $@;
+        eval { &CorrectASSPcfg::modMyHeader($this) };
+        if ($@) {
+            $this->{myheader} = $myheader;
+            mlog(0,"error: call to CorrectASSPcfg::modMyHeader failed (and is from now disabled) - $@") if $SessionLog;
+            undef &CorrectASSPcfg::modMyHeader;
+        } else {
+            $utf8off->(\$this->{myheader});
+            $this->{myheader} =~ s/(?:\r?\n)+/\r\n/go;
+            $this->{myheader} =~ s/[\r\n]+$//o;
+            $this->{myheader} .= "\r\n";
+        }
+    }
+
     if ($this->{forwardSpam} && exists $Con{$this->{forwardSpam}} && ! $Con{$this->{forwardSpam}}->{gotAllText}) {
         my $myheader = $this->{myheader};
         $Con{$this->{forwardSpam}}->{myheader} = $myheader;
@@ -40260,6 +40282,17 @@ sub reply {
         }
 
         mlog($cli,"warning: SMTP authentication failed from $Con{$cli}->{ip} on $serIP$tolog") if $ConnectionLog;
+
+        if ($fakeAUTHsuccess) {
+            mlog($cli,"info: faked authentication success for honeypot");
+            $Con{$cli}->{fakeAUTHsuccess} = 1;
+            pbAdd( $cli, $Con{$cli}->{ip}, 'autValencePB', 'AUTHErrors' ) if $fakeAUTHsuccess == 2;
+            $Con{$cli}->{getline} = \&NullFromToData;
+            $Con{$cli}->{getlinetxt} = 'NullFromToData';
+            sendque($cli, "235 OK\r\n");
+            return;
+        }
+
         my $r = $l;
         $r =~ s/\r|\n//go;
         if ($l =~ /^53[458]/o && !$Con{$cli}->{relayok} && ! &AUTHErrorsOK($cli)) {
@@ -40276,15 +40309,6 @@ sub reply {
             $l."421 <$myName> closing transmission\r\n",
             "max errors (MaxErrors=$MaxErrors) exceeded -- dropping connection - after reply: $r from $serIP",
             $fh);
-            return;
-        }
-        if ($fakeAUTHsuccess) {
-            mlog($cli,"info: faked authentication success for honeypot");
-            $Con{$cli}->{fakeAUTHsuccess} = 1;
-            pbAdd( $cli, $Con{$cli}->{ip}, 'autValencePB', 'AUTHErrors' );
-            $Con{$cli}->{getline} = \&NullFromToData;
-            $Con{$cli}->{getlinetxt} = 'NullFromToData';
-            sendque($cli, "235 OK\r\n");
             return;
         }
     } elsif($l=~/^530/o && uc $Con{$cli}->{lastcmd} !~ /AUTH|EHLO|HELO|NOOP|RSET|QUIT/o) {
@@ -42539,6 +42563,7 @@ sub NullData { my ($fh,$l)=@_;
                 my $header = $Con{$fh}->{header};
                 $header =~ s/\r\n\.[\r\n]+$//o;
                 $header =~ s/x-assp[$NOCRLF]+\r\n//goi;
+                my $mlen = length($header);
                 RCPT:
                 for my $rcpt (split(/\s+/o,$Con{$fh}->{rcpt})) {
                     my ($domain) = $rcpt =~ /\@($EmailDomainRe)/io;
@@ -42558,10 +42583,10 @@ sub NullData { my ($fh,$l)=@_;
                             my $mailer_args = [Host => $SMTP_HOSTNAME, Port => 25, Hello => $myName, NoTLS => 1, To => $rcpt, From => $mailfrom, %Bits];
                             my $result = email_send(\$header,$mailer_args);
                             if ($result eq '1') {
-                                mlog(0,"send faked mail from $mailfrom to $rcpt via $SMTP_HOSTNAME");
+                                mlog(0,"successfully sent spammers mail ($mlen Byte) from $mailfrom to $rcpt via $SMTP_HOSTNAME - content: $header");
                                 1;
                             } else {
-                                mlog(0,"error: failed to send faked mail from $mailfrom to $rcpt via $SMTP_HOSTNAME - $result");
+                                mlog(0,"error: failed to send spammers mail ($mlen Byte) from $mailfrom to $rcpt via $SMTP_HOSTNAME - $result");
                                 0;
                             }
                         } && next RCPT;
@@ -64580,7 +64605,7 @@ sub ssldebug {
     my $msg = shift;
     $file = '...'.substr( $file,-17 ) if length($file)>20;
     $msg = sprintf $msg,@_ if @_;
-    mlog(9,"SSL-DEBUG: $file:$line: $msg");
+    mlog(0,"SSL-DEBUG: $file:$line: $msg");
 }
 
 # set SSL parameters for LWP objects (https downloads)
@@ -72444,7 +72469,6 @@ sub ThreadRebuildSpamDBStart {
         &initDBHashes();
         &initPrivatHashes();
         &initFileHashes('AdminGroup');  # AdminGroup is never shared;
-        mlog(0,"$WorkerName started");
 
         # switch off RDBM caching in this thread for some Hashes and unlock HMMdb and Spamdb
         eval {
@@ -72462,6 +72486,8 @@ sub ThreadRebuildSpamDBStart {
         $SIG{USR1}=\&sigToMainThread;
         $SIG{USR2}=\&sigToMainThread;
         $SIG{NUM07}=\&sigToMainThread;
+
+        mlog(0,"$WorkerName initialized");
 
         eval{while ($ComWorker{$Iam}->{run}) {&ThreadRebuildSpamDBMain();}1;}
         or do {
@@ -73906,6 +73932,7 @@ sub ThreadRebuildSpamDBMain {
 
     if (! $ComWorker{$Iam}->{isstarted}) {
         $ComWorker{$Iam}->{isstarted} = 1;
+        mlog(0,"$WorkerName started");
         if (! &write_rebuild_module($ComWorker{$Iam}->{rb_version})) {
             mlog(0,"error: unable to create $base/lib/rebuildspamdb.pm module - $!");
         }
@@ -76828,7 +76855,7 @@ sub email_send {
         
         # ::TLS has no useful return value (other than True), but will croak on failure.
         if (! eval { $SMTP->mail($from,%opt); } ) {
-            die("FROM: <$from> denied on host $host:$args{Port}\n");
+            die("MAIL FROM: <$from> - denied on host $host:$args{Port} - $@\n");
         }
         my $to = $args{To} || $args{to};
         my @to;
@@ -77059,9 +77086,9 @@ sub rdbm_delete {
     my $row = 0;
     my $okey = $key;
     %{$self->{nextvalue}} = ();
-    if ($main::DoSQL_LIKE && $key =~ /\*/o) {
+    if ($main::DoSQL_LIKE && $key =~ /\*/o && $key !~ /^\*\*\*/oi) {
         $okey = undef;
-        $self->{clearcache} = 1;    # write the cache in the DB befor we delete a bulk
+        $self->{clearcache} = 1;    # write the cache in to the DB befor we delete a bulk
         rdbm_cleanCache($self);
         delete $self->{clearcache};
         my $escape;
@@ -77094,13 +77121,13 @@ sub rdbm_delete {
     }
     my $error;
     eval {
-    my $sth = $self->_run_query($tag,$stm,$key);
-    $error = "Database delete statement failed (".$self->{table}."): $DBI::errstr" if $sth->err;
-    $row = $sth->rows;
-    $sth->finish;
+        my $sth = $self->_run_query($tag,$stm,$key);
+        $error = "Database delete statement failed (".$self->{table}."): $DBI::errstr" if $sth->err;
+        $row = $sth->rows;
+        $sth->finish;
     };
-    &main::mlog(0, $error) if $error;
     &main::mlog(0, "error: delete (".$self->{table}."): $@ - $DBI::errstr") if $@ && $main::DataBaseDebug;
+    &main::mlog(0, $error) if $error;
     eval{$self->commit} unless $main::DBautocommit;
     threads->yield();
     if ($okey && $row && $main::DBCacheMaxAge) {

@@ -1,3 +1,22 @@
+2021-10-04
+fixed in assp 2.6.6 *SPAM-Evaporator* build 21277:
+
+- If a relational DB engine was used for hmmDB and/or SpamDB, the start of the worker 10001 (rebuildspamdb worker) has taken much more time (under certain conditions)
+  compared to the start time of all other workers
+
+- Improved error handling in case a client or server connects to the default SMTP-listener (25) using SSL.
+
+- The 'fakeAUTHsuccess' feature was not working like expected (caused by a fix for AUTH-error handling in assp 2.6.4 *SPAM-Evaporator* build 19284).
+
+
+added:
+
+- At the point in time the X-ASSP-..  headers were calculated, assp now calls '&CorrectASSPcfg::modMyHeader($Con{fh})' (if this sub is defined).
+  This makes it possible to in place modify $Con{fh}->{myheader} to any special needs.
+  Keep in mind: Modifying SMTP-headers in a wrong manner may prevent mails from beeing transported!
+
+
+
 2021-08-06
 fixed in assp 2.6.6 *SPAM-Evaporator* build 21218:
 
