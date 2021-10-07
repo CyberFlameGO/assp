@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.6';
-$build   = '21277';        # 04.10.2021 TE
+$build   = '21280';        # 07.10.2021 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.034999';
 $MAINVERSION = $version . $modversion;
@@ -465,7 +465,7 @@ our $SPF_max_dns_interactive_terms = 15; # (number > 0) max_dns_interactive_term
 our $SPF_max_allowed_IP = 0;             # maximum allowed IP (v4 and v6) adrresses in a SPF-record - default is 0 (disabled) - 2**17 seems to be OK
 our $disableEarlyTalker = 0;             # (0/1) disable the EarlyTalker check
 our $disableRFC2047 = 0;                 # (0/1) disable the RFC2047 check - undecoded subject contains non printable characters
-our $ignoreEarlySSLClientHelo = 1;       # (0/1) 1 - unexpected early SSLv23/TLS handshake Client-Helo-Frames are ignored , 0 - unexpected early SSLv23/TLS handshake Client-Helo-Frames are NOT ignored and the connection will be closed
+our $ignoreEarlySSLClientHelo = 0;       # (0/1) 1 - unexpected early SSLv23/TLS handshake Client-Helo-Frames are ignored , 0 - unexpected early SSLv23/TLS handshake Client-Helo-Frames are NOT ignored and the connection will be closed
 our $SpamCountNormCorrection = 0;        # (+/- number in percent) correct the required by X% higher
 our $FileScanCMDbuild_API;               # called if defined in FileScanOK with - $FileScanCMDbuild_API->(\$cmd,$this) - $cmd in place modification
 our $WebTrafficTimeout = 60;             # Transmission timeout in seconds for WebGUI and STATS connections
@@ -659,7 +659,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'EAE969E26FF8AAA91ACB2CD13663AAB86AF63104'; }
+sub __cs { $codeSignature = '35F007B5E3C4835250B5BE3085C47D19ACBCC85A'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -19897,10 +19897,10 @@ sub NewSMTPConnectionConnect {
         $mlog->(0,"error: $WorkerName accept_SSL to client $ip denied - the client failed before on SSL/TLS");
         $d->("accept_SSL denied: $ip - SSLfailed $SSLfailed{$ip}") unless $inSIG;
         threadConDone($fhh);
-        $! = '';
-        sockclose($fhh);
-        sockclose($client);
-        $mlog->(0,"error: $WorkerName close failed on $fhh : $!") if ($!);
+        $! = undef;
+        $mlog->(0,"error: $WorkerName close failed on socket $fhh : $!") if (! sockclose($fhh) && $!);
+        $mlog->(0,"error: $WorkerName close failed on client $client : $!") if (! sockclose($client) && $!);
+        $! = undef;
         $d->('NewSMTPConnectionConnect - denied accept_SSL');
         delete $Con{$fhh};
         return;
@@ -19930,10 +19930,13 @@ sub NewSMTPConnectionConnect {
             }
             $d->("accept failed: $fhh : $error") unless $inSIG;
             threadConDone($fhh);
-            $! = '';
-            sockclose($fhh);
-            sockclose($client) if $client;
-            $mlog->(0,"error: $WorkerName close failed on $fhh : $!") if ($!);
+            $! = undef;
+            $mlog->(0,"error: $WorkerName close failed on socket $fhh : $!") if (! sockclose($fhh) && $!);
+            $! = undef;
+            if ($client) {
+                $mlog->(0,"error: $WorkerName close failed on client $client : $!") if (! sockclose($client) && $!);
+                $! = undef;
+            }
             if (! $enqueue) {
                 my $failed = $isSSL
                              && (   ($IO::Socket::SSL::SSL_ERROR eq eval('SSL_WANT_READ') ? 1 : $IO::Socket::SSL::SSL_ERROR eq eval('SSL_WANT_WRITE'))
@@ -25975,29 +25978,29 @@ sub getline {
 
     if ( ! $this->{lastcmd} || $this->{lastcmd} eq 'STARTTLS') {   # an early SSL-talker or STARTTLS is used without a STARTTLS EHLO-offer
         my %ssl = ('3.0' => 'SSLv3', '3.1' => 'TLSv1', '3.2' => 'TLSv1_1', '3.3' => 'TLSv1_2', '3.4' => 'TLSv1_3');
+        my $ignore = $ignoreEarlySSLClientHelo || $this->{lastcmd} eq 'STARTTLS';
         if ( $l =~ /^\x16([\x00-\xFF])([\x00-\xFF])[\x00-\xFF]{2}(\x01|\x02)/os) {     # a SSLv3/TLS handshake Client-Helo-Frame - this should be never seen here
             my ($major, $minor, $what)  = (int(iso2hex($1)), int(iso2hex($2)), iso2hex($3));                           # SSLv3   TLS1.0   TLS1.1  TLS1.2  TLS1.3
             $what = $what eq '01' ? 'Client' : 'Server';                                                     #  3.0      3.1      3.2     3.3     3.4
-            my $close = $ignoreEarlySSLClientHelo ? 'this frame is ignored' : 'the connection will be closed';
+            my $close = $ignore ? 'this frame is ignored' : 'the connection will be closed';
             mlog($fh,"warning: got an unexpected ".$ssl{"$major.$minor"}." handshake $what"."-Helo-Frame of version ($major.$minor) from IP '$this->{ip}' at local IP '$this->{localip}' and Port '$this->{localport}' - $close");
             $SMTPbuf = $this->{_} = undef;
-            if (! $ignoreEarlySSLClientHelo) {
+            if (! $ignore) {
                 pbAdd($fh, $this->{ip}, 'etValencePB', "EarlyTalker");
                 done($fh);
+                return;
             }
-            return;
-        }
-        if ( $l =~ /^\x80[\x00-\xFF](\x01|\x02)([\x00-\xFF])([\x00-\xFF])/os) {      # a SSLv2/TLS handshake Client-Helo-Frame - this should be never seen here
+        } elsif ( $l =~ /^\x80[\x00-\xFF](\x01|\x02)([\x00-\xFF])([\x00-\xFF])/os) {      # a SSLv2/TLS handshake Client-Helo-Frame - this should be never seen here
             my ($what, $major, $minor)  = (int(iso2hex($1)), int(iso2hex($2)), iso2hex($3));
             $what = $what eq '01' ? 'Client' : 'Server';
-            my $close = $ignoreEarlySSLClientHelo ? 'this frame is ignored' : 'the connection will be closed';
+            my $close = $ignore ? 'this frame is ignored' : 'the connection will be closed';
             mlog($fh,"warning: got an unexpected SSLv2 handshake $what"."-Helo-Frame of version ($major.$minor) from IP '$this->{ip}' at local IP '$this->{localip}' and Port '$this->{localport}' - $close");
             $SMTPbuf = $this->{_} = undef;
-            if (! $ignoreEarlySSLClientHelo) {
+            if (! $ignore) {
                 pbAdd($fh, $this->{ip}, 'etValencePB', "EarlyTalker");
                 done($fh);
+                return;
             }
-            return;
         }
     }
 
@@ -40286,7 +40289,13 @@ sub reply {
         if ($fakeAUTHsuccess) {
             mlog($cli,"info: faked authentication success for honeypot");
             $Con{$cli}->{fakeAUTHsuccess} = 1;
-            pbAdd( $cli, $Con{$cli}->{ip}, 'autValencePB', 'AUTHErrors' ) if $fakeAUTHsuccess == 2;
+            if ($fakeAUTHsuccess == 2){
+                pbAdd( $cli, $Con{$cli}->{ip}, 'autValencePB', 'AUTHErrors' );
+            } else {
+                $ScoreStats{'AUTHErrors'}++;
+            }
+            $ScoreStats{'MaxErrors'}++;
+            $Stats{msgMaxErrors}++;
             $Con{$cli}->{getline} = \&NullFromToData;
             $Con{$cli}->{getlinetxt} = 'NullFromToData';
             sendque($cli, "235 OK\r\n");
@@ -42497,6 +42506,7 @@ sub NullFromToData { my ($fh,$l)=@_;
         $Con{$fh}->{getline}=\&NullData;
         $Con{$fh}->{getlinetxt}='NullData';
         sendque($fh,"354 send data\r\n");
+        MaillogStart($fh) unless $Con{$fh}->{maillog};
     } elsif ($l=~/^HELO|EHLO/io){
         sendque($fh,"220 OK - $myName ready\r\n");
     } elsif ($l=~/^RSET/io){
@@ -42542,11 +42552,12 @@ sub NullFromToData { my ($fh,$l)=@_;
         sendque($fh,"502 command not implemented\r\n");
     }
 }
-sub NullData { my ($fh,$l)=@_;
+sub NullData {
+    my ($fh,$l) = @_;
     d('NullData');
     if (! $Con{$fh}->{headerpassed}) {
         $Con{$fh}->{rcpt}=~s/\s+$//o;
-        MaillogStart($fh); # notify the stream logging to start logging
+        MaillogStart($fh) unless $Con{$fh}->{maillog}; # notify the stream logging to start logging
         &allocateMemory($fh);
     }
     $Con{$fh}->{headerpassed} = 1;
@@ -42558,7 +42569,7 @@ sub NullData { my ($fh,$l)=@_;
         if ($Con{$fh}->{fakeAUTHsuccess}) {
             $Con{$fh}->{deleteMailLog} = $Con{$fh}->{maillength} < 10;
             thisIsSpam($fh,'faked AUTH success SPAM collecting',$spamBucketLog,'',0,0,1); # collect the honeypot
-            MaillogClose($fh);
+#            MaillogClose($fh);
             if  ($fakeAUTHsuccessSendFake && (my $mailfrom = $Con{$fh}->{mailfrom})) {
                 my $header = $Con{$fh}->{header};
                 $header =~ s/\r\n\.[\r\n]+$//o;
@@ -49212,6 +49223,7 @@ sub Maillog {
                     $myheader = headerFormat($myheader);
                     my $written = eval{$FH->syswrite($myheader,length($myheader));};
                     $Con{$fh}->{mailloglength} = $written;
+                    mlog($fh,"Info: wrote X-ASSP header ($written Byte) to logfile") if $SessionLog > 2;
                 }
             } else {
                 mlog( $fh, "error: can't open maillog '".de8($fln)."': $!",1 );
@@ -49270,17 +49282,21 @@ sub Maillog {
     if (my $h = $Con{$fh}->{maillogfh}) {
         if (! $Con{$fh}->{spambuf}) {
             my $written = eval{$h->syswrite($text,min(length($text),$Con{$fh}->{storecompletemail}));};
+            mlog($fh,"Info: wrote-1 ($written Byte) to logfile") if $SessionLog > 2;
             $Con{$fh}->{mailloglength} = $Con{$fh}->{spambuf} = ($written || 0);
             $Con{$fh}->{maillogbuf} = $text;
+            mlog($fh,"Info: logfile buffer created with $Con{$fh}->{mailloglength} Byte") if $SessionLog > 2;
         } else {
             if ( $Con{$fh}->{spambuf} < $Con{$fh}->{storecompletemail}) {
                 my $written = eval{$h->syswrite($text,min(length($text),($Con{$fh}->{storecompletemail} - $Con{$fh}->{spambuf})));};
+                mlog($fh,"Info: wrote-2 ($written Byte) to logfile") if $SessionLog > 2;
                 $Con{$fh}->{spambuf} += ($written || 0);
             } else {
                 my $mlen = $MaxBytes + $Con{$fh}->{headerlength};
                 if ($Con{$fh}->{spambuf} < $mlen) {
                     $mlen -= $Con{$fh}->{spambuf};
                     my $written = eval{$h->syswrite($text,min(length($text),$mlen));};
+                    mlog($fh,"Info: wrote-3 ($written Byte) to logfile") if $SessionLog > 2;
                     $Con{$fh}->{spambuf} += ($written || 0);
                 }
             }
@@ -49291,6 +49307,7 @@ sub Maillog {
                 $Con{$fh}->{maillogbuf} .= $text;
                 $Con{$fh}->{mailloglength} += length($text);
             }
+            mlog($fh,"Info: logfile buffer is now $Con{$fh}->{mailloglength} Byte") if $SessionLog > 2;
         }
     } elsif($text && (! $ccMaxBytes || $Con{$fh}->{mailloglength} < $MaxBytes + $Con{$fh}->{headerlength} || $Con{$fh}->{mailloglength} < $Con{$fh}->{storecompletemail})) {
         $Con{$fh}->{maillogbuf} .= $text;
@@ -49428,6 +49445,8 @@ sub MaillogClose {
     $f->close if $f;
     return if $Con{$fh}->{type} ne 'C';
     return unless $Con{$fh}->{maillogfilename};
+    my ($package, $file, $line) = caller;
+    mlog($fh,"Info: MaillogClose called from $package, $file, $line") if $SessionLog > 2;
 
     my $scanForVirus =    ! $Con{$fh}->{averror}
                        && (   ( $ClamAVLogScan > 1 && $UseAvClamd && $CanUseAvClamd )
@@ -49493,7 +49512,7 @@ sub MaillogClose {
             }
         } else {
             # move the scan to the high threads, if there are other connections to handle
-            mlog(0,"info: worker is too busy to do the virus scan for $Con{$fh}->{maillogfilename} - the scan task is moved to the MaintThread",1) if ($WorkerLog | $MaintenanceLog) > 1;
+            mlog(0,"info: worker is too busy to do the virus scan for $Con{$fh}->{maillogfilename} - the scan task is moved to the MaintThread",1) if ($WorkerLog | $MaintenanceLog) > 1 || $SessionLog > 2;
             cmdToThread('scanFile4VirusOK', "0 $Con{$fh}->{maillogfilename}");
         }
     }
@@ -63691,6 +63710,7 @@ sub ConfigCompileNotifyRe {
         return ConfigShowError(1,$new);
     }
 
+    my $reerror;
     if ($new) {
         %NotifyRE = ();
         %NotifySub = ();
@@ -63698,6 +63718,18 @@ sub ConfigCompileNotifyRe {
         while (@entry) {
             my $e = shift(@entry);
             my ($re,$adr,$sub) = split(/\=\>/o,$e);
+
+            eval {
+                $note =~ /$re/;
+            };
+            if ($@) {
+                $reerror ||= 'error in regular expression: ';
+                $reerror .= "'$re' ,";
+                mlog(0,"error: regex '$re' for $name is invalid - $@") if $WorkerNumber == 0;
+                mlog(0,"warning: the regex '$re' in $name is ignored") if $WorkerNumber == 0;
+                next;
+            }
+
             $NotifySub{$re} = $sub if $sub;
             $adr ||= $Notify;
             if ($adr) {
@@ -63715,7 +63747,9 @@ sub ConfigCompileNotifyRe {
     }
     $new ||= $neverMatch; # regexp that never matches
     
+    $reerror =~ s/ ,$//o;
     SetRE($name.'RE',$new,'is',$name);
+    $RegexError{$name} = $reerror if ($reerror && ! exists $RegexError{$name});
     return ConfigShowError(1,$RegexError{$name});
 }
 

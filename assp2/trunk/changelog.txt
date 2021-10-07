@@ -1,3 +1,34 @@
+2021-10-07
+fixed in assp 2.6.6 *SPAM-Evaporator* build 21280:
+
+
+- if $fakeAUTHsuccess was set, the collected .eml files contained only the X-Assp headers - not the spam mail data
+
+- build 21277 caused an error 'too many opened files' on windows, if there were too many SSL-connection at a plain port (25)
+
+- the definition of an invalid regular expression in 'NotifyRe' may caused a crash of the assp process
+
+
+
+
+changed:
+
+- The default value for 
+
+$ignoreEarlySSLClientHelo
+# (0/1) 1 - unexpected early SSLv23/TLS handshake Client-Helo-Frames are ignored , 0 - unexpected early SSLv23/TLS handshake Client-Helo-Frames are NOT ignored and the connection will be closed 
+
+is changed from 1 to 0 in assp.pl
+
+to recover the old setting, you may change assp.pl or you can set $main::ignoreEarlySSLClientHelo = 1; in lib/CorrectASSPcfg.pm sub set{}
+The setting '1' was used as default to ignore early SSL connections from local clients.
+ 
+
+- mails which are catched by 'fakeAUTHsuccess' are now counted for the statistics in STATS:msgMaxErrors and SCORESTATS:MaxErrors
+
+
+
+
 2021-10-04
 fixed in assp 2.6.6 *SPAM-Evaporator* build 21277:
 
