@@ -1,10 +1,50 @@
+2021-10-14
+fixed in assp 2.6.6 *SPAM-Evaporator* build 21287:
+
+- If a folder was defined for the parameter 'griplist' (e.g. grip/griplist) and this folder was not extisting, all griplist functions were not working.
+  If a folder is now defined, it is created by assp.
+
+- If 'ConfigChangeSchedule' was used to change a hidden configuration parameter, only the main thread (not any worker) was aware of the change.
+
+- If a mail subject contained a questionmark '?' in its text and the subject header line was encoded 'Quoted Printable' and the questionmark was not right MIME encoded
+  (instead it was written as '?') all internal functions related to the mail subject were not working correctly
+
+
+changed:
+
+- BerkeleyDB error logs (BDB-error.txt) are no longer permanently created and locked
+  Instead there is a new hidden parameter 'BDBerrLog', which can be set to 1 to monitor BDB-problems.
+
+our $BDBerrLog = 0; # (0/1) log BerkeleyDB errors in the related BDB-ENV -errfile .../BDB-error.txt (default = 0)
+
+- The GUI-help text for 'noGriplistUpload', 'noGriplistDownload' and 'gripValencePB' are updated - griplist functions are not changed
+
+
+
+added:
+- If windows systems are running out of available open file descriptors and the used perl installation is not compiled using the -DUSE_PERLIO switch,
+  the following parameters can be used to increase the available file descriptors for the assp process
+
+our $winSetMaxIO_DLL = 'msvcrt';         # the name of the microsoft C-runtime-library used by perl and/or perl-modules (Win32 only !!!) - default is msvcrt
+                                         # If your perl uses (is compiled against) any other msvcrtXXX (for example: msvcrt160 or msvcrt100) - change this value, if
+                                         # you want to set the maximum open files limit in the msvcrtXXX.
+                                         # This value is ONLY used for the below purpose ($winSetMaxIO), it has no other effect !
+
+our $winSetMaxIO = 0;                    # (0/1/ 512 * 2**N) set the maximum open files limit (Win32 only !!!) in ($winSetMaxIO_DLL) msvcrt.dll (_getmaxstdio , _setmaxstdio)
+                                         # 0 - use the default setting in msvcrt.dll (normaly set to 512)
+                                         # 1 - find the maximum allowed value between 512 and 8192 and set it
+                                         # 512 * 2**N - try to set the value as high as possible up to the given maximum (min 512 , max 8192, in 512 * 2**N [N=0..4])
+                                         #          if the defined value is less than the current maximum, the setting will not be changed
+                                         # Notice: PERLIO (perl compiled with -DUSE_PERLIO - check with :>perl -V) may define a different max open file limit for its
+                                         #         IO's (defaults to 2048 because PERLIO_MAX_REFCOUNTABLE_FD=2048)
+                                         #         - this limit is not affected by this value
+
+
 2021-10-07
 fixed in assp 2.6.6 *SPAM-Evaporator* build 21280:
 
 
 - if $fakeAUTHsuccess was set, the collected .eml files contained only the X-Assp headers - not the spam mail data
-
-- build 21277 caused an error 'too many opened files' on windows, if there were too many SSL-connection at a plain port (25)
 
 - the definition of an invalid regular expression in 'NotifyRe' may caused a crash of the assp process
 

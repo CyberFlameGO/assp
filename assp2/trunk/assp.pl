@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.6';
-$build   = '21280';        # 07.10.2021 TE
+$build   = '21287';        # 14.10.2021 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.034999';
 $MAINVERSION = $version . $modversion;
@@ -437,6 +437,7 @@ our $SysLogProto = 'udp';                # possible values are 'udp' , 'tcp' - '
 our $forceTrunc4ClearDB = 0;             # (0/1) try/force a 'TRUNCATE TABLE' instead of a 'DELETE FROM' - 'DELETE FROM' is used as fall back if the truncate fails
 our $DoSQL_LIKE = 1;                     # (0/1) do a 'DELETE FROM table WHERE pkey LIKE ?' to remove generic keys
 our $lockBDB = 0;                        # (0/1) use the CDB locking for BerkeleyDB (default = 0)
+our $BDBerrLog = 0;                      # (0/1) log BerkeleyDB errors in the related BDB-ENV -errfile .../BDB-error.txt (default = 0)
 our $lockDatabases = 0;                  # (0/1) locks all databases on access in every worker to prevent access violation
 our $DBCacheSize = 12;                   # (number > 0) database cache record count , if less it will be set to NumComWorkers * 2 + 8
 our $importDBShowProgress = 1;           # (0/1) show the progress in the maillog.txt while a DB-import is running - default is 1
@@ -533,7 +534,21 @@ our $ignoreInvalidAddressNPWL = 3;       # (0/1/2/3) ignore invalid envelope rec
 
 our $DKIMCacheStrict = 1;                # (0/1) if a DKIM signature is found for a domain - all other mails from this domain will require a DKIM signature to pass the Pre-DKIM-Check
 
-our $checkLinuxENV = 0;                  # (0/1/2) check ulimit (1) on nix and selinux (2) on linux systems
+our $checkLinuxENV = 0;                  # (0/1/2) check ulimit: (1) on nix and selinux , (2) on linux systems
+
+our $winSetMaxIO_DLL = 'msvcrt';         # the name of the microsoft C-runtime-library used by perl and/or perl-modules (Win32 only !!!) - default is msvcrt
+                                         # If your perl uses (is compiled against) any other msvcrtXXX (for example: msvcrt160 or msvcrt100) - change this value, if
+                                         # you want to set the maximum open files limit in the msvcrtXXX.
+                                         # This value is ONLY used for the below purpose ($winSetMaxIO), it has no other effect !
+
+our $winSetMaxIO = 0;                    # (0/1/ 512 * 2**N) set the maximum open files limit (Win32 only !!!) in ($winSetMaxIO_DLL) msvcrt.dll (_getmaxstdio , _setmaxstdio)
+                                         # 0 - use the default setting in msvcrt.dll (normaly set to 512)
+                                         # 1 - find the maximum allowed value between 512 and 8192 and set it
+                                         # 512 * 2**N - try to set the value as high as possible up to the given maximum (min 512 , max 8192, in 512 * 2**N [N=0..4])
+                                         #          if the defined value is less than the current maximum, the setting will not be changed
+                                         # Notice: PERLIO (perl compiled with -DUSE_PERLIO - check with :>perl -V) may define a different max open file limit for its
+                                         #         IO's (defaults to 2048 because PERLIO_MAX_REFCOUNTABLE_FD=2048)
+                                         #         - this limit is not affected by this value
 # *********************************************************************************************************************************************
 
 # some not RFC conform DMARC record subjects - like Amazon SES
@@ -548,8 +563,8 @@ our $consolidateWhitelList = 1;          # (0/1) consolidate the whitelistdb - r
 $BayesDomainPrior ||= 1;
 $BayesPrivatPrior ||= 1;
 
-our %workerSpeedUp = ( 10000 => 0,
-                       10001 => 0);      # speed up some time critical task in these workers by temporary increasing the thread priority to the defined value
+our %workerSpeedUp = ( 10000 => 0,       # speed up some time critical task in these workers by temporary increasing the thread priority to the defined value
+                       10001 => 0);      # should not be set below 0 (high prio) and not higher than 2 (low prio)
 
 
 #######################################################
@@ -659,7 +674,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '35F007B5E3C4835250B5BE3085C47D19ACBCC85A'; }
+sub __cs { $codeSignature = '0D9AD33F6090517D3E52A00CC52D0238B229455C'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -2308,10 +2323,13 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['NotSpamTagProc','Not-Spam-Tag will consider the mail as','0:only monitor|1:whitelisted|2:noprocessing|3:both',\&listbox,1,'(.*)',undef,'If a sender uses the Not-Spam-Tag , how should the mail be processed. Regardless of this setting, the IP address of the sender will not be penalized, if a NotSpamTag is found.',undef,undef,'msg010320','msg010321'],
 
 ['noGriplistUpload','Don\'t Upload Griplist Stats',0,\&checkbox,'','(.*)',undef,
- 'Check this to disable the Griplist upload. The Griplist contains IPs and their value between 0 and 1, lower is less spammy, higher is more spammy. This value is called the grip value. ',undef,undef,'msg000230','msg000231'],
+ 'Check this to disable the Griplist upload. The Griplist contains IPs and their value between 0 and 1, &lt;0.3 = ham, &gt;0.7 = spam. This value is called the grip value.<br />
+ The griplist holds IP scores based on notspam / spam logline reasons stored in the ASSP maillog.txt.<br />
+ An IP\'s griplist score is used in a formula to either positively or negatively impact the message/ip score for incoming mail. See the gripValencePB for more explanation.<br />
+ If enabled (default), ASSP shares localy calculated values to Sourceforge. This uploaded data are analyzed by a process running at Sourceforge and then used to populate a new griplist (based on the submitted data from all participating ASSP instances).<br /> 
+ Griplist data are uploaded once a day (after the rebuildspamdb task or scheduled).',undef,undef,'msg000230','msg000231'],
 ['noGriplistDownload','Don\'t auto-download the Griplist file',0,\&checkbox,'','(.*)',undef,
- 'Set this checkbox, if you don\'t use the Griplist. You have to disable also noGriplistUpload to download the Griplist.',undef,undef,'msg000240','msg000241'],
-
+ 'Set this checkbox, if you don\'t use the Griplist. You have to disable also noGriplistUpload to download the Griplist. The download is done three times a day.',undef,undef,'msg000240','msg000241'],
 ['StoreASSPHeader','Store Assp-Header into Spam Collection',0,\&checkbox,'1','(.*)',undef,
  'Add "X-Assp-" to the collected spam-mails.',undef,undef,'msg008770','msg008771'],
 ['AddIntendedForHeader','Add Envelope-Recipient Header','0:disabled|1:outgoing|2:incoming and local|3:all',\&listbox,2,'(.*)',undef,
@@ -3120,7 +3138,11 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['pbeValencePB','Extreme Bad IP History, TotalScore larger than PenaltyExtreme, default=25',3,\&textinput,25,'(\d+)','ConfigChangeValencePB', 'Message Scoring',undef,undef,'msg002950','msg002951'],
 ['pbValencePB','Bad IP History, TotalScore larger than PenaltyLimit, default=15',3,\&textinput,15,'(\d+)','ConfigChangeValencePB', 'Message Scoring',undef,undef,'msg002960','msg002961'],
 ['pbwValencePB','Good IP History (IP in PB WhiteBox), default=-15',3,\&textinput,-15,'(-{0,1}\d*)','ConfigChangeValencePB', '<span class="positive">Message Scoring Bonus</span>',undef,undef,'msg002970','msg002971'],
-['gripValencePB','GRIP value (+ if &gt; 0.7,- if &lt; 0.3), default=5',3,\&textinput,5,'(\d+)','ConfigChangeValencePB', 'Message scoring',undef,undef,'msg002980','msg002981'],
+['gripValencePB','GRIP value (+ if &gt; 0.7,- if &lt; 0.3), default=5',3,\&textinput,5,'(\d+)','ConfigChangeValencePB', 'Message scoring<br /><br />
+ The resulting message/ip - score is calculated as follows:<br /><br />
+ if the grip value is &lt; 0.3 : -int(((0.3 - grip value) / 0.3) * gripValencePB)<br />
+ if the grip value is &gt; 0.7 : &nbsp;int(((grip value - 0.7) / 0.3) * gripValencePB)<br />
+ griplist values between 0.3 and 0.7 are ignored.',undef,undef,'msg002980','msg002981'],
 ['okValencePB','Message OK, default=-25',3,\&textinput,-25,'(-?\d*)','ConfigChangeValencePB', '<span class="positive">IP Bonus</span>',undef,undef,'msg002990','msg002991'],
 ['ptmValencePB','Missing PTR Record, default=10 +',10,\&textinput,10,$ValencePBRE,'ConfigChangeValencePB', 'Message/IP scoring',undef,undef,'msg003000','msg003001'],
 ['ptiValencePB','Invalid PTR Record, default=15 +',10,\&textinput,15,$ValencePBRE,'ConfigChangeValencePB', 'Message/IP scoring',undef,undef,'msg003010','msg003011'],
@@ -4133,7 +4155,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  <hr>To use this database shared between multiple ASSP\'s, set all ASSP to mysqlSlaveMode (except the master) and the adminusersdbpass must be the same on all installations! If you want to change the adminusersdbpass, first change it on the master.<hr>',undef,undef,'msg005780','msg005781'],
 ['adminusersdbNoBIN','Admin Users Database uses no Binary Data (ASCII only)',0,\&checkbox,'','(.*)',undef,'Select this, if adminusersdb is set to "DB:" and your database engine does not accept or has problems with binary data (eg. Postgres). <span class="negative">If you change this value, you have to stop all assp and to cleanup both tables (adminusers and adminusersright) <b>before</b> restarting assp!</span>. To keep your data do the following: do an ExportMysqlDB - change this value - stop assp - drop or clean both tables - start assp - do an ImportMysqlDB .',undef,undef,'msg005790','msg005791'],
 ['adminusersdbpass','Admin Users Database PassPhrase',40,\&passinput,'','(.*)','ConfigChangePassPhrase','The passphrase that is used to encrypt the adminusersdb. This has to be the same on all ASSP installations that are sharing the adminusersdb. If you want to change it, first change it on the master installation and than on the slaves. Do not forget to configure \'mysqlSlaveMode\' first. An empty value is not valid!',undef,undef,'msg005800','msg005801'],
-['griplist','GreyIPlist Database',40,\&textinput,$newDB.'griplist','(\S*)',undef,'The file with the current Grey-IP-List database -- make this blank if you don\'t use it.',undef,undef,'msg005730','msg005731'],
+['griplist','GreyIPlist Database',40,\&textinput,$newDB.'griplist','(\S*)',undef,'The file with the current Grey-IP-List database -- make this blank if you don\'t use it. More explanations at noGriplistUpload .',undef,undef,'msg005730','msg005731'],
 ['useDB4griplist','Use BerkeleyDB for Griplist',0,\&checkbox,'','(.*)','configChangeDB',
  'If selected ASSP uses \'BerkeleyDB\' instead of \'orderedtie\' for griplist. Depending on your settings for OrderedTieHashTableSize this could spend some memory and/or result in better performance.  The perl module <a href="http://metacpan.org/search?q=BerkeleyDB/" rel="external">BerkeleyDB</a> version 0.34 or higher and BerkeleyDB version 4.5 or higher is required to use this feature.',undef,undef,'msg005740','msg005741'],
 ['myhost','database hostname or IP',40,\&textinput,'','(.*)',undef,
@@ -7410,9 +7432,11 @@ EOT
 # create the logging queue for all threads
 our %mlogQueue;
 our %debugQueue;
+our %changeConfigQueue;
 for (0...$Config{NumComWorkers},10000,10001) {
     $mlogQueue{$_} = Thread::Queue->new();
     $debugQueue{$_} = Thread::Queue->new();
+    $changeConfigQueue{$_} = Thread::Queue->new();
 }
 our $cmdQueue = Thread::Queue->new();
 if ($cmdQueue) {
@@ -8447,7 +8471,7 @@ if ($@) {
 sub write_rebuild_module {
 my $curr_version = shift;
 
-my $rb_version = '8.11';
+my $rb_version = '8.12';
 my $keepVersion;
 
 if (open my $ADV, '<',"$base/lib/rebuildspamdb.pm") {
@@ -8697,7 +8721,7 @@ eval (<<'EOT');
             $BDBEnv = BerkeleyDB::Env->new(-Flags => DB_CREATE | DB_INIT_MPOOL ,
                                            -Cachesize => $cachesize ,
                                            -Home    => "$DBDir",
-                                           -ErrFile => "$DBDir/BDB-error.txt" ,
+                                           -ErrFile => ($main::$BDBerrLog ? "$DBDir/BDB-error.txt" : undef),
                                            -Config  => {DB_DATA_DIR => "$DBDir",
                                                         DB_LOG_DIR  => "$DBDir",
                                                         DB_TMP_DIR  => "$DBDir"}
@@ -11089,8 +11113,8 @@ sub rb_uploadgriplist {
     
     &main::checkDBCon() if ($main::CanUseTieRDBM && $main::DBisUsed);
 
-    &rb_printlog("\nbuilding new GripList records and bounce report\n") if !$main::noGripListUpload;
-    &rb_mlog("building new GripList records and bounce report") if !$main::noGripListUpload;
+    &rb_printlog("\nbuilding new GripList records and bounce report\n") if !$main::noGriplistUpload;
+    &rb_mlog("building new GripList records and bounce report") if !$main::noGriplistUpload;
 
     #&rb_printlog("Start building Griplist \n");
     my ( $date, $ip, $peeraddress, $hostaddress, $connect, $day, $gooddays, $last2days, $st );
@@ -11134,12 +11158,12 @@ sub rb_uploadgriplist {
                 next if $ip =~ /$IPprivate/o;                         # ignore private IP ranges
                 next if &main::matchIP($ip,'acceptAllMail',0,1);
                 $ip = &main::ipNetwork($ip, 1);
-                if (! $main::noGripListUpload && /$main::HamTagRE/io) {
+                if (! $main::noGriplistUpload && /$main::HamTagRE/io) {
 
                     #Good IP
                     $GpCnt{ $ip } += 1;
                     $GpOK{ $ip }  += 1;
-                } elsif (! $main::noGripListUpload && ($auth || /$main::SpamTagRE|\[PenaltyDelay\]/oi))
+                } elsif (! $main::noGriplistUpload && ($auth || /$main::SpamTagRE|\[PenaltyDelay\]/oi))
                 {
                     next if /\[PersonalBlack\]/io;
                     #Bad IP
@@ -11181,7 +11205,7 @@ sub rb_uploadgriplist {
     } else {
         &rb_printlog("\nskipping bounce report because 'DoNotCollectBounces' is switched ON\n\n");
     }
-    return if $main::noGripListUpload;
+    return if $main::noGriplistUpload;
 
     if ( !%GpCnt ) {
         &rb_printlog("Skipping GrIPlist upload. Not enough messages processed.\n");
@@ -11712,7 +11736,11 @@ sub getChangedConfigValue {
         $line =~ s/[\s\r\n]+$//o;
         my ($config,$value) = split(/\s*:=\s*/o,$line,2);
         if (exists $Config{$config}) {
-            $ConfigChanged = changeConfigValue($config, $value) | $ConfigChanged;
+            if ("$$config" ne "$value") {
+                $ConfigChanged = changeConfigValue($config, $value) | $ConfigChanged;
+            } else {
+                mlog(0,"info: $config is already set to '$value'") if $MaintenanceLog > 1;
+            }
         } elsif ($config =~ /^\&/o) {
             $line = $config.$value;
             my ($sub,$parm) = parseEval($line);
@@ -11723,9 +11751,21 @@ sub getChangedConfigValue {
                 mlog(0,"error: unable to parse $line");
             }
         } else {
-            my $old = $$config;
-            $$config = $value;
-            mlog(0,"info: internal variable '$config' changed from '$old' to '$value'");
+            if ("$$config" ne "$value") {
+                my $old = $$config;
+                $$config = $value;
+                threads->yield();
+                if (! is_shared($$config)) {
+                    for (0...$Config{NumComWorkers},10000,10001) {
+                        next if $WorkerNumber == $_;
+                        $changeConfigQueue{$_}->enqueue("\$$config=q($value);");
+                        mlog(0,"info: told worker_$_ to change internal variable $config to '$value'") if $MaintenanceLog;
+                    }
+                }
+                mlog(0,"info: internal variable '$config' changed from '$old' to '$value'");
+            } else {
+                mlog(0,"info: internal variable $config is already set to '$value'") if $MaintenanceLog > 1;
+            }
         }
     }
 }
@@ -13618,7 +13658,7 @@ sub createBDBEnv {
     $env = BerkeleyDB::Env->new(-Flags => DB_INIT_CDB | DB_INIT_MPOOL | DB_CREATE,
                                 -LockDetect => DB_LOCK_DEFAULT,
                                 -Home => "$bdbdir",
-                                -ErrFile => "$bdbdir/BDB-error.txt" ,
+                                -ErrFile => ($BDBerrLog ? "$bdbdir/BDB-error.txt" : undef) ,
                                 -Config => {DB_DATA_DIR => "$bdbdir",
                                             DB_LOG_DIR  => "$bdbdir",
                                             DB_TMP_DIR  => "$bdbdir"
@@ -13673,7 +13713,7 @@ sub createBDBEnv {
         $env = BerkeleyDB::Env->new(-Flags => DB_INIT_CDB | DB_INIT_MPOOL | DB_CREATE ,
                                     -LockDetect => DB_LOCK_DEFAULT,
                                     -Home => "$bdbdir",
-                                    -ErrFile => "$bdbdir/BDB-error.txt" ,
+                                    -ErrFile => ($BDBerrLog ? "$bdbdir/BDB-error.txt" : undef),
                                     -Config => {DB_DATA_DIR => "$bdbdir",
                                                 DB_LOG_DIR  => "$bdbdir",
                                                 DB_TMP_DIR  => "$bdbdir"
@@ -14310,6 +14350,38 @@ sub init {
             } else {
                 mlog(0,'info: windows system environment looks OK');
                 print "\t\t\t\t\t[OK]";
+            }
+            if ($winSetMaxIO && $winSetMaxIO_DLL && eval('use Win32::API();1;')) {
+                my $toset = int($winSetMaxIO);
+                $toset = 8192 if $toset == 1 or $toset > 8192;
+                $toset = 512 if $toset < 512;
+                $toset = int($toset / 512);
+                foreach (16,8,4,2,1) {
+                    if ($toset >= $_) {
+                        $toset = 512 * $_;
+                        last;
+                    }
+                }
+                my $requio = $toset;
+                my ($getio, $setio, $currio, $fromio);
+                $getio = Win32::API::More->new($winSetMaxIO_DLL,'int _getmaxstdio()');
+                $setio = Win32::API::More->new($winSetMaxIO_DLL,'int _setmaxstdio(int a)');
+                if ($getio && ($fromio = $currio = eval{$getio->Call}) < $toset && $setio && $currio) {
+                    while ($currio < $toset) {
+                        eval{$setio->Call($toset);};
+                        eval{$currio = $getio->Call;};
+                        $toset = int($toset / 2);
+                        if (! $currio) {
+                            $currio = $fromio;
+                            last;
+                        }
+                    }
+                    mlog(0,"info: max open files in $winSetMaxIO_DLL.dll (_setmaxstdio) is now set from $fromio to $currio");
+                } elsif ($currio) {
+                    mlog(0,"info: max open files in $winSetMaxIO_DLL.dll (_getmaxstdio) is unchanged - current setting is $currio (requested $requio)");
+                } else {
+                    mlog(0,"warning: can't get max open files frm $winSetMaxIO_DLL.dll (_getmaxstdio) - $!");
+                }
             }
         };
         if ($@) {
@@ -14968,6 +15040,7 @@ sub init {
                 unless (open ($F ,'>>', "$cd/BDB-cachesize-test-error.txt")) {
                     mlog(0,"error: unable to open file $cd/BDB-cachesize-test-error.txt for writing - $!");
                     $BDBMaxCacheSize = 0;
+                    undef $F;
                     last;
                 }
                 binmode $F;
@@ -14992,12 +15065,16 @@ EOT
                     $BDBMaxCacheSize -= 100;
                     print $F "\n\n";
                     eval { $F->close; };
+                    undef $F;
                     next;
                 }
                 print $F "OK\n\n";
+                undef $BDBEnv;
                 eval { $F->close; };
+                undef $F;
                 last;
             }
+            eval { $F->close if $F; };
             $BDBMaxCacheSize ||= 50;
             mlog(0,"BerkeleyDB maximum cache size is set to ".formatDataSize($BDBMaxCacheSize * 1024 * 1024)) if $BDBMaxCacheSize;
             $BDBMaxCacheSize *= 1024 * 1024;
@@ -15020,6 +15097,7 @@ EOT
     print '.';
 
     if ($griplist) {
+        createFolder4File($griplist);
         if ($CanUseBerkeleyDB && $useDB4griplist) {
             $GriplistDriver = 'BerkeleyDB::Hash';
             $GriplistFile = "$base/$griplist.bdb";
@@ -19687,8 +19765,8 @@ sub getTimeDiffAsString {
 	my $ret;
 	$ret = $days . " day" . ( $days == 1 ? ' ' : "s " );
 	$ret .= $hours . " hour" . ( $hours == 1 ? ' ' : "s " );
-	$ret .= $mins . " min" .   ( $mins == 1  ? ' ' : "s " );
-	$ret .= $secs . " sec" .   ( $secs == 1  ? ' ' : "s " ) if $seconds;
+	$ret .= $mins . " minute" .   ( $mins == 1  ? ' ' : "s " );
+	$ret .= $secs . " second" .   ( $secs == 1  ? ' ' : "s " ) if $seconds;
 
 	return $ret;
 }
@@ -23704,7 +23782,7 @@ sub sendquedata {
             }
             $pos=0;
             while ($pos < $headlen) {
-                last if (substr($friend->{header},$pos,$headlen-$pos) !~ /(=\?([^?]*)\?([bq])\?[^?]+\?=)/io);     # get charset and encoding
+                last if (substr($friend->{header},$pos,$headlen-$pos) !~ /(=\?([^?]*)\?([bq])\?.*?\?=)/io);     # get charset and encoding
                 $mimestr=$1;
                 $name = $2;
                 $enc = uc($3);
@@ -25403,7 +25481,7 @@ sub bodyWrap {
 # wrap long headers according to RFC822/1522
 sub headerWrap {
     my $header=shift;
-    $header =~ s/(?:([$NOCRLF]*?=\?[^\?]+\?[BbQq]\?[^\?]*\?=)|([$NOCRLF]{60,75};)|([$NOCRLF]{60,76})( ))(?=[$NOCRLF]{1,})/$1$2$3\r\n\t$4/go;
+    $header =~ s/(?:([$NOCRLF]*?=\?[^\?]+\?[BbQq]\?.*?\?=)|([$NOCRLF]{60,75};)|([$NOCRLF]{60,76})( ))(?=[$NOCRLF]{1,})/$1$2$3\r\n\t$4/go;
 #    $header =~ s/(?:([$NOCRLF]{60,75}?;)|([$NOCRLF]{60,75}) ) {0,5}(?=[$NOCRLF]{10,})/$1$2\r\n\t/go;  # old regex
     return $header;
 }
@@ -25980,10 +26058,12 @@ sub getline {
         my %ssl = ('3.0' => 'SSLv3', '3.1' => 'TLSv1', '3.2' => 'TLSv1_1', '3.3' => 'TLSv1_2', '3.4' => 'TLSv1_3');
         my $ignore = $ignoreEarlySSLClientHelo || $this->{lastcmd} eq 'STARTTLS';
         if ( $l =~ /^\x16([\x00-\xFF])([\x00-\xFF])[\x00-\xFF]{2}(\x01|\x02)/os) {     # a SSLv3/TLS handshake Client-Helo-Frame - this should be never seen here
-            my ($major, $minor, $what)  = (int(iso2hex($1)), int(iso2hex($2)), iso2hex($3));                           # SSLv3   TLS1.0   TLS1.1  TLS1.2  TLS1.3
-            $what = $what eq '01' ? 'Client' : 'Server';                                                     #  3.0      3.1      3.2     3.3     3.4
-            my $close = $ignore ? 'this frame is ignored' : 'the connection will be closed';
-            mlog($fh,"warning: got an unexpected ".$ssl{"$major.$minor"}." handshake $what"."-Helo-Frame of version ($major.$minor) from IP '$this->{ip}' at local IP '$this->{localip}' and Port '$this->{localport}' - $close");
+            if ($ConnectionLog > 1 || ($ConnectionLog && ! $this->{lastcmd})) {
+                my ($major, $minor, $what)  = (int(iso2hex($1)), int(iso2hex($2)), iso2hex($3));                           # SSLv3   TLS1.0   TLS1.1  TLS1.2  TLS1.3
+                $what = $what eq '01' ? 'Client' : 'Server';                                                     #  3.0      3.1      3.2     3.3     3.4
+                my $close = $ignore ? 'this frame is ignored' : 'the connection will be closed';
+                mlog($fh,"warning: got an unexpected ".$ssl{"$major.$minor"}." handshake $what"."-Helo-Frame of version ($major.$minor) from IP '$this->{ip}' at local IP '$this->{localip}' and Port '$this->{localport}' - $close");
+            }
             $SMTPbuf = $this->{_} = undef;
             if (! $ignore) {
                 pbAdd($fh, $this->{ip}, 'etValencePB', "EarlyTalker");
@@ -25991,10 +26071,12 @@ sub getline {
                 return;
             }
         } elsif ( $l =~ /^\x80[\x00-\xFF](\x01|\x02)([\x00-\xFF])([\x00-\xFF])/os) {      # a SSLv2/TLS handshake Client-Helo-Frame - this should be never seen here
-            my ($what, $major, $minor)  = (int(iso2hex($1)), int(iso2hex($2)), iso2hex($3));
-            $what = $what eq '01' ? 'Client' : 'Server';
-            my $close = $ignore ? 'this frame is ignored' : 'the connection will be closed';
-            mlog($fh,"warning: got an unexpected SSLv2 handshake $what"."-Helo-Frame of version ($major.$minor) from IP '$this->{ip}' at local IP '$this->{localip}' and Port '$this->{localport}' - $close");
+            if ($ConnectionLog > 1 || ($ConnectionLog && ! $this->{lastcmd})) {
+                my ($what, $major, $minor)  = (int(iso2hex($1)), int(iso2hex($2)), iso2hex($3));
+                $what = $what eq '01' ? 'Client' : 'Server';
+                my $close = $ignore ? 'this frame is ignored' : 'the connection will be closed';
+                mlog($fh,"warning: got an unexpected SSLv2 handshake $what"."-Helo-Frame of version ($major.$minor) from IP '$this->{ip}' at local IP '$this->{localip}' and Port '$this->{localport}' - $close");
+            }
             $SMTPbuf = $this->{_} = undef;
             if (! $ignore) {
                 pbAdd($fh, $this->{ip}, 'etValencePB', "EarlyTalker");
@@ -26015,7 +26097,7 @@ sub getline {
             $lc =~ s/\n/[LF]/gos;
             $ll =~ s/($NONASCII)/iso2hex($1).' '/goe;
             $lc =~ s/($NONASCII)/iso2hex($1).' '/goe;
-            mlog($fh,"info: bad line-end sequence in '$ll' from $this->{ip} was corrected to '$lc'") if $ConnectionLog;
+            mlog($fh,"info: bad line-end sequence in '$ll' from $this->{ip} was corrected to '$lc'") if $ConnectionLog && $l !~ /^[\x16\x80]/o;
 
             if ( ! $this->{relayok} && $checkCRLF )
             {
@@ -37365,7 +37447,7 @@ sub PersBlackOK_Run {
             my $modified;
             for (keys %removercpt) {
                 my $addr = quotemeta($_);
-                if ( $value =~ s/(?:["'][^"']*["'] *|=\?[^?]+\?[bq]\?[^?]*\?= *)?<?$addr>?\s*,?//gi ) {
+                if ( $value =~ s/(?:["'][^"']*["'] *|=\?[^?]+\?[bq]\?.*?\?= *)?<?$addr>?\s*,?//gi ) {
                     my $newvalue = headerWrap($value);
                     $newvalue =~ s/^\s+$//o;
                     $removeline{"$name:$orgvalue"} = $newvalue ? "$name:$newvalue\r\n" : '';
@@ -39890,7 +39972,7 @@ sub reply {
         }
     }
 
-    $l = decodeMimeWords2UTF8($l) if ($l =~ /=\?[^\?]+\?[qb]\?[^\?]*\?=/io);
+    $l = decodeMimeWords2UTF8($l) if ($l =~ /=\?[^\?]+\?[qb]\?.*?\?=/io);
 
     if ($CanUseCorrectASSPcfg && defined &{'CorrectASSPcfg::translateReply'}) {
         eval{&CorrectASSPcfg::translateReply($this,\$l);};
@@ -47154,6 +47236,9 @@ sub decodeMimeWord {
 
     if (! $@ && $CanUseEMM && $charset && $fulltext) {
         $fulltext =~ s/\*[^?]+(\?[bq]\?)/$1/oi;  # remove language tag '*en-en', '*DE-DE' allowedby RFC 2231
+        if (lc $encoding eq 'q') {               # fix ? to =3F in text part of QP - MIME::Words::decode_mimewords does'nt like it
+            $fulltext =~ s/(=\?[^?]*\?q\?)(.*?)(\?=)/$1.fixQM($2).$3/gieo;
+        }
         eval{$ret = MIME::Words::decode_mimewords($fulltext)};
         return $ret unless $@;
     }
@@ -47170,7 +47255,7 @@ sub decodeMimeWord {
 sub decodeMimeWords {
     my $s = shift;
     headerUnwrap($s);
-    $s =~ s/(=\?([^?]*)\?(b|q)\?([^?]+)\?=(?:\s*=\?\g2\?(?:b|q)\?[^?]+\?=)*)/decodeMimeWord($1,$2,$3,$4)/gieo;
+    $s =~ s/(=\?([^?]*)\?(b|q)\?(.*?)\?=(?:\s*=\?\g2\?(?:b|q)\?.*?\?=)*)/decodeMimeWord($1,$2,$3,$4)/gieo;
     return $s;
 }
 
@@ -47205,6 +47290,13 @@ sub encodeMimeWord {
         $encoding = 'B';
     }
     return "=?$charset?$encoding?" . $encword . "?=";
+}
+
+# replace ? by =3F
+sub fixQM {
+    my $str = shift;
+    $str =~ s/\?/=3F/go;
+    return $str;
 }
 
 # try to detect the endianess of an UTF-16,UTF32,UCS-2,UCS-4 encoded string
@@ -47485,7 +47577,7 @@ eval (<<'EOT');
           $bdbenv = BerkeleyDB::Env->new(-Flags => DB_CREATE | DB_INIT_MPOOL ,
                                       -Cachesize => 5242880 ,
                                       -Home => "$base/tmpDB/gripdelta",
-                                      -ErrFile => "$base/tmpDB/gripdelta/BDB-error.txt" ,
+                                      -ErrFile => ($BDBerrLog ? "$base/tmpDB/gripdelta/BDB-error.txt" : undef),
                                       -Config => {DB_DATA_DIR => "$base/tmpDB/gripdelta",
                                                   DB_LOG_DIR  => "$base/tmpDB/gripdelta",
                                                   DB_TMP_DIR  => "$base/tmpDB/gripdelta"}
@@ -57196,6 +57288,9 @@ sub decodeMimeWord2UTF8 {
 
     if (! $@ && $CanUseEMM && $charset && $fulltext) {
         $fulltext =~ s/\*[^?]+(\?[bq]\?)/$1/oi;  # remove language tag '*en-en', '*DE-DE' allowedby RFC 2231
+        if (lc $encoding eq 'q') {               # fix ? to =3F in text part of QP - MIME::Words::decode_mimewords does'nt like it
+            $fulltext =~ s/(=\?[^?]*\?q\?)(.*?)(\?=)/$1.fixQM($2).$3/gieo;
+        }
         eval{ $ret = MIME::Words::decode_mimewords($fulltext);
               if ($charset =~ /^UTF-?8$/o) {
                   $utf8off->(\$ret);
@@ -57223,7 +57318,7 @@ sub decodeMimeWord2UTF8 {
 sub decodeMimeWords2UTF8 {
     my $s = shift;
     headerUnwrap($s);
-    $s =~ s/(=\?([^?]*)\?(b|q)\?([^?]+)\?=(?:\s*=\?\g2\?(?:b|q)\?[^?]+\?=)*)/decodeMimeWord2UTF8($1,$2,$3,$4)/gieo;
+    $s =~ s/(=\?([^?]*)\?(b|q)\?(.*?)\?=(?:\s*=\?\g2\?(?:b|q)\?.*?\?=)*)/decodeMimeWord2UTF8($1,$2,$3,$4)/gieo;
     return $s;
 }
 
@@ -57506,8 +57601,8 @@ sub ConfigAddrAction {
         $addr = $run;
         my $orun = $run;
         $isnameonly = undef;
-        my $ret = "<b>eval result for $run :</b><br /><br />";
         my $res;
+        my $isshared;
         if ($run =~ /^\&/o) {
             $wrongaddr = '<br /><span class="positive">sub call detected</span><br />';
             my ($sub,$parm) = parseEval($run);
@@ -57523,12 +57618,15 @@ sub ConfigAddrAction {
         } elsif ($run =~ s/^\$//o && defined ${$run}) {
             $wrongaddr = '<br /><span class="positive">scalar request detected</span><br />';
             $res = ${$run};
+            $isshared = ' (is-shared)' if is_shared(${$run});
         } elsif ($run =~ s/^\%//o && eval('keys %{$run};')) {
             $wrongaddr = '<br /><span class="positive">hash request detected</span><br />';
             $res .= "'$_' => '".${$run}{$_}.'\'<br />' foreach (sort keys %{$run});
+            $isshared = ' (is-shared)' if is_shared(%{$run});
         } elsif ($run =~ s/^\@//o && eval('@{$run};')) {
             $wrongaddr = '<br /><span class="positive">array request detected</span><br />';
             $res = join('<br />', @{$run});
+            $isshared = ' (is-shared)' if is_shared(@{$run});
         } elsif ($run =~ /^\d{10}$/o) {
             $wrongaddr = '<br /><span class="positive">show time request detected</span><br />';
             $res = $run;
@@ -57539,6 +57637,7 @@ sub ConfigAddrAction {
             $res = "'$orun' is not defined or empty";
         }
         $res .= ' , ' . timestring($res) if $res =~ /^\d{10}$/o;
+        my $ret = "<b>eval result for $orun$isshared :</b><br /><br />";
         $s .= $ret . $res;
     }
 
@@ -63440,6 +63539,7 @@ sub checkFileHashUpdate {
 sub checkFile {
     my ($file,$opt,$name) = @_;
     $eF->($file) and return;
+    createFolder4File($file);
     if ($open->(my $F,'>',$file)) {
         $F->close;
         mlog(0,"AdminInfo: created empty $opt file '$file' for $name") if (! $calledfromThread);
@@ -67282,9 +67382,13 @@ sub configChangeConfigSched {
     # remove all old schedules
     my $s = 0;
     foreach (keys %registeredSchedules) {
-        ConfigRegisterSchedule($_,()) if /^ConfigChangeSchedule/o;
-        mlog(0,"info: removed schedule $_") if $MaintenanceLog > 2;
-        $s++;
+        if (/^ConfigChangeSchedule/o) {
+            my $var = $_;
+            $var =~ s/^ConfigChangeSchedule_\d+_//o;
+            ConfigRegisterSchedule($_,());
+            mlog(0,"info: removed schedule $_ - please check $var for the correctness of its value") if $MaintenanceLog > 2;
+            $s++;
+        }
     }
     mlog(0,"info: removed $s config change schedules") if $MaintenanceLog && $s;
     
@@ -67305,12 +67409,18 @@ sub configChangeConfigSched {
             next;
         }
         if ($config !~ /^\&/o) {
+            if ($config !~ /:=/o) {
+                mlog(0,"error: $name - line $l of file $new misses required separator ':='");
+                next;
+            }
             ($var,$val) = split(/\s*:=\s*/o, $config, 2);
             if (! $var) {
                 mlog(0,"error: $name - line $l of file $new contains no configuration variable definition");
                 next;
             }
-            if (! exists $Config{$var} && ! exists $main::{$var}) {
+            my ($package,$packagevar) = split(/::/o,$var,2);
+            $package .= '::' if $packagevar;
+            if (! exists $Config{$var} && ! exists $main::{$var} && !($packagevar && exists ${$package}{$packagevar})) {
                 mlog(0,"error: $name - line $l of file $new contains no valid configuration variable definition - ($var)");
                 next;
             }
@@ -72335,6 +72445,7 @@ sub ThreadStart {
             &initPrivatHashes();
             mlog(0,"$WorkerName recovered successfully from the startup error");
         }
+        threadCheckConfigQueue($Iam);
 
         mlog(0,"$WorkerName started");
         $ComWorker{$Iam}->{run} = 1;
@@ -72430,6 +72541,7 @@ sub ThreadMaintStart {
         &initDBHashes();
         &initPrivatHashes();
         &initFileHashes('AdminGroup');  # AdminGroup is never shared;
+        threadCheckConfigQueue($WorkerNumber);
         mlog(0,"$WorkerName started");
         &sigCentralSet();
         eval{while ($ComWorker{$WorkerNumber}->{run}) {&ThreadYield();&ThreadMaintMain();}1;}
@@ -72503,6 +72615,7 @@ sub ThreadRebuildSpamDBStart {
         &initDBHashes();
         &initPrivatHashes();
         &initFileHashes('AdminGroup');  # AdminGroup is never shared;
+        threadCheckConfigQueue($Iam);
 
         # switch off RDBM caching in this thread for some Hashes and unlock HMMdb and Spamdb
         eval {
@@ -73666,13 +73779,28 @@ sub parseEval {
 
 sub ThreadChangeVar {
     my ($var,$parm) = @_;
+    if ($var =~ /:=/o && ! defined $parm) {
+        ($var,$parm) = split(/\s*:=\s*/o,$var,2);
+    }
     $$var = $parm;
 }
 
 sub RunEval {
     my $cmd = shift;
+    local $@;
     eval($cmd);
     mlog(0,"error: code evaluation failed: $@") if ($@);
+}
+
+sub threadCheckConfigQueue {
+    my $Iam = shift;
+    return unless defined $Iam;
+    return unless exists $changeConfigQueue{$Iam};
+    return unless $changeConfigQueue{$Iam}->pending;
+    for ($changeConfigQueue{$Iam}->dequeue_nb_all(1000) ) {
+        mlog(0,"info: change hidden setting: $_ ") if $Iam == 10000;
+        RunEval($_);
+    }
 }
 
 sub runCMD {
@@ -73765,6 +73893,9 @@ sub ThreadMaintMain2 {
     $isRunTMM2 = 1;
     my $wasrun;
     my $l = $lastd{$Iam};
+
+    threadCheckConfigQueue($Iam);
+
 # database connection check is done independent from any time values
 # the complete check for all tables should never take more than 0.05 seconds if all is ok
     if (($CanUseTieRDBM or $CanUseBerkeleyDB) && $DBisUsed && time >= $nextDBcheck) { # check - do we have lost any DB connection
@@ -74019,6 +74150,7 @@ sub ThreadRebuildSpamDBMain {
                     die "harmless\n";
                 }
                 die "harmless\n" if (! $ComWorker{$WorkerNumber}->{run} || $allIdle);
+                threadCheckConfigQueue($Iam);
                 if ($ComWorker{$WorkerNumber}->{rereadconfig} && $ComWorker{$WorkerNumber}->{rereadconfig} <= time) {
                     &ThreadReReadConfig($Iam);
                     $WorkerLastAct{$Iam} = time;
@@ -74303,6 +74435,7 @@ sub ThreadMain {
     my @selerr;
     my $numActCon;
     &sigoff(__LINE__);
+    threadCheckConfigQueue($Iam);
     &ConDone();
     &ThreadGetNewCon();
     &NewSMTPConCall();
