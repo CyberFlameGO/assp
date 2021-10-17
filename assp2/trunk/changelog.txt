@@ -1,3 +1,15 @@
+2021-10-17
+fixed in assp 2.6.6 *SPAM-Evaporator* build 21290:
+
+
+- build 21287 caused an error 'BerkeleyDB-ERROR: in start rebuildAddCorrections - syntax error at (eval 679) line 5, near "$main::$BDBerrLog "'
+
+- fixes a STATS counting mistake since 21280
+
+- if an IP was blocked by an early blocking feature (like maxAUTHError) at least 'maxSMTPipSessions' times, this IP was blocked by 'maxSMTPipSessions' until assp was restarted
+
+
+
 2021-10-14
 fixed in assp 2.6.6 *SPAM-Evaporator* build 21287:
 

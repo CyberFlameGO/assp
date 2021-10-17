@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.6';
-$build   = '21287';        # 14.10.2021 TE
+$build   = '21290';        # 16.10.2021 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.034999';
 $MAINVERSION = $version . $modversion;
@@ -674,7 +674,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '0D9AD33F6090517D3E52A00CC52D0238B229455C'; }
+sub __cs { $codeSignature = '98F3C100CF4EC96C5EB45DF80C5F2D486A73BACE'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -8721,7 +8721,7 @@ eval (<<'EOT');
             $BDBEnv = BerkeleyDB::Env->new(-Flags => DB_CREATE | DB_INIT_MPOOL ,
                                            -Cachesize => $cachesize ,
                                            -Home    => "$DBDir",
-                                           -ErrFile => ($main::$BDBerrLog ? "$DBDir/BDB-error.txt" : undef),
+                                           -ErrFile => ($main::BDBerrLog ? "$DBDir/BDB-error.txt" : undef),
                                            -Config  => {DB_DATA_DIR => "$DBDir",
                                                         DB_LOG_DIR  => "$DBDir",
                                                         DB_TMP_DIR  => "$DBDir"}
@@ -20142,6 +20142,7 @@ sub NewSMTPConnection {
         return;
     }
 
+    $Stats{smtpConn}++;
     $Stats{smtpConnSSL}++ if $isSSL;
     $Con{$client}->{timestart} = Time::HiRes::time();
 
@@ -20191,6 +20192,7 @@ sub NewSMTPConnection {
     # ip connection limiting  parallel session
     my $doIPcheck;
     $maxSMTPipSessions=999 if (!$maxSMTPipSessions);
+    my $removeSession = 0;
     if ( $ip &&
          ! $isRemoteSupport &&
          ! matchIP($ip,'noMaxSMTPSessions',0,1) &&
@@ -20222,6 +20224,7 @@ sub NewSMTPConnection {
             done($client);
             return;
         }
+        $removeSession = 1;
     }
 
     if (! $ip ) {
@@ -20239,6 +20242,9 @@ sub NewSMTPConnection {
         &NoLoopSyswrite($client,"554 <$myName> Relay Service denied for IP $ip, closing transmission channel\r\n",0);
         $Con{$client}->{error} = '5';
         mlog(0,"rejected relay attemp on allowRelayCon for ip $ip") if $ConnectionLog >= 2 || $SessionLog;
+        threads->yield();
+        delete $SMTPSessionIP{$ip} if $removeSession && --$SMTPSessionIP{$ip} <= 0;
+        threads->yield();
         done($client);
         $Stats{rcptRelayRejected}++;
         return;
@@ -20271,6 +20277,9 @@ sub NewSMTPConnection {
         }
         &NoLoopSyswrite($client,$reply,0);
         $Con{$client}->{error} = '5';
+        threads->yield();
+        delete $SMTPSessionIP{$ip} if $removeSession && --$SMTPSessionIP{$ip} <= 0;
+        threads->yield();
         done($client);
         mlog(0,"delayed ip $ip, because PBBlack($pbval) is higher than DelayIP($DelayIP)- last penalty reason was: $reason", 1) if $ConnectionLog >= 2 || $SessionLog;
         return;
@@ -20299,6 +20308,9 @@ sub NewSMTPConnection {
         $Con{$client}->{type} = 'C';
         &NoLoopSyswrite($client,"554 <$myName> Service denied for IP $ip (harvester), closing transmission channel\r\n",0);
         $Con{$client}->{error} = '5';
+        threads->yield();
+        delete $SMTPSessionIP{$ip} if $removeSession && --$SMTPSessionIP{$ip} <= 0;
+        threads->yield();
         done($client);
         return;
     }
@@ -20377,6 +20389,9 @@ sub NewSMTPConnection {
         threads->yield();
         $Con{$client}->{type} = 'C';
         &NoLoopSyswrite($client,"421 <$myName> service temporarily unavailable, closing transmission\r\n",0);
+        threads->yield();
+        delete $SMTPSessionIP{$ip} if $removeSession && --$SMTPSessionIP{$ip} <= 0;
+        threads->yield();
         done($client);
         return;
     }
@@ -20456,7 +20471,10 @@ sub NewSMTPConnection {
         threads->yield();
         $numsess = ++$SMTPSessionIP{Total};
         threads->yield();
+        $SMTPSessionIP{$ip}++ if ! $removeSession;
+        threads->yield();
         $smtpConcurrentSessions++;
+        threads->yield();
         if ($maxSMTPSessions && $numsess>=$maxSMTPSessions) {
             d("$WorkerName limiting sessions: $client");
             if ($SessionLog) {
@@ -20467,8 +20485,6 @@ sub NewSMTPConnection {
         } else {      # increment Stats if connection not limited
             if (matchIP($ip,'noLog',0,1)) {
                 $Stats{smtpConnNotLogged}++;
-            } else {
-                $Stats{smtpConn}++;
             }
         }
     }
@@ -23013,6 +23029,10 @@ sub done2 {
         $SMTPSessionIP{Total}--;
         threads->yield();
         delete $SMTPSessionIP{$ip} if (--$SMTPSessionIP{$ip} <= 0);
+        threads->yield();
+    } else {
+        threads->yield();
+        delete $SMTPSessionIP{$ip} if ($SMTPSessionIP{$ip} <= 0);
         threads->yield();
     }
     d('finished closing connection');
