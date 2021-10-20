@@ -1,4 +1,4 @@
-ASSP V2 header and body check order for 2.4.3 build 14254 and higher
+ASSP V2 header and body check order for 2.6.1 build 18120 and higher
 
 
 mail header checks:
@@ -17,9 +17,12 @@ NotSpamTagCheck
 content based flag setting (red,white,np,spamlover)
 MSGIDsigCheck
 ISPIP check + getOriginIPs + orginHelo
+ARC analyzing
 mail routing IP detection
+Message Size check (announced size)
 HeloIsGood
 headerAddrCheckOK
+SMIME & PGP check
 FrequencyIPOK
 IPinHeloOK
 ForgedHeloOK
@@ -30,13 +33,14 @@ RelayAttempt - DoLocalSenderDomain - DoLocalSenderAddress
 RWLok
 MsgIDOK
 GRIPvalue (readonly , set score)
-FromStrictOK
 WhitelistOnly
 DKIMpreCheckOK
 DMARCget (readonly)
 SPFok + DMARKok
-DomainIPOK
+WhiteOrg
 SenderBaseOK
+FromStrictOK
+DomainIPOK
 PBExtremeOK
 PBExtremeOK for mail routing IP's
 BlackDomainOK
@@ -67,23 +71,6 @@ HMMOK
 BayesOK
 TestLowMessageScore
 PBOK
-
-
-
-Header and body checks are processed for all mails, which have'nt got the whitelisted/noprocessing flag in the
-SMTP command (handshake) part (HELO to DATA). The checks are skipped, if configured this way and any of the both flags
-was set in a header or body check (content based for example).
-
-
-
-mails that got the whitelisted/noprocessing flag in the SMTP command part are checked for (if configured):
-
-SPFok
-CheckAttachments
-ClamScanOK
-FileScanOK
-URIBLok (only whitelisted - not noprocessing)
-
 
 
 all mails are processed/checked for:
