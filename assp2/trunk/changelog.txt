@@ -1,3 +1,28 @@
+2021-10-20
+fixed in assp 2.6.6 *SPAM-Evaporator* build 21293:
+
+- if a file for regular expressions contained an incomplete default definition for the !!!NWLI!!! directive, this directive was not applied to the regexes in the file
+
+
+
+changed:
+
+- some corrections and additions to the main help text in the GUI
+
+- the behavior of the 'NWLI' extension in regular expression definitions is enhanced
+
+The NWLI conditions defined in a line are combined using a logical AND -- so N-W+ is combined to: NOT noprocessing AND whitelisted.
+In fact, the weight is skipped, if any of the defined NWLI options does not match for a mail. If multiple lines would match, the weight of the first matching line is used.
+This way you can define different weights for the same regular expression, but different mail states like in this example:
+(1) foo=>0:>NW - weight is zero if noprocessing AND whitelisted
+(2) foo=>0.5:>NW- - weight factor is 0.5 if noprocessing AND NOT whitelisted
+(3) foo=>1.5:>N-W - weight factor is 1.5 if NOT noprocessing AND whitelisted
+(4) foo=>55:>N-W- - weight is 55 if NOT noprocessing AND NOT whitelisted
+(5) foo=>2:>W - this line will not be processed, because line 1 or 3 would have matched before, depending on the noprocessing flag
+(6) foo=>2:>N- - this line will not be processed, because line 3 or 4 would have matched before, depending on the whitelisted flag
+
+ 
+
 2021-10-17
 fixed in assp 2.6.6 *SPAM-Evaporator* build 21290:
 

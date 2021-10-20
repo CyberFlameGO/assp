@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.6';
-$build   = '21290';        # 16.10.2021 TE
+$build   = '21293';        # 20.10.2021 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.034999';
 $MAINVERSION = $version . $modversion;
@@ -674,7 +674,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '98F3C100CF4EC96C5EB45DF80C5F2D486A73BACE'; }
+sub __cs { $codeSignature = 'F1FDE1CBB7B89EBE518A0CDDE94D6A539403CB2B'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -2455,6 +2455,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   NOTICE: the following combination of two entries, will lead in to a user/domain based matching - the global entry will be ignored!<br />
   145.146.0.0/16 # comment<br />
   145.146.0.0/16=>*@local.domain|user@mydomain|user2@*.mydomain # comment<br /><br />
+ Several features of assp have configuration options to switch on its processing, even any of the \'No Processing\' options matched.<br />
  <span class="positive"> All fields marked by \'*\' accept  a filepath/filename : \'file:files/ipnp.txt\'.</span>',undef,'7','msg000740','msg000741'],
 ['noProcessing','No Processing Addresses*',60,\&textinput,'Thomas.Eckardt@thockar.com','(.*)','ConfigMakeSLRe',
  'Mail solely to or from any of these addresses are proxied without processing. The envelope sender and recipients are checked. Like a more efficient version of Spam-Lovers &amp; redlist combined. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com).  Wildcards are supported (fribo*@domain.com). If you register TO addresses here, all recipients for a single mail must be marked as noprocessing to flag the mail as "noprocessing".<br />
@@ -2470,7 +2471,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   Please see also neverQueueSize .',undef,undef,'msg000790','msg000791'],
 ['npSizeOut','Message Size Limit Outgoing',10,\&textinput,'500000','(.*)',undef,'ASSP will treat outgoing messages larger than this SIZE (in bytes) as \'No Processing\' mail, after the header part of the mail and MaxBytes of the mail body are received without any error. Empty or 0 disables the feature.<br />
  Please see also neverQueueSize .',undef,undef,'msg000800','msg000801'],
-['processOnlyAddresses','Process Only These Addresses*',80,\&textinput,'','(.*)','ConfigMakeSLRe','If the Enable Process Only Addresses check box is checked, mail solely to or from any of the addresses in this list (envelope only) will be processed by ASSP. All others will be proxied without processing. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com).  Wildcards are supported (fribo*@domain.com).<br />
+['processOnlyAddresses','Process Only These Addresses*',80,\&textinput,'','(.*)','ConfigMakeSLRe','If the Enable Process Only Addresses ( poTestMode ) check box is checked, mail solely to or from any of the addresses in this list (envelope only) will be processed by ASSP. All others will be proxied without processing. Accepts specific addresses (user@domain.com), user parts (user) or entire domains (@domain.com).  Wildcards are supported (fribo*@domain.com).<br />
   Note that if an address matches both the NoProcessing and the OnlyTheseProcessing lists, the NoProcessing rules take precedence.',undef,undef,'msg000810','msg000811'],
 ['poTestMode','Enable Process Only Addresses',0,\&checkbox,'','(.*)',undef,'<br />
  <hr /><div class="cfgnotes">Notes On No Processing</div><input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/noprocessing.txt\',3);" />',,undef,undef,'msg000820','msg000821'],
@@ -3010,11 +3011,13 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 [0,0,0,'heading','PenaltyBox - Message and IP Scoring <a href="http://sourceforge.net/p/assp/wiki/Penalty_Box" target=wiki><img height=12 width=12 src="' . $wikiinfo . '" alt="PenaltyBox" /></a>'],
 ['DoPenalty','Do PenaltyBox - IP History<a href="http://sourceforge.net/p/assp/wiki/Penalty_Box" target="ASSPHELP"><img src="' . $wikiinfo . '" alt="wiki" /></a>','0:disabled|1:block|2:monitor/messageScoring',\&listbox,2,'(\d*)',undef,'The PenaltyBox is a  temporary position of low esteem awarded for a perceived misdeed. It scores IP\'s based on some events ( baValencePB see  penalty scores )and writes them into a BlackBox (PBBlack). If the score per specified time interval surpasses the threshold the message is rejected (and the IP is marked for blocking). They continue to get scored  up to the Extreme Threshold.<br />
  These top performers can get a special treatment PenaltyExtreme when DoPenaltyExtreme is enabled. The WhiteBox (PBWhite) stores IP\'s which should not be put into the BlackBox (PBBlack). The WhiteBox is always enabled. If an address is in the whitelist or whitedomain, the IP goes into the WhiteBox. The WhiteBox is one of the sources  Delaying/Greylisting uses to determine when delaying should not be done. <br />
- Entries in <i>Don\'t do penalties for these IP\'s</i> or <i>ISP/Secondary MX Servers</i> will prevent from penalties. Select \'monitor/messageScoring\' to fill WhiteBox (PBWhite) and BlackBox (PBBlack). \'monitor/messageScoring\' is also the right choice if you do not want to block IP\'s but rather score a message in \'Message Scoring Mode\'.<br />
+ Entries in <i>Don\'t do penalties for these IP\'s</i> or <i>ISP/Secondary MX Servers</i> will prevent from penalties (also: whitelisted and noprocessing). Select \'monitor/messageScoring\' to fill WhiteBox (PBWhite) and BlackBox (PBBlack). \'monitor/messageScoring\' is also the right choice if you do not want to block IP\'s but rather score a message in \'Message Scoring Mode\'.<br />
  <input type="button" value=" Show BlackBox" onclick="javascript:popFileEditor(\''.$newDB.'pb/pbdb.black.db\',4);" /><input type="button" value="Show White Box" onclick="javascript:popFileEditor(\''.$newDB.'pb/pbdb.white.db\',4);" />',undef,undef,'msg002270','msg002271'],
-['DoPenaltyMessage','Message Scoring Mode ','0:disabled|1:block|2:monitor|4:tagging',\&listbox,1,'(\d*)',undef,'If this feature is selected, the total score for all checks during a message is used to determine if the email is Spam. If the combined score is greater than the <b>Low MessageLimit</b> (PenaltyMessageLow) and less than or equal the <b>High MessageLimit</b> (PenaltyMessageLimit) the message will not be blocked but tagged. If the combined score is greater than the <b>High MessageLimit</b> (PenaltyMessageLimit), the message will be blocked.',undef,undef,'msg002280','msg002281'],
-['DoLocalPenaltyMessage','Message Scoring Mode for Local and Outgoing Mails','0:disabled|1:block|2:monitor|4:tagging',\&listbox,0,'(\d*)',undef,'If this feature is selected, the total score for all checks during a local or outgoing message is used to determine if the email is Spam. If the combined score is greater than the <b>Local Low MessageLimit</b> (LocalPenaltyMessageLow) and less than or equal the <b>Local High MessageLimit</b> (LocalPenaltyMessageLimit) the message will not be blocked but tagged. If the combined score is greater than the <b>Local High MessageLimit</b> (LocalPenaltyMessageLimit), the message will be blocked.',undef,undef,'msg010330','msg010331'],
-['MsgScoreOnEnd','Message Scoring on End',0,\&checkbox,'','(.*)',undef,'ASSP will wait using the \'DoPenaltyMessage\' action, until all configured possible checks are finished. Use this, to force calculating a complete message score over all values, including all bonus values.',undef,undef,'msg002290','msg002291'],
+['DoPenaltyMessage','Message Scoring Mode ','0:disabled|1:block|2:monitor|4:tagging',\&listbox,1,'(\d*)',undef,'If this feature is selected, the total score for all processed checks during an incoming message is used to determine if the email is Spam. If the combined score is greater than the <b>Low MessageLimit</b> (PenaltyMessageLow) and less than or equal the <b>High MessageLimit</b> (PenaltyMessageLimit) the message will not be blocked but tagged. If the combined score is greater than the <b>High MessageLimit</b> (PenaltyMessageLimit), the message will be blocked.<br />
+ Notice: The message score is checked (and the configured action takes place) regardless of any flag which was or was not set for a mail (like noprocessing, whitelisted ...).',undef,undef,'msg002280','msg002281'],
+['DoLocalPenaltyMessage','Message Scoring Mode for Local and Outgoing Mails','0:disabled|1:block|2:monitor|4:tagging',\&listbox,0,'(\d*)',undef,'If this feature is selected, the total score for all checks during a local or outgoing message is used to determine if the email is Spam. If the combined score is greater than the <b>Local Low MessageLimit</b> (LocalPenaltyMessageLow) and less than or equal the <b>Local High MessageLimit</b> (LocalPenaltyMessageLimit) the message will not be blocked but tagged. If the combined score is greater than the <b>Local High MessageLimit</b> (LocalPenaltyMessageLimit), the message will be blocked.<br />
+ Notice: The message score for local and outgoing mails is checked (and the configured action takes place) regardless of any flag which was or was not set for a mail (like noprocessing, whitelisted ...).',undef,undef,'msg010330','msg010331'],
+['MsgScoreOnEnd','Message Scoring on End',0,\&checkbox,1,'(.*)',undef,'ASSP will wait using the \'DoPenaltyMessage\' action, until all configured possible checks are finished. Use this, to force calculating a complete message score over all values, including all bonus values.',undef,undef,'msg002290','msg002291'],
 ['PenaltyMessageLow','Low MessageLimit',3,\&textinput,40,'(\d*)',undef,'MessageMode will not block messages whose score exceeds this threshold during the message but will tag them.  For example: 40',undef,undef,'msg002300','msg002301'],
 ['LocalPenaltyMessageLow','Low MessageLimit for Local and Outgoing Mails',3,\&textinput,40,'(\d*)',undef,'MessageMode will not block local and outgoing messages whose score exceeds this threshold during the message but will tag them.  For example: 40',undef,undef,'msg010340','msg010341'],
 ['PenaltyMessageLimit','High MessageLimit',3,\&textinput,50,'(\d*)',undef,'MessageMode will block messages whose score exceeds this threshold during the message.  For example: 50',undef,undef,'msg002310','msg002311'],
@@ -11988,13 +11991,22 @@ where filename is the relative path (from $base) to the included file like files
  The multiplication result of the weight and the penaltybox valence value will be used for scoring, if the absolute value of weight is less or equal 6. Otherwise the value of weight is used for scoring. It is possible to define negative values to reduce the resulting message score.<br /></div>
 <br /><img class="genHelpIcon" src="get?file=images/bomb.jpg"><br />
 <div id="bombs">For all "<span class="positive">bomb*</span>" regular expressions and "<span class="positive">blackRe</span>", "<span class="positive">scriptRe</span>", "<span class="positive">invalidFormatHeloRe</span>", "<span class="positive">invalidPTRRe</span>" and "<span class="positive">invalidMsgIDRe</span>" it is possible to define a third parameter (to overwrite the default options) after the weight like: Phishing\\.=>1.45|~Heuristics|Email~=>50<span class="positive">:>N[+-]W[+-]L[+-]I[+-]</span>. The characters and the optional to use + and - have the following functions:<br />
-use this regex (+ = only)(- = never) for: N = noprocessing , W = whitelisted , L = local , I = ISP mails . So the line ~Heuristics|Email~=>50:>N-W-LI could be read as: take the regex with a weight of 50, never scan noprocessing mails, never scan whitelisted mails, scan local mails and mails from ISP's (and all others). The line ~Heuristics|Email~=>3.2:>N-W+I could be read as: take the regex with a weight of 3.2 as factor, never scan noprocessing mails, scan only whitelisted mails even if they are received from an ISP .<br />
+use this regex (+ = only)(- = never) for: N = noprocessing , W = whitelisted , L = local , I = ISP mails . So the line ~Heuristics|Email~=>50:>N-W-LI could be read as: take the regex with a weight of 50, never score noprocessing mails, never score whitelisted mails, score local mails and mails from ISP's. The line ~Heuristics|Email~=>3.2:>N-W+I could be read as: take the regex with a weight of 3.2 as factor, never score noprocessing mails, score only whitelisted mails received from an ISP .<br />
+The NWLI conditions defined in a line are combined using a logical AND -- so N-W+ is combined to: NOT noprocessing AND whitelisted. In fact, the weight is skipped, if any of the defined NWLI options does not match for a mail. If multiple lines would match, the weight of the first matching line is used.<br />
+This way you can define different weights for the same regular expression, but different mail states like in this example:<br />
+(1) <b>foo=&gt;0:&gt;NW</b> - weight is zero if noprocessing AND whitelisted<br />
+(2) <b>foo=&gt;0.5:&gt;NW-</b> - weight factor is 0.5 if noprocessing AND NOT whitelisted<br />
+(3) <b>foo=&gt;1.5:&gt;N-W</b> - weight factor is 1.5 if NOT noprocessing AND whitelisted<br />
+(4) <b>foo=&gt;55:&gt;N-W-</b> - weight is 55 if NOT noprocessing AND NOT whitelisted<br />
+(5) <b>foo=&gt;2:&gt;W</b> - this line will not be processed, because line 1 or 3 would have matched before, depending on the noprocessing flag<br />
+(6) <b>foo=&gt;2:&gt;N-</b> - this line will not be processed, because line 3 or 4 would have matched before, depending on the whitelisted flag<br />
 If the third parameter is not set or any of the N,W,L,I is not set, the default configuration for the option will be used unless a default option string is defined anywhere in a single line in the file in the form !!!NWLI!!! (with + or - is possible).<br />
 <span class="negative">If any parameter that allowes the usage of weighted regular expressions is set to "block", but the sum of the resulting weighted penalty value is less than the corresponding "Penalty Box Valence Value" (because of lower weights) - only scoring will be done!</span><br /></div>
 <br /><img class="genHelpIcon" src="get?file=images/regex.jpg"><br />
 <div id="regex">If the regular expression optimization is used - ("perl module Regexp::Optimizer" installed and enabled) - and you want to disable the optimization for a special regular expression (file based), set one line (eg. the first one) to a value of '<span class="positive">assp-do-not-optimize-regex</span>' or '<span class="positive">a-d-n-o-r</span>' (without the quotes)! To disable the optimization for a specific line/regex, put &lt;&lt;&lt; in front and &gt;&gt;&gt; at the end of the line/regex. To weight such line/regex write for example: <span class="positive">&lt;&lt;&lt;</span>Phishing\\.<span class="positive">&gt;&gt;&gt;</span>=>1.45=>N- or ~<span class="positive">&lt;&lt;&lt;</span>Heuristics|Email<span class="positive">&gt;&gt;&gt;</span>~=>50  or  ~<span class="positive">&lt;&lt;&lt;</span>(Email|HTML|Sanesecurity)\\.(Phishing|Spear|(Spam|Scam)[a-z0-9]?)\\.<span class="positive">&gt;&gt;&gt;</span>~=>4.6 .<br /><br />
 Using Perl 5.12 or higher, assp supports the usage of unicode block, unicode script and unicode character definitions in regular expressions, like: \\P{Balinese} \\p{Script:Greek} \\P{Hebrew} \\p{script=katakana} \\N{greek:Sigma} \\x{263a}<br />
-It is recommended to switch off the regular expression optimization, if a unicode regular expression definition is used (at least for the line, where it is used)!<br /><br /></div>
+It is recommended to switch off the regular expression optimization, if a unicode regular expression definition is used (at least for the line, where it is used)!<br />
+A small tutorial about regular expressions and a 'how to do complex_AND-NOT_regexes' can be found in the ./docs folder<br /><br /></div>
 <img class="genHelpIcon" src="get?file=images/help.jpg"><br />
 <div id="reply">The literal 'SESSIONID' will be replaced by the unique message logging ID in every SMTP error reply.<br />
 The literal 'IPCONNECTED' will be replaced by the connected IP address in every SMTP error reply.<br />
@@ -12008,7 +12020,16 @@ EOT
 
 $lngmsghint{'msg500019'} = '# main form buttom hint 9';
 $lngmsg{'msg500019'} = <<EOT;
-<br /><img class="genHelpIcon" src="get?file=images/restart.jpg"><br />'kill -HUP $mypid' will load settings from disk. 'kill -NUM07 $mypid' will suspend or resume assp.  'kill -USR2 $mypid' will save settings to disk.
+<br /><img class="genHelpIcon" src="get?file=images/restart.jpg"><br />'kill -HUP $mypid' will load settings from disk. 'kill -NUM07 $mypid' will suspend or resume assp.  'kill -USR2 $mypid' will save settings to disk.<br /><br />
+All the hints above will be shown in the GUI as context help at any time, if you click on the related icons right of the configuration parameter description.<br /><br />
+If you are looking for a configuration parameter in the GUI, you may find it in the GUI-history <img class="leftTopIcon" src="get?file=images/history.jpg"> or you can search for it by moving the mouse pointer over the most left GUI bar or click on the search icon <img class="leftTopIcon" src="get?file=images/index.jpg"> in the top left menu. Simply write something you remember of the parameter name in to the search field.<br /><br />
+The GUI contains dynamic content depending on the configuration, the installed perl modules and the operating system. So, you may notice differences between the manual and the GUI at some point. If you scroll down to the bottom and you click on the most right 'Print the Manual' link, the manual is printed containing all your current settings and the current dynamic content.<br />
+<span class="negative">It is highly recommended to read the manual more than once!</span> This will give you a clue about how assp works and how the features and plugins are working together.<br />
+Using assp presupposes that you are familar with the SMTP protocol, the possibly used database engine and the general functionality of the used features (like LDAP, SPF, DKIM, RBL, DNSWL ..).<br />
+Keep in mind that assp is a proxy - it requires SMTP-servers as backend. Know your mail flow (in and out - make a plan), the used IP addresses, hostnames and ports - the wiki may help you.<br />
+It helps alot to know perl regular expressions, if you use them. Knowing the perl language helps to fine tune some (hidden) configuration parameters (e.g. lib/CorrectASSPcfg.pm or the lines 397 to 678 in assp.pl ).<br />
+ASSP will run out of the box, if the mail flow parameters (IP's/ports/local domains/users) are configured right. Read the GUI section by section and tweak the configuration to your needs - but don't change too many parameters at a time and skip those you don't understand. Use the 'Notes on ..' buttons at the bottom of each GUI section and 'left menu =&gt; config info =&gt; privat config notes' to document your settings. In doubt set the new configured feature in to testmode or to monitoring.<br />
+Some usefull information can also be found in the ./docs folder. And not to forget - if you update assp, read the changelog.txt - all important changes and news are available there - 'top menu =&gt; server stats =&gt; server information and download links =&gt; ASSP Version'!
 EOT
 
 $lngmsghint{'msg500020'} = '# manage users form hint';
@@ -20295,6 +20316,7 @@ sub NewSMTPConnection {
 
     if ($MaxAUTHErrors &&
         $doIPcheck &&
+        ! $fakeAUTHsuccess &&
         $AUTHErrors{$bip} > 0 &&
         $AUTHErrors{$bip} > $MaxAUTHErrors &&
         ! matchIP($ip,'noMaxAUTHErrorIPs',0,0)
@@ -26376,7 +26398,7 @@ sub getline {
         }
 
         my $ip = &ipNetwork( $this->{ip}, 1);
-        if ($MaxAUTHErrors && ! matchIP($this->{ip},'noMaxAUTHErrorIPs',0,0) && ($this->{relayok} ? $AUTHErrors{$this->{ip}} > abs($MaxAUTHErrors) : $AUTHErrors{$ip} > 0 && $AUTHErrors{$ip} > $MaxAUTHErrors)) {
+        if ($MaxAUTHErrors && ! matchIP($this->{ip},'noMaxAUTHErrorIPs',0,0) && ($this->{relayok} ? $AUTHErrors{$this->{ip}} > abs($MaxAUTHErrors) : ! $fakeAUTHsuccess && $AUTHErrors{$ip} > 0 && $AUTHErrors{$ip} > $MaxAUTHErrors)) {
             $this->{lastcmd} = 'AUTH';
             push(@{$this->{cmdlist}},$this->{lastcmd}) if $ConnectionLog >= 2;
             my $ip = $this->{relayok} ? $this->{ip} : &ipNetwork( $this->{ip}, 1);
@@ -31559,48 +31581,57 @@ sub weightRe {
     my $cvalence;
     my $weight;
     my $found;
-    my $count = 0;
+    my $count = -1;
     my @WeightRE = @{$name.'WeightRE'};
     my $skip = 0;
     my $how;
+    my @rhow;
+    my @rkey;
     while (@WeightRE) {
         my $k = shift @WeightRE;
         $k =~ s/^\{([^\}]*)\}(.*)$/$2/os;
         $how = $1 ? $1 : '';
-        ++$count and next unless $k;                 # no re data
-        ++$count and next if ($key !~ /$k/is);       # no match
+        $count++;
+        next unless $k;                 # no re data
+        next if ($key !~ /$k/is);       # no match
         
+        push @rkey, $key;               # remember we found a match
+        push @rhow, $how;
+        
+        # skip the match if a flag condition missmatch is found
         if ($how && $this) {
-            ++$skip and last if ($this->{noprocessing}  && $how =~ /[nN]\-/o);
-            ++$skip and last if ($this->{whitelisted}   && $how =~ /[wW]\-/o);   #never
-            ++$skip and last if ($this->{relayok}       && $how =~ /[lL]\-/o);
-            ++$skip and last if ($this->{ispip}         && $how =~ /[iI]\-/o);
+            ++$skip and next if ($this->{noprocessing}  && $how =~ /[nN]\-/o);
+            ++$skip and next if ($this->{whitelisted}   && $how =~ /[wW]\-/o);   #never
+            ++$skip and next if ($this->{relayok}       && $how =~ /[lL]\-/o);
+            ++$skip and next if ($this->{ispip}         && $how =~ /[iI]\-/o);
 
-            ++$skip and last if (!$this->{noprocessing} && $how =~ /[nN]\+/o);
-            ++$skip and last if (!$this->{whitelisted}  && $how =~ /[wW]\+/o);   #only
-            ++$skip and last if (!$this->{relayok}      && $how =~ /[lL]\+/o);
-            ++$skip and last if (!$this->{ispip}        && $how =~ /[iI]\+/o);
+            ++$skip and next if (!$this->{noprocessing} && $how =~ /[nN]\+/o);
+            ++$skip and next if (!$this->{whitelisted}  && $how =~ /[wW]\+/o);   #only
+            ++$skip and next if (!$this->{relayok}      && $how =~ /[lL]\+/o);
+            ++$skip and next if (!$this->{ispip}        && $how =~ /[iI]\+/o);
         }
 
         if ($this && $name =~ /bomb|script|black/oi) {   # bombs
-            ++$skip and last if (!$bombReNP    && $this->{noprocessing}  && $how !~ /[nN]\+?/o);
-            ++$skip and last if (!$bombReWL    && $this->{whitelisted}   && $how !~ /[wW]\+?/o);   #config
-            ++$skip and last if (!$bombReLocal && $this->{relayok}       && $how !~ /[lL]\+?/o);
-            ++$skip and last if (!$bombReISPIP && $this->{ispip}         && $how !~ /[iI]\+?/o);
+            ++$skip and next if (!$bombReNP    && $this->{noprocessing}  && $how !~ /[nN]\+?/o);
+            ++$skip and next if (!$bombReWL    && $this->{whitelisted}   && $how !~ /[wW]\+?/o);   #config
+            ++$skip and next if (!$bombReLocal && $this->{relayok}       && $how !~ /[lL]\+?/o);
+            ++$skip and next if (!$bombReISPIP && $this->{ispip}         && $how !~ /[iI]\+?/o);
         }
 
         if ($this && $name =~ /Reversed/o) {         # ptr
-            ++$skip and last if (!$DoReversedNP    && $this->{noprocessing}  && $how !~ /[nN]\+?/o);
-            ++$skip and last if (!$DoReversedWL    && $this->{whitelisted}   && $how !~ /[wW]\+?/o);   #config
+            ++$skip and next if (!$DoReversedNP    && $this->{noprocessing}  && $how !~ /[nN]\+?/o);
+            ++$skip and next if (!$DoReversedWL    && $this->{whitelisted}   && $how !~ /[wW]\+?/o);   #config
         }
 
         if ($this && $name =~ /Helo/o) {             # helo
-            ++$skip and last if (!$DoHeloNP    && $this->{noprocessing}  && $how !~ /[nN]\+?/o);
-            ++$skip and last if (!$DoHeloWL    && $this->{whitelisted}   && $how !~ /[wW]\+?/o);   #config
+            ++$skip and next if (!$DoHeloNP    && $this->{noprocessing}  && $how !~ /[nN]\+?/o);
+            ++$skip and next if (!$DoHeloWL    && $this->{whitelisted}   && $how !~ /[wW]\+?/o);   #config
         }
 
+        # a weighted matching entry was found
         $weight = ${$name.'Weight'}[$count];
         $found = 1;
+        $skip = 0;
         my $used = $how ? " used '$how' -" : '';
         mlog(0,"info: weighted regex ($name) result found for '$key' - with '$k' -$used weight is $weight") if $regexLogging;
         $weightMatch .= ' , ' if $weightMatch;
@@ -31608,16 +31639,16 @@ sub weightRe {
         last;
     }
 
-    if ($skip) {
-        my $used = $how ? " used '$how' -" : '';
-        mlog(0,"info: weighted regex ($name) skipped for '$key' -$used weight is zero") if $regexLogging;
+    if ($skip) {      # at least one match was found and skipped by missmatched flag conditions
+        my $used = @rhow ? " used '@rhow' -" : '';
+        mlog(0,"info: weighted regex ($name) skipped for '@rkey' -$used weight is zero") if $regexLogging;
         return 0;
     }
     $valence = ${$valence}[0] if $valence =~ /ValencePB$/o;
-    return $valence unless $found;
+    return $valence unless $found;   # there was no weight found - return the valence value
     eval{$cvalence = int($valence * $weight + 0.5);};
     return $valence if $@;
-    return $cvalence if abs($weight) <= 6;
+    return $cvalence if abs($weight) <= 6;    # if weight is less than 6 it is a factor
     return $weight;
 }
 
@@ -63919,7 +63950,7 @@ sub ConfigCompileRe {
 
     if (exists $WeightedRe{$name}) {
         my $defaultHow;
-        $defaultHow = $1 if $new =~ s/\s*!!!\s*([nNwWlLiI\+\-\s]+)?\s*!!!\s*\|?//o;
+        $defaultHow = uc($1) if $new =~ s/\s*!!!\s*([nNwWlLiI\+\-\s]+)?\s*!!!\s*\|?//o;
         $defaultHow =~ s/\s//go;
         $defaultHow =~ s/\++/+/go;
         $defaultHow =~ s/\-+/-/go;
@@ -63930,7 +63961,7 @@ sub ConfigCompileRe {
         @{$name.'WeightRE'} = ();
         while ($new =~ s/(\~([^\~]+)?\~|([^\|]+)?)\s*\=\>\s*([+\-]?(?:0?\.\d+|\d+\.\d+|\d+))?(?:\s*\:\>\s*([nNwWlLiI\+\-\s]+)?)?/$2$3/o) {
             my $re = ($2?$2:'').($3?$3:'');
-            my ($we,$how) = ($4,$5);
+            my ($we,$how) = ($4,uc($5));
             $we = 1 if (!$we && $we != 0);
             $we += 0;
             $re =~ s/(([^\\]?)\$\{\$([a-z][a-z0-9]+)\})/(exists $main::{$3}) ? $2.${$3} : $1/oige if $AllowInternalsInRegex;
@@ -63938,6 +63969,12 @@ sub ConfigCompileRe {
             $how =~ s/\++/+/go;
             $how =~ s/\-+/-/go;
             $how ||= $defaultHow;
+
+            if ($how && $defaultHow) {
+                for my $t ('N','W','L','I') {
+                    $how .= uc($1) if ($how !~ /$t[\+\-]?/i && $defaultHow =~ /($t[\+\-]?)/i);
+                }
+            }
 
             if ($AllowCodeInRegex) {
                 eval {
