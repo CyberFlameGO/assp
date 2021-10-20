@@ -1,0 +1,57 @@
+################################
+## complex AND-NOT of match and notmatch words
+##
+## to activate this regex, remove the ; (only the ;) in front of the lines
+## and change/add/remove the words/regexes to your needs
+##
+## the complex regex will match if:
+##   the count of match- words/regexes is reached AND
+##   the count of notmatch- words/regexes is NOT reached
+##
+## if the same match (word) is found multiple times consecutively in any of both matching groups,
+## (match and notmatch) only the last match is counted
+## word1 word1 word1 - counts 1 (word1 multiple times consecutively)
+## word1 word2 word1 - counts 3 (word1 multiple times but not consecutively)
+## word2 word1 word1 - counts 2 (word1 multiple times consecutively)
+## 
+## It is possible to define more than one of these regexes in one file.
+##
+## Notice, that if you define single words or regexes between two of these complex regexes,
+## the complex regexes will be processed first (before any single words or regexes outside).
+## To prevent confusing output of the assp-analyzing tools write all complex regexes at
+## the start of your files - followed by the other definitions
+##
+## It is possible to define such complex regex in an include file.
+##
+# the next line prevents assp from optimizing this complex regex
+;assp-do-not-optimize-regex
+# if it is possible and you want to weigth the regex (**)
+# write the needed ~ in front of the next line
+;^(?=.*?(((?!)   
+# write your match words or regexes in the next lines
+;\bmatch1\b
+;\bmatch2\b
+# end of the match words
+;(?!)).*?(?!\g{-1})){1})(?!.*?(((?!) 
+#                    ^
+# set the count of the needed different match words to match the regex
+#
+# notmatch words or regexes follows
+;\bnotmatch1\b
+;\bnotmatch2\b
+;\bnotmatch3\b
+;\bnotmatch4\b
+# end of notmatch words
+#
+# write a possible weigth extension ~=>number or ~=>number:>NWLI
+# at the end of the next line if you want
+;(?!)).*?(?!\g{-1})){2})  
+#                    ^
+# set the count of needed different not-match words to fail the regex
+#
+# end of the complex AND-NOT regex
+# any other match word or regexes or complex regex can follow here
+#
+;nextmatch1
+;nextmatch2
+################################

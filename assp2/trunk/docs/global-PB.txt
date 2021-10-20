@@ -1,0 +1,52 @@
+ASSP Global-Penalty-Box short description!
+
+What is the global-PB?
+
+Every ASSP-installation has its own local penaltybox. Base on the local valence-values, IP addresses will get black- or whitelisted.
+These black- and whitePB records are sended to a global server once a day. The global-PB-server consolidates all records and builds two global databases - global-Black and global-White. After uploading the local records to the global server, ASSP downloads these two databases and merges the records in to the local databases. So any ASSP, that is part of this global-PB-network, learns all records, that are known by all other global-clients and is able to block or accept emails based on this records.
+
+
+Will the global-PB overwrite my local penalty-box?
+
+No. Global records will never overwrite an existing local record! And global-PB records are not used to build the "extreme penalty-box file".
+
+
+
+Is the global-PB not the same like the "griplist"?
+
+The griplist is build by rebuildspamdb.pl and creates the local spamdb and spamdb.helo Bayesian-based on the files stored by ASSP in the defined directories. If ASSP scores a message because of a value in griplist, this IP will become also part of the local and global penalty-box. The griplist depends on: what messages are collected and how often is rebuildspamdb.pl used to build a new local griplist.
+The local penalty-box (and so the global) is based on all defined checks (includes grip-check and Bayesian-check) and is for this reason, much more meaningful as the griplist. The local penaltybox is permanently maintained by ASSP and so it is up to date every time.
+
+YES - the penalty-box will hold also some IP's that are part of the griplist!
+NO - the penalty-box holds much more records than the griplist, is based on all configured checks and is permanently up to date
+
+
+What is the interval time for the global-PB?
+
+Both global-PB are updated, every time a client has done an upload.
+
+
+What information are used to build the global-PB?
+
+All records of all clients are stored on the global-PB-server. Based on the information how often a record was uploaded from different clients and from different countries an IP address will become part of the global-PB or not. This is done to prevent global black-/whitelisting of an IP address, because of an unwanted (caused by a misconfigured ASSP) single local penalty-box record. The global-PB-server is doing a crosscheck between the black- and whitelist to keep every list clean from unclear records. Every record of the whitelist is checked against DNS-Blacklist providers and every record of the blacklist is checked against DNS-RWL-List providers before it will get part of the global-PB.
+
+
+What I have to do, to become part of the global-PB network?
+
+First you have to register your client on the global-PB server. To do this, (at this time) send an email to assp.globalpb@thockar.com. This email should contain the name of the global-PB client (please read the description in the ASSP-GUI) and your or your company�s details (name,address,phone, contact email address). This information�s are needed to verify all users of the global-PB, to keep the global-PB network clean from spammers and hackers!
+
+
+Is the use of the global-PB free of charge?
+
+No, to use the global-PB you'll need a subscription. The global-PB service will be charged per year. At this time the price is 300,00 Euro per year and client!
+
+
+What other services are part of the global-PB network?
+
+Every client of the global-PB gets:
+
+- additional downloads and updates of configuration lists like bombre.txt,URIBLCCTLDS.txt, blackdomains and others (in diff format)
+- download and installation of the lastest library modules
+- download and installation of updated files that are part of the base distribution
+- download and installation of the updated Plugin modules 
+- automatic configuration updates, if a new code build require such configuration changes
