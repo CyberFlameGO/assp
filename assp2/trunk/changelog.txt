@@ -1,3 +1,46 @@
+2021-10-29
+fixed in assp 2.6.6 *SPAM-Evaporator* build 21302:
+
+- Improved email address detection in the emailinterface list reports (whitelistadd , whitelistremove, ....).
+
+- The change time for include files used in the 'Groups' feature were not recorded in workers. This caused unexpected configuration reloads in the workers, until
+  assp was restarted.
+
+- Any change made for 'Groups' caused a reload for all configuration parameters where a group was used, even the related group was not changed. A configuration reload is now
+  only done for changed groups and there related configuration parameters.
+
+- Unexpected results were produced by the analyzer, if emails were sent as (not zipped) attachment to the emailinterface for analyzing - using outlook as mail client (+exchange).
+  Notice: always compress (e.g. zip) reported emails before they are sent to assp!
+
+
+changed:
+
+- If the hidden parameter 'DoRBWhite' is set, the rebuildspamdb process searches for matches in
+  whiteRe, npRe, whiteListedDomains, noProcessingDomains, whiteListedIPs, noProcessingIPs, DKIMWLAddresses and DKIMNPAddresses -
+  and removes those mails from the assp/spam folder. 
+
+
+- 'ReportLog','Enable Report logging'
+  'If set to diagnostic, each received report mail will be stored in the assp/debug folder.'
+   This makes more easy to track down report problems, based on the data sent by the mail client to assp.
+
+- The GUI description for the NWLI enhancement (for regular expressions) was updated. The code was changed to get the NWLI results exactly like descriped in the GUI.
+
+- A hint (and context help) about encryped configuration parameters and files was added to GUI.
+
+
+added:
+
+The set hidden parameter 
+DoRBBlack = 0;                      # (0/1) check blacklisted mails on rebuildspamdb (default 0 - 1 = skip rebuild for notspam if black)
+removes all mails in the assp/notspam folder, which matches  :  noBlockingIPs, denySMTPConnectionsFromAlways, denySMTPConnectionsFrom and blackListedDomains
+
+Notice: if all of DoRBWhite, DoRBBlack and DoRBRed are enabled, the rebuild process will take ~12 times (or very much) longer than without setting these switches.
+        Don't be confused. If .eml files were corrected by spam/ham reports, assp will process them correctly. But it may help to maintain the corpus from time to time.
+
+
+
+
 2021-10-20
 fixed in assp 2.6.6 *SPAM-Evaporator* build 21293:
 

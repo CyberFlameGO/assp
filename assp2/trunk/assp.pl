@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.6';
-$build   = '21293';        # 20.10.2021 TE
+$build   = '21302';        # 29.10.2021 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.034999';
 $MAINVERSION = $version . $modversion;
@@ -422,8 +422,9 @@ our $BayesDomainPrior = 2;               # (number > 0) Bayesian/HMM domain entr
 our $BayesPrivatPrior = 3;               # (number > 0) Bayesian/HMM private/user entry priority (1 = lowest)
 our $debugWordEncoding = 0;              # (0/1) write/debug suspect word encodings to debug/_enc_susp.txt
 our $reportBadDetectedSpam = 1;          # (0/1) report mails to spamaddresses that are not detected as SPAM, to the rebuild process
-our $DoRBRed = 0;                        # (0/1) check relisted mails on rebuildspamdb (default 0)
-our $DoRBWhite = 0;                      # (0/1) check whitelisted mails on rebuildspamdb (default 0)
+our $DoRBRed = 0;                        # (0/1) check relisted mails on rebuildspamdb (default 0 - 1 = skip rebuild for spam and notspam if red)
+our $DoRBWhite = 0;                      # (0/1) check whitelisted mails on rebuildspamdb (default 0 - 1 = skip rebuild for spam if white)
+our $DoRBBlack = 0;                      # (0/1) check blacklisted mails on rebuildspamdb (default 0 - 1 = skip rebuild for notspam if black)
 
 # logging related
 our $AUTHLogUser = 0;                    # (0/1) write the username for AUTH (PLAIN/LOGIN) to maillog.txt
@@ -674,7 +675,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'F1FDE1CBB7B89EBE518A0CDDE94D6A539403CB2B'; }
+sub __cs { $codeSignature = 'F6B1433F088092A4FEA1DC8EA107DFAC4BD6387B'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -4549,7 +4550,7 @@ For example: mysql/dbimport<br />
 ['MaintenanceLog','Enable Maintenance logging','0:nolog|1:standard|2:verbose|3:diagnostic',\&listbox,1,'(.*)',undef,
   '',undef,undef,'msg007140','msg007141'],
 ['ReportLog','Enable Report logging','0:nolog|1:standard|2:verbose|3:diagnostic',\&listbox,1,'(.*)',undef,
-  '',undef,undef,'msg007160','msg007161'],
+  'If set to diagnostic, each received report mail will be stored in the assp/debug folder.',undef,undef,'msg007160','msg007161'],
 ['ScheduleLog','Enable Scheduler logging','0:nolog|1:standard|2:verbose',\&listbox,1,'(.*)',undef,
   '',undef,undef,'msg007170','msg007171'],
 ['SNMPLog','Enable SNMP logging','0:nolog|1:standard|2:verbose|3:diagnostic',\&listbox,1,'(.*)',undef,
@@ -6244,6 +6245,7 @@ our %WeightedReOverwrite;
 our %preMakeRE;
 our %noOptRe;
 our %GroupRE:shared;
+our %GroupREchanged:shared;
 our %GroupWatch;
 our %ConfigWatch:shared;
 
@@ -8223,7 +8225,7 @@ our $DoHeloNPw;
 our $setpro = 1;
 #
 
-# each ScheduleMap key needs the related global variable to be decleared !
+# each ScheduleMap key needs the related global variable to be declared !
 $ScheduleMap{'backupDBInterval'}          = &share([]); @{$ScheduleMap{'backupDBInterval'}}          = (3600,'nextDBBackup');
 $ScheduleMap{'BlockReportSchedule'}       = &share([]); @{$ScheduleMap{'BlockReportSchedule'}}       = (24 * 3600,'nextBlockReportSchedule');
 $ScheduleMap{'CleanCacheEvery'}           = &share([]); @{$ScheduleMap{'CleanCacheEvery'}}           = (3600,'nextCleanCache');
@@ -8474,7 +8476,7 @@ if ($@) {
 sub write_rebuild_module {
 my $curr_version = shift;
 
-my $rb_version = '8.12';
+my $rb_version = '8.14';
 my $keepVersion;
 
 if (open my $ADV, '<',"$base/lib/rebuildspamdb.pm") {
@@ -8587,6 +8589,9 @@ our $CanUseUnicodeNormalize = $main::CanUseUnicodeNormalize && require Unicode::
 our $PortRe = $main::PortRe;
 our $disclaimerRe;
 our $disclaimerCount;
+our $canWLAddr = $main::DKIMWLAddressesRE !~ /$main::neverMatchRE/o;
+our $canNPAddr = $main::DKIMNPAddressesRE !~ /$main::neverMatchRE/o;
+our $MyName = join('|', map {my $t = quotemeta($_);$t;} ($main::myName, split(/[\|, ]+/o,$main::myNameAlso)));
 our %FileModel;
 our $FileModelObj;
 our $RebuildUsesFileModel = $main::RebuildUsesFileModel;
@@ -10481,6 +10486,10 @@ sub rb_checkham {
         &rb_deletefile( $FileName, "$reason" );
         return 1;
     }
+    if ( $main::DoRBBlack && ($reason = &rb_blacklisted( $msgText )) ) {
+        &rb_deletefile( $FileName, "$reason" );
+        return 1;
+    }
     delete $Trashlist{&main::de8($FileName)};
     return 0;
 }
@@ -10489,6 +10498,7 @@ sub rb_whitelisted {
     my $mm = shift;
     my $m = substr($$mm,0,$main::MaxBytes + 1000);
     my %seenf;
+    my $conip;
 
     # test against expression to recognize whitelisted mail
     my $mwr = $main::whiteReRE;
@@ -10501,17 +10511,35 @@ sub rb_whitelisted {
         return ( "Regex:White '" . $reason . q{'} );
     }
 
+        # test against expression to recognize noprocessing mail
+    $mwr = $main::npReRE;
+    if ( $main::npRe && $m =~ /($mwr)/ ) {
+        my $reason = $1;
+        $reason =~ s/\s+$/ /go;
+        $reason =~ s/[\r\n\s]+/ /go;
+        if ( length($reason) >= $main::RegExLength ) { $reason = substr( $reason, 0, ( $main::RegExLength - 4 ) ) . "..." }
+        $WhiteCount++;
+        return ( "Regex:NoProcessing '" . $reason . q{'} );
+    }
+
     $m =~ s/\n\r?\n.*$//so;   # remove body
     
     die "warning: got stop request from MainThread" unless $main::ComWorker{$Iam}->{run};
 
-    my (@to,@from);
+    my (@to,@from,@indentity,$mailfrom,$dkimpass);
     while ( $m =~ /($main::HeaderNameRe):($main::HeaderValueRe)/igos ) {
         my ($h,$s) = ($1,$2);
+        if ($h =~ /^X-Original-Authentication-Results$/io) {
+            &main::headerUnwrap($s);
+            $dkimpass = $s =~ /dkim=pass/;
+            next;
+        }
         if ($h =~ /^(?:from|sender|X-Assp-Envelope-From|reply-to|errors-to|list-\w+)$/io) {
             &main::headerUnwrap($s);
             if (my $res = &main::getEmailAddr($s)) {
-               push(@from , &main::batv_remove_tag(0,lc($res),''));
+               $res = &main::batv_remove_tag(0,lc($res),'');
+               push(@from , $res);
+               $mailfrom = $res if $h =~ /^X-Assp-Envelope-From/o;
             }
             next;
         }
@@ -10520,14 +10548,79 @@ sub rb_whitelisted {
             if (my $res = &main::getEmailAddr($s)) {
                push(@to , &main::batv_remove_tag(0,lc($res),''));
             }
+            next;
+        }
+        if ($h =~ /^(?:X-ASSP-DKIMidentity)$/io) {
+            &main::headerUnwrap($s);
+            if (my $res = &main::getEmailAddr($s)) {
+               push(@indentity , &main::batv_remove_tag(0,lc($res),''));
+            }
+            next;
+        }
+        if ($h =~ /received/io) {
+            &main::headerSmartUnwrap($s);
+            if ($s =~ /from\s+[^\(]*\(\[($main::IPRe).{1,5}helo=[^\)]{0,64}\)(?:\s+by\s+(?:$MyName))\s+with/is) {
+                my $ip = &main::ipv6expand(&main::ipv6TOipv4($1));
+                $conip = $ip if $ip !~ /$main::IPprivate/o;
+            }
+            next;
         }
     }
     die "warning: got stop request from MainThread" unless $main::ComWorker{$Iam}->{run};
+
+    if ($main::noProcessingDomains && $mailfrom =~ /$main::NPDRE/) {
+        $WhiteCount++;
+        return ( "noProcessing Domain: '" . $mailfrom . q{'} );
+    }
+
+    if ($mailfrom && $dkimpass && ($canWLAddr || $canNPAddr) && @indentity) {
+        my @tocheck = @indentity;
+        my %seent;
+        foreach (@to) {
+            if ( exists $seent{ $_ } ) {
+                next;                #we already checked this address
+            } else {
+                $seent{ $_ } = 1;
+            }
+            push(@tocheck,"$tocheck[0],$_");
+        }
+        if ($canWLAddr && &main::matchRE(\@tocheck,'DKIMWLAddresses')) {
+            $WhiteCount++;
+            return ( "DKIMWLAddresses: '" . $tocheck[0] . q{'} );
+        }
+        if ($canNPAddr && &main::matchRE(\@tocheck,'DKIMNPAddresses')) {
+            $WhiteCount++;
+            return ( "DKIMNPAddresses: '" . $tocheck[0] . q{'} );
+        }
+    }
+
+    if ($conip) {
+        my $tmpfh = time;
+        $main::Con{$tmpfh} = {};
+        $main::Con{$tmpfh}->{rcpt} = join(' ',@to);
+        $main::Con{$tmpfh}->{rcptlist} = {};
+        if ($main::noProcessingIPs && &main::matchIP($conip,'noProcessingIPs',$tmpfh,1)) {
+            $WhiteCount++;
+            delete $main::Con{$tmpfh};
+            return ( "noProcessingIP: '" . $conip . q{'} );
+        }
+        if ($main::whiteListedIPs && &main::matchIP($conip,'whiteListedIPs',$tmpfh,1)) {
+            $WhiteCount++;
+            delete $main::Con{$tmpfh};
+            return ( "whiteListedIPs: '" . $conip . q{'} );
+        }
+        delete $main::Con{$tmpfh};
+    }
+    
     while (my $curaddr = shift @from) {
         if ( exists $seenf{ $curaddr } ) {
             next;                #we already checked this address
         } else {
             $seenf{ $curaddr } = 1;
+        }
+        if ($main::whiteListedDomains && &main::matchRE([$curaddr],'whiteListedDomains',1)) {
+            $WhiteCount++;
+            return ( "WhiteListed Domain: '" . $curaddr . q{'} );
         }
         my %seent;
         foreach (@to) {
@@ -10544,10 +10637,6 @@ sub rb_whitelisted {
                 $WhiteCount++;
                 return ( "WhiteListed Domain: $curaddr for $_" );
             }
-        }
-        if ($main::whiteListedDomains && &main::matchRE([$curaddr],'whiteListedDomains',1)) {
-            $WhiteCount++;
-            return ( "WhiteListed Domain: '" . $curaddr . q{'} );
         }
     } ## end while
     return 0;
@@ -10589,6 +10678,86 @@ sub rb_redlisted {
     }
     return 0;
 } ## end sub redlisted
+
+sub rb_blacklisted {
+    my $mm = shift;
+    my $m = substr($$mm,0,$main::MaxBytes + 1000);
+    my %seenf;
+    my $conip;
+
+    die "warning: got stop request from MainThread" unless $main::ComWorker{$Iam}->{run};
+
+    my (@to,@from,$mailfrom);
+    while ( $m =~ /($main::HeaderNameRe):($main::HeaderValueRe)/igos ) {
+        my ($h,$s) = ($1,$2);
+        if ($h =~ /^(?:from|sender|X-Assp-Envelope-From|reply-to|errors-to|list-\w+)$/io) {
+            &main::headerUnwrap($s);
+            if (my $res = &main::getEmailAddr($s)) {
+               $res = &main::batv_remove_tag(0,lc($res),'');
+               push(@from , $res);
+               $mailfrom = $res if $h =~ /^X-Assp-Envelope-From/o;
+            }
+            next;
+        }
+        if ($h =~ /^(?:to|X-Assp-Intended-For)$/io) {
+            &main::headerUnwrap($s);
+            if (my $res = &main::getEmailAddr($s)) {
+               push(@to , &main::batv_remove_tag(0,lc($res),''));
+            }
+            next;
+        }
+        if ($h =~ /received/io) {
+            &main::headerSmartUnwrap($s);
+            if ($s =~ /from\s+[^\(]*\(\[($main::IPRe).{1,5}helo=[^\)]{0,64}\)(?:\s+by\s+(?:$MyName))\s+with/is) {
+                my $ip = &main::ipv6expand(&main::ipv6TOipv4($1));
+                $conip = $ip if $ip !~ /$main::IPprivate/o;
+            }
+            next;
+        }
+    }
+    die "warning: got stop request from MainThread" unless $main::ComWorker{$Iam}->{run};
+
+    if ($conip) {
+        my $tmpfh = time;
+        $main::Con{$tmpfh} = {};
+        $main::Con{$tmpfh}->{rcpt} = join(' ',@to);
+        $main::Con{$tmpfh}->{rcptlist} = {};
+        if ($main::noBlockingIPs && ! &main::matchIP($conip,'noBlockingIPs',$tmpfh,1)) {
+            if ($main::DoDenySMTPstrict && $main::denySMTPConnectionsFromAlways && &main::matchIP($conip,'denySMTPConnectionsFromAlways',$tmpfh,1)) {
+                delete $main::Con{$tmpfh};
+                return ( "denySMTPConnectionsFromAlways: '" . $conip . q{'} );
+            }
+            if ($main::DoDenySMTP && $main::denySMTPConnectionsFrom && &main::matchIP($conip,'denySMTPConnectionsFrom',$tmpfh,1)) {
+                delete $main::Con{$tmpfh};
+                return ( "denySMTPConnectionsFrom: '" . $conip . q{'} );
+            }
+        }
+        delete $main::Con{$tmpfh};
+    }
+
+    while (my $curaddr = shift @from) {
+        if ( exists $seenf{ $curaddr } ) {
+            next;                #we already checked this address
+        } else {
+            $seenf{ $curaddr } = 1;
+        }
+        if ($main::blackListedDomains && &main::matchRE([$curaddr],'blackListedDomains',1)) {
+            return ( "BlackListed Domain: '" . $curaddr . q{'} );
+        }
+        my %seent;
+        foreach (@to) {
+            if ( exists $seent{ $_ } ) {
+                next;                #we already checked this address
+            } else {
+                $seent{ $_ } = 1;
+            }
+            if ($main::whiteListedDomains && &main::matchRE(["$curaddr,$_"],'blackListedDomains',1)) {
+                return ( "BlackListed Domain: $curaddr for $_" );
+            }
+        }
+    } ## end while
+    return 0;
+} ## end sub black listed
 
 sub rb_deletefile {
     my ( $fn, $reason, $ignorekeepdeleted ) = @_;
@@ -11990,7 +12159,7 @@ where filename is the relative path (from $base) to the included file like files
 <div id="twoasterix">Fields marked with two asterisk (**) contains regular expressions (regex) and accept a second weight value. Every weighted regex that contains at least one '|' has to begin and end with a '~' - inside such regexes it is not allowed to use a tilde '~', even it is escaped - for example:  ~abc<span class="negative"><b>\\~</b></span>|def~=>23 or ~abc<span class="negative"><b>~</b></span>|def~=>23 - instead use the octal (\\126) or hex (\\x7E) notation , for example <span class="positive">~abc\\126|def~=>23 or ~abc\\x7E|def~=>23</span> . Every weighted regex has to be followed by '=>' and the weight value. For example: Phishing\\.=>1.45|~Heuristics|Email~=>50  or  ~(Email|HTML|Sanesecurity)\\.(Phishing|Spear|(Spam|Scam)[a-z0-9]?)\\.~=>4.6|Spam=>1.1|~Spear|Scam~=>2.1 .
  The multiplication result of the weight and the penaltybox valence value will be used for scoring, if the absolute value of weight is less or equal 6. Otherwise the value of weight is used for scoring. It is possible to define negative values to reduce the resulting message score.<br /></div>
 <br /><img class="genHelpIcon" src="get?file=images/bomb.jpg"><br />
-<div id="bombs">For all "<span class="positive">bomb*</span>" regular expressions and "<span class="positive">blackRe</span>", "<span class="positive">scriptRe</span>", "<span class="positive">invalidFormatHeloRe</span>", "<span class="positive">invalidPTRRe</span>" and "<span class="positive">invalidMsgIDRe</span>" it is possible to define a third parameter (to overwrite the default options) after the weight like: Phishing\\.=>1.45|~Heuristics|Email~=>50<span class="positive">:>N[+-]W[+-]L[+-]I[+-]</span>. The characters and the optional to use + and - have the following functions:<br />
+<div id="bombs">For all "<span class="positive">bomb*</span>" regular expressions and "<span class="positive">blackRe</span>", "<span class="positive">scriptRe</span>", "<span class="positive">invalidFormatHeloRe</span>", "<span class="positive">invalidPTRRe</span>" and "<span class="positive">invalidMsgIDRe</span>" it is possible to define a third parameter (to overwrite the default options) after the weight like: Phishing\\.=>1.45|~Heuristics|Email~=>50<span class="positive">:>N[+-]W[+-]L[+-]I[+-]</span>. The characters, the optional to use '+' and the negation '-' switch have the following functions:<br />
 use this regex (+ = only)(- = never) for: N = noprocessing , W = whitelisted , L = local , I = ISP mails . So the line ~Heuristics|Email~=>50:>N-W-LI could be read as: take the regex with a weight of 50, never score noprocessing mails, never score whitelisted mails, score local mails and mails from ISP's. The line ~Heuristics|Email~=>3.2:>N-W+I could be read as: take the regex with a weight of 3.2 as factor, never score noprocessing mails, score only whitelisted mails received from an ISP .<br />
 The NWLI conditions defined in a line are combined using a logical AND -- so N-W+ is combined to: NOT noprocessing AND whitelisted. In fact, the weight is skipped, if any of the defined NWLI options does not match for a mail. If multiple lines would match, the weight of the first matching line is used.<br />
 This way you can define different weights for the same regular expression, but different mail states like in this example:<br />
@@ -12000,7 +12169,8 @@ This way you can define different weights for the same regular expression, but d
 (4) <b>foo=&gt;55:&gt;N-W-</b> - weight is 55 if NOT noprocessing AND NOT whitelisted<br />
 (5) <b>foo=&gt;2:&gt;W</b> - this line will not be processed, because line 1 or 3 would have matched before, depending on the noprocessing flag<br />
 (6) <b>foo=&gt;2:&gt;N-</b> - this line will not be processed, because line 3 or 4 would have matched before, depending on the whitelisted flag<br />
-If the third parameter is not set or any of the N,W,L,I is not set, the default configuration for the option will be used unless a default option string is defined anywhere in a single line in the file in the form !!!NWLI!!! (with + or - is possible).<br />
+If a default option string in the form !!!NWLI!!! is defined anywhere in a single line in the file, this definition will be used (to inherit) as third parameter for all (but only those) lines , which do not contain any definition for the third parameter.<br />
+If the third parameter is not set in a line (directly or inherited from the default option string) or any of the N,W,L,I is not set (directly or inherited), the default configuration parameter will be used for the regular expression in this line (for example: a bombRe line has set foo=&gt;5:>WL-I- , you see the N is missing, so bombReNP will be used for noprocessing mails).<br />
 <span class="negative">If any parameter that allowes the usage of weighted regular expressions is set to "block", but the sum of the resulting weighted penalty value is less than the corresponding "Penalty Box Valence Value" (because of lower weights) - only scoring will be done!</span><br /></div>
 <br /><img class="genHelpIcon" src="get?file=images/regex.jpg"><br />
 <div id="regex">If the regular expression optimization is used - ("perl module Regexp::Optimizer" installed and enabled) - and you want to disable the optimization for a special regular expression (file based), set one line (eg. the first one) to a value of '<span class="positive">assp-do-not-optimize-regex</span>' or '<span class="positive">a-d-n-o-r</span>' (without the quotes)! To disable the optimization for a specific line/regex, put &lt;&lt;&lt; in front and &gt;&gt;&gt; at the end of the line/regex. To weight such line/regex write for example: <span class="positive">&lt;&lt;&lt;</span>Phishing\\.<span class="positive">&gt;&gt;&gt;</span>=>1.45=>N- or ~<span class="positive">&lt;&lt;&lt;</span>Heuristics|Email<span class="positive">&gt;&gt;&gt;</span>~=>50  or  ~<span class="positive">&lt;&lt;&lt;</span>(Email|HTML|Sanesecurity)\\.(Phishing|Spear|(Spam|Scam)[a-z0-9]?)\\.<span class="positive">&gt;&gt;&gt;</span>~=>4.6 .<br /><br />
@@ -12014,8 +12184,11 @@ The literal 'IPORIGIN' will be replaced by the origin IP address in every SMTP e
 The literal 'NOTSPAMTAG' will be replaced by a random calculated TAG using <a href="./NotSpamTag">NotSpamTag</a>, in every SMTP permanent (5xx) error reply.<br />
 The literal 'MYNAME' will be replaced by the configuration value defined in 'myName' in every SMTP error reply.<br /><br />
 If you define any SMTP-reply-code (like for example <b>SpamError</b>) as a <b>temporary</b> reply code (starting with <b>4</b> like <b>4</b>52 instead of the default <b>5</b> like <b>5</b>50), the connection will be dropped at it's current state, regardless any <b>collection</b> or <b>forwarding</b> setting. These actions may <b>finished incomplete</b> in this case!<br /><br /></div>
+<img class="genHelpIcon" src="get?file=images/password.jpg"><br />
+<div id="encrypt">Values and possibly used files and included files, which may contain security critical data like user names, passwords or system commands - are stored encrypted in the assp.cfg and in the files system. If unencrypted content is found for such a value or file, the content will be encrypted before it is used by assp.<br /><br /></div>
 <div id="intname">If the internal name is shown in light blue like <span style="color:#8181F7">(uniqueIDPrefix)</span> , this indicates that the configured value differs from the default value. To show the default value, move the mouse over the internal name. A click on the internal name will reset the value to the default.<br /><br /></div>
 <img class="genHelpIcon" src="get?file=images/ip.jpg"><br />
+
 EOT
 
 $lngmsghint{'msg500019'} = '# main form buttom hint 9';
@@ -15350,7 +15523,7 @@ EOT
         $installed = 'enabled';
         $requiredDBVersion{'Spamdb'} .= "_WordStem$VerASSP_WordStem";
         $requiredDBVersion{'HMMdb'}  .= "_WordStem$VerASSP_WordStem";
-        # make Lingua::Stem::Snowball thread safe if it is'nt
+        # make Lingua::Stem::Snowball thread safe if it isn't
         if (! defined *{'Lingua::Stem::Snowball::CLONE_SKIP'}) {
             *{'Lingua::Stem::Snowball::CLONE_SKIP'} = *{'main::Stem_Clone_Skip'};
         }
@@ -18204,6 +18377,7 @@ sub MainLoop {
     my $hourend = time % 1800;
     mlog(0,'') if (( time - $lastMlog ) > 110 || $hourend < 15);
     mlog(0,'***assp&is%alive$$$') if (! $DisableSyslogKeepAlive && (time - $lastmlogWrite) > 120);
+    d('MainLoop start');
     &ThreadMonitorMainLoop('MainLoop start');
     &ConDone();
     my @canread;
@@ -18213,6 +18387,7 @@ sub MainLoop {
     if ($maxwait && $syncToDo) {
         my $hassync;
         &ThreadMonitorMainLoop('Doing Config Sync');
+        d('Doing Config Sync');
         foreach ( sort { &syncSortCFGRec() } Glob("$base/configSync/*.cfg")) {
             next if -d $_;
             &syncConfigReceived($_);
@@ -18234,6 +18409,7 @@ sub MainLoop {
     }
     if ($maxwait && $process_external_cmdqueue && time % 5 == 0 && (open my $cmdq, '<',"$base/cmdqueue")) {
         &ThreadMonitorMainLoop('processing external command queue');
+        d('processing external command queue');
         while (my $line = (<$cmdq>)) {
             next if ($line =~ /^\s*[#;]/o);
             my ($sub,$parm) = parseEval($line);
@@ -18266,6 +18442,7 @@ sub MainLoop {
         &mlogWrite(0) if $gotRequest;
     }
     &ThreadMonitorMainLoop('MainLoop start poll Sockets');
+    d('MainLoop start poll Sockets');
     $stime=Time::HiRes::time(); # poll-loop cycle start time
     if ($IOEngineRun == 0) {
         my $re;
@@ -18283,9 +18460,11 @@ sub MainLoop {
     }
     my $itime = Time::HiRes::time(); # loop cycle idle end time
     $ThreadIdleTime{$WorkerNumber} += $itime - $stime;
+    d('MainLoop polled Sockets');
     return ($itime - $entrytime) if (! $maxwait && ! @canread);
 
     &ThreadMonitorMainLoop('MainLoop polled Sockets');
+    d('MainLoop polled Sockets - success');
     my $ptime = $itime - $stime;
     if ($ConnectionLog >= 2 and $ptime > 3) {
         mlog(0,"warning: the operating system socket poll cycle has taken $ptime seconds - this is very much is too long");
@@ -31551,7 +31730,7 @@ sub calcValence {
 sub weightRBL {
     my $v = shift;
     if ($v) {
-        return $v if $v >= 6;
+        return $v if abs($v) >= 6;
         $v = int ($RBLmaxweight / $v + 0.5);
     } else {
         return 0;
@@ -31564,7 +31743,7 @@ sub weightRBL {
 sub weightURI {
     my $v = shift;
     if ($v) {
-        return $v if $v >= 6;
+        return $v if abs($v) >= 6;
         $v = int ($URIBLmaxweight / $v + 0.5);
     } else {
         return 0;
@@ -31578,7 +31757,6 @@ sub weightRe {
     my ($valence,$name,$kk,$fh) = @_;
     my $key = ref $kk ? $$kk : $kk;                                          # bombs, ptr, helo only
     my $this = ($fh && defined $Con{$fh} && $name =~ /bomb|script|black|Reversed|Helo/o) ? $Con{$fh} : undef;
-    my $cvalence;
     my $weight;
     my $found;
     my $count = -1;
@@ -31598,34 +31776,37 @@ sub weightRe {
         push @rkey, $key;               # remember we found a match
         push @rhow, $how;
         
-        # skip the match if a flag condition missmatch is found
+        # skip the match if a general flag condition missmatch to a defined NWLI is found
         if ($how && $this) {
-            ++$skip and next if ($this->{noprocessing}  && $how =~ /[nN]\-/o);
-            ++$skip and next if ($this->{whitelisted}   && $how =~ /[wW]\-/o);   #never
-            ++$skip and next if ($this->{relayok}       && $how =~ /[lL]\-/o);
-            ++$skip and next if ($this->{ispip}         && $how =~ /[iI]\-/o);
+            #                        true               and      false  - e.g. N-
+            ++$skip and next if ($this->{noprocessing}  && $how =~ /[nN]-/o);
+            ++$skip and next if ($this->{whitelisted}   && $how =~ /[wW]-/o);
+            ++$skip and next if ($this->{relayok}       && $how =~ /[lL]-/o);
+            ++$skip and next if ($this->{ispip}         && $how =~ /[iI]-/o);
 
-            ++$skip and next if (!$this->{noprocessing} && $how =~ /[nN]\+/o);
-            ++$skip and next if (!$this->{whitelisted}  && $how =~ /[wW]\+/o);   #only
-            ++$skip and next if (!$this->{relayok}      && $how =~ /[lL]\+/o);
-            ++$skip and next if (!$this->{ispip}        && $how =~ /[iI]\+/o);
+            #                        false              and       not false (true) - e.g. N or N+ or NW but not N-
+            ++$skip and next if (!$this->{noprocessing} && $how =~ /[nN](?!-)/o);
+            ++$skip and next if (!$this->{whitelisted}  && $how =~ /[wW](?!-)/o);
+            ++$skip and next if (!$this->{relayok}      && $how =~ /[lL](?!-)/o);
+            ++$skip and next if (!$this->{ispip}        && $how =~ /[iI](?!-)/o);
         }
 
-        if ($this && $name =~ /bomb|script|black/oi) {   # bombs
-            ++$skip and next if (!$bombReNP    && $this->{noprocessing}  && $how !~ /[nN]\+?/o);
-            ++$skip and next if (!$bombReWL    && $this->{whitelisted}   && $how !~ /[wW]\+?/o);   #config
-            ++$skip and next if (!$bombReLocal && $this->{relayok}       && $how !~ /[lL]\+?/o);
-            ++$skip and next if (!$bombReISPIP && $this->{ispip}         && $how !~ /[iI]\+?/o);
+        # skip the match if the flag related config parameter is not enabled and NWLI is NOT explicite set to not false (true)
+        if ($this && $name =~ /bomb|script|black/oi) {   # bombs                  not      not false
+            ++$skip and next if (!$bombReNP     && $this->{noprocessing}  && $how !~ /[nN](?!-)/o);
+            ++$skip and next if (!$bombReWL     && $this->{whitelisted}   && $how !~ /[wW](?!-)/o);
+            ++$skip and next if (!$bombReLocal  && $this->{relayok}       && $how !~ /[lL](?!-)/o);
+            ++$skip and next if (!$bombReISPIP  && $this->{ispip}         && $how !~ /[iI](?!-)/o);
         }
 
-        if ($this && $name =~ /Reversed/o) {         # ptr
-            ++$skip and next if (!$DoReversedNP    && $this->{noprocessing}  && $how !~ /[nN]\+?/o);
-            ++$skip and next if (!$DoReversedWL    && $this->{whitelisted}   && $how !~ /[wW]\+?/o);   #config
+        if ($this && $name =~ /Reversed/o) {             # ptr
+            ++$skip and next if (!$DoReversedNP && $this->{noprocessing}  && $how !~ /[nN](?!-)/o);
+            ++$skip and next if (!$DoReversedWL && $this->{whitelisted}   && $how !~ /[wW](?!-)/o);
         }
 
-        if ($this && $name =~ /Helo/o) {             # helo
-            ++$skip and next if (!$DoHeloNP    && $this->{noprocessing}  && $how !~ /[nN]\+?/o);
-            ++$skip and next if (!$DoHeloWL    && $this->{whitelisted}   && $how !~ /[wW]\+?/o);   #config
+        if ($this && $name =~ /Helo/o) {                 # helo
+            ++$skip and next if (!$DoHeloNP     && $this->{noprocessing}  && $how !~ /[nN](?!-)/o);
+            ++$skip and next if (!$DoHeloWL     && $this->{whitelisted}   && $how !~ /[wW](?!-)/o);
         }
 
         # a weighted matching entry was found
@@ -31645,10 +31826,10 @@ sub weightRe {
         return 0;
     }
     $valence = ${$valence}[0] if $valence =~ /ValencePB$/o;
+    $valence ||= 0;
+    $weight ||= 0;
     return $valence unless $found;   # there was no weight found - return the valence value
-    eval{$cvalence = int($valence * $weight + 0.5);};
-    return $valence if $@;
-    return $cvalence if abs($weight) <= 6;    # if weight is less than 6 it is a factor
+    return int($valence * $weight + 0.5) if abs($weight) <= 6;    # if weight is less than 6 it is a factor
     return $weight;
 }
 
@@ -40700,6 +40881,20 @@ sub replyX {
 # get/check the SMIME information for a report
 # modifies the MIME content in place to undef, if the signature verification failed
 # returns an SMIME information hash  {isSigned}->0/1 , {verified}->undef/0/signers_email_address
+sub storeReport {
+    my $email = shift;
+    my $type = shift;
+    return if $ReportLog < 3;
+    local $/ = undef;
+    local $\ = undef;
+    my $file = "$base/debug/report_$type".'_'.Time::HiRes::time.'.eml';
+    open(my $f,'>',$file) or return;
+    binmode $f;
+    $f->print($$email);
+    $f->close;
+    return;
+}
+
 sub checkSMIME {
     my $mime = ${$_[0]};
     my $addr = lc $_[1];
@@ -40816,6 +41011,7 @@ sub SpamReportBody {
 
         # we're done -- write the file & clean up
         $type = $this->{reportaddr} eq 'EmailSpam' ? 'Spam' : 'Ham';
+        storeReport(\$this->{header},$this->{reportaddr});
         if (! $this->{mailfrom} && $this->{header} =~ /X-Assp-Intended-For:\s*($EmailAdrRe\@$EmailDomainRe)/io) {
             $this->{noreportTo} = $this->{mailfrom} = $1;
             mlog(0,"$type-Report: empty sender is replaced by 'X-Assp-Intended-For' $this->{mailfrom} - no reports will be sent") if $ReportLog;
@@ -41177,6 +41373,7 @@ sub AnalyzeReportBody {
     $this->{header} .= $l;
     if ( $l =~ /^\.[\r\n]/o || defined( $this->{bdata} ) && $this->{bdata} <= 0 ) {
 
+        storeReport(\$this->{header},'analyze');
         $o_EMM_pm = 1;
         my $email = ReportBodyUnZip($fh);
         # we're done -- write the file & clean up
@@ -41323,7 +41520,7 @@ sub ReportBodyUnZip {
             }
         }
         # if we have uncompressed outlook - make MIME from them
-        # if we have eml files or uncopressed eml files - store them
+        # if we have eml files or uncompressed eml files - store them
         if (@unzipped) {
             my @u;
             for (@unzipped) {
@@ -41392,6 +41589,7 @@ sub ListReportBody {
     $this->{header} .= $l;
     if($l=~/^\.[\r\n]/o || defined($this->{bdata}) && $this->{bdata}<=0) {
 
+        storeReport(\$this->{header},$this->{reportaddr});
         fixCRLF(\$this->{header});
         $this->{header} =~ s/^(?:\x0D\x0A)+//o;
 
@@ -41410,6 +41608,12 @@ sub ListReportBody {
             }
         }
         
+        if ( $CanUseEMM && $this->{header} =~ /Content-Transfer-Encoding:\s*base64/io) {
+            my $email = Email::MIME->new($this->{header});
+            my ($header, $body) = split(/\x0D\x0A\x0D\x0A/ios,$this->{header},2);
+            $this->{header} = $header . "\x0D\x0A\x0D\x0A" . $email->body;
+        }
+
         for my $addr (&ListReportGetAddr($fh)) {   # process the addresses
             next if exists $addresses{lc $addr};
             $addresses{lc $addr} = 1;
@@ -41472,13 +41676,21 @@ sub ListReportGetAddr {
     my $this = $Con{$fh};
     d('ListReportGetAddr');
     my @addresses;
+    my @addrInSubject;
+    my $skip;
     my $mail = $this->{header};
     $mail =~ s/=([\da-fA-F]{2})/pack('C', hex($1))/geo;  # simple decode MIME quoted printable
     $mail =~ s/=\r?\n//go;
 
     my ($header,$body) = split(/\x0D\x0A\x0D\x0A/o,&decHTMLent(\$mail),2);
-    $header = "\n".$header if $header !~ /^\n/o;
-    $header .= "\r\n\r\n";
+    $body =~ s/^\s+//os;
+    my ($xheader) = $body =~ /^($HeaderRe+)/ois;
+    if ($header) {
+        $header = "\n".$header if $header !~ /^\n/o;
+    } elsif ($xheader) {
+        $header = $xheader;
+    }
+    $header .= "\r\n\r\n" if $header;
     my $rcptTag = ($this->{reportaddr} =~ /^EmailPersBlack/o) ? '' : '|to|cc|bcc';
     while ($header =~ /($HeaderNameRe):($HeaderValueRe)/gios) {
         my $val = decodeMimeWords($2);
@@ -41510,11 +41722,23 @@ sub ListReportGetAddr {
                     || $u eq lc "$EmailPersBlackAdd\@"
                     || $u eq lc "$EmailPersBlackRemove\@"
                     || $u =~ /^RSBM_.+?\Q$maillogExt\E\@$/i;
-            next if ($addr =~ /^\Q$this->{mailfrom}\E$/i);
-            mlog($fh,"report-header: found address $addr in header tag") if $ReportLog >= 2;
+
+            if ($addr =~ /^\Q$this->{mailfrom}\E$/i) {
+                if ($tag =~ /from|sender/io) {
+                    mlog($fh,"report-header: found sender address $addr in header tag $tag: - all addresses in the MIME header are ignored (except addresses found in the subject header)") if $ReportLog >= 2;
+                    $skip = 1;
+                    next;
+                } else {
+                    next;
+                }
+            }
+            push @addrInSubject,&batv_remove_tag(0,$addr,'') if lc($tag) eq 'subject';
+            mlog($fh,"report-header: found address $addr in header tag $tag:") if $ReportLog >= 2;
             push @addresses,&batv_remove_tag(0,$addr,'');
         }
     }
+    @addresses = () if $skip;
+    @addresses = @addrInSubject if ! @addresses && @addrInSubject;
     mlog($fh,"report-header: found addresses in MIME-header - addresses in mail body are ignored!") if $ReportLog > 1 && @addresses;
     mlog($fh,"report-header: no addresses found in MIME header tags") if $ReportLog >= 2 && ! @addresses;
     return @addresses if @addresses;
@@ -47287,7 +47511,7 @@ sub decodeMimeWord {
 
     if (! $@ && $CanUseEMM && $charset && $fulltext) {
         $fulltext =~ s/\*[^?]+(\?[bq]\?)/$1/oi;  # remove language tag '*en-en', '*DE-DE' allowedby RFC 2231
-        if (lc $encoding eq 'q') {               # fix ? to =3F in text part of QP - MIME::Words::decode_mimewords does'nt like it
+        if (lc $encoding eq 'q') {               # fix ? to =3F in text part of QP - MIME::Words::decode_mimewords doesn't like it
             $fulltext =~ s/(=\?[^?]*\?q\?)(.*?)(\?=)/$1.fixQM($2).$3/gieo;
         }
         eval{$ret = MIME::Words::decode_mimewords($fulltext)};
@@ -54150,6 +54374,37 @@ sub ConfigAnalyze {
     fixCRLF(\$mail);
     $mail =~ s/[\x0D\x0A]+$/\x0D\x0A/o;
     $fm = "invalid 'Microsoft Mail Internet Headers' were removed<br />\n$fm" if $mail =~ s/^\s*Microsoft\s+Mail\s+Internet\s+Headers\s+Version\S*\s+//ois;
+
+    my $HMC = 1;
+    if ($mail =~ /^\s*$HeaderRe/os) {               # remove leading spaces from the MIME headers start
+        $fm .= "<font color='orange'>leading whitespaces were removed from the MIME header start</font><br />\n" if $mail =~ s/^\s+//os;
+        $HMC = 0;
+    } elsif ($mail =~ /^\s*(?:helo|ip|text)\s*=/ois) {   # these checks are requested
+        $mail =~ s/^\s+//os;
+        $HMC = 0;
+    } elsif ($mail =~ /^\r\n\r\n\S/os) {                 # no MIME header but body
+        $fm .= "<font color='orange'>found only a mail body</font><br />\n";
+    } elsif ($mail =~ /^\r\n\S/os) {                     # missing CRLF for an empty MIME header
+        $mail = "\r\n".$mail;
+        $fm .= "<font color='orange'>corrected missing leading [CR][LF] - found only a mail body</font><br />\n";
+    }
+    if ($HMC && $mail =~ /^(.+?\n)($HeaderRe)/os) {                 # MIME headers are found - but not at the start of the mail
+        my ($p,$h) = ($1,$2);
+        $fm .= "<font color='red'>found a possible MIME header start in the middle of the mail - the analyze may be wrong</font><br />\n";
+        $p =~ s/\r/[CR]/go;
+        $p =~ s/\n/[LF]<br \/>\n/gos;
+        $p =~ s/\t/[TAB]/go;
+        $p =~ s/ /\&nbsp;/go;
+
+        $h =~ s/\r/[CR]/go;
+        $h =~ s/\n/[LF]<br \/>\n/gos;
+        $h =~ s/\t/[TAB]/go;
+        $h =~ s/ /\&nbsp;/go;
+
+        $fm .= $p . "<font color='red'>&bull;</font><br />" . $h . "<br /><br />\n";
+    }
+    undef $HMC;
+
     my $maillength = length($mail);
     my $completeMail = $mail;
     my $hasDKIM;
@@ -54251,8 +54506,6 @@ sub ConfigAnalyze {
 
     if ($mail) {
         $orgmail = $mail;
-        my $name = $myName;
-        $name =~ s/(\W)/\\$1/go;
         if ($headerLen > -1) {
             my $fhh;
             do {
@@ -56162,6 +56415,7 @@ sub AnalyzeText {
     my $fh = shift;
     my $this = $Con{$fh};
     my $mail = $this->{header};
+    #remove the header (or dummy header)
     $mail =~ s/^.*?\n[\r\n\s]+//so;
     my %sqs = %qs;
     %qs = ();
@@ -57339,7 +57593,7 @@ sub decodeMimeWord2UTF8 {
 
     if (! $@ && $CanUseEMM && $charset && $fulltext) {
         $fulltext =~ s/\*[^?]+(\?[bq]\?)/$1/oi;  # remove language tag '*en-en', '*DE-DE' allowedby RFC 2231
-        if (lc $encoding eq 'q') {               # fix ? to =3F in text part of QP - MIME::Words::decode_mimewords does'nt like it
+        if (lc $encoding eq 'q') {               # fix ? to =3F in text part of QP - MIME::Words::decode_mimewords doesn't like it
             $fulltext =~ s/(=\?[^?]*\?q\?)(.*?)(\?=)/$1.fixQM($2).$3/gieo;
         }
         eval{ $ret = MIME::Words::decode_mimewords($fulltext);
@@ -60291,14 +60545,15 @@ sub textinput {
     my $cfgname = $EnableInternalNamesInDesc?"<a href=\"javascript:void(0);\"$color onmousedown=\"document.forms['ASSPconfig'].$name.value='$hdefault';setAnchor('$name');return false;\" onmouseover=\"showhint('<table BORDER CELLSPACING=0 CELLPADDING=4 WIDTH=\\'100%\\'><tr><td>click to reset<br />to default value</td><td>$showdefault</td></tr></table>', this, event, '450px', '1'); return true;\" onmouseout=\"window.status='';return true;\"><i>($name)</i></a>":'';
     $cfgname = "($name)" if $EnableInternalNamesInDesc && $mobile;
     # generate the help icons and links
-    my (@help1,@help2,@help3,@help4);
+    my (@help1,@help2,@help3,@help4,@help5);
     push (@help1, 'oneasterix') if ($nicename =~ /\*\s*$/o);
     push (@help2, 'twoasterix') if ($nicename =~ /\*\*\s*$/o);
     push (@help4, 'cron') if ($nicename =~ /<sup>s<\/sup>\s*$/o || $name eq 'ConfigChangeSchedule');
     push (@help3, 'bombs') if ($name =~ /bomb|^(?:invalidFormatHeloRe|invalidPTRRe|invalidMsgIDRe|blackRe|scriptRe)$/io && $nicename =~ /[^\*]\*\*\s*$/o);
-    push (@help1, 'reply') if ($name =~ /(:Error|NoValidRecipient)$/o);
+    push (@help1, 'reply') if ($name =~ /(?:Error|NoValidRecipient)$/o);
     push (@help1, 'iphint') if ($onchange eq 'ConfigMakeIPRe');
-    if (@help1 || @help2 || @help3 || @help4) {
+    push (@help5, 'encrypt') if ($cryptConfigVars{$name});
+    if (@help1 || @help2 || @help3 || @help4 || @help5) {
         unshift @help1, 'pathinfo' if $isWIN && "@help1@help4" !~ /reply|cron/o;
         unshift @help1, 'intname';
         if (@help1) {
@@ -60321,6 +60576,10 @@ sub textinput {
             $cfgname .= '&nbsp;&nbsp;<span style="cursor: pointer;" onclick="showHelp([this,event,\'500px\','.$helps.']);"><img class="helpIcon" src="get?file=images/schedule.jpg"></span>';
             $helps = "'cronextend\'";
             $cfgname .= '&nbsp;&nbsp;<span style="cursor: pointer;" onclick="showHelp([this,event,\'500px\','.$helps.']);"><img class="helpIcon" src="get?file=images/schedule.jpg"></span>';
+        }
+        if (@help5) {
+            my $helps = "'".join("','",@help5)."'";
+            $cfgname .= '&nbsp;&nbsp;<span style="cursor: pointer;" onclick="showHelp([this,event,\'500px\','.$helps.']);"><img class="helpIcon" src="get?file=images/password.jpg"></span>';
         }
         $cfgname .= '&nbsp;&nbsp;';
     }
@@ -60365,9 +60624,15 @@ sub textinput {
              my $fil = normHTMLfile($ReportFiles{$name});
              $edit .= "<input type=\"button\" value=\" $act $what \" onclick=\"javascript:popFileEditor(\'$fil\',$note);setAnchor('$name');\" /><br />";
          }
-         foreach my $f (keys %{$FileIncUpdate{"$base/$ifil$name"}},@reportIncludes) {
+         foreach my $f (@reportIncludes) {
              my $fi = $f;
              my $note = 2;
+             $f  = normHTMLfile($f);
+             $edit .= "<input type=\"button\" value=\" $act included file $fi \" onclick=\"javascript:popFileEditor(\'$f\',$note);setAnchor('$name');\" /><br />";
+         }
+         foreach my $f (keys %{$FileIncUpdate{"$base/$ifil$name"}}) {
+             my $fi = $f;
+             my $note = 1;
              $f  = normHTMLfile($f);
              $edit .= "<input type=\"button\" value=\" $act included file $fi \" onclick=\"javascript:popFileEditor(\'$f\',$note);setAnchor('$name');\" /><br />";
          }
@@ -61899,14 +62164,14 @@ sub unloadMainThreadModules {
 
 sub ThreadCompileAllRE {
     my $init = shift;
-    my %configOFiles = (       # possibly option files that have to be registered
+    my %configOFiles = (       # possibly option files that have to be registered (1 = push, 2 = unshift)
+        'ConfigMakeGroupRe' => 2,   # must be unshift, to have all group definitions available before they are used anywhere else
         'ConfigMakeRe' => 1,
         'ConfigMakeLocalDomainsRe' => 1,
         'ConfigMakePrivatRe' => 1,
         'ConfigMakeSLRe' => 1,
         'ConfigMakeSLReSL' => 1,
         'ConfigMakeIPRe' => 1,
-        'ConfigMakeGroupRe' => 1,
         'configUpdateRBLSP' => 1,
         'configUpdateURIBLSP' => 1,
         'configUpdateRWLSP' => 1,
@@ -61974,7 +62239,11 @@ sub ThreadCompileAllRE {
             || exists $PluginFiles{$c->[0]}   # are there possibly plugin option files - register them
            )
         {
-            push(@PossibleOptionFiles,[$c->[0],$c->[1],$c->[6]]);
+            if ($configOFiles{$c->[6]} == 2) {
+                unshift(@PossibleOptionFiles,[$c->[0],$c->[1],$c->[6]]);
+            } else {
+                push(@PossibleOptionFiles,[$c->[0],$c->[1],$c->[6]]);
+            }
             mlog(0,"ERROR: possible code or language file error in config for $c->[0] - '*' not found at the end of the small description") if ($c->[1] !~ /\*\s*$/o && $WorkerNumber == 0);
             mlog(0,"ERROR: possible code or language file error in config for $c->[0] - '**' not found at the end of the small description for weighted RE") if (exists $WeightedRe{$c->[0]} && $c->[1] !~ /\*\*\s*$/o && $WorkerNumber == 0);
         } elsif ($c->[0] ne 'POP3ConfigFile') {
@@ -62000,12 +62269,14 @@ sub ThreadCompileAllRE {
         my $f = $PossibleOptionFiles[$idx];
         next if ($f->[0] eq 'asspCfg');
         if ($init || (((exists $ComWorker{$WorkerNumber} && $ComWorker{$WorkerNumber}->{recompileAllRe}) || $recompileAllRe) && $f->[2] eq 'ConfigCompileRe')) {
+            d("call to $f->[2]->($f->[0],'',$Config{$f->[0]},'Initializing',$f->[1])");
             $f->[2]->($f->[0],'',$Config{$f->[0]},'Initializing',$f->[1]);
         } else {
             if (($Config{$f->[0]} =~ /^ *file: *(.+)/io && fileUpdated($1,$f->[0])) or
                 $Config{$f->[0]} !~ /^ *file: *(.+)/io or
                 exists $ConfigWatch{$f->[0]})
             {
+               d("call to $f->[2]->($f->[0],$Config{$f->[0]},$Config{$f->[0]},'',$f->[1])");
                $f->[2]->($f->[0],$Config{$f->[0]},$Config{$f->[0]},'',$f->[1]);
             }
         }
@@ -62016,6 +62287,7 @@ sub ThreadCompileAllRE {
     $spamSubjectEnc = is_7bit_clean(\$spamSubject) ? $spamSubject : encodeMimeWord($spamSubject,'B','UTF-8');
     &threadCheckConfig() if $threadCheckConfig;
     &checkFileHashUpdate() unless $init;
+    d('finished loading option files');
 }
 
 sub optionFilesReload {
@@ -62113,10 +62385,16 @@ sub ConfigMakeGroupRe {
     $ofil="$base/$ofil" if $ofil && $ofil!~/^\Q$base\E/io;
     delete $CryptFile{$ofil} if $ofil;
     $CryptFile{$fil} = 1 if $fil;
+
+    # the shared %GroupREchanged is persistent for all threads until the next call to ConfigMakeGroupRe in MainThread
+    # it holds a flag for all currently changed groups - so config reloads are only done for changed groups
+
     if ($WorkerNumber > 0) {    # %GroupRE is shared and already set for Workers from MainThread
-        $FileUpdate{"$fil$name"} = $FileUpdate{$fil} = ftime($fil);
+        # but we need to set the FileUpdate FileIncUpdate hash in workers
+        my $dummy = checkOptionList( $new, $name, $init , 1);
+        # and we possibly need to reload configurations for changed groups
         foreach my $group (keys %GroupWatch) {
-            &ConfigCheckGroupWatch($group);
+            &ConfigCheckGroupWatch($group) if $GroupREchanged{$group};
         }
         return;
     }
@@ -62129,13 +62407,16 @@ sub ConfigMakeGroupRe {
     }
     $new = checkOptionList( $new, $name, $init , 1);
     if ($new =~ s/^\x00\xff //o) {
+        %GroupREchanged = ();
         ${$name} = $Config{$name} = $old;
         return ConfigShowError(1,$new);
     }
     if (! $new) {
+        %GroupREchanged = ();
+        map { $GroupREchanged{$_} = 1; mlog(0,"info: group $_ is changed") if !$init && $MaintenanceLog > 1; } keys %GroupRE;
         %GroupRE = ();
         foreach my $group (keys %GroupWatch) {
-            &ConfigCheckGroupWatch($group);
+            &ConfigCheckGroupWatch($group) if $GroupREchanged{$group};
         }
         mlog(0,"info: no groups loaded from groupsfile $fil") if $MaintenanceLog > 1;
         return;
@@ -62364,11 +62645,29 @@ sub ConfigMakeGroupRe {
             $f->close;
         }
     }
+    %GroupREchanged = ();
+    for my $group (keys %NewGroupRE, keys %GroupRE) {
+        if ($NewGroupRE{$group} ne $GroupRE{$group}) {
+            next if $GroupREchanged{$group};
+            $GroupREchanged{$group} = 1;
+            if ($MaintenanceLog == 1) {
+                mlog(0,"info: group $group is changed") if ! $init;
+            } elsif ($MaintenanceLog > 1) {
+                my $config;
+                $config = ' - parameters: '.join(', ',keys %{$GroupWatch{$group}}).' - reconfiguration required' if keys %{$GroupWatch{$group}};
+                mlog(0,"info: group $group is changed$config") if ! $init;
+            }
+        } else {
+            mlog(0,"info: group $group is not changed") if ! $init && $MaintenanceLog > 1;
+        }
+    }
+
     %GroupRE = %NewGroupRE;
     foreach my $group (keys %GroupWatch) {
-        &ConfigCheckGroupWatch($group);
+        &ConfigCheckGroupWatch($group) if $GroupREchanged{$group};
     }
     $GroupsDynamic = $isdynamic;
+    threads->yield;
     return '';
 }
 
@@ -63678,7 +63977,7 @@ sub checkOptionList {
                 $I->binmode;
                 $I->print($enc->ENCRYPT($value));
                 $I->close;
-                mlog(0,"info: file $fil is now stored encrypted, because it is used in the secured config $name");
+                mlog(0,"info: file $fil is now stored encrypted, because it is used in the secured config $name") if (! $calledfromThread);
                 $FileUpdate{"$fil$name"} = $FileUpdate{$fil} = ftime($fil);
                 $FileUpdateName{"$fil$name"} = $name;
             }
@@ -63772,7 +64071,7 @@ sub checkOptionList {
                     $INCL->binmode;
                     $INCL->print($enc->ENCRYPT($inc));
                     $INCL->close;
-                    mlog(0,"info: file $base/$ifile is now stored encrypted, because it is used in secured config $name");
+                    mlog(0,"info: file $base/$ifile is now stored encrypted, because it is used in secured config $name") if (! $calledfromThread);
                     $CryptFile{"$base/$ifile"} = 1;
                 # the file is encrypted - possibly by another (crypted) config value
                 } elsif ($inc =~ /^(?:[a-zA-Z0-9]{2}){5,}$/o) {
@@ -63794,7 +64093,7 @@ sub checkOptionList {
                 $ifile = lc $ifile if $isWIN;
                 if (++$seen{$ifile} > $maxSameFileIncludes) {
                     $value =~ s/(\s*#\s*include\s+([$NOCRLF]+)(?:\r?\n|$))//iog;
-                    mlog(0,"error: maximum includes ($maxSameFileIncludes) reached for file '$ifile' in config $name - possible recursion - icludes are stopped now for $name");
+                    mlog(0,"error: maximum includes ($maxSameFileIncludes) reached for file '$ifile' in config $name - possible recursion - icludes are stopped now for $name") if (! $calledfromThread);
                     last;
                 }
             }
@@ -63950,10 +64249,14 @@ sub ConfigCompileRe {
 
     if (exists $WeightedRe{$name}) {
         my $defaultHow;
-        $defaultHow = uc($1) if $new =~ s/\s*!!!\s*([nNwWlLiI\+\-\s]+)?\s*!!!\s*\|?//o;
-        $defaultHow =~ s/\s//go;
-        $defaultHow =~ s/\++/+/go;
-        $defaultHow =~ s/\-+/-/go;
+        if ($new =~ s/\s*!!!\s*([nNwWlLiI\+\-\s]+)?\s*!!!\s*\|?//o) {
+            $defaultHow = uc($1);
+            $defaultHow =~ s/\s//go;
+            $defaultHow =~ s/^[+-]+//o;
+            $defaultHow =~ s/\++/+/go;
+            $defaultHow =~ s/\-+/-/go;
+            $defaultHow =~ s/([NWLI])([+-])([+-])/$1$2$1$3/go;
+        }
         $WeightedReOverwrite{$name} = 0;
         my @Weight = @{$name.'Weight'};
         my @WeightRE = @{$name.'WeightRE'};
@@ -63965,15 +64268,14 @@ sub ConfigCompileRe {
             $we = 1 if (!$we && $we != 0);
             $we += 0;
             $re =~ s/(([^\\]?)\$\{\$([a-z][a-z0-9]+)\})/(exists $main::{$3}) ? $2.${$3} : $1/oige if $AllowInternalsInRegex;
-            $how =~ s/\s//go;
-            $how =~ s/\++/+/go;
-            $how =~ s/\-+/-/go;
-            $how ||= $defaultHow;
-
-            if ($how && $defaultHow) {
-                for my $t ('N','W','L','I') {
-                    $how .= uc($1) if ($how !~ /$t[\+\-]?/i && $defaultHow =~ /($t[\+\-]?)/i);
-                }
+            if (defined $how) {
+                $how =~ s/\s//go;
+                $how =~ s/^[+-]+//o;
+                $how =~ s/\++/+/go;
+                $how =~ s/\-+/-/go;
+                $how =~ s/([NWLI])([+-])([+-])/$1$2$1$3/go;
+            } else {
+                $how = $defaultHow;
             }
 
             if ($AllowCodeInRegex) {
@@ -64008,30 +64310,30 @@ sub ConfigCompileRe {
                 delete $RegexError{$name};
             }
             if ($name =~ /bomb|script|black/o && $how) {
-                if ($how =~ /[nN][^\-]?/o) {
+                if ($how =~ /N(?!-)/o) {
                     $WeightedReOverwrite{$name} |= 1;
                 }
-                if ($how =~ /[wW][^\-]?/o) {
+                if ($how =~ /W(?!-)/o) {
                     $WeightedReOverwrite{$name} |= 2;
                 }
-                if ($how =~ /[lL][^\-]?/o) {
+                if ($how =~ /L(?!-)/o) {
                     $WeightedReOverwrite{$name} |= 4;
                 }
-                if ($how =~ /[iI][^\-]?/o) {
+                if ($how =~ /I(?!-)/o) {
                     $WeightedReOverwrite{$name} |= 8;
                 }
             } elsif ($name =~ /Reversed/o && $how) {
-                if ($how =~ /[nN][^\-]?/o) {
+                if ($how =~ /N(?!-)/o) {
                     $WeightedReOverwrite{$name} |= 1;
                 }
-                if ($how =~ /[wW][^\-]?/o) {
+                if ($how =~ /W(?!-)/o) {
                     $WeightedReOverwrite{$name} |= 2;
                 }
             } elsif ($name =~ /Helo/o && $how) {
-                if ($how =~ /[nN][^\-]?/o) {
+                if ($how =~ /N(?!-)/o) {
                     $WeightedReOverwrite{$name} |= 1;
                 }
-                if ($how =~ /[wW][^\-]?/o) {
+                if ($how =~ /W(?!-)/o) {
                     $WeightedReOverwrite{$name} |= 2;
                 }
             }
@@ -64041,7 +64343,8 @@ sub ConfigCompileRe {
         my $count = 0;
         foreach my $k (@{$name.'Weight'}) {
             my $reg = ${$name.'WeightRE'}[$count];
-            my $how; $how = $1 if $reg =~ s/^\{([^\}]*)?\}(.+)$/$2/o;
+            my $how;
+            $how = $1 if $reg =~ s/^\{([^\}]*)?\}(.+)$/$2/o;
             $reg =~ s/^\<\<\<(.*?)\>\>\>$/$1/go;
             strip50($reg);
             $how = " for [$how]" if $how;
@@ -77312,7 +77615,7 @@ sub rdbm_delete {
     %{$self->{nextvalue}} = ();
     if ($main::DoSQL_LIKE && $key =~ /\*/o && $key !~ /^\*\*\*/oi) {
         $okey = undef;
-        $self->{clearcache} = 1;    # write the cache in to the DB befor we delete a bulk
+        $self->{clearcache} = 1;    # write the cache into the DB before we delete a bulk
         rdbm_cleanCache($self);
         delete $self->{clearcache};
         my $escape;
