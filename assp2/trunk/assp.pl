@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.6';
-$build   = '21302';        # 29.10.2021 TE
+$build   = '21306';        # 02.11.2021 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.034999';
 $MAINVERSION = $version . $modversion;
@@ -675,7 +675,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'F6B1433F088092A4FEA1DC8EA107DFAC4BD6387B'; }
+sub __cs { $codeSignature = '92CD83AA0ABA10F9E6DD99380303ECDBEBB1CE5D'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -2879,7 +2879,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   The next mail from a domain that is found in this cache, must have a DKIM-Signature to pass the DKIM-pre-check. How ever, some DNS records are wrong or inaccurate and will cause ASSP to block mails because of this - register such domains and/or IP\'s in noDKIMAddresses and/or noDKIMIP .<br />
   <input type="button" value=" Show DKIM Cache" onclick="javascript:popFileEditor(\''.$newDB.'pb/pbdb.dkim.db\',5);" />',undef,undef,'msg001960','msg001961'],
 ['AddDKIMHeader','Add X-Assp-DKIM Header',0,\&checkbox,1,'(.*)',undef,
-  'Add a X-Assp-DKIM: result header.',undef,undef,'msg001970','msg001971'],
+  'Add a X-Assp-DKIM: , X-ASSP-DKIMidentity: and X-ASSP-DKIM-FlagState: result header.',undef,undef,'msg001970','msg001971'],
 
 ['DoARC','Validate Authenticated Received Chain (ARC) Signatures','0:disabled|1:enabled',\&listbox,0,'(.*)',undef,
   'If enabled, <a href="http://arc-spec.org" rel="external">Authenticated Received Chain (ARC)</a> signed Mails are checked for the right signature sequence and contents. ASSP will show the ARC results and will trust the provided Authenticated Results for DKIM, SPF and DMARC if the signing host/domain matches \'trustedAuthForwarders\'. This requires an installed <a href="http://metacpan.org/search?q=Mail::DKIM::Verifier" rel="external">Mail::DKIM::Verifier</a> module in PERL.',undef,undef,'msg010700','msg010701'],
@@ -3976,13 +3976,19 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['EmailHelp','Help Address<a href="http://sourceforge.net/p/assp/wiki/Getting_Started/#Instructions_for_use_for_your_end_users." target="ASSPHELP"><img src="' . $wikiinfo . '" alt="doku" /></a>',20,\&textinput,'assphelp','(.*)@?',undef,
   'Any mail sent by local/authenticated users to this username will be interpreted as a request for help. Do not put the full address here, just the user part. For example: assphelp',undef,undef,'msg005240','msg005241'],
 ['EmailSpam','Report Spam Address',20,\&textinput,'asspspam','(.*)@?',undef,
-  'Any mail sent or forwarded by local/authenticated users to this username will be interpreted as a spam report. Multiple attachments get truncated to MaxBytesReports. Do not put the full address here, just the user part.<br />
+  'Any mail sent by local/authenticated users to this username will be interpreted as a spam report. Do not put the full address here, just the user part.<br />
    For example: asspspam . Use a fake domain like @assp.local or @assp-nospam.org when you send the email- so the full address would be then asspspam@assp.local. <br />
-   You can sent multiple mails as attachments and/or zipped file(s). Each attached email-file must have the extension defined in "maillogExt". In this case only the attachments will be processed. To use this multi-attachment-feature an installed <a href="http://metacpan.org/search?q=Email::MIME" rel="external">Email::MIME</a> module in PERL is needed. It is also possible to send MS-outlook \'.msg\' files (possibly zipped). To use this MS-outlook-feature in addition an installed <a href="http://metacpan.org/search?q=Email::Outlook::Message" rel="external">Email::Outlook::Message</a> module in PERL is needed.','Basic',undef,'msg005280','msg005281'],
+   Emails should be reported as an attachment in a new created email to this address. Nearly every email client will destroy the original MIME header (more or less), if a mail is simply forwarded for reporting. But the complete and unmodified original MIME header as well as the unmodified MIME body are required by assp to process the reports like expected.<br />
+   You can send multiple mails as attachments and/or zipped file(s). Each attached email-file must have the extension defined in "maillogExt". In this case only the attachments will be processed. To use this multi-attachment-feature an installed <a href="http://metacpan.org/search?q=Email::MIME" rel="external">Email::MIME</a> module in PERL is needed. It is also possible to send MS-outlook \'.msg\' files (possibly zipped - but attached to a new created mail in every case). To use this MS-outlook-feature in addition an installed <a href="http://metacpan.org/search?q=Email::Outlook::Message" rel="external">Email::Outlook::Message</a> module in PERL is needed.<br />
+   Endusers should be provided with folders where agents graps and sends the mail or with buttons or context menu entries in their client software with the report options.<br />
+   If ReportLog is set to diagnostic and invalid content is found in a .msg file, the reported .msg file and the converted .msg file (.eml) are stored in the assp/debug folder.','Basic',undef,'msg005280','msg005281'],
 ['EmailHam','Report Ham (Not-Spam) Address',20,\&textinput,'asspnotspam','(.*)@?',undef,
-  'Any mail sent or forwarded by local/authenticated users to this username will be interpreted as a false-positive report. Multiple attachments get truncated to MaxBytesReports. Do not put the full address here, just the user part.<br />
+  'Any mail sent by local/authenticated users to this username will be interpreted as a false-positive report. Do not put the full address here, just the user part.<br />
    For example: asspnotspam . Use a fake domain like @assp.local or @assp-nospam.org when you send the email - so the full address would be then asspspam@assp.local. <br />
-   You can sent multiple mails as attachments and/or zipped file(s). Each attached email-file must have the extension defined in "maillogExt". In this case only the attachments will be processed. To use this multi-attachment-feature an installed <a href="http://metacpan.org/search?q=Email::MIME" rel="external">Email::MIME</a> module in PERL is needed. It is also possible to send MS-outlook \'.msg\' files (possibly zipped). To use this MS-outlook-feature in addition an installed <a href="http://metacpan.org/search?q=Email::Outlook::Message" rel="external">Email::Outlook::Message</a> module in PERL is needed.','Basic',undef,'msg005290','msg005291'],
+   Emails should be reported as an attachment in a new created email to this address. Nearly every email client will destroy the original MIME header (more or less), if a mail is simply forwarded for reporting. But the complete and unmodified original MIME header as well as the unmodified MIME body are required by assp to process the reports like expected.<br />
+   You can send multiple mails as attachments and/or zipped file(s). Each attached email-file must have the extension defined in "maillogExt". In this case only the attachments will be processed. To use this multi-attachment-feature an installed <a href="http://metacpan.org/search?q=Email::MIME" rel="external">Email::MIME</a> module in PERL is needed. It is also possible to send MS-outlook \'.msg\' files (possibly zipped - but attached to a new created mail in every case). To use this MS-outlook-feature in addition an installed <a href="http://metacpan.org/search?q=Email::Outlook::Message" rel="external">Email::Outlook::Message</a> module in PERL is needed.<br />
+   Endusers should be provided with folders where agents graps and sends the mail or with buttons or context menu entries in their client software with the report options.<br />
+   If ReportLog is set to diagnostic and invalid content is found in a .msg file, the reported .msg file and the converted .msg file (.eml) are stored in the assp/debug folder.','Basic',undef,'msg005290','msg005291'],
 ['EmailForwardReportedTo','Email Interface Forward Reports Destination',20,\&textinput,'','^((?:' . $HostPortRe . '(?:\|' . $HostPortRe . ')*)|)$',undef,
  'Host and Port to forward EmailSpam and EmailHam reports to - eg "10.0.1.3:1025".<br />
   If you use more than one assp instance and your users are reporting spam and ham mails to multiple or all of them, but only one (but not this instance) is doing the rebuildspamdb and the corpus folders are not shared between the instances,<br />
@@ -4344,7 +4350,7 @@ For example: mysql/dbimport<br />
 ['MaxFileAgeSchedule','Runtime for MaintBayesCollection and MaxNoBayesFileAge <sup>s</sup>',40,\&textinput,'1',$ScheduleGUIRe,'configChangeSched',
   'Runtime hour for deleting old collected files (bayes and non bayes). Set a number between 0 and 23. 0 means midnight, 1 is default. If empty a cleanup will not be scheduled. This could be fine, if a rebuildspamdb is scheduled, which will also do the cleanup based on the settings of MaintBayesCollection , MaxBayesFileAge and MaxCorrectedDays - but it will not maintain incomingOkMail , discarded and viruslog based on MaxNoBayesFileAge !',undef,undef,'msg006170','msg006171'],
 ['MaxBytes','Max Bytes',10,\&textinput,4000,'(\d+)',undef,
-  'How many bytes of the message body will ASSP look at - the message header is always included in all checks? Mails stored in the collecting folders will be truncated to this size, if StoreCompleteMail is disabled. The average of Ham messages (message body) is 6K, the average of Spam messages is 3K. Usually the spam folder will be filled quicker than the notspam folder, therefore set this value to 4000 to get more wordpairs per Ham Message. When both folders are close to the maxfiles limit, reduce it to 3000.<br />
+  'How many bytes of the message body will ASSP look at - the message header is always included in all checks. Mails stored in the collecting folders will be truncated to this size, if StoreCompleteMail is disabled. The average of Ham messages (message body) is 6K, the average of Spam messages is 3K. Usually the spam folder will be filled quicker than the notspam folder, therefore set this value to 4000 to get more wordpairs per Ham Message. When both folders are close to the maxfiles limit, reduce it to 3000.<br />
   If your system is fast enough and has enough RAM multiply all the above recommendations and the default value by ten.',undef,undef,'msg006180','msg006181'],
 ['StoreCompleteMail','Store the Complete Mail','0:disabled|100000:up to 100 kByte|500000:up to 500 kByte|1000000:up to 1 MByte|10000000:up to 10 MByte|999999999:no limit',\&listbox,999999999,'(\d*)',undef,
   'If set, ASSP will look at MaxBytes, but if possible it will store the complete mail up to the number of bytes configured. This could be useful for example, if you want resend blocked messages. Be careful using this option, your disk could be filled up very fast!',undef,undef,'msg006190','msg006191'],
@@ -12160,8 +12166,11 @@ where filename is the relative path (from $base) to the included file like files
  The multiplication result of the weight and the penaltybox valence value will be used for scoring, if the absolute value of weight is less or equal 6. Otherwise the value of weight is used for scoring. It is possible to define negative values to reduce the resulting message score.<br /></div>
 <br /><img class="genHelpIcon" src="get?file=images/bomb.jpg"><br />
 <div id="bombs">For all "<span class="positive">bomb*</span>" regular expressions and "<span class="positive">blackRe</span>", "<span class="positive">scriptRe</span>", "<span class="positive">invalidFormatHeloRe</span>", "<span class="positive">invalidPTRRe</span>" and "<span class="positive">invalidMsgIDRe</span>" it is possible to define a third parameter (to overwrite the default options) after the weight like: Phishing\\.=>1.45|~Heuristics|Email~=>50<span class="positive">:>N[+-]W[+-]L[+-]I[+-]</span>. The characters, the optional to use '+' and the negation '-' switch have the following functions:<br />
-use this regex (+ = only)(- = never) for: N = noprocessing , W = whitelisted , L = local , I = ISP mails . So the line ~Heuristics|Email~=>50:>N-W-LI could be read as: take the regex with a weight of 50, never score noprocessing mails, never score whitelisted mails, score local mails and mails from ISP's. The line ~Heuristics|Email~=>3.2:>N-W+I could be read as: take the regex with a weight of 3.2 as factor, never score noprocessing mails, score only whitelisted mails received from an ISP .<br />
-The NWLI conditions defined in a line are combined using a logical AND -- so N-W+ is combined to: NOT noprocessing AND whitelisted. In fact, the weight is skipped, if any of the defined NWLI options does not match for a mail. If multiple lines would match, the weight of the first matching line is used.<br />
+use this regex (+ = TRUE , TRUE is default if the + is not defined)(- = FALSE) for: N = noprocessing , W = whitelisted , L = local , I = ISP mails .<br />
+If a default option string in the form !!!NWLI!!! is defined anywhere in a single line in the file, this definition will be used (to inherit) as third parameter for all (but only those) lines , which do not contain any definition for the third parameter.<br />
+If the third parameter is not set in a line (directly or inherited from the default option string) or any of the N,W,L,I is not set (directly or inherited), the default configuration parameter will be used for the regular expression in this line (for example: a bombRe line has set foo=&gt;5:>WL-I- , you see the N is missing, so bombReNP will be used for noprocessing mails).<br />
+So the line ~Heuristics|Email~=>50:>N-W-L-I could be read as: take the regex with a weight of 50, if the mail is: NOT noprocessing and NOT whitelisted and NOT a local mail and received from an ISP. The line ~Heuristics|Email~=>3.2:>N-W+I could be read as: take the regex with a weight of 3.2 as factor, if the mail is: NOT noprocessing and whitelisted and received from an ISP - the not defined L is used from the related ..local configuration parameter.<br />
+The NWLI conditions defined in a line are combined using a logical AND -- so N-W+ or N-W is combined to: NOT noprocessing AND whitelisted. In fact, the weight is skipped, if any of the defined NWLI options does not match for a mail. If multiple lines would match, the weight of the first matching line is used.<br />
 This way you can define different weights for the same regular expression, but different mail states like in this example:<br />
 (1) <b>foo=&gt;0:&gt;NW</b> - weight is zero if noprocessing AND whitelisted<br />
 (2) <b>foo=&gt;0.5:&gt;NW-</b> - weight factor is 0.5 if noprocessing AND NOT whitelisted<br />
@@ -12169,8 +12178,6 @@ This way you can define different weights for the same regular expression, but d
 (4) <b>foo=&gt;55:&gt;N-W-</b> - weight is 55 if NOT noprocessing AND NOT whitelisted<br />
 (5) <b>foo=&gt;2:&gt;W</b> - this line will not be processed, because line 1 or 3 would have matched before, depending on the noprocessing flag<br />
 (6) <b>foo=&gt;2:&gt;N-</b> - this line will not be processed, because line 3 or 4 would have matched before, depending on the whitelisted flag<br />
-If a default option string in the form !!!NWLI!!! is defined anywhere in a single line in the file, this definition will be used (to inherit) as third parameter for all (but only those) lines , which do not contain any definition for the third parameter.<br />
-If the third parameter is not set in a line (directly or inherited from the default option string) or any of the N,W,L,I is not set (directly or inherited), the default configuration parameter will be used for the regular expression in this line (for example: a bombRe line has set foo=&gt;5:>WL-I- , you see the N is missing, so bombReNP will be used for noprocessing mails).<br />
 <span class="negative">If any parameter that allowes the usage of weighted regular expressions is set to "block", but the sum of the resulting weighted penalty value is less than the corresponding "Penalty Box Valence Value" (because of lower weights) - only scoring will be done!</span><br /></div>
 <br /><img class="genHelpIcon" src="get?file=images/regex.jpg"><br />
 <div id="regex">If the regular expression optimization is used - ("perl module Regexp::Optimizer" installed and enabled) - and you want to disable the optimization for a special regular expression (file based), set one line (eg. the first one) to a value of '<span class="positive">assp-do-not-optimize-regex</span>' or '<span class="positive">a-d-n-o-r</span>' (without the quotes)! To disable the optimization for a specific line/regex, put &lt;&lt;&lt; in front and &gt;&gt;&gt; at the end of the line/regex. To weight such line/regex write for example: <span class="positive">&lt;&lt;&lt;</span>Phishing\\.<span class="positive">&gt;&gt;&gt;</span>=>1.45=>N- or ~<span class="positive">&lt;&lt;&lt;</span>Heuristics|Email<span class="positive">&gt;&gt;&gt;</span>~=>50  or  ~<span class="positive">&lt;&lt;&lt;</span>(Email|HTML|Sanesecurity)\\.(Phishing|Spear|(Spam|Scam)[a-z0-9]?)\\.<span class="positive">&gt;&gt;&gt;</span>~=>4.6 .<br /><br />
@@ -40884,14 +40891,16 @@ sub replyX {
 sub storeReport {
     my $email = shift;
     my $type = shift;
+    my $ext = shift;
     return if $ReportLog < 3;
     local $/ = undef;
     local $\ = undef;
-    my $file = "$base/debug/report_$type".'_'.Time::HiRes::time.'.eml';
+    my $file = "$base/debug/report_$type".'_'.Time::HiRes::time.($ext ? $ext : $maillogExt);
     open(my $f,'>',$file) or return;
     binmode $f;
     $f->print($$email);
     $f->close;
+    mlog(0,"Info: the received report email was store in file: $file");
     return;
 }
 
@@ -41178,6 +41187,7 @@ sub SpamReportExec {
     $header.=$1."\r\n" if $bod=~/(Received:\s+from\s+.*?\(\[$IPRe.*?helo=.*?\))/io;
     $sub =~ tr/a-zA-Z0-9/_/cs unless $UseUnicode4SubjectLogging;
     $sub =~ s/[\^\s\<\>\?\"\:\|\\\/\*]/_/igo;  # remove not allowed characters and spaces from file name
+    $sub =~ s/__+/_/go;
 
     $header.=$1 if $bod=~/(X-Assp-ID: .*)/io;
 
@@ -41536,8 +41546,17 @@ sub ReportBodyUnZip {
                     binmode($eomfile);
                     eval {
                         if (my $eom = Email::Outlook::Message->new($eomfile)) {
-                            my $cont = $eom->to_email_mime->as_string;
+                            my $cont;
+                            $cont = $eom->to_email_mime->as_string;
                             $utf8off->(\$cont);
+                            if ($cont !~ /^$HeaderRe/o) {
+                                mlog(0,"Error: Outlook attachment '$name' does not start with an EMAIL-MIME-HEADER! E.G.: Simply forwarding from outlook does not work. Attach the reported mail as .eml or full .msg file - best is to zip the email before it is attached!") if $ReportLog;
+                                storeReport(\$body,'outlook_bad_msg_OLE','.msg');
+                                storeReport(\$cont,'outlook_bad_msg_extracted_MIME');
+                                if ($cont =~ s/^(.+?)($HeaderRe)/$2/os) {
+                                    mlog(0,"Warning: removed invalid content from the start of reported file: '$name' - removed: '$1'") if $ReportLog > 1;
+                                }
+                            }
                             push(@u,
                                   Email::MIME->create(
                                       attributes => {
@@ -54371,13 +54390,23 @@ sub ConfigAnalyze {
             $fm .= '<b>ERROR: unable to open file '.eU($filename)."</b><br />\n";
         }
     }
+
+    if (defined &CorrectASSPcfg::customAnalyze) {
+        local $@;
+        eval{ &CorrectASSPcfg::customAnalyze(\$mail) };   # $mail needs to be modified inplace
+        if ($@) {
+            mlog(0,"error: the call to CorrectASSPcfg::customAnalyze failed - $@");
+        }
+    }
+
     fixCRLF(\$mail);
     $mail =~ s/[\x0D\x0A]+$/\x0D\x0A/o;
     $fm = "invalid 'Microsoft Mail Internet Headers' were removed<br />\n$fm" if $mail =~ s/^\s*Microsoft\s+Mail\s+Internet\s+Headers\s+Version\S*\s+//ois;
 
     my $HMC = 1;
-    if ($mail =~ /^\s*$HeaderRe/os) {               # remove leading spaces from the MIME headers start
-        $fm .= "<font color='orange'>leading whitespaces were removed from the MIME header start</font><br />\n" if $mail =~ s/^\s+//os;
+    if ($mail =~ /^\s*$HeaderRe/os) {                    # remove leading spaces from the MIME headers start
+        $fm .= "<font color='orange'>leading whitespaces were removed from the MIME header start</font><br />\n"
+            if $mail =~ s/^\s+//os;
         $HMC = 0;
     } elsif ($mail =~ /^\s*(?:helo|ip|text)\s*=/ois) {   # these checks are requested
         $mail =~ s/^\s+//os;
@@ -54388,20 +54417,33 @@ sub ConfigAnalyze {
         $mail = "\r\n".$mail;
         $fm .= "<font color='orange'>corrected missing leading [CR][LF] - found only a mail body</font><br />\n";
     }
-    if ($HMC && $mail =~ /^(.+?\n)($HeaderRe)/os) {                 # MIME headers are found - but not at the start of the mail
+    if ($HMC && $mail =~ /^(.+?\n)($HeaderRe)/os) {      # MIME headers are found - but not at the start of the mail
         my ($p,$h) = ($1,$2);
-        $fm .= "<font color='red'>found a possible MIME header start in the middle of the mail - the analyze may be wrong</font><br />\n";
-        $p =~ s/\r/[CR]/go;
-        $p =~ s/\n/[LF]<br \/>\n/gos;
-        $p =~ s/\t/[TAB]/go;
-        $p =~ s/ /\&nbsp;/go;
+        my $lines = () = $p =~ /(\n)/gos;
+        my $s = needEs($lines,' line','s');
+        $fm .= "<hr><font color='red'>Warning:</font> found $s of unexpected invalid content in front of the EMAIL-MIME-HEADER - the analysis possibly contains some incorrect results<br />\n<b>The unexpected content is:</b><br />";
+        my ($pf,$pm,$pl);
+        $pf = $1 if $p =~ /^([^\n]+\n)/os;
+        $pf =~ s/\r/[CR]/gos;
+        $pf =~ s/\n/[LF]<br \/>\n/gos;
+        $pf =~ s/\t/[TAB]/gos;
+        $pf =~ s/ /\&nbsp;/gos;
 
-        $h =~ s/\r/[CR]/go;
+        if ($lines > 1 && $p =~ /\n([^\n]\n)$/os) {
+            $pl = $1;
+            $pm = '...<br />' if $lines > 2;
+            $pl =~ s/\r/[CR]/gos;
+            $pl =~ s/\n/[LF]<br \/>\n/gos;
+            $pl =~ s/\t/[TAB]/gos;
+            $pl =~ s/ /\&nbsp;/gos;
+        }
+
+        $h =~ s/\r/[CR]/gos;
         $h =~ s/\n/[LF]<br \/>\n/gos;
-        $h =~ s/\t/[TAB]/go;
-        $h =~ s/ /\&nbsp;/go;
+        $h =~ s/\t/[TAB]/gos;
+        $h =~ s/ /\&nbsp;/gos;
 
-        $fm .= $p . "<font color='red'>&bull;</font><br />" . $h . "<br /><br />\n";
+        $fm .= "$pf$pm$pl<hr><b>The first found correct MIME header is:</b><br />" . $h . "<hr><br /><br />\n";
     }
     undef $HMC;
 
@@ -54512,7 +54554,16 @@ sub ConfigAnalyze {
                $fhh = rand(1000000);
             } while exists $Con{$fhh};
             $mail = "subject: $xorgsub\r\n".$mail if ($xorgsub && $mail !~ /(?:^|\n)subject:/ios );
-            $Con{$fhh}->{header} = $mail;
+            my $subhead;
+            while ( $mail =~ /($HeaderNameRe)(:$HeaderValueRe)/giso ) {
+                next if lc($1) ne 'subject';
+                my ($tag,$val) = ($1,$2);
+                $val =~ s/\s+$//os;
+                $subhead .= $tag.$val."\r\n";
+                last;
+            }
+            $subhead .= "\r\n" if $subhead;
+            $Con{$fhh}->{header} = $subhead;
             $Con{$fhh}->{headerpassed} = 1;
             &makeSubject($fhh);
             $sub = $Con{$fhh}->{subject3} if defined $Con{$fhh}->{subject3};
@@ -64262,8 +64313,10 @@ sub ConfigCompileRe {
         my @WeightRE = @{$name.'WeightRE'};
         @{$name.'Weight'} = ();
         @{$name.'WeightRE'} = ();
-        while ($new =~ s/(\~([^\~]+)?\~|([^\|]+)?)\s*\=\>\s*([+\-]?(?:0?\.\d+|\d+\.\d+|\d+))?(?:\s*\:\>\s*([nNwWlLiI\+\-\s]+)?)?/$2$3/o) {
+        my %seenRe;
+        while ($new =~ s/(\~([^\~]+)?\~|([^\|]+)?)\s*\=\>\s*([+\-]?(?:0?\.\d+|\d+\.\d+|\d+))?(?:\s*\:\>\s*([nNwWlLiI\+\-\s]+)?)?/exists($seenRe{$2.$3})?'':$2.$3/oe) {
             my $re = ($2?$2:'').($3?$3:'');
+            $seenRe{$re} += 1;
             my ($we,$how) = ($4,uc($5));
             $we = 1 if (!$we && $we != 0);
             $we += 0;
@@ -64389,6 +64442,7 @@ sub ConfigCompileRe {
             $error .= "warning: no top level domain file ($Config{TLDS}) found - URIBL check will be skipped<br />" if $ValidateURIBL;
         }
     } else {
+        $new =~ s/\|\|+/\|/go;
         $new||=$neverMatch; # regexp that never matches
 
         # replace something like ${$EmailDomainRe} with the value of $EmailDomainRe

@@ -1,3 +1,30 @@
+2021-11-02
+fixed in assp 2.6.6 *SPAM-Evaporator* build 21306:
+
+- An email, starting with an invalid MIME header, sent to the analyzer - prevented the analyzer from finding the subject of the mail.
+
+- If the same regular expression was used with different weights, tagged by different 'NWLI' extensions, the regex itself was defined and executed multiple times.
+
+
+changed:
+
+- GUI help changed for
+AddDKIMHeader
+EmailSpam
+EmailHam
+NWLI
+
+- If ReportLog is set to diagnostic and a .msg (outlook OLE) file is reported, which starts with invalid header content, this invalid content will be corrected and the original .msg file
+  and the converted .eml file are stored in the assp/debug folder. So possible problems with outlook reporting can be better solved.
+  .msg files can be converted to the MIME content (.eml) using the following command.
+  
+  Linux/nix: perl -e 'use Email::Outlook::Message; print Email::Outlook::Message->new(q(FILENAME))->to_email_mime->as_string;'
+  Windows: perl -e "use Email::Outlook::Message; print Email::Outlook::Message->new(q(FILENAME))->to_email_mime->as_string;"
+
+  Replace FILNAME with the name of the .msg file. The MIME content is written to STDOUT - ' >file.eml' at the end of the command will write the MIME content to an output file.
+
+
+
 2021-10-29
 fixed in assp 2.6.6 *SPAM-Evaporator* build 21302:
 
