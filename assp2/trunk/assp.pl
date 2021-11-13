@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.6';
-$build   = '21306';        # 02.11.2021 TE
+$build   = '21317';        # 13.11.2021 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.034999';
 $MAINVERSION = $version . $modversion;
@@ -675,7 +675,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '92CD83AA0ABA10F9E6DD99380303ECDBEBB1CE5D'; }
+sub __cs { $codeSignature = 'C9C2C670A4355C525E8B625C040D5D22462D1C75'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -3053,8 +3053,8 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   'Addresses will be removed after this interval in days. For example 3. <input type="button" value=" Show Invalid Addresses" onclick="javascript:popFileEditor(\''.$newDB.'pb/pbdb.trap.db\',5);" />',undef,undef,'msg002440','msg002441'],
 ['PenaltyUseNetblocks','Use IP Netblocks',0,\&checkbox,'1','(.*)',undef,
   'Perform the IP address checks of the sending host based on the /24 (IPv4) - /64 (IPv6) subnet rather than on the specific IP.',undef,undef,'msg002450','msg002451'],
-['PenaltyError','Penalty Reply',80,\&textinput,'554 5.7.1 Error, send your mail to postmaster@LOCALDOMAIN to ensure delivery','^([245]\d\d .*|)$',undef,
-  'If set SMTP reply for Penalty Deny. eg: \'554 5.7.1 Error, send your mail to postmaster@LOCALDOMAIN to ensure delivery\'. The literal LOCALDOMAIN will be replaced by the recipient domain. The literal LOCALUSER will be replaced by the recipient user part. For example:554 5.7.1 Mail appears to be unsolicited -- send error reports to postmaster@LOCALDOMAIN.',undef,undef,'msg002460','msg002461'],
+['PenaltyError','Penalty Reply',80,\&textinput,'554 5.7.1 Error for IP IPCONNECTED, send your mail to postmaster@LOCALDOMAIN to ensure delivery','^([245]\d\d .*|)$',undef,
+  'If set SMTP reply for Penalty Deny. eg: \'554 5.7.1 Error for IPCONNECTED, send your mail to postmaster@LOCALDOMAIN to ensure delivery\'. The literal LOCALDOMAIN will be replaced by the recipient domain. The literal LOCALUSER will be replaced by the recipient user part. For example:554 5.7.1 Mail appears to be unsolicited -- send error reports to postmaster@LOCALDOMAIN.',undef,undef,'msg002460','msg002461'],
 ['PenaltyDuration','Penalty Interval',4,\&textinput,60,'(\d?\d?\d?\d?)','updatePenaltyDuration',
   'IP\'s will be kept in the BlackBox (PBBlack) if their score exceeds the Penalty Limit during this interval (minutes).',undef,undef,'msg002470','msg002471'],
 ['PenaltyLimit','Penalty Limit',4,\&textinput,50,'(\d*)',undef,
@@ -12160,7 +12160,8 @@ Lists  are allowed. An list is a set of  numbers (or
 <div id="oneasterix">Fields marked with at least one asterisk (*) accept a list separated by '|' (for example: abc|def|ghi) or a file designated as follows (path relative to the ASSP directory): 'file:files/filename.txt'.  Putting in the <i>file:</i> will prompt ASSP to put up a button to edit that file. <i>files</i> is the subdirectory for files. The file does not need to exist, you can create it by saving it from the editor within the UI. The file must have one entry per line; anything on a line following a number sign or a semicolon ( # ;) is ignored (a comment).<br />
 It is possible to include custom-designed files at any line of such a file, using the following directive<br />
 <span class="positive"># include filename</span><br />
-where filename is the relative path (from $base) to the included file like files/inc1.txt or inc1.txt (one file per line). The line will be internaly replaced by the contents of the included file!<br /><br /></div>
+where filename is the relative path (from $base) to the included file like files/inc1.txt or inc1.txt (one file per line). The line will be internaly replaced by the contents of the included file!<br />
+Line continuation is supported by writing a backslash '\\' at the end of a line.<br /><br /></div>
 <img class="genHelpIcon" src="get?file=images/regex.jpg"><br />
 <div id="twoasterix">Fields marked with two asterisk (**) contains regular expressions (regex) and accept a second weight value. Every weighted regex that contains at least one '|' has to begin and end with a '~' - inside such regexes it is not allowed to use a tilde '~', even it is escaped - for example:  ~abc<span class="negative"><b>\\~</b></span>|def~=>23 or ~abc<span class="negative"><b>~</b></span>|def~=>23 - instead use the octal (\\126) or hex (\\x7E) notation , for example <span class="positive">~abc\\126|def~=>23 or ~abc\\x7E|def~=>23</span> . Every weighted regex has to be followed by '=>' and the weight value. For example: Phishing\\.=>1.45|~Heuristics|Email~=>50  or  ~(Email|HTML|Sanesecurity)\\.(Phishing|Spear|(Spam|Scam)[a-z0-9]?)\\.~=>4.6|Spam=>1.1|~Spear|Scam~=>2.1 .
  The multiplication result of the weight and the penaltybox valence value will be used for scoring, if the absolute value of weight is less or equal 6. Otherwise the value of weight is used for scoring. It is possible to define negative values to reduce the resulting message score.<br /></div>
@@ -18389,7 +18390,10 @@ sub MainLoop {
     &ConDone();
     my @canread;
     &getChangedConfigValue() if @changedConfig;
-    &tellThreadsReReadConfig() if ($ConfigChanged);
+    if ($ConfigChanged) {
+        &tellThreadsReReadConfig();
+        d('told threads to reload config');
+    }
     &mlogWrite();
     if ($maxwait && $syncToDo) {
         my $hassync;
@@ -20358,7 +20362,7 @@ sub NewSMTPConnection {
         mlog( $client, "$ip:$port ATTENTION ! The EMERGENCY blocking for this IP will be lifted after an ASSP restart or at least in 15 minutes" );
         $Stats{denyConnectionA}++;
         $Con{$client}->{type} = 'C';
-        &NoLoopSyswrite($client,"554 <$myName> Service denied, closing transmission channel\r\n",0);
+        &NoLoopSyswrite($client,"554 <$myName> Service denied for IP $ip , closing transmission channel\r\n",0);
         $Con{$client}->{error} = '5';
         done($client);
         return;
@@ -20385,7 +20389,7 @@ sub NewSMTPConnection {
               if $denySMTPLog || $ConnectionLog >= 2;
             $Stats{denyConnectionA}++;
             $Con{$client}->{type} = 'C';
-            &NoLoopSyswrite($client,"554 <$myName> Service denied, closing transmission channel\r\n",0);
+            &NoLoopSyswrite($client,"554 <$myName> Service strictly denied for IP $ip , closing transmission channel\r\n",0);
             $Con{$client}->{error} = '5';
             done($client);
             return;
@@ -28765,7 +28769,7 @@ sub getline {
             if ( $this->{noprocessing} & 1 ) {
                 mlog($fh,"message proxied without processing (except checks enabled for noprocessing mails)");
             } else {
-                mlog($fh,"message proxied without processing content base check (npSize)");
+                mlog($fh,"message proxied without processing content based check (npSize)");
             }
         } elsif ($this->{isbounce} && $this->{delayed}) {
             &NumRcptOK($fh,0);
@@ -29064,8 +29068,9 @@ sub getOriginIPs {
         delete $ptr{$sip};
         push @ignoredIP, "first origin $sip";
     }
-    mlog(0,"info: enhanced Originated IP detection ignored IP's: ".join(' , ',@ignoredIP)) if ($ConnectionLog >= 2 || ($ConnectionLog && $ipmatchLogging)) && @ignoredIP;
-    mlog(0,"info: enhanced Originated IP detection found IP's: ".join(' , ',@sips)) if ($ConnectionLog >= 2 || ($ConnectionLog && $ipmatchLogging)) && @sips;
+    $fh = 0 if ("$fh" =~ /^\d+$/o);
+    mlog($fh,"info: enhanced Originated IP detection ignored IP's: ".join(' , ',@ignoredIP)) if ($ConnectionLog >= 2 || ($ConnectionLog && $ipmatchLogging)) && @ignoredIP;
+    mlog($fh,"info: enhanced Originated IP detection found IP's: ".join(' , ',@sips)) if ($ConnectionLog >= 2 || ($ConnectionLog && $ipmatchLogging)) && @sips;
     @sips = reverse @sips;
     return \@sips,\%ptr,$oip;
 }
@@ -31774,10 +31779,10 @@ sub weightRe {
     my @rkey;
     while (@WeightRE) {
         my $k = shift @WeightRE;
-        $k =~ s/^\{([^\}]*)\}(.*)$/$2/os;
-        $how = $1 ? $1 : '';
+        $how = '';
+        $how = $1 if $k =~ s/^\{([^\}]*)\}(.*)$/$2/os;
         $count++;
-        next unless $k;                 # no re data
+        next if ! defined($k);          # no re data
         next if ($key !~ /$k/is);       # no match
         
         push @rkey, $key;               # remember we found a match
@@ -34547,81 +34552,81 @@ sub DKIMOK_Run {
     makeOrgAuthHeader(\$this->{myheader}, 'dkim', $result);
 
     if (($result eq "fail" || ($result eq "none" && $this->{isDKIM}) || ($result eq "invalid" && $this->{isDKIM} && $dkim->{signature_reject_reason} eq 'public key: not available')) && ! $dkimpolicy_a->testing) {
-      $this->{prepend}="[DKIM]";
-      mlog($fh,"$tlit DKIM signature failed - $detail - sender policy is: $dkimwhy_s - author policy is: $dkimwhy_a") if $ValidateSenderLog && $DoDKIM==3 || $DoDKIM==2;
-      pbWhiteDelete($fh,$this->{ip});
-      $this->{dkimverified} = "failed - $result";
-      return $retval if $DoDKIM==2;
-      $this->{messagereason}="DKIM $result";
-      pbAdd($fh,$this->{ip},'dkimValencePB','DKIMfailed');
-      delayWhiteExpire($fh);
-      return $retval if $DoDKIM==3;
-      return 0;
+        $this->{prepend}="[DKIM]";
+        mlog($fh,"$tlit DKIM signature failed - $detail - sender policy is: $dkimwhy_s - author policy is: $dkimwhy_a") if $ValidateSenderLog && $DoDKIM==3 || $DoDKIM==2;
+        pbWhiteDelete($fh,$this->{ip});
+        $this->{dkimverified} = "failed - $result";
+        return $retval if $DoDKIM==2;
+        $this->{messagereason}="DKIM $result";
+        pbAdd($fh,$this->{ip},'dkimValencePB','DKIMfailed');
+        delayWhiteExpire($fh);
+        return $retval if $DoDKIM==3;
+        return 0;
     }
     if ($result eq "pass") {
-      my $mf =lc $this->{mailfrom};
-      my $domain;
-      my $changed;
-      $domain = $1 if $mf=~/\@([^@]*)/o;
-      DKIMCacheAdd($domain) unless $skipcache;     # DKIM is pass => all further mails should have a DKIM-Sig
-      my $identity;
-      if ( ! $this->{relayok} ) {      # clear the IP-PBBOX, set rwlok, skip PB-processing in case DKIM is OK
-          $this->{rwlok} = 1 if $DKIMpassAction & 1;
-          $this->{nopb} = 1 if $DKIMpassAction & 2;
-          if ($fh && $DKIMpassAction & 4) {
-              mlog($fh,"info: remove IP-score from $this->{ip} - this mail passed the DKIM check") if ($SessionLog || $ValidateSenderLog) && exists $PBBlack{$this->{ip}};
-              mlog($fh,"info: remove IP-score from $this->{cip} - this mail passed the DKIM check") if ($SessionLog || $ValidateSenderLog) && $this->{cip} && exists $PBBlack{$this->{cip}};
-              pbBlackDelete($fh, $this->{ip});
-          }
-          $identity = eval{$dkim->{signature} ? lc($dkim->{signature}->identity) : undef};
-          $identity ||= lc $this->{arcresult}->{host};
-          if ($identity) {
-              $this->{dkimidentity} = $identity if ! $fh;
-              mlog($fh,"info: found DKIM signature identity '$identity'") if (($ValidateSenderLog && ($DKIMWLAddresses || $DKIMNPAddresses)) || $ValidateSenderLog > 1 || $SessionLog > 1);
-              $this->{myheader} .= "X-ASSP-DKIMidentity: $identity\r\n" if $AddDKIMHeader;
-              my @flags;
-              my @tocheck = ($identity);
-              push(@tocheck,"$identity,$_") for (split(/\s+/o,lc $this->{rcpt}));
-              if ( $canWLAddr && matchRE(\@tocheck,'DKIMWLAddresses') ) {
-                  $this->{DKIMidentityWLmatch} = $lastREmatch if ! $fh;
-                  $this->{whitelisted} = 1;
-                  $lastREmatch = undef;
-                  $changed = ' - state changed to: whitelisted';
-                  push @flags, 'whitelisted';
-              }
-              if ( $canNPAddr && matchRE(\@tocheck,'DKIMNPAddresses') ) {
-                  $this->{DKIMidentityNPmatch} = $lastREmatch if ! $fh;
-                  $this->{noprocessing} = 1;
-                  $lastREmatch = undef;
-                  $changed .= $changed ? ' and noprocessing' : ' - state changed to: noprocessing';
-                  push @flags, 'noprocessing';
-              }
-              $this->{myheader} .= "X-ASSP-DKIM-FlagState: ".(join(', ',@flags))."\r\n" if @flags && $AddDKIMHeader && ! $this->{relayok};
-              $identity = " - identity is: $identity";
-          } else {
-              mlog($fh,"error: can't get DKIM signature identity - $@");
-          }
-          eval{$this->{dkimheaders} = $dkim->{signature}->headerlist if $dkim->{signature};};
-      }
-      mlog($fh,"$tlit DKIM signature $this->{dkimverified} - $detail$identity - sender policy is: $dkimwhy_s - author policy is: $dkimwhy_a$changed") if $ValidateSenderLog && $DoDKIM>=2;
-      $this->{messagereason}="DKIM $result";
-      pbAdd($fh,$this->{ip},'dkimOkValencePB','DKIMpass', 1);
-      return 2;
+        my $mf =lc $this->{mailfrom};
+        my $domain;
+        my $changed;
+        $domain = $1 if $mf=~/\@([^@]*)/o;
+        DKIMCacheAdd($domain) unless $skipcache;     # DKIM is pass => all further mails should have a DKIM-Sig
+        my $identity;
+        if ( ! $this->{relayok} ) {      # clear the IP-PBBOX, set rwlok, skip PB-processing in case DKIM is OK
+            $this->{rwlok} = 1 if $DKIMpassAction & 1;
+            $this->{nopb} = 1 if $DKIMpassAction & 2;
+            if ($fh && $DKIMpassAction & 4) {
+                mlog($fh,"info: remove IP-score from $this->{ip} - this mail passed the DKIM check") if ($SessionLog || $ValidateSenderLog) && exists $PBBlack{$this->{ip}};
+                mlog($fh,"info: remove IP-score from $this->{cip} - this mail passed the DKIM check") if ($SessionLog || $ValidateSenderLog) && $this->{cip} && exists $PBBlack{$this->{cip}};
+                pbBlackDelete($fh, $this->{ip});
+            }
+            $identity = eval{$dkim->{signature} ? lc($dkim->{signature}->identity) : undef};
+            $identity ||= lc $this->{arcresult}->{host};
+            if ($identity) {
+                $this->{dkimidentity} = $identity if ! $fh;
+                mlog($fh,"info: found DKIM signature identity '$identity'") if (($ValidateSenderLog && ($DKIMWLAddresses || $DKIMNPAddresses)) || $ValidateSenderLog > 1 || $SessionLog > 1);
+                $this->{myheader} .= "X-ASSP-DKIMidentity: $identity\r\n" if $AddDKIMHeader;
+                my @flags;
+                my @tocheck = ($identity);
+                push(@tocheck,"$identity,$_") for (split(/\s+/o,lc $this->{rcpt}));
+                if ( $canWLAddr && matchRE(\@tocheck,'DKIMWLAddresses') ) {
+                    $this->{DKIMidentityWLmatch} = $lastREmatch if ! $fh;
+                    $this->{whitelisted} = 1;
+                    $lastREmatch = undef;
+                    $changed = ' - state changed to: whitelisted';
+                    push @flags, 'whitelisted';
+                }
+                if ( $canNPAddr && matchRE(\@tocheck,'DKIMNPAddresses') ) {
+                    $this->{DKIMidentityNPmatch} = $lastREmatch if ! $fh;
+                    $this->{noprocessing} = 1;
+                    $lastREmatch = undef;
+                    $changed .= $changed ? ' and noprocessing' : ' - state changed to: noprocessing';
+                    push @flags, 'noprocessing';
+                }
+                $this->{myheader} .= "X-ASSP-DKIM-FlagState: ".(join(', ',@flags))."\r\n" if @flags && $AddDKIMHeader && ! $this->{relayok};
+                $identity = " - identity is: $identity";
+            } else {
+                mlog($fh,"error: can't get DKIM signature identity - $@");
+            }
+            eval{$this->{dkimheaders} = $dkim->{signature}->headerlist if $dkim->{signature};};
+        }
+        mlog($fh,"$tlit DKIM signature $this->{dkimverified} - $detail$identity - sender policy is: $dkimwhy_s - author policy is: $dkimwhy_a$changed") if $ValidateSenderLog && $DoDKIM>=2;
+        $this->{messagereason}="DKIM $result";
+        pbAdd($fh,$this->{ip},'dkimOkValencePB','DKIMpass', 1);
+        return 2;
     }
 
     if ($result eq "none") {
-      mlog($fh,"$tlit (DKIM signature not found)") if $ValidateSenderLog && $DoDKIM>=2;
-      $this->{dkimverified} = "no-signature";
-      return 1;
+        mlog($fh,"$tlit (DKIM signature not found)") if $ValidateSenderLog && $DoDKIM>=2;
+        $this->{dkimverified} = "no-signature";
+        return 1;
     }
 
     if ($result eq "invalid") {
-      mlog($fh,"$tlit (DKIM signature invalid) - " . $dkim->{signature_reject_reason} ) if $ValidateSenderLog && $DoDKIM>=2;
-      $this->{dkimverified} = "invalid-signature";
-      return $retval;
+        mlog($fh,"$tlit (DKIM signature invalid) - " . $dkim->{signature_reject_reason} ) if $ValidateSenderLog && $DoDKIM>=2;
+        $this->{dkimverified} = "invalid-signature";
+        return $retval;
     }
     if ($dkimpolicy_a->testing) {
-      mlog($fh,"$tlit DKIM signature failed - but DKIM test policy - $detail - sender policy is: $dkimwhy_s - author policy is: $dkimwhy_a") if $ValidateSenderLog && $DoDKIM==3 || $DoDKIM==2;
+        mlog($fh,"$tlit DKIM signature failed - but DKIM test policy - $detail - sender policy is: $dkimwhy_s - author policy is: $dkimwhy_a") if $ValidateSenderLog && $DoDKIM==3 || $DoDKIM==2;
     }
     return $retval;
 }
@@ -58256,7 +58261,13 @@ sub ConfigIPAction {
         foreach (sort {lc($main::a) cmp lc($main::b)} keys %MakeIPRE) {
             next unless &canUserDo($WebIP{$ActWebSess}->{user},'cfg',$_);
             my $res = matchIP( $addr, $_,0,1 );
-            $s .= "matches in<b> $_ </b>with <b>$res</b><br />" if $res;
+            $s .= "matches in<b> $_ </b>with: <b>$res</b><br />" if $res;
+        }
+        foreach (qw(pbWhite pbBlack PTRCache URIBLCache SBCache RBLCache MXACache BackDNSCache RWLCache)) {
+            my $c = $_.'Find';
+            if ($c->($addr)) {
+                $s .= "is in $_<br />";
+            }
         }
     }
 
@@ -62306,7 +62317,7 @@ sub ThreadCompileAllRE {
         }
 
         if (exists $initConfig{$c->[0]}) {     # there are config parms that have to be inititalized anyway
-            d("call to $c->[6]->($c->[0],'',$Config{$c->[0]},$initConfig{$c->[0]})");
+            d("ThreadCompileAllRE - call to $c->[6]->($c->[0],'',$Config{$c->[0]},$initConfig{$c->[0]})");
             $c->[6]->($c->[0],'',$Config{$c->[0]},$initConfig{$c->[0]});
         }
     }
@@ -62320,14 +62331,14 @@ sub ThreadCompileAllRE {
         my $f = $PossibleOptionFiles[$idx];
         next if ($f->[0] eq 'asspCfg');
         if ($init || (((exists $ComWorker{$WorkerNumber} && $ComWorker{$WorkerNumber}->{recompileAllRe}) || $recompileAllRe) && $f->[2] eq 'ConfigCompileRe')) {
-            d("call to $f->[2]->($f->[0],'',$Config{$f->[0]},'Initializing',$f->[1])");
+            d("ThreadCompileAllRE - call to $f->[2]->($f->[0],'',$Config{$f->[0]},'Initializing',$f->[1])");
             $f->[2]->($f->[0],'',$Config{$f->[0]},'Initializing',$f->[1]);
         } else {
             if (($Config{$f->[0]} =~ /^ *file: *(.+)/io && fileUpdated($1,$f->[0])) or
                 $Config{$f->[0]} !~ /^ *file: *(.+)/io or
                 exists $ConfigWatch{$f->[0]})
             {
-               d("call to $f->[2]->($f->[0],$Config{$f->[0]},$Config{$f->[0]},'',$f->[1])");
+               d("ThreadCompileAllRE - call to $f->[2]->($f->[0],$Config{$f->[0]},$Config{$f->[0]},'',$f->[1])");
                $f->[2]->($f->[0],$Config{$f->[0]},$Config{$f->[0]},'',$f->[1]);
             }
         }
@@ -62338,7 +62349,7 @@ sub ThreadCompileAllRE {
     $spamSubjectEnc = is_7bit_clean(\$spamSubject) ? $spamSubject : encodeMimeWord($spamSubject,'B','UTF-8');
     &threadCheckConfig() if $threadCheckConfig;
     &checkFileHashUpdate() unless $init;
-    d('finished loading option files');
+    d('ThreadCompileAllRE - finished loading option files');
 }
 
 sub optionFilesReload {
@@ -62347,6 +62358,7 @@ sub optionFilesReload {
         my $f = $PossibleOptionFiles[$idx];
         if($f->[0] ne 'asspCfg' or ($f->[0] eq 'asspCfg' && $AutoReloadCfg)) {
             if ($Config{$f->[0]}=~/^ *file: *(.+)/io && fileUpdated($1,$f->[0]) ) {
+                d("optionFilesReload - call to $f->[2]->($f->[0],$Config{$f->[0]},$Config{$f->[0]},'',$f->[1])");
                 $f->[2]->($f->[0],$Config{$f->[0]},$Config{$f->[0]},'',$f->[1]);
                 &syncConfigDetect($f->[0]);
             }
@@ -64158,6 +64170,7 @@ sub checkOptionList {
 
             # replace newlines (and the whitespace that surrounds them) with a |
             $value=~s/\r//go;
+            $value=~s/\\(?<!\\)\n//gos;  # remove line continuation
             $value=~s/\s*\n+\s*/\|/go unless wantarray;
         } else {
             mlog(0,"AdminInfo: failed to open option list file for reading '$fil' ($name): $!") if (! $calledfromThread);
@@ -64288,7 +64301,7 @@ sub ConfigCompileRe {
 # only grouping (no capturing) allowed inside regexes: (aa) -> (?:aa)
     my $hasChanged;
     if ($WorkerNumber == 0) {
-        $hasChanged = $new =~ s/((?<!\\))\(([^\?\\][^:]?)/$1(?:$2/go
+        $hasChanged = $new =~ s/((?<!\\))\((?!DEFINE\))([^\?\\][^:]?)/$1(?:$2/go
             if    $RegexGroupingOnly
                && $new !~ /a(?:ssp)?\\?-do?\\?-n(?:ot)?\\?-o(?:ptimize)?\\?-r(?:egex)?\|?/io  # no regex optimization
                && $new !~ m!(?:^|[^\\])(\(\s*\?{1,2}\{.+?[^\\]\}\))!o; # executable code in regex;
@@ -64320,6 +64333,7 @@ sub ConfigCompileRe {
             my ($we,$how) = ($4,uc($5));
             $we = 1 if (!$we && $we != 0);
             $we += 0;
+            $re =~ s/^\<\<\<(.*?)\>\>\>$/$1/o;
             $re =~ s/(([^\\]?)\$\{\$([a-z][a-z0-9]+)\})/(exists $main::{$3}) ? $2.${$3} : $1/oige if $AllowInternalsInRegex;
             if (defined $how) {
                 $how =~ s/\s//go;
@@ -64398,7 +64412,6 @@ sub ConfigCompileRe {
             my $reg = ${$name.'WeightRE'}[$count];
             my $how;
             $how = $1 if $reg =~ s/^\{([^\}]*)?\}(.+)$/$2/o;
-            $reg =~ s/^\<\<\<(.*?)\>\>\>$/$1/go;
             strip50($reg);
             $how = " for [$how]" if $how;
             mlog(0,"info: $name : regex $reg - weight set to $k$how") if $WorkerNumber == 0 && $MaintenanceLog >= 2;

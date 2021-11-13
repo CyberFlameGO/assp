@@ -1,3 +1,20 @@
+2021-11-13
+fixed in assp 2.6.6 *SPAM-Evaporator* build 21317:
+
+- If a line in a regular expression file was protected from regex optimization using the <<<...>>> pagma, a possibly defined weight (...=>ddd) was ignored and the default penalty points were used.
+
+- If a predefinition of regular expressions like '(?(DEFINE)(?<..>...))' was used, assp has destroyed it sometimes to (?(?:DEFINE)...)
+
+
+changed:
+
+- files used in configuration parameters (file:...) are now supporting line continuation by adding a backslash '\' at the end of a line
+
+- SMTP-replies (554 ...Service denied ...) sent because a connection is terminated very early (before HELO) are now extended to 554 ...Service denied for IP x.x.x.x , ...
+  where x.x.x.x contains the connected IP address. This provides better backtracking of early blocked connections.
+
+
+
 2021-11-02
 fixed in assp 2.6.6 *SPAM-Evaporator* build 21306:
 
