@@ -1,4 +1,4 @@
-# $Id: ASSP_OCR,v 2.24 2021/02/06 13:00:00 TE Exp $
+# $Id: ASSP_OCR,v 2.25 2021/11/20 12:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is an OCR Plugin for ASSP - it returns OCR data for
@@ -35,12 +35,18 @@ our $CanUseTesseract = eval('use Image::OCR::Tesseract; 1;');
 our $CanUsePDFImages = $CanUseTesseract && $CanUsePDF && eval('use PDF::GetImages;1;');
 use File::Which 'which';
 use File::Spec;
+use Storable('thaw','nfreeze');
 no warnings qw(uninitialized redefine);
 
-our $VERSION = $1 if('$Id: ASSP_OCR,v 2.24 2021/02/06 13:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+our $VERSION = $1 if('$Id: ASSP_OCR,v 2.25 2021/11/20 12:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINASSPVER = '2.0.0(16.10)';
 our $runningIMG;
 our @fileToRemove;
+our %ResultCache:shared;
+our $ResultCacheTime:shared = 1800;
+our $canSHA = eval('use Digest::SHA1 qw(sha1_hex); 1;')
+               || eval('use Digest::SHA qw(sha1_hex); 1;')
+               || eval('use Crypt::Digest::SHA1 qw(sha1_hex); 1;');
 
 $main::ModuleList{'Plugins::ASSP_OCR'} = $VERSION.'/'.$VERSION;
 $main::ModuleList{'Thread::Semaphore'} = Thread::Semaphore->VERSION.'/2.11';
@@ -289,19 +295,21 @@ sub process {
         my $pbytes = 0;
         eval{
             my $email = Email::MIME->new($$data);
-            &main::sigoffTry(__LINE__);
-            my @parts;
-            foreach my $part ($email->parts) {
-               if ($part->parts > 1) {
-                   eval{$part->walk_parts(sub {push @parts, @_;})};
-                   push @parts,$part if $@;
-               } else {
-                   push @parts,$part;
-               }
+            my @parts = eval{ &main::parts_subparts($email); };
+            if (! @parts) {
+                foreach my $part ($email->parts) {
+                   if ($part->parts > 1) {
+                       eval{$part->walk_parts(sub {push @parts, @_;})};
+                       push @parts,$part if $@;
+                   } else {
+                       push @parts,$part;
+                   }
+                }
             }
             foreach $part ( @parts ) {
                 &ThreadMain2($fh);
                 $i++;
+                my $partResult;
                 $filename = $part->filename;
                 $body = $part->body;
                 $pbytes += length($body);
@@ -327,6 +335,7 @@ sub process {
                 mlog($fh,"$self->{myName}: (att) file $filename found in mime part $i") if ($self->{Log} >= 2);
                 my $tmpdir = "$main::base/tmp";
                 $tmpdir =~ s/\\/\//gi;
+                chdir "$main::base";
                 -d $tmpdir or mkdir "$tmpdir" , 0777;
                 -d '/tmp'  or mkdir "$tmpdir" , 0777;
                 my $unique = time().int(rand(10000));
@@ -335,6 +344,13 @@ sub process {
                 my $ext;
                 $ext = $1 if $filename =~ /^[\w\W]+\.([A-Z0-9]{1,})$/io;
                 next if (! $ext);
+
+                my $sha1 = sha1_hex($body);
+                if (my $cache = $self->ocrCache($sha1)) {
+                    $self->{tocheck} .= ' ' . $cache;
+                    next;
+                }
+
                 eval {
                     if ($ext =~ /pd[ft]/io && (($CanUsePDF && $self->{DoPDFText}) || ($CanUsePDFImages && $self->{DoPDFImage}))) {
                         mlog($fh,"$self->{myName}: processing (attached) file $filename") if ($self->{Log} >= 2);
@@ -346,14 +362,16 @@ sub process {
                         eval {
                             if ($CanUsePDF && $self->{DoPDFText}) {
                                 my $p;
+                                &main::sigoffTry(__LINE__);
                                 if ($OCRMOD eq 'PDF::OCR2') {
-                                    $self->{tocheck} .= ' ' . $p->_text_from_pdf()
+                                    $partResult .= ' ' . $p->_text_from_pdf()
                                        if ($p = PDF::OCR2::Page->new($tmpfile));  # get the text from pdf
                                     push @fileToRemove, @PDF::OCR2::TRASH, @PDF::OCR2::Page::TRASH; @PDF::OCR2::TRASH = @PDF::OCR2::Page::TRASH = ();
                                 } else {
-                                    $self->{tocheck} .= ' ' . $p->get_text
+                                    $partResult .= ' ' . $p->get_text
                                        if ($p = PDF::OCR::Thorough->new($tmpfile));  # get the text from pdf
                                 }
+                                &main::sigonTry(__LINE__);
                                 &ThreadMain2($fh);
                                 $how .= ', ' if $how;
                                 $how .= "PDF-text($filename)";
@@ -363,6 +381,7 @@ sub process {
                                 my $gottext;
                                 $runningIMG->down;
                                 $sema_up_requ++;
+                                &main::sigoffTry(__LINE__);
                                 if ($OCRMOD eq 'PDF::OCR2') {
                                     $PDF::GetImages::WHICH_CONVERT = $self->{convert};
                                     my $ocr; my @abs_images;
@@ -373,8 +392,9 @@ sub process {
                                                 my $size = &main::formatNumDataSize([stat($_)]->[7]);
                                                 my $max = &main::formatNumDataSize($self->{ocrmaxsize});
                                                 mlog($fh,"$self->{myName}: PDF included image (size: $size) is to large (max: $max) for OCR - skip") if ($self->{Log});
+                                                $partResult .= ' ';
                                             } else {
-                                                $self->{tocheck} .= ' ' . eval{$ocr->_text_from_image($_);};
+                                                $partResult .= ' ' . eval{$ocr->_text_from_image($_);};
                                                 $gottext = 1 unless $@;
                                             }
                                             chdir "$main::base";
@@ -393,8 +413,9 @@ sub process {
                                                 my $size = &main::formatNumDataSize([stat($_)]->[7]);
                                                 my $max = &main::formatNumDataSize($self->{ocrmaxsize});
                                                 mlog($fh,"$self->{myName}: PDF included image (size: $size) is to large (max: $max) for OCR - skip") if ($self->{Log});
+                                                $partResult .= ' ';
                                             } else {
-                                                $self->{tocheck} .= ' ' . eval{$ocr->get_ocr($_);};
+                                                $partResult .= ' ' . eval{$ocr->get_ocr($_);};
                                                 $gottext = 1 unless $@;
                                             }
                                             chdir "$main::base";
@@ -406,16 +427,17 @@ sub process {
                                 }
                                 $runningIMG->up;
                                 $sema_up_requ--;
+                                &main::sigonTry(__LINE__);
                                 if ($gottext) {
                                     $how .= ', ' if $how;
                                     $how .= "PDF-Image($filename)";
                                 }
                             }
-                            &ThreadMain2($fh);
-                          };
-                          $runningIMG->up if $sema_up_requ;
-                          $sema_up_requ = 0;
-                          mlog($fh,"$self->{myName}: error ($@)") if ($@);
+                        };
+                        $runningIMG->up if $sema_up_requ;
+                        $sema_up_requ = 0;
+                        &main::sigonTry(__LINE__);
+                        mlog($fh,"$self->{myName}: error ($@)") if ($@);
                     } elsif ($self->{DoImage} && $ext =~ /dcs|eps|fpx|img|psd|gif|jpg|jpeg|jpe|png|bmp|tiff|tif|pcx/i) { # get text from images
 
                         mlog($fh,"$self->{myName}: processing (attatched image) file $filename") if ($self->{Log} >= 2);
@@ -436,59 +458,75 @@ sub process {
                         my @args = ("$sc$self->{convert}$sc", "$st$tmpfile$st", '-compress','none','-colorspace','rgb','-contrast',"$sa$abs_tif$sa");
                         $runningIMG->down;
                         $sema_up_requ++;
+                        &main::sigoffTry(__LINE__);
                         if (system(@args) != 0) {
                             mlog($fh,__PACKAGE__."::get_ocr(), imagemagick convert problem? @args, $?") if ($self->{Log});
                             $runningIMG->up;
                             $sema_up_requ--;
+                            &main::sigonTry(__LINE__);
+                            $self->ocrCache($sha1,' ');
                             next;
                         }
-                        &ThreadMain2($fh);
                         $runningIMG->up;
                         $sema_up_requ--;
+                        &main::sigonTry(__LINE__);
                         if (-e $abs_tif) {
                             my @s     = stat($abs_tif);
                             if ($s[7] > $self->{ocrmaxsize}) {
                                 my $size = &main::formatNumDataSize($s[7]);
                                 my $max = &main::formatNumDataSize($self->{ocrmaxsize});
                                 mlog($fh,"$self->{myName}: converted file $filename (size: $size) is to large (max: $max) for OCR - skip") if ($self->{Log});
+                                $self->ocrCache($sha1,' ');
                                 next;
                             }
                         } else {
                             mlog($fh,"error: unable to find output file of systemcall >@args<") if ($self->{Log});
+                            $self->ocrCache($sha1,' ');
                             next;
                         }
                         -d '/dev' or mkdir '/dev' ,0777;  #fix for windows - on bad tesseract.pm
                         $runningIMG->down;
                         $sema_up_requ++;
+                        &main::sigoffTry(__LINE__);
                         my $tessout = Image::OCR::Tesseract::get_ocr($abs_tif,$tmpdir); # get the text from image
+                        &main::sigonTry(__LINE__);
                         if ($tessout) {
-                            $self->{tocheck} .= ' ' . $tessout; 
+                            $partResult .= ' ' . $tessout;
                         } else {
                             mlog($fh,"info: no text was extracted by tesseract from image $abs_tif") if ($self->{Log});
-                        }    
+                            $partResult .= ' ';
+                        }
                         push @fileToRemove, @Image::OCR::Tesseract::TRASH;
                         @Image::OCR::Tesseract::TRASH = ();
                         $runningIMG->up;
                         $sema_up_requ--;
-                        next unless $tessout;
-                        $how .= ', ' if $how;
-                        $how .= "Image($filename)";
+                        if ($tessout) {
+                            $how .= ', ' if $how;
+                            $how .= "Image($filename)";
+                        }
                     } elsif ($self->{DoSimpleText} && $dis =~ /text\/[^;\s]+/io && $body) {
                         eval {
                             my $attrs = $dis =~ s/^[^;]*;//o ? Email::MIME::ContentType::_parse_attributes($dis) : {};
                             if (my $cs = $attrs->{charset} || $part->{ct}{attributes}{charset}) {
                                 $body = Encode::decode($cs, $body);
                             }
-                            $self->{tocheck} .= ' ' . $body;
+                            $partResult .= ' ' . $body;
                             $how .= ', ' if $how;
                             $how .= "TextFile($filename)";
-                        }
+                        };
                     }
                     chdir "$main::base";
-                  }
+                };
+                $runningIMG->up if $sema_up_requ;
+                $sema_up_requ = 0;
+                &main::sigonTry(__LINE__);
+                $self->ocrCache($sha1,$partResult);
+                $self->{tocheck} .= $partResult;
+                chdir "$main::base";
             }
         };
         my $err = $@;
+        chdir "$main::base";
         for (@fileToRemove) {unlink $_;}
         @fileToRemove = ();
         &main::sigonTry(__LINE__);
@@ -513,6 +551,7 @@ sub process {
             return 1;
         }
     } else {
+        chdir "$main::base";
         $self->{result} = '';
         $self->{tocheck} = ''; # data to be checked from ASSP
         $self->{errstr} = "no data to process";
@@ -564,6 +603,36 @@ sub haveToProcess {
     return 1;
 }
 
+sub ocrCache {
+    my ($self, $key, $res) = @_;
+    return unless $self;
+    return unless defined($key);
+    return unless $ResultCacheTime;
+    # if a reference is given, it contains the content to be hashed
+    if (ref $key) {
+        local $@;
+        $key = eval{sha1_hex($$key);};
+        return unless $key;
+    }
+    my $entry = $ResultCache{$key};
+    threads->yield();
+    $entry = $entry ? Storable::thaw( $entry ) : {};
+    # return the cached results
+    if (! defined($res)) {
+        $res = $entry->{tocheck};
+        return if ! defined($res);
+        mlog(0,"info: found cached ocr-result") if $self->{Log};
+        return $res;
+    # store results in cache
+    } else {
+        $entry->{'time'} = time;
+        $entry->{tocheck} = $res;
+        $ResultCache{$key} = Storable::nfreeze( $entry );
+        threads->yield();
+    }
+    return;
+}
+
 sub runCMD {
     my $cmd = shift;
     my ($o,$e);
@@ -591,10 +660,7 @@ sub d {        # sub to main::d
 
 sub ThreadMain2 {
     my $fh = shift;
-    return;
-    &main::sigonTry(__LINE__);
     &main::ThreadMain2($fh);
-    &main::sigoffTry(__LINE__);
 }
 
 sub pdfimages {                # modified to run on MSWin32  Thomas Eckardt 2011
@@ -613,11 +679,9 @@ sub pdfimages {                # modified to run on MSWin32  Thomas Eckardt 2011
 
    -f $abs_pdf or errstr("ERROR: $abs_pdf is NOT on disk.") and return;
 
-
    $abs_pdf=~/(.+)\/([^\/]+)(\.pd[ft])$/io
       or errstr("$abs_pdf not '.pdf[t]'?")
       and return;
-
 
    my ($abs_loc,$filename,$filename_only) = ($1,"$2$3",$2);
 
