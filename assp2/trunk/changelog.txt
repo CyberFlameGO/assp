@@ -1,3 +1,32 @@
+2021-11-24
+fixed in assp 2.6.6 *SPAM-Evaporator* build 21328:
+
+
+- If 'AddRWLHeader' was enabled and a RWLCache hit was found, no RWL-header was added to the mail.
+
+
+changed:
+
+- text/plain parts of a mail are now also cleanedup from (badly) added HTML-tags, which improves all text based features, because the text/plain parts are most times processed first
+
+- ASSP_OCR.pm version 2.25 is released
+  It implements a short time result cache, to prevent processing the same MIME-parts multiple times because the same mail was sent to multiple recipients.
+
+- The clamav and the filescan feature are implementing a short time result cache, to prevent processing the same MIME-parts multiple times because the same mail was sent to multiple recipients.
+
+- In rare cases it was possible to overload assp by sending a large mail to many recipients.
+  This can now prevented by configuring the hidden parameter 'maxSMTPipRelaySessions' - if used, it should be set one less than the configured number of SMTP-Workers (NumComWorkers)
+  
+# (number) limit the connection count per IP for relay - 0 and noMaxSMTPSessions disables the check
+our $maxSMTPipRelaySessions = 0;
+
+- the RWLCache was used without giving any cached results in the maillog.txt - this caused confusion, if the log wére analyzed
+- the term 'whitelisted' is replaced by 'trusted' in RWL-headers and log lines - this caused confusion, if the mails was not whitelisted because of lower RWL-trust value
+
+- The RBL/DNSBL check was skipped, if a RWL-trust value of 2 was reached. From now, the RBL/DNSBL check is skipped, if a RWL-trust value of 2 is reached and RBLWL is not set.
+
+
+
 2021-11-13
 fixed in assp 2.6.6 *SPAM-Evaporator* build 21317:
 

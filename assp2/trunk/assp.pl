@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.6';
-$build   = '21317';        # 13.11.2021 TE
+$build   = '21328';        # 24.11.2021 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.034999';
 $MAINVERSION = $version . $modversion;
@@ -550,6 +550,8 @@ our $winSetMaxIO = 0;                    # (0/1/ 512 * 2**N) set the maximum ope
                                          # Notice: PERLIO (perl compiled with -DUSE_PERLIO - check with :>perl -V) may define a different max open file limit for its
                                          #         IO's (defaults to 2048 because PERLIO_MAX_REFCOUNTABLE_FD=2048)
                                          #         - this limit is not affected by this value
+
+our $DoAVCache = 1800;                   # (number) store AV results in a Cache for this amount of seconds to avoid rescanning already scanned content - default = 1800
 # *********************************************************************************************************************************************
 
 # some not RFC conform DMARC record subjects - like Amazon SES
@@ -675,7 +677,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'C9C2C670A4355C525E8B625C040D5D22462D1C75'; }
+sub __cs { $codeSignature = '676220A26A02DDF1F05FE43E90CCD74B79A32014'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -755,6 +757,9 @@ our $RegexGroupingOnly = 1;
 
 # enables fast import of GPB in case RDBM is used
 our $GPBFastImport = 1;
+
+# (number) limit the connection count per IP for relay - 0 and noMaxSMTPSessions disables the check
+our $maxSMTPipRelaySessions = 0;
 
 # whois servers
 our %whois_servers = (
@@ -988,6 +993,9 @@ our $IPv6LikeRe;
 our $PortRe;
 our $HostRe;
 our $HostPortRe;
+
+# regex to detect html content in plain text mail bodys
+our $htmlDetectRe;
 
 # for GUI check
 our $GUIHostPort;
@@ -1542,6 +1550,20 @@ $SpamTagRE = qr/(?:
 $HamTagRE = qr/(?:\[(?:Local|MessageOK|RWL|Whitelisted|NoProcessing)\])/io;
 $ValencePBRE = qr/(\s*[$d]+\s*(?:[\|,]\s*[$d]+\s*){0,1})/o;
 $ValencePB2RE = qr/(\s*-?[$d]+\s*(?:[\|,]\s*-?[$d]+\s*){0,1})/o;
+
+$htmlDetectRe = qr
+/^\s*<\s*(?:br|basefont|hr|input|source|frame|param|area|meta|!--|col|link|option|base|img|wbr|!DOCTYPE).*?>
+|
+<\s*(a|abbr|acronym|address|applet|article|aside|audio|b|bdi|bdo|big|blockquote|body|button|
+     canvas|caption|center|cite|code|colgroup|command|datalist|dd|del|details|dfn|dialog|dir|div|dl|dt|
+     em|embed|fieldset|figcaption|figure|font|footer|form|frameset|head|header|hgroup|h1|h2|h3|h4|h5|h6|html|
+     i|iframe|ins|kbd|keygen|label|legend|li|map|mark|menu|meter|nav|noframes|noscript|object|ol|optgroup|output|
+     p|pre|progress|q|rp|rt|ruby|s|samp|script|section|select|small|span|strike|strong|style|sub|summary|sup|
+     table|tbody|td|textarea|tfoot|th|thead|time|title|tr|track|tt|u|ul|var|video|xml)
+.*?
+<\s*\/\s*\1\s*>
+/xsio
+;
 
 if ($] ge '5.012000') {
     # setting up unicode detection regular expressions
@@ -3367,7 +3389,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['noRBL','Don\'t do DNSBL for these IPs*',80,\&textinput,'','(\S*)','ConfigMakeIPRe',
  'Enter IP addresses that you don\'t want to be DNSBL validated, separated by pipes (|). For example:  127.0.0.1|172.16..',undef,'7','msg003770','msg003771'],
 ['RBLWL','Whitelisted DNSBL Validation For Connected IP Addresses',0,\&checkbox,0,'(.*)',undef,
-  'Enable DNSBL for whitelisted IP\'s, domains and users also',undef,undef,'msg003780','msg003781'],
+  'Enable DNSBL for whitelisted IP\'s, domains and users. If enabled, RWL-hits and the PBWhite are ignored and the DNSBL check is done.',undef,undef,'msg003780','msg003781'],
 ['AddRBLHeader','Add X-Assp-DNSBL Header',0,\&checkbox,1,'(.*)',undef,
   'Add X-Assp-DNSBL header to messages with positive reply from DNSBL.',undef,undef,'msg003790','msg003791'],
 ['RBLError','DNSBL Failed Reply',80,\&textinput,'554 5.7.1 DNS Blacklisted by RBLLISTED','(.*)',undef,
@@ -7987,6 +8009,7 @@ our $writable;
 our %AllScoreStats:shared;
 our %AllStats:shared ;
 our %AttachRules;
+our %AVCache:shared;
 our %AttachZipRules;
 our %AvailPerlModules;
 our %BerkeleyDBHashes;
@@ -15728,7 +15751,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
     $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.36;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
     $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
     $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
-    $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.24;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
+    $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.25;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
     $ModuleList{'Plugins::ASSP_RSS'}    =~ s/([0-9\.\-\_]+)$/$v=1.11;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_RSS'};
     $ModuleList{'Plugins::ASSP_Razor'}  =~ s/([0-9\.\-\_]+)$/$v=1.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_Razor'};
     $ModuleList{'Plugins::ASSP_FakeMX'} =~ s/([0-9\.\-\_]+)$/$v=1.02;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_FakeMX'};
@@ -19111,6 +19134,8 @@ sub CleanCache {
     &cleanCacheAUTHIP() if $AUTHUserIPfrequency;
     &cleanCacheSB()  if $SBCacheExp;
     &cleanCacheBackDNS() if $BackDNSInterval;
+    &cleanCacheAV();
+    &cleanCacheOCR();
     &cleanCachePersBlack();
     $noDBCache = $savenoDBCache;
 }
@@ -20402,11 +20427,36 @@ sub NewSMTPConnection {
 
     # ip connection limiting  parallel session
     my $doIPcheck;
-    $maxSMTPipSessions=999 if (!$maxSMTPipSessions);
     my $removeSession = 0;
+
+    # first check for max relay connection per IP
+    if ( $maxSMTPipRelaySessions &&
+         $ip &&
+         $relayused &&
+         ! $isRemoteSupport &&
+         ! matchIP($ip,'noMaxSMTPSessions',0,1)
+       )
+    {
+        threads->yield();
+        if (++$SMTPSessionIP{$ip} > $maxSMTPipRelaySessions) {
+            threads->yield();
+            $SMTPSessionIP{$ip}--;
+            threads->yield();
+            d("limiting relay connection ip: $client");
+            mlog(0,"limiting relay $ip connections to $maxSMTPipRelaySessions") if $ConnectionLog >= 2 || $SessionLog;
+            $Con{$client}->{messagereason}="limiting relay $ip connections to $maxSMTPipRelaySessions";
+
+            my $reply = "451 4.7.1 Please try again later - SMTP session limit reached\r\n";
+            &NoLoopSyswrite($client,$reply,0);
+            $Con{$client}->{type} = 'C';
+            $Con{$client}->{error} = '5';
+            done($client);
+            return;
+        }
+        $removeSession = 1;
+    }
     if ( $ip &&
          ! $isRemoteSupport &&
-         ! matchIP($ip,'noMaxSMTPSessions',0,1) &&
          ($doIPcheck =
             ! $relayok &&
             ! matchIP($ip,'noProcessingIPs',0,1) &&
@@ -20414,8 +20464,9 @@ sub NewSMTPConnection {
             ! matchIP($ip,'noDelay',0,1) &&
             ! matchIP($ip,'ispip',0,1) &&
             ! matchIP($ip,'acceptAllMail',0,1) &&
-            ! matchIP($ip,'noBlockingIPs',0,1)
-         )
+            ! matchIP($ip,'noBlockingIPs',0,1)  ) &&   # end store doIPcheck
+         ! matchIP($ip,'noMaxSMTPSessions',0,1) &&
+         $maxSMTPipSessions                            # must be last in check chain to get doIPcheck calculated independend from maxSMTPipSessions and noMaxSMTPSessions
        )
     {
         threads->yield();
@@ -20670,10 +20721,6 @@ sub NewSMTPConnection {
     $time=~s/... (...) +(\d+) (........) (....)/$2 $1 $4 $3/o;
     $Con{$client}->{rcvd}="Received: from =host ([$ip] helo=) by $myName with *SMTP* ($version); $time $tz\r\n";
     d("* connect SID=$Con{$client}->{SessionID} ip=$Con{$client}->{ip} relay=<$Con{$client}->{relayok}> *");
-    my $text = $destination;
-    $text = $server->sockhost() . ':' . $server->sockport() . " > $text , $fnoC-$fnoS" if $ConnectionLog >= 2;
-    mlog(0,"Connected: session:$Con{$client}->{SessionID} $ip:$port > $localip:$localport > $text") if ($ConnectionLog && ! matchIP($ip,'noLog',0,1));
-    $Con{$server}->{noop}="NOOP Connection from: $ip, $time $tz relayed by $myName\r\n" if $sendNoopInfo;
 
     # overall session limiting
     my $numsess;
@@ -20703,6 +20750,17 @@ sub NewSMTPConnection {
     if ($smtpConcurrentSessions>$Stats{smtpMaxConcurrentSessions}) {
         $Stats{smtpMaxConcurrentSessions}=$smtpConcurrentSessions;
     }
+
+    my $text = $destination;
+    $text = $server->sockhost() . ':' . $server->sockport() . " > $text , $fnoC-$fnoS" if $ConnectionLog >= 2;
+    threads->yield();
+    my $sessIP;
+    my $ms = $relayused ? $maxSMTPipRelaySessions : $maxSMTPipSessions;
+    $sessIP = '<connection '.$SMTPSessionIP{$ip}.'/'.$ms.'> ' if ($ConnectionLog >= 2 || $SessionLog >= 2) && $ms && (($maxSMTPipSessions && ! $relayok) || ($maxSMTPipRelaySessions && $relayused));
+    threads->yield();
+    mlog(0,"Connected: session:$Con{$client}->{SessionID} $sessIP$ip:$port > $localip:$localport > $text") if ($ConnectionLog && ! matchIP($ip,'noLog',0,1));
+    $Con{$server}->{noop}="NOOP Connection from: $ip, $time $tz relayed by $myName\r\n" if $sendNoopInfo;
+
     newCrashFile($client) if (! $isRemoteSupport);
 }
 
@@ -31570,22 +31628,51 @@ sub RWLok_Run {
     return 1 if $ip=~/$IPprivate/o;
     return 1 if ! $this->{ispip} && matchIP($this->{ip},'noRWL',$fh,0);
     return 1 if $this->{ispip} && $this->{cip} && matchIP($ip,'noRWL',$fh,0);
+
+    # check the RWL-Cache
     $this->{rwlok} = RWLCacheFind($ip);
-    if ( $this->{rwlok} % 2) {    # 1 (trust) or 3 (trust and whitelisted)
-        $this->{nodamping} = 1;
-        $this->{whitelisted} = 1 if $this->{rwlok} == 3 && $RWLwhitelisting;
-        $this->{rwlstatus} = $this->{rwlok} if $fh;
-        return 1 ;
-    } elsif ($this->{rwlok} == 2) {   # RWLminhits not reached
-        $this->{nodamping} = 1;
-        $this->{rwlok} = '';
-        $this->{rwlstatus} = 2 if $fh;
-        return 0;
-    } elsif ($this->{rwlok} == 4) {   # RWL none
-        $this->{rwlok} = '';
-        $this->{rwlstatus} = 4 if $fh;
-        return 0;
+    if ($this->{rwlok} > 0) {
+        my $trust;
+        my $received_rwl = "Cached-RWL: ";
+        my $ret;
+        if ( $this->{rwlok} % 2) {    # 1 (trust) or 3 (trust and whitelisted)
+            $this->{nodamping} = 1;
+            if ($this->{rwlok} == 3 && $RWLwhitelisting) {
+                $this->{whitelisted} = 1;
+                $trust = 3;
+                $received_rwl .= "trust $trust-[$trusty{$trust}] - client-ip=$ip - whitelisted";
+            } else {
+                $trust = 2;
+                $received_rwl .= "trust $trust-[$trusty{$trust}] - client-ip=$ip";
+            }
+            if ($fh) {
+                pbBlackDelete($fh,$ip);
+                RBLCacheDelete($ip);
+                pbWhiteAdd($fh,$ip,"RWL");
+                $this->{rwlstatus} = $this->{rwlok};
+            }
+            $ret = 1 ;
+        } elsif ($this->{rwlok} == 2) {   # RWLminhits not reached
+            $trust = 1;
+            $this->{nodamping} = 1;
+            $this->{rwlok} = '';
+            $this->{rwlstatus} = 2 if $fh;
+            $received_rwl .= "trust $trust-[$trusty{$trust}] - client-ip=$ip - RWLminhits($RWLminhits) is not reached";
+            $ret = 0;
+        } elsif ($this->{rwlok} == 4) {   # RWL none
+            $trust = 0;
+            $this->{rwlok} = '';
+            $this->{rwlstatus} = 4 if $fh;
+            $received_rwl = undef;
+            $ret = 0;
+        }
+        if ($received_rwl) {
+            mlog($fh,"$received_rwl",1) if $RWLLog;
+            $this->{myheader}.="X-Assp-$received_rwl\015\012" if $AddRWLHeader;
+        }
+        return $ret;
     }
+
     $this->{rwlok} = '';
     return 1 if pbWhiteFind($ip) && !$RWLwhitelisting;
     my $trust;
@@ -31681,8 +31768,8 @@ sub RWLok_Run {
         if ($trust == 2) {
             $trust = $ldo_trust if ($ldo_trust > $trust or ($ldo_trust =~ /\d+/o && $rwls_returned == $ldo_trust_count));
         }
-        $received_rwl.=") - high trust is $trust-[$trusty{$trust}] - client-ip=$ip";
-        $received_rwl = "Received-RWL: ".(($trust>0)?"whitelisted ":' ')."from (" . $received_rwl;
+        $received_rwl.=") - high trust is $trust-[$trusty{$trust}] - client-ip=$ip".(($trust>2 && $RWLwhitelisting) ? ' - whitelisted' : '');
+        $received_rwl = "Received-RWL: ".(($trust>0)?"trusted ":' ')."by (" . $received_rwl;
         mlog($fh,$received_rwl,1) if $RWLLog;
         $this->{myheader}.="X-Assp-$received_rwl\015\012" if $AddRWLHeader;
         # we may have a zero trust here !
@@ -31690,7 +31777,7 @@ sub RWLok_Run {
             $this->{nodamping} = 1;
             pbBlackDelete($fh,$ip) if $fh;
             RBLCacheDelete($ip) if $fh;
-            $this->{whitelisted}=1 if $trust>2 && $RWLwhitelisting;
+            $this->{whitelisted}=1 if ($trust>2 && $RWLwhitelisting);
             $status = ($trust > 2) ? 3 : ($trust == 2) ? 1 : 2 ;
             $this->{rwlok}=$status;
             RWLCacheAdd($ip,$status) ;
@@ -31866,11 +31953,14 @@ sub RBLok_Run {
         $this->{rbldone} = 1;
     }
     d('RBLok');
-    skipCheck($this,'aa','ro','rw','co') && return 1;
+    skipCheck($this,'aa','ro','co') && return 1;
     ! $skipcip && skipCheck($this,'ispcip') && return 1;
     return 1 if ($this->{noprocessing} & 1);
-    return 1 if $this->{whitelisted} && !$RBLWL;
-    return 1 if $this->{pbwhite} || pbWhiteFind($ip);
+    if (!$RBLWL) {
+        return 1 if $this->{whitelisted};
+        return 1 if $this->{pbwhite} || pbWhiteFind($ip);
+        skipCheck($this,'rw') && return 1;
+    }
     return 1 if matchIP( $ip, 'noRBL', 0, 1 );
 
     my ( $ct, $mm, $status, @rbl ) = split( ' ', $RBLCache{$ip} );
@@ -47088,7 +47178,7 @@ sub cleanMIMEBody2UTF8 {
             }
             $body .= "\r\n" if ! $addCharsets && $body && $bd && $body !~ /\r?\n$/o && $bd !~ /^\r?\n/o;
             $body .= $bd;
-            if ($odis =~ /plain/oi) {
+            if ($odis =~ /plain/oi && $bd !~ /$htmlDetectRe/) {
                 push @bodyplain, $bd;
             } else {
                 push @bodyhtml, $bd;
@@ -47133,7 +47223,7 @@ sub cleanMIMEBody2UTF8 {
                 if ($@) { $error .= $error ? "\n$@" : $@ };
             }
             if ($body) {
-                if ($email->header("Content-Type") =~ /plain/oi) {
+                if ($email->header("Content-Type") =~ /plain/oi && $body !~ /$htmlDetectRe/o) {
                     push @bodyplain, $body;
                 } else {
                     push @bodyhtml, $body;
@@ -50341,13 +50431,13 @@ sub FileScanCheckFile {
 }
 
 sub FileScanOK {
-    my ($fh,$bd)=@_;
+    my ($fh,$bd,$noCache)=@_;
     return 1 unless $FileScanCMD;
     return 1 if ($fh !~ /^\d+$/o && ! haveToFileScan($fh));
-    return FileScanOK_Run($fh,$bd);
+    return FileScanOK_Run($fh,$bd,$noCache);
 }
 sub FileScanOK_Run {
-    my ($fh,$bd)=@_;
+    my ($fh,$bd,$noCache)=@_;
     my $this = $Con{$fh};
     $fh = 0 if $fh =~ /^\d+$/o;
     my $failed;
@@ -50380,106 +50470,114 @@ sub FileScanOK_Run {
     my $SF;
     my $written;
 
-    {
-        local $SIG{ALRM} = sub { die "__alarm__\n"; };
-        alarm(2);
-        eval {
-            d("FileScan - try to open $file");
-            open($SF,'>' ,"$file") or die "can't open $file for writing\n";
-            $SF->binmode;
-            $SF->blocking(0);
-            flock($SF,6);
-            d("FileScan - exlusive flocked and try to write $file - $lb bytes");
-            $written = $SF->syswrite($$bd,$lb);
-            d("FileScan - written $file - $lb bytes");
-            d("FileScan - try to close $file");
-            $SF->close;
-            d("FileScan - try to unflock $file");
-            flock($SF,8);
-            d("FileScan - finished $file");
-        };
-        alarm(0);
-        $written = 0 if ($@);
-    }
-    my $wait;
-    if ($FileScanCMD =~ /^\s*NORUN\s*\-\s*(\d+)/io) {
-        $wait = $1 || 0;
-        mlog(0,"info: FileScan will now wait $wait ms for the online filesystem virus scanner analysis of file $file") if $ScanLog > 1;
-    }
-    if ($wait && $written) {
-        $wait = min( 10000, max( $wait, int(1000*$lb/5242880) ) );   # 0.2 second per 1 MB but max 10 seconds
-        my $starttime = Time::HiRes::time();
-        my $endtime = $starttime + ($wait / 1000);
-        my $step = min(200,int($wait/3));                            # check every 0.2 seconds (min) or max every 3.33 seconds
-        while (! FileScanCheckFile($file,$written) && Time::HiRes::time() < $endtime) {
-            $ThreadIdleTime{$WorkerNumber} += (Time::HiRes::sleep($step / 1000)) / 1000;
+    my $sha1 = eval{sha1_hex($$bd) if $DoAVCache && ! $noCache;};
+    ($failed, $res) = AVCacheResult($sha1,'filescan') if $sha1;
+
+    if (! defined($failed)) {
+        $failed = 0;
+        {
+            local $SIG{ALRM} = sub { die "__alarm__\n"; };
+            alarm(2);
+            eval {
+                d("FileScan - try to open $file");
+                open($SF,'>' ,"$file") or die "can't open $file for writing\n";
+                $SF->binmode;
+                $SF->blocking(0);
+                flock($SF,6);
+                d("FileScan - exlusive flocked and try to write $file - $lb bytes");
+                $written = $SF->syswrite($$bd,$lb);
+                d("FileScan - written $file - $lb bytes");
+                d("FileScan - try to close $file");
+                $SF->close;
+                d("FileScan - try to unflock $file");
+                flock($SF,8);
+                d("FileScan - finished $file");
+            };
+            alarm(0);
+            $written = 0 if ($@);
         }
-    }
-    d("FileScan - read check of file $file");
-    if ($written && FileScanCheckFile($file,$written)) {
-        if ($FileScanCMD !~ /^\s*NORUN/io) {
-            my $runfile = $file;
-            my $rundir = $FileScanDir;
-            my $sep;
-            if ( $isWIN ) {
-                $sep = '"';
-                $runfile =~ s/\//\\/go;
-                $runfile = $sep . $runfile . $sep if $runfile =~ / /o;
-                $rundir =~ s/\//\\/go;
-                $rundir = $sep . $rundir . $sep if $rundir =~ / /o;
-            } else {
-                $sep = "'";
-                $runfile = $sep . $runfile . $sep if $runfile =~ / /o;
-                $rundir = $sep . $rundir . $sep if $rundir =~ / /o;
+        my $wait;
+        if ($FileScanCMD =~ /^\s*NORUN\s*\-\s*(\d+)/io) {
+            $wait = $1 || 0;
+            mlog(0,"info: FileScan will now wait $wait ms for the online filesystem virus scanner analysis of file $file") if $ScanLog > 1;
+        }
+        if ($wait && $written) {
+            $wait = min( 10000, max( $wait, int(1000*$lb/5242880) ) );   # 0.2 second per 1 MB but max 10 seconds
+            my $starttime = Time::HiRes::time();
+            my $endtime = $starttime + ($wait / 1000);
+            my $step = min(200,int($wait/3));                            # check every 0.2 seconds (min) or max every 3.33 seconds
+            while (! FileScanCheckFile($file,$written) && Time::HiRes::time() < $endtime) {
+                $ThreadIdleTime{$WorkerNumber} += (Time::HiRes::sleep($step / 1000)) / 1000;
             }
-            &ThreadYield();
-            $cmd = "$FileScanCMD 2>&1";
-            $cmd =~ s/FILENAME/$runfile/go;
-            $cmd =~ s/NUMBER/$WorkerNumber/go;
-            $cmd =~ s/FILESCANDIR/$rundir/go;
-            $cmd =~ s/\*([a-zA-Z0-9\_\-]+)\*/$sep . $this->{$1} . $sep/oge;
-            my $usedAPI = 0;
-            if (ref($FileScanCMDbuild_API) eq 'CODE') {
-                $usedAPI = 1;
-                eval{$FileScanCMDbuild_API->(\$cmd,$this);};
-                if ($@) {
-                    mlog(0,"error: FileScanCMDbuild_API - eval failed - $@");
-                    $usedAPI = undef;
+        }
+        d("FileScan - read check of file $file");
+        if ($written && FileScanCheckFile($file,$written)) {
+            if ($FileScanCMD !~ /^\s*NORUN/io) {
+                my $runfile = $file;
+                my $rundir = $FileScanDir;
+                my $sep;
+                if ( $isWIN ) {
+                    $sep = '"';
+                    $runfile =~ s/\//\\/go;
+                    $runfile = $sep . $runfile . $sep if $runfile =~ / /o;
+                    $rundir =~ s/\//\\/go;
+                    $rundir = $sep . $rundir . $sep if $rundir =~ / /o;
+                } else {
+                    $sep = "'";
+                    $runfile = $sep . $runfile . $sep if $runfile =~ / /o;
+                    $rundir = $sep . $rundir . $sep if $rundir =~ / /o;
                 }
-            } elsif ($FileScanCMDbuild_API) {
-                mlog(0,"error: the variable FileScanCMDbuild_API is not a CODE reference!");
-            }
-            d("filescan: running - $cmd");
-            if ($cmd && defined($usedAPI)) {
-                mlog($fh,"diagnostic: FileScan will run command - $cmd") if $ScanLog == 3;
-                &sigoff(__LINE__);
-                $res = runCMD($cmd);
-                &sigon(__LINE__);
                 &ThreadYield();
-            } elsif ($cmd) {
-                mlog(0,"warning: FileScanCMDbuild_API - eval failed");
-            } else {
-                mlog(0,"warning: the command calculated for FileScanCMD was empty after processing all replacements") unless $usedAPI;
+                $cmd = "$FileScanCMD 2>&1";
+                $cmd =~ s/FILENAME/$runfile/go;
+                $cmd =~ s/NUMBER/$WorkerNumber/go;
+                $cmd =~ s/FILESCANDIR/$rundir/go;
+                $cmd =~ s/\*([a-zA-Z0-9\_\-]+)\*/$sep . $this->{$1} . $sep/oge;
+                my $usedAPI = 0;
+                if (ref($FileScanCMDbuild_API) eq 'CODE') {
+                    $usedAPI = 1;
+                    eval{$FileScanCMDbuild_API->(\$cmd,$this);};
+                    if ($@) {
+                        mlog(0,"error: FileScanCMDbuild_API - eval failed - $@");
+                        $usedAPI = undef;
+                    }
+                } elsif ($FileScanCMDbuild_API) {
+                    mlog(0,"error: the variable FileScanCMDbuild_API is not a CODE reference!");
+                }
+                d("filescan: running - $cmd");
+                if ($cmd && defined($usedAPI)) {
+                    mlog($fh,"diagnostic: FileScan will run command - $cmd") if $ScanLog == 3;
+                    &sigoff(__LINE__);
+                    $res = runCMD($cmd);
+                    &sigon(__LINE__);
+                    &ThreadYield();
+                } elsif ($cmd) {
+                    mlog(0,"warning: FileScanCMDbuild_API - eval failed");
+                } else {
+                    mlog(0,"warning: the command calculated for FileScanCMD was empty after processing all replacements") unless $usedAPI;
+                }
+
+                $res =~ s/\r//go;
+                $res =~ s/\n/ /go;
+                $res =~ s/\t/ /go;
+                mlog($fh,"diagnostic: FileScan returned $res") if $ScanLog == 3;
+
+                $failed = 1 if ($FileScanBad && $res =~ /$FileScanBadRE/);
+                $failed = 1 if ($FileScanGood && $res !~ /$FileScanGoodRE/);
             }
+            eval{unlink($file);};
 
-            $res =~ s/\r//go;
-            $res =~ s/\n/ /go;
-            $res =~ s/\t/ /go;
-            mlog($fh,"diagnostic: FileScan returned $res") if $ScanLog == 3;
-
-            $failed = 1 if ($FileScanBad && $res =~ /$FileScanBadRE/);
-            $failed = 1 if ($FileScanGood && $res !~ /$FileScanGoodRE/);
+            my $ok = $failed ? " - $res" : ' - OK';
+            mlog($fh,"FileScan: scanned $lb bytes in $mtype$ok",1)
+                if(($failed && $ScanLog ) || $ScanLog >= 2);
+            AVCacheResult($sha1,'filescan',"$failed $res") if $sha1;
+            return 1 unless $failed;
+        } else {
+            mlog($fh,"FileScan: is unable find temporary $file - possibly removed by the file system scanner") if $ScanLog >= 2;
+            $res = 'unable to find file to scan';
+            $failed = 1;
+            AVCacheResult($sha1,'filescan',"$failed $res") if $sha1;
         }
-        eval{unlink($file);};
-
-        my $ok = $failed ? " - $res" : ' - OK';
-        mlog($fh,"FileScan: scanned $lb bytes in $mtype$ok",1)
-            if(($failed && $ScanLog ) || $ScanLog >= 2);
-        return 1 unless $failed;
-    } else {
-        mlog($fh,"FileScan: is unable find temporary $file - possibly removed by the file system scanner") if $ScanLog >= 2;
-        $res = 'unable to find file to scan';
-        $failed = 1;
     }
 
     if($failed) {
@@ -50708,13 +50806,44 @@ sub ClamHostsGet {
     return @hosts;
 }
 
+# check for cached AV results
+sub AVCacheResult {
+    my ($key, $engine, $res) = @_;
+    return unless defined($key);
+    return unless defined($engine);
+    return unless $DoAVCache;
+    # if a reference is given, it contains the content to be hashed
+    if (ref $key) {
+        local $@;
+        $key = eval{sha1_hex($$key);};
+        return unless $key;
+    }
+    my $entry = $AVCache{$key};
+    threads->yield();
+    $entry = $entry ? Storable::thaw( $entry ) : {};
+    # return the cached results
+    if (! defined($res)) {
+        $res = $entry->{$engine};
+        return if ! defined($res);
+        mlog(0,"info: found cached virus-result for '$engine'") if $ScanLog > 1;
+        return wantarray ? split(/ /o, $res, 2) : $res;
+    # store results in cache
+    } else {
+        $entry->{'time'} = time;
+        $entry->{$engine} = $res;
+        $AVCache{$key} = Storable::nfreeze( $entry );
+        threads->yield();
+    }
+    return;
+}
+
 sub ClamScanOK {
-    my ($fh,$bd)=@_;
+    my ($fh,$bd,$noCache)=@_;
     return 1 if ($fh !~ /^\d+$/o && ! haveToScan($fh));
-    return ClamScanOK_Run($fh,$bd);
+    return ClamScanOK_Run($fh,$bd,$noCache);
 }
 sub ClamScanOK_Run {
-    my ($fh,$bd)=@_;
+    my ($fh,$bd,$noCache)=@_;
     d('ClamAV');
     my $av;
     my $errstr;
@@ -50736,59 +50865,65 @@ sub ClamScanOK_Run {
     $mtype = "local message"         if $this->{relayok};
     $mtype = "file $this->{scanfile}" if $this->{scanfile};
 
-    my ( $code, $virus, $host, $port );
+    my ( $code, $virus, $host, $port , $sha1);
 
-    &sigoffTry(__LINE__);
-    eval {
-        my @hosts = &ClamHostsGet();
-        my $pingOK;
-        my $av;
-        while (@hosts && $pingOK != 1) {
-            ($host,$port) = split(/\s*:\s*/o, shift(@hosts));
-            if (! defined $port) {
-                $port = $host;
-                $host = 'localhost';
-            }
-            $av = $pingOK = undef;
-            $pingOK = $av->ping() if ($av = eval{File::Scan::ClamAV->new( host => $host , port => $port )});
-            if ($pingOK == 1 && $ScanLog > 2) {
-                mlog(0,"info: connected to ClamAV daemon at $host:$port");
-            } elsif ($pingOK != 1 && $ScanLog > 1) {
-                my $error = ref($av) ? ' - '.$av->errstr() : '';
-                mlog(0,"warning: the ClamAV daemon at $host:$port seems to be down$error");
-            }
-        }
+    $sha1 = eval{sha1_hex($$bd) if $DoAVCache && ! $noCache;};
+    ($code,$virus) = AVCacheResult($sha1,'clamav') if $sha1;
 
-        if ( $pingOK == 1 ) {
-            mlog(0, 'ClamAV Up') if $ScanLog && $AvailAvClamd==0 ;
-            $VerFileScanClamAV = $File::Scan::ClamAV::VERSION;
-            $AvailAvClamd = 1;
-            ( $code, $virus ) = $av->streamscan($$bd);
-        } else {
-            mlog(0, 'ClamAV Down') if $ScanLog && $AvailAvClamd==1 ;
-            $errstr = ref($av) ? $av->errstr() : 'no configured ClamAV host available - ClamAV Down';
-            $AvailAvClamd = 0;
+    if (! defined $code) {
+        &sigoffTry(__LINE__);
+        eval {
+            my @hosts = &ClamHostsGet();
+            my $pingOK;
+            my $av;
+            while (@hosts && $pingOK != 1) {
+                ($host,$port) = split(/\s*:\s*/o, shift(@hosts));
+                if (! defined $port) {
+                    $port = $host;
+                    $host = 'localhost';
+                }
+                $av = $pingOK = undef;
+                $pingOK = $av->ping() if ($av = eval{File::Scan::ClamAV->new( host => $host , port => $port )});
+                if ($pingOK == 1 && $ScanLog > 2) {
+                    mlog(0,"info: connected to ClamAV daemon at $host:$port");
+                } elsif ($pingOK != 1 && $ScanLog > 1) {
+                    my $error = ref($av) ? ' - '.$av->errstr() : '';
+                    mlog(0,"warning: the ClamAV daemon at $host:$port seems to be down$error");
+                }
+            }
+
+            if ( $pingOK == 1 ) {
+                mlog(0, 'ClamAV Up') if $ScanLog && $AvailAvClamd==0 ;
+                $VerFileScanClamAV = $File::Scan::ClamAV::VERSION;
+                $AvailAvClamd = 1;
+                ( $code, $virus ) = $av->streamscan($$bd);
+            } else {
+                mlog(0, 'ClamAV Down') if $ScanLog && $AvailAvClamd==1 ;
+                $errstr = ref($av) ? $av->errstr() : 'no configured ClamAV host available - ClamAV Down';
+                $AvailAvClamd = 0;
+            }
+        };
+        if ($@) {
+            mlog( $fh, "ClamAV: streamscan failed at $host:$port : $@", 1 );
+            undef $av;
+            &sigonTry(__LINE__);
+            return 1;
         }
-    };
-    if ($@) {
-        mlog( $fh, "ClamAV: streamscan failed at $host:$port : $@", 1 );
-        undef $av;
+        unless ($AvailAvClamd) {
+            undef $av;
+            &sigonTry(__LINE__);
+            return 1;
+        }
+        if ($code eq 'TIMEOUT') {
+            mlog( $fh, "ClamAV: streamscan timed out after $virus seconds at $host:$port.", 1 );
+            undef $av;
+            &sigonTry(__LINE__);
+            return 1;
+        }
         &sigonTry(__LINE__);
-        return 1;
-    }
-    unless ($AvailAvClamd) {
         undef $av;
-        &sigonTry(__LINE__);
-        return 1;
+        AVCacheResult($sha1,'clamav',"$code $virus") if $code && $sha1;
     }
-    if ($code eq 'TIMEOUT') {
-        mlog( $fh, "ClamAV: streamscan timed out after $virus seconds at $host:$port.", 1 );
-        undef $av;
-        &sigonTry(__LINE__);
-        return 1;
-    }
-    &sigonTry(__LINE__);
-    undef $av;
     mlog($fh,"ClamAV: scanned $lb bytes in $mtype - $code $virus",1)
         if((!( $virus eq '') || !($code eq 'OK')) && $ScanLog ) || $ScanLog >= 2;
     if($code eq 'OK'){
@@ -50875,48 +51010,48 @@ sub ClamScanOK_Run {
 # add multiple tooltips span tags
 
 sub statRequest {
- my ($tempfh,$fh,$h,$d)=@_;
- my $head; $head = $$h if $h;
- my $data; $data = $$d if $d;
- my $k;
- my $v;
- %statRequests=(
-  '' => \&ConfigStatsRaw,
-  '/' => \&ConfigStatsRaw,
-  '/raw' => \&ConfigStatsRaw,
-  '/xml' => \&ConfigStatsXml,    # Can be expanded to display in different formats like this
-  '/extremeblack' => \&GetFile,
- );
- my $i=0;
- # %head -- public hash
- (%head)=map{++$i % 2 ? lc $_ : $_} map{/^([^ :]*)[: ]{0,2}(.*)/o} split(/\r\n/o,$head);
- my ($page,$qs)=($head{get} || $head{head} || $head{post})=~/^([^\? ]+)(?:\?(\S*))?/o;
- if(defined $data) { # GET, POST order
-  $qs.='&' if ($qs ne '');
-  $qs.=$data;
- }
- $i=0;
- $qs =~ tr/+/ / if $head{'content-type'} !~ m'multipart/form-data'io;
- # parse query string, get rid of google autofill
- # %qs -- public hash
- (%qs)=map{my $t = $_; $t =~ s/(e)_(mail)/$1$2/gio if ++$i % 2; $t} split(/[=&]/o,$qs);
- while (($k,$v) = each %qs) {$qs{$k}=~s/\%([0-9a-fA-F]{2})/pack('C',hex($1))/geo if $v;}
- my $ip=ITR($fh->peerhost());
- my $port=$fh->peerport();
- mlog(0,"stat connection from $ip:$port" . ($page ? " - page: $page" : '') );
+    my ($tempfh,$fh,$h,$d)=@_;
+    my $head; $head = $$h if $h;
+    my $data; $data = $$d if $d;
+    my $k;
+    my $v;
+    %statRequests=(
+     '' => \&ConfigStatsRaw,
+     '/' => \&ConfigStatsRaw,
+     '/raw' => \&ConfigStatsRaw,
+     '/xml' => \&ConfigStatsXml,    # Can be expanded to display in different formats like this
+     '/extremeblack' => \&GetFile,
+    );
+    my $i=0;
+    # %head -- public hash
+    (%head)=map{++$i % 2 ? lc $_ : $_} map{/^([^ :]*)[: ]{0,2}(.*)/o} split(/\r\n/o,$head);
+    my ($page,$qs)=($head{get} || $head{head} || $head{post})=~/^([^\? ]+)(?:\?(\S*))?/o;
+    if(defined $data) { # GET, POST order
+        $qs.='&' if ($qs ne '');
+        $qs.=$data;
+    }
+    $i=0;
+    $qs =~ tr/+/ / if $head{'content-type'} !~ m'multipart/form-data'io;
+    # parse query string, get rid of google autofill
+    # %qs -- public hash
+    (%qs)=map{my $t = $_; $t =~ s/(e)_(mail)/$1$2/gio if ++$i % 2; $t} split(/[=&]/o,$qs);
+    while (($k,$v) = each %qs) {$qs{$k}=~s/\%([0-9a-fA-F]{2})/pack('C',hex($1))/geo if $v;}
+    my $ip=ITR($fh->peerhost());
+    my $port=$fh->peerport();
+    mlog(0,"stat connection from $ip:$port" . ($page ? " - page: $page" : '') );
 
- $Stats{statConn}++;
+    $Stats{statConn}++;
 
- if (lc($page) eq '/extremeblack') {
-     return unless (my $file = $exportExtremeBlack);
-     $file =~ s/^\s*file:\s*//o;
-     return unless $file;
-     $file = "$base/$file";
-     return unless $eF->($file);
-     $qs{file} = $file;
- }
+    if (lc($page) eq '/extremeblack') {
+        return unless (my $file = $exportExtremeBlack);
+        $file =~ s/^\s*file:\s*//o;
+        return unless $file;
+        $file = "$base/$file";
+        return unless $eF->($file);
+        $qs{file} = $file;
+    }
 
- if (defined ($v=$statRequests{lc $page})) { print $tempfh $v->(\$head,\$qs); }
+    if (defined ($v=$statRequests{lc $page})) { print $tempfh $v->(\$head,\$qs); }
 }
 
 sub WebAuth {
@@ -55352,13 +55487,13 @@ sub ConfigAnalyze {
             mlog(0,"info: analyzing MIME header in $direction email for virus");
             $Con{$tmpfh} = {};
             if ($UseAvClamd && $CanUseAvClamd) {
-                ClamScanOK($tmpfh,\$textheader);
+                ClamScanOK($tmpfh,\$textheader,1); # no cache
                 $fm .= "<b><font color='red'>&bull;&nbsp;&dagger;&nbsp;&bull; (MIME header) $Con{$tmpfh}->{messagereason}</font></b><br />" if $Con{$tmpfh}->{messagereason};
                 &MainLoop1(0);
             }
             $Con{$tmpfh} = {};
             if ($DoFileScan && $FileScanCMD) {
-                FileScanOK($tmpfh,\$textheader);
+                FileScanOK($tmpfh,\$textheader,1); # no cache
                 $fm .= "<b><font color='red'>&bull;&nbsp;&dagger;&nbsp;&bull; (MIME header) $Con{$tmpfh}->{messagereason}</font></b><br />" if $Con{$tmpfh}->{messagereason};
                 &MainLoop1(0);
             }
@@ -55368,13 +55503,13 @@ sub ConfigAnalyze {
                 @ASSP_AFC::PDFsum = ();
                 $Con{$tmpfh} = {};
                 if ($UseAvClamd && $CanUseAvClamd) {
-                    ClamScanOK($tmpfh,\$part->body);
+                    ClamScanOK($tmpfh,\$part->body,1); # no cache
                     $fm .= "<b><font color='red'>&bull;&nbsp;&dagger;&nbsp;&bull; $Con{$tmpfh}->{messagereason}</font></b><br />" if $Con{$tmpfh}->{messagereason};
                     &MainLoop1(0);
                 }
                 $Con{$tmpfh} = {};
                 if ($DoFileScan && $FileScanCMD) {
-                    FileScanOK($tmpfh,\$part->body);
+                    FileScanOK($tmpfh,\$part->body,1); # no cache
                     $fm .= "<b><font color='red'>&bull;&nbsp;&dagger;&nbsp;&bull; $Con{$tmpfh}->{messagereason}</font></b><br />" if $Con{$tmpfh}->{messagereason};
                     &MainLoop1(0);
                 }
@@ -61088,9 +61223,9 @@ sub checkbox {my ($name,$nicename,$size,$func,$default,$valid,$onchange,$descrip
     }
     my $hdefault = $default ? 'on' : 'off' ;
     my $cdefault = $default ? 'true' : 'false' ;
-    my $color = ($Config{$name} eq $default) ? '' : 'style="color:#8181F7;"';
+    my $color = (($Config{$name} + 0) == ($default + 0)) ? '' : 'style="color:#8181F7;"';
     if (exists $ConfigAdd{$name}) {
-        $color = ($ConfigAdd{$name} eq $default) ? '' : 'style="color:#8181F7;"';
+        $color = (($ConfigAdd{$name} + 0) == ($default + 0)) ? '' : 'style="color:#8181F7;"';
     }
     my $cfgname = $EnableInternalNamesInDesc?"<a href=\"javascript:void(0);\"$color onmousedown=\"document.forms['ASSPconfig'].$name.checked=$cdefault;setAnchor('$name');return false;\" onmouseover=\"showhint('<table BORDER CELLSPACING=0 CELLPADDING=4 WIDTH=\\'100%\\'><tr><td>click to reset<br />to default value</td><td>$hdefault</td></tr></table>', this, event, '450px', '1'); return true;\" onmouseout=\"window.status='';return true;\"><i>($name)</i></a>":'';
     $cfgname = "($name)" if $EnableInternalNamesInDesc && $mobile;
@@ -62730,7 +62865,7 @@ sub ConfigMakeGroupRe {
         &ConfigCheckGroupWatch($group) if $GroupREchanged{$group};
     }
     $GroupsDynamic = $isdynamic;
-    threads->yield;
+    threads->yield();
     return '';
 }
 
@@ -68103,6 +68238,63 @@ sub cleanWhitePB {
         }
     }
     $noDBCache = $savenoDBCache;
+}
+
+sub cleanCacheAV {
+    d('cleanCacheAV');
+    return if $doShutdown > 0 || $doShutdownForce;
+    if (! $DoAVCache) {
+        %AVCache = ();
+        threads->yield();
+        return;
+    }
+    my $t = time - $DoAVCache;
+    my $deleted = 0;
+    my $count = 0;
+    threads->yield();
+    for my $k (keys(%AVCache)) {
+        &ThreadMaintMain2() if $WorkerNumber == 10000 && ! $deleted % 100;
+        last if $doShutdown > 0 || $doShutdownForce;
+        $count++;
+        my $entry = Storable::thaw( $AVCache{$k} );
+        threads->yield();
+        if ($entry->{'time'} < $t) {
+            delete $AVCache{$k};
+            threads->yield();
+            $deleted++;
+        }
+    }
+    mlog( 0, "AVCache: cleaning cache finished: records before=$count, deleted=$deleted" ) if $MaintenanceLog && $count != 0;
+}
+
+sub cleanCacheOCR {
+    return unless defined $ASSP_OCR::ResultCacheTime;
+    return unless $ASSP_OCR::canSHA;
+    d('cleanCacheOCR');
+    return if $doShutdown > 0 || $doShutdownForce;
+
+    if (! $ASSP_OCR::ResultCacheTime) {
+        %ASSP_OCR::ResultCache = ();
+        threads->yield();
+        return;
+    }
+    my $t = time - $ASSP_OCR::ResultCacheTime;
+    my $deleted = 0;
+    my $count = 0;
+    threads->yield();
+    for my $k (keys(%ASSP_OCR::ResultCache)) {
+        &ThreadMaintMain2() if $WorkerNumber == 10000 && ! $deleted % 100;
+        last if $doShutdown > 0 || $doShutdownForce;
+        $count++;
+        my $entry = Storable::thaw( $ASSP_OCR::ResultCache{$k} );
+        threads->yield();
+        if ($entry->{'time'} < $t) {
+            delete $ASSP_OCR::ResultCache{$k};
+            threads->yield();
+            $deleted++;
+        }
+    }
+    mlog( 0, "ASSP_OCR::ResultCache: cleaning cache finished: records before=$count, deleted=$deleted" ) if $MaintenanceLog && $count != 0;
 }
 
 sub cleanCacheRBL {
