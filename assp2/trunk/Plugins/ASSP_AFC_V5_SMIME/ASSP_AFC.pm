@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.36 2021/06/21 10:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.37 2021/12/09 11:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -341,7 +341,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.36 2021/06/21 10:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.37 2021/12/09 11:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -2565,8 +2565,14 @@ sub isAnEXE {
         $type = 'Windows MMC Console File';
 #
 # RTF faked or RTF CVE's - normaly these should be detected as virus, but who knows
-#
-    } elsif ($$raf =~ /^\{\\rt(?:(?!f)|f(?!(?:1|\\))|.*?0903000000000000C000000000000046.*?C6AFABEC197FD211978E0000F8757E2A|.*?\\objdata 0105000002000000080000005061636b616765000000000000000000)/oi) {
+# {\*\template http
+    } elsif ($$raf =~ /^\{\\rt(?:(?!f)
+                                 |f(?!(?:1|\\))
+                                 |.*?0903000000000000C000000000000046.*?C6AFABEC197FD211978E0000F8757E2A
+                                 |.*?\\objdata 0105000002000000080000005061636b616765000000000000000000
+                                 |.*?\{\s*\*\template(?:\s+(?:https?:|ftps?:|file:)|\s*\\u-6543[24]\?)
+                              )
+                      /oisx) {
         $type = 'Faked RTF document with possible executable content';
     }
     if ($type) {
