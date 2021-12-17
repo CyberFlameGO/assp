@@ -1,17 +1,17 @@
-# $Id: ASSP_DCC.pm,v 2.01 2012/01/30 13:00:00 TE Exp $
+# $Id: ASSP_DCC.pm,v 2.02 2021/12/10 11:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for DCC detection.
-# Designed for ASSP v 2.1.1 build 12030 and above
+# Designed for ASSP v 2.6.5 build 21344 and above
 
 package ASSP_DCC;
 use strict qw(vars subs);
 use vars qw($VERSION);
 no warnings qw(uninitialized);
 
-$VERSION = $1 if('$Id: ASSP_DCC.pm,v 2.01 2012/01/30 13:00:00 TE Exp $' =~ /,v ([\d.]+) /);
-our $MINBUILD = '(12030)';
-our $MINASSPVER = '2.1.1'.$MINBUILD;
+$VERSION = $1 if('$Id: ASSP_DCC.pm,v 2.02 2021/12/10 11:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+our $MINBUILD = '(21344)';
+our $MINASSPVER = '2.6.5'.$MINBUILD;
 our $plScan = 0;
 
 $main::ModuleList{'Plugins::ASSP_DCC'} = $VERSION.'/'.$VERSION;
@@ -314,7 +314,7 @@ sub connect {
     my $HostPortRe = $main::HostPortRe;
     if ($opts{dccifd} =~ /$HostPortRe/) {    # ip socket
         if ($main::CanUseIOSocketINET6) {
-            $server = new IO::Socket::INET6(Proto=>'tcp',PeerAddr=>$opts{dccifd},Timeout=>2,&main::getDestSockDom($opts{dccifd}));
+            $server = new IO::Socket::IP(Proto=>'tcp',PeerAddr=>$opts{dccifd},Timeout=>2,&main::getDestSockDom($opts{dccifd}));
             mlog(0,"info: created DCC IPv6 socket to $opts{dccifd}") if $self->{Log} > 3;
         } else {
             $server = new IO::Socket::INET(Proto=>'tcp',PeerAddr=>$opts{dccifd},Timeout=>2);
