@@ -204,7 +204,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.6';
-$build   = '21328';        # 24.11.2021 TE
+$build   = '21351';        # 17.12.2021 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.034999';
 $MAINVERSION = $version . $modversion;
@@ -677,7 +677,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '676220A26A02DDF1F05FE43E90CCD74B79A32014'; }
+sub __cs { $codeSignature = 'DCD4B3E4E3F7E92FFDDFD66C861BB6351E505382'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1709,12 +1709,11 @@ sub setLocalCharsets {
 
 sub loadModuleVars {
     %Modules = (
-      'IO::Socket::INET6' => 1,
+      'IO::Socket::IP' => 1,
       'Thread::State' => 1,
       'File::Scan::ClamAV' => 1,
       'Net::LDAP' => 1,
       'Net::DNS' => 1,
-      'Mail::SPF::Query' => 0,
       'Mail::SPF' => 1,
       'Mail::SRS' => 0,
       'Compress::Zlib' => 1,
@@ -1831,7 +1830,8 @@ sub defConfigArray {
  # last used msg number 010791
 
  # still unused msg numbers
- #
+ # 'msg003560','msg003561'
+ # 'msg003470','msg003471'
  #
 
     @ConfigArray = (
@@ -1904,7 +1904,7 @@ sub defConfigArray {
 ['DisableSMTPNetworking',"Disable all new SMTP and Proxy Network Connections",0,\&checkbox,0,'(.*)','configUpdateSMTPNet',
   'If selected, ASSP will not answer to new SMTP and Proxy connections on \'listenPort , listenPort2 , listenPortSSL , relayPort and ProxyConf\'. Currently existing SMTP and Proxy connections are not affected! Web and Stat connection are also not affected.',undef,undef,'msg000010','msg000011'],
 
-['enableINET6','Enable IPv6 support',0,\&checkbox,'','(.*)','ConfigChangeIPv6','For IPv6 network support to be enabled, check this box. Default is disabled. IO::Socket::INET6 is able to handle both IPv4 and IPv6. NOTE: This option requires an installed <a href="http://metacpan.org/search?q=IO::Socket::INET6" rel="external">IO::Socket::INET6</a> module in PERL and your system should support IPv6 sockets to give enabling this option a sense!<br />
+['enableINET6','Enable IPv6 support',0,\&checkbox,'','(.*)','ConfigChangeIPv6','For IPv6 network support to be enabled, check this box. Default is disabled. IO::Socket::IP is able to handle both IPv4 and IPv6. NOTE: This option requires an installed <a href="http://metacpan.org/search?q=IO::Socket::IP" rel="external">IO::Socket::IP</a> module in PERL and your system should support IPv6 sockets to give enabling this option a sense!<br />
   It is recommended to leave this option OFF as long as you don\'t want to use IPv6 addresses for a listener or a destination (SMTP,DNS-server,LDAP-server etc.).<br />
   Before you enable or disable IPv6, please check every IP listener and destination definition in assp and correct the settings. <b>After changing this option a restart of assp is recommended.</b> IPv4 addresses are defined for example 192.168.0.1 or 192.168.0.1:25 - IPv6 addresses are defined like [FE80:1:0:0:0:0:0:1]:25 or [FE80:1::1]:25 ! If an IPv4 address is defined for a listener, assp will listen only on the IPv4 socket. If an IPv6 address is defined for a listener, assp will listen only on the IPv6 socket. If only a port is defined for a listener, assp will listen on both IPv4 and IPv6 sockets.<br />
   For the definition of destination IP\'s applies the same. You are free to define hostnames instead of IP addresses like myhost.mydomain.com:25 - how ever, because of the needed IP address resolving, this will possibly slow down assp.',undef,undef,'msg009480','msg009481'],
@@ -2152,7 +2152,7 @@ If multiple matches (values) are found in a mail for any IP address in the trans
  For example "2 600" - notice these are the minimum values for IP-number and seconds.<br />
  The example disallows a user to authenticate (using PLAIN or LOGIN) from two or more different IP-addresses within 600 seconds. In other words - an user is allowed to authenticate from another IP-address, 601 seconds after the last authentication.<br />
  Each attempt to authenticate is counted by this feature.<br />
- MaxAUTHErrors is counted, if a user breakes this rule.<br />
+ MaxAUTHErrors is counted, if a user breaks this rule.<br />
  Leave this blank to disable this feature.<br />
  <input type="button" value="AUTHIP Cache" onclick="javascript:popFileEditor(\'DB-AUTHIP\',\'1h\');" /><br />',undef,undef,'msg010570','msg010571'],
 
@@ -3263,10 +3263,6 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['ValidateSPF','Enable SPF Validation','0:disabled|1:block|2:monitor|3:score',\&listbox,3,'(.*)',undef,
   'Enable Sender Policy Framework Validation as described at <a href="http://www.openspf.org/" rel="external">openspf</a> and Domain-based Message Authentication, Reporting &amp; Conformance - described in <a href="http://www.dmarc.org/" rel="external">DMARC</a> (DMARC requires also DoDKIM to be enabled).<br />
   This requires an installed <a href="http://www.openspf.org/Implementations" rel="external">Mail::SPF</a> module in PERL. Testmode is set with spfTestMode, scoring is set with spfValencePB. If you need more information about the syntax of SPF records, visit <a href="http://www.openspf.org/SPF_Record_Syntax" rel="external">SPF_Record_Syntax</a>.',undef,undef,'msg003460','msg003461'],
-['SPF2','Do SPF Version 2 Validation',0,\&checkbox,'1','(.*)',undef,
-  'Enable Sender Policy Framework Validation Version 2. Default is ON.<br />
-  This requires an installed <a href="http://metacpan.org/search?q=Mail::SPF" rel="external">Mail::SPF</a> object-oriented Perl module that supersedes the old Mail::SPF::Query module.<br />
-  It is highly recommended to disable the load of Mail::SPF::Query by turning OFF useMailSPFQuery , if this option is set to ON.',undef,undef,'msg003470','msg003471'],
 ['SPFWL','Whitelisted SPF Validation',0,\&checkbox,'','(.*)',undef,
   'Enable Sender Policy Framework Validation for whitelisted users also.',undef,undef,'msg003480','msg003481'],
 ['SPFNP','noProcessing SPF Validation',0,\&checkbox,'','(.*)',undef,
@@ -3294,9 +3290,6 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  - define the policy as strict as possible',undef,undef,'msg003540','msg003541'],
 ['SPFfallback','Fallback Domains*',80,\&textinput,'','(.*)','configUpdateSPFOF',
  'Set fallback to define "pretend" SPF records for domains that don\'t publish them yet. If you specify only domains the Local SPF Record ( SPFlocalRecord ) below will be used as default. Wildcards are supported. For example: abc.com=>v=spf1 a/24 mx/24 ptr -all|cello.ch=>v=spf1 ip4:213.46.243.0/26  ~all|abc.com|*.def.com',undef,undef,'msg003550','msg003551'],
-['LocalPolicySPF','Local SPF Policy',80,\&textinput,'v=spf1 a/24 mx/24 ptr ~all','(.*)','configUpdateSPFLR','If the sending domain does not publish its own SPF Records this will be used.<br />
- The default is v=spf1 a/24 mx/24 ptr ~all<br />
- <span class="negative">This option applies to Mail::SPF::Query module only.</span>',undef,undef,'msg003560','msg003561'],
 ['SPFlocalRecord','Fallback/Override SPF Record',80,\&textinput,'v=spf1 a/24 mx/24 ptr -all','(.*)','configUpdateSPFLR','Used in Fallback/Override Domains<br />
  The default is v=spf1 a/24 mx/24 ptr -all',undef,undef,'msg003570','msg003571'],
 ['strictSPFRe','Strict SPF Processing Regex*',80,\&textinput,'file:files/strictspf.txt','(.*)','ConfigCompileRe',
@@ -3304,7 +3297,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['blockstrictSPFRe','Block SPF Processing Regex*',80,\&textinput,'@ebay.com|@paypal.com','(.*)','ConfigCompileRe',
  'All failed messages will be blocked for these sending addresses. Put anything here to identify the addresses.',undef,undef,'msg003590','msg003591'],
 ['DoSPFinHeader','Additional SPF Check on the Header from',0,\&checkbox,'','(.*)',undef,
-  'Do an additional SPF check on the header from: address if it is in blockstrictSPFRe *** this check breakes RFC rules ***.',undef,undef,'msg009820','msg009821'],
+  'Do an additional SPF check on the header from: address if it is in blockstrictSPFRe *** this check breaks RFC rules ***.',undef,undef,'msg009820','msg009821'],
 ['SPFsoftfail','Fail SPF Softfail Validations',0,\&checkbox,'','(.*)',undef,
   'Intentionally fail SPF softfail status responses. The possible results of a query are:
 <br />pass:The client IP address is an authorized mailer for the sender. The mail should be accepted subject to local policy regarding the sender.
@@ -4664,7 +4657,7 @@ For example: mysql/dbimport<br />
 ['DNSReuseSocket','Reuse DNS UDP Sockets',0,\&checkbox,1,'(.*)',undef,'If selected, assp will try to reuse DNS-UDP sockets as long as this is possible. Otherwise each DNS-query will create a new UDP socket for each DNS-Server. It is recommended to set this to on, because assp could use DNS-queries very extensive, which possibly forces the assp system and/or your DNS-servers to run out of available UDP sockets.',undef,undef,'msg004770','msg004771'],
 ['DNSResponseLog','Show DNS Name Servers Response Time in Log',0,\&checkbox,0,'(.*)',undef,'You can use this to arrange DNSServers for better performance.',undef,undef,'msg007360','msg007361'],
 ['DNSServers','DNS Name Servers*',80,\&textinput,'208.67.222.222|208.67.220.220','^((?:(?:'.$HostRe.'|'.$HostPortRe.')(?:\|(?:'.$HostRe.'|'.$HostPortRe.'))*)(?:\s*=>\s*'.$HostRe.'\.?)?|(?:\s*=>\s*'.$HostRe.'\.?)|)$','updateDNS',
- 'DNS Name Servers IP\'s to use for DNSBL(RBL), RWL, URIBL, PTR, SPF2, SenderBase, NS, and DMARC lookups. Separate multiple entries by "|" or leave blank to use system defaults. At least TWO DNS-servers should be defined or used by the system! Every DNS-query is sent to ALL enabled DNS-Servers at a time (parallel) and the fastest valid answer is used.<br />
+ 'DNS Name Servers IP\'s to use for DNSBL(RBL), RWL, URIBL, PTR, SPF, SenderBase, NS, and DMARC lookups. Separate multiple entries by "|" or leave blank to use system defaults. At least TWO DNS-servers should be defined or used by the system! Every DNS-query is sent to ALL enabled DNS-Servers at a time (parallel) and the fastest valid answer is used.<br />
   For example: 208.67.222.222|208.67.220.220 (<a href="http://www.opendns.com/" rel="external">OpenDNS</a>).<br />
   An DNS-query for the domain \'sourceforge.net\' is used per default to measure the speed of the used DNS-servers. If you want assp to use another domain or hostname for this, append \'=>domain.tld\' at the end of the line - like: 208.67.222.222|208.67.220.220=>myhost.com<br />
   To define the domain if you use the local DNS-servers \'UseLocalDNS\' without defining any DNS-servers here, simply write \'=>myhost.com\'.<br />
@@ -7696,8 +7689,6 @@ our $CanUseLDAP         :shared;
 our $CanUseDNS          :shared;
 our $AvailSPF2          :shared;
 our $CanUseSPF2         :shared;
-our $AvailSPF           :shared;
-our $CanUseSPF          :shared;
 our $CanUseURIBL        :shared;
 our $CanUseRWL          :shared;
 our $CanUseRBL          :shared;
@@ -11475,7 +11466,7 @@ EOF
     }
 
     my $socket = $main::CanUseIOSocketINET6
-                ? IO::Socket::INET6->new(Proto=>'tcp',PeerAddr=>$peeraddress,Timeout=>2,&main::getDestSockDom($hostaddress),&main::getLocalAddress('HTTP',$peeraddress))
+                ? IO::Socket::IP->new(Proto=>'tcp',PeerAddr=>$peeraddress,Timeout=>2,&main::getDestSockDom($hostaddress),&main::getLocalAddress('HTTP',$peeraddress))
                 : IO::Socket::INET->new(Proto=>'tcp',PeerAddr=>$peeraddress,Timeout=>2,&main::getLocalAddress('HTTP',$peeraddress));
 
     if ( defined $socket ) {
@@ -11608,15 +11599,15 @@ sub defineCanUseModules {
     print '.';
 
     %ModuleError = ();
-    $AvailIOSocketINET6  = ($enableINET6 && $useIOSocketINET6) ? validateModule('IO::Socket::INET6+') : 0; # socket 6 IO module
+    $AvailIOSocketINET6  = ($enableINET6 && $useIOSocketIP) ? validateModule('IO::Socket::IP+') : 0; # socket 6 IO module
     $CanUseIOSocketINET6 = $AvailIOSocketINET6 &&
       eval {
           my $old_wflag = $^W;
           $^W = 0;
           no strict 'subs';   ## no critic
           # first try an unspecified socket port, if failed a specified (success may differ by OS)
-          my $sock = eval{IO::Socket::INET6->new(Domain => AF_INET6, Listen => 1, LocalAddr => '[::]');} ||
-                     eval{IO::Socket::INET6->new(Domain => AF_INET6, Listen => 1, LocalAddr => '[::]', LocalPort => $IPv6TestPort);};
+          my $sock = eval{IO::Socket::IP->new(Domain => AF_INET6, Listen => 1, LocalAddr => '[::]');} ||
+                     eval{IO::Socket::IP->new(Domain => AF_INET6, Listen => 1, LocalAddr => '[::]', LocalPort => $IPv6TestPort);};
           my $canV6sock = eval('$IPPROTO_IPV6 = Socket::IPPROTO_IPV6; $IPV6_V6ONLY = Socket::IPV6_V6ONLY;1;'); # they may not be available on diff platforms
           if ($sock) {
               eval {
@@ -11640,7 +11631,7 @@ sub defineCanUseModules {
       };
     unless ($maxTCPRCVbuf) {
         eval <<'EOT';
-        my $mod = $CanUseIOSocketINET6 ? 'IO::Socket::INET6' : 'IO::Socket::INET';
+        my $mod = $CanUseIOSocketINET6 ? 'IO::Socket::IP' : 'IO::Socket::INET';
         my $addr = $CanUseIOSocketINET6 ? '[::1]' : '127.0.0.1';
         my $sock = $mod->new(Listen => 1, LocalAddr => $addr);
         $maxTCPRCVbuf = unpack("i", getsockopt($sock, SOL_SOCKET, SO_RCVBUF));
@@ -11657,7 +11648,7 @@ EOT
     }
     unless ($maxTCPSNDbuf) {
         eval <<'EOT';
-        my $mod = $CanUseIOSocketINET6 ? 'IO::Socket::INET6' : 'IO::Socket::INET';
+        my $mod = $CanUseIOSocketINET6 ? 'IO::Socket::IP' : 'IO::Socket::INET';
         my $addr = $CanUseIOSocketINET6 ? '[::1]' : '127.0.0.1';
         my $sock = $mod->new(Listen => 1, LocalAddr => $addr);
         $maxTCPSNDbuf = unpack("i", getsockopt($sock, SOL_SOCKET, SO_SNDBUF));
@@ -11683,9 +11674,8 @@ EOT
     $AvailSPF2           = $useMailSPF ? validateModule('Mail::SPF') : 0;  # Mail SPF module installed
     $CanUseSPF2          = $AvailSPF2 && $CanUseDNS;  # SPF and dependancies installed
     # internals in Net::DNS changed for version 1.02_02 and higher
-    # IO-Socket-IP is forced to be used
-    # IO-Socket-IP is not what Net::DNS should use - what a HACK ???
-    if (defined &Net::DNS::Resolver::Base::USE_SOCKET_IP) {
+    # IO-Socket-IP is forced to be used for IPv6
+    if (! $CanUseIOSocketINET6 && defined &Net::DNS::Resolver::Base::USE_SOCKET_IP) {
         undef &Net::DNS::Resolver::Base::USE_SOCKET_IP;
         *Net::DNS::Resolver::Base::USE_SOCKET_IP = sub {'';};
     }
@@ -11703,8 +11693,6 @@ EOT
     $RSL_make_query_packet = '_make_query_packet' if defined &Net::DNS::Resolver::Base::_make_query_packet;
 
     print '.';
-    $AvailSPF            = $useMailSPFQuery ? validateModule('Mail::SPF::Query') : 0;    # Mail SPF Query module installed
-    $CanUseSPF           = $AvailSPF && $CanUseDNS; # SPF Query and dependancies installed
     $CanUseURIBL         = $CanUseDNS;                # URIBL and dependancies installed
     $CanUseRWL           = $CanUseDNS;                # RWL and dependancies installed
     print '.';
@@ -11802,7 +11790,7 @@ EOT
     if ($CanUseIOSocketINET6) {
         $AvailIOSocketSSL    = $useIOSocketSSL ? validateModule('IO::Socket::SSL+') : 0;  # IO::Socket::SSL module installed
         $CanUseIOSocketSSL   = $AvailIOSocketSSL;
-        validateModule('IO::Socket::INET6') if $CanUseIOSocketSSL;   # reimport the symbols in to namespace
+        validateModule('IO::Socket::IP') if $CanUseIOSocketSSL;   # reimport the symbols in to namespace
     } else {
         $AvailIOSocketSSL    = $useIOSocketSSL ? validateModule('IO::Socket::SSL \'inet4\'') : 0;  # IO::Socket::SSL module installed
         $CanUseIOSocketSSL   = $AvailIOSocketSSL;
@@ -14520,7 +14508,10 @@ sub init {
         my $s;
         for (@nameservers) {
             my ($address,$port) = /^($IPRe)(\:$PortRe)?$/o;
-            eval {$s = IO::Socket::INET->new(Proto=>'udp',PeerAddr=>$address,PeerPort=>($port || 53));};
+            eval {$s = ($CanUseIOSocketINET6 && $address =~ /:/o)
+                       ? IO::Socket::IP->new(Proto=>'udp',PeerAddr=>$address,PeerPort=>($port || 53),&getDestSockDom($address),&getLocalAddress('DNS',$address))
+                       : IO::Socket::INET->new(Proto=>'udp',PeerAddr=>$address,PeerPort=>($port || 53),&getDestSockDom($address),&getLocalAddress('DNS',$address))
+                 };
             mlog(0,"error: can't contact DNS-server ($address:".($port || 53).") - $@") unless $s;
             last if $s;
         }
@@ -14818,22 +14809,22 @@ sub init {
     print '.';
 
     if ($CanUseIOSocketINET6 || $SysIOSocketINET6 == 0) {
-        $ver=eval('IO::Socket::INET6->VERSION'); $VerIOSocketINET6=$ver; $ver=" version $ver" if $ver;
+        $ver=eval('IO::Socket::IP->VERSION'); $VerIOSocketIP=$ver; $ver=" version $ver" if $ver;
         my $sys = ($SysIOSocketINET6 == 1) ? '' : ' - but IPv6 is not supported by your system';
-        mlog(0,"IO::Socket::INET6 module$ver installed and available$sys");
-        mlog(0,'please upgrade the module IO::Socket::INET6 to version 2.67 or higher') if ($VerIOSocketINET6 lt '2.67');
+        mlog(0,"IO::Socket::IP module$ver installed and available$sys");
+        mlog(0,'please upgrade the module IO::Socket::IP to version 0.41 or higher') if ($VerIOSocketIP lt '0.41');
         unless ($Sysv6only) {
             my $text = $can_enable_v6only ? " per default - but assp will change this behavior - you have to define both universals [::] and 0.0.0.0 if needed" : '';
             mlog(0,"this system binds universal IPv6 [::] to IPv6 and IPv4 (IPV6_V6ONLY is zero)$text");
         }
         $installed = ($SysIOSocketINET6 == 1) ? 'enabled' : 'not supported';
     } else {
-        $installed = $useIOSocketINET6 ? 'is not installed' : 'is disabled in config';
+        $installed = $useIOSocketIP ? 'is not installed' : 'is disabled in config';
         $installed = 'is not detected ( enableINET6 is not set )' unless $enableINET6;
-        mlog(0,"IO::Socket::INET6 module $installed.");
+        mlog(0,"IO::Socket::IP module $installed.");
     }
-    $ModuleList{'IO::Socket::INET6'} = $VerIOSocketINET6.'/2.67';
-    $ModuleStat{'IO::Socket::INET6'} = $installed;
+    $ModuleList{'IO::Socket::IP'} = $VerIOSocketIP.'/0.39';
+    $ModuleStat{'IO::Socket::IP'} = $installed;
 
     if ($CanUseAvClamd) {
         *{'File::Scan::ClamAV::ping'} = *{'main::ClamScanPing'};
@@ -14915,11 +14906,6 @@ sub init {
         &Net::SMTP::assp_starttls();
         *{'Net::SMTP::DESTROY'} = \&Net::SMTP::DESTROY_SSLNS;
         *{'Net::SMTP::starttls'} = \&Net::SMTP::assp_starttls;
-        if ($VerNetSMTP >= '3.00') {
-            @Net::SMTP::ISA = map {$_ eq 'IO::Socket::INET6' ? 'IO::Socket::INET' : $_;} @Net::SMTP::ISA;
-            mlog(0,"warning: the module Net::SMTP version $VerNetSMTP wants to load the perl module IO::Socket::IP - please install this module or run the latest $base/assp.mod/install/mod_inst.pl")
-               unless (grep {/IO\:\:Socket\:\:IP/o} @Net::SMTP::ISA);
-        }
         $installed = 'enabled';
     } else {
         $installed = $useNetSMTP ? 'is not installed' : 'is disabled in config';
@@ -14967,21 +14953,6 @@ sub init {
     $ModuleList{'NetSNMP::agent'} = $VerNetSNMPagent.'/5.05';
     $ModuleStat{'NetSNMP::agent'} = $installed;
 
-    if ($CanUseSPF) {
-        $ver=eval('Mail::SPF::Query->VERSION'); $VerMailSPF=$ver; $ver=" version $ver" if $ver;
-        mlog(0,"Mail::SPF::Query module$ver installed and available");
-        $installed = 'enabled';
-    } elsif ($AvailSPF) {
-        $ver=eval('Mail::SPF::Query->VERSION'); $ver=" version $ver" if $ver;
-        mlog(0,"Mail::SPF::Query module$ver installed but Net::DNS required");
-        $installed = 'Net::DNS required';
-    } else {
-        $installed = $useMailSPFQuery ? 'is not installed' : 'is disabled in config';
-        mlog(0,"Mail::SPF::Query module $installed.") if $ValidateSPF;
-    }
-    $ModuleList{'Mail::SPF::Query'} = $VerMailSPF.'/1.999001';
-    $ModuleStat{'Mail::SPF::Query'} = $installed;
-
     if ($CanUseSPF2) {
         $ver        = eval('Mail::SPF->VERSION');
         $ver        =~ s/^v//gio; # strip leading 'v'
@@ -14990,7 +14961,6 @@ sub init {
         if ( $VerMailSPF >= 2.007 ) {
             mlog(0, "Mail::SPF module$ver installed and available" );
             mlog(0, "warning: Mail::SPF module$ver is installed but at least version 2.009 is recommended") if $VerMailSPF < 2.009;
-            mlog(0, "warning: Mail::SPF (V2) module is installed and enabled - please unset useMailSPFQuery to disable the old (V1) Mail::SPF::Query") if $useMailSPFQuery && $CanUseSPF && $SPF2;
             $installed = 'enabled';
         } else {
             mlog(0, "Mail::SPF module$ver installed but must be >= 2.007" );
@@ -15654,14 +15624,8 @@ EOT
         $ModuleList{'Net::SSLeay'} = $nv.'/1.72';
         $ModuleStat{'Net::SSLeay'} = $installed;
 
-    # IO-Socket-IP is not what IO-Socket-SSL should use - what a HACK ???
         if (join('',@IO::Socket::SSL::ISA) eq 'IO::Socket::IP') {
-            undef &IO::Socket::SSL::CAN_IPV6;
-            if ($CanUseIOSocketINET6) {
-                @IO::Socket::SSL::ISA = 'IO::Socket::INET6';
-                $IO::Socket::SSL::IOCLASS = 'IO::Socket::INET6';
-                *{IO::Socket::SSL::CAN_IPV6} = sub {'IO::Socket::INET6';};
-            } else {
+            if (! $CanUseIOSocketINET6) {
                 @IO::Socket::SSL::ISA = 'IO::Socket::INET';
                 $IO::Socket::SSL::IOCLASS = 'IO::Socket::INET';
                 *{IO::Socket::SSL::CAN_IPV6} = sub {'';};
@@ -15748,9 +15712,9 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
     }
 
     my $v;
-    $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.36;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+    $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.37;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
     $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
-    $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.01;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
+    $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.02;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
     $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.25;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
     $ModuleList{'Plugins::ASSP_RSS'}    =~ s/([0-9\.\-\_]+)$/$v=1.11;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_RSS'};
     $ModuleList{'Plugins::ASSP_Razor'}  =~ s/([0-9\.\-\_]+)$/$v=1.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_Razor'};
@@ -18061,13 +18025,6 @@ EOT
     return %Domain;
 }
 
-# replacement for IO::Socket::INET6::bind to set Socket::IPV6_V6ONLY
-sub _ipv6_bind {
-    d('_ipv6_bind');
-    eval{$_[0]->setsockopt($IPPROTO_IPV6, $IPV6_V6ONLY,1);};
-    return IO::Socket::bind(@_);
-}
-
 # for multihomed systems with multiple default gateways
 # the system must support strong host based routing (nix, Vista,2008 >)
 #
@@ -18166,12 +18123,10 @@ sub newListen {
                 $parms{Domain} = AF_INET6;
                 $parms{LocalAddr} ||= '[::]';
                 if ($parms{LocalAddr} eq '[::]' && ! $Sysv6only && $can_enable_v6only) {
-                    my $obind = \&IO::Socket::INET6::bind;  # we need to set IPV6_V6ONLY before binding the socket
-                    *IO::Socket::INET6::bind = \&_ipv6_bind;
-                    $s6 = IO::Socket::INET6->new(%parms);
-                    *IO::Socket::INET6::bind = $obind;
+                    $parms{'V6Only'} = 1;
+                    $s6 = IO::Socket::IP->new(%parms);
                 } else {
-                    $s6 = IO::Socket::INET6->new(%parms);
+                    $s6 = IO::Socket::IP->new(%parms);
                 }
                 if ($s6) {
                     push @stt,$s6;
@@ -18189,7 +18144,7 @@ sub newListen {
             if ((! $interface && $v6only) || $isv4) {
                 $parms{Domain} = AF_INET;
                 $parms{LocalAddr} ||= '0.0.0.0';
-                $s4 = IO::Socket::INET6->new(%parms);
+                $s4 = IO::Socket::IP->new(%parms);
                 push @stt,$s4 if $s4;
             }
         } else {
@@ -18266,10 +18221,8 @@ sub newListenSSL {
                 $parms{Domain} = AF_INET6;
                 $parms{LocalAddr} ||= '[::]';
                 if ($parms{LocalAddr} eq '[::]' && ! $Sysv6only && $can_enable_v6only) {
-                    my $obind = \&IO::Socket::INET6::bind;   # we need to set IPV6_V6ONLY before binding the socket
-                    *{'IO::Socket::SSL::INET6'} = \&_ipv6_bind;
+                    $parms{'V6Only'} = 1;
                     $s6 = IO::Socket::SSL->new(%parms);
-                    *IO::Socket::INET6::bind = $obind;
                 } else {
                     $s6 = IO::Socket::SSL->new(%parms)
                 }
@@ -20625,7 +20578,7 @@ sub NewSMTPConnection {
                 $server = IO::Socket::SSL->new(%parms)
             } else {
                 $server = $CanUseIOSocketINET6
-                          ? IO::Socket::INET6->new(Proto=>'tcp',PeerAddr=>$destinationA,Timeout=>2,&getDestSockDom($destinationA),&getLocalAddress('SMTP',$destinationA))
+                          ? IO::Socket::IP->new(Proto=>'tcp',PeerAddr=>$destinationA,Timeout=>2,&getDestSockDom($destinationA),&getLocalAddress('SMTP',$destinationA))
                           : IO::Socket::INET->new(Proto=>'tcp',PeerAddr=>$destinationA,Timeout=>2,&getLocalAddress('SMTP',$destinationA));
             }
             threads->yield();
@@ -27279,8 +27232,7 @@ sub getline {
                 my $DoDomainIP = $DoDomainIP;
                 $DoDomainIP = 3 if $allTestMode && $DoDomainIP == 1 || $DoDomainIP == 4;
                 if ( exists $SMTPdomainIPTries{$mfd} && $SMTPdomainIPTries{$mfd} > $maxSMTPdomainIP) {
-                    my $doSPF = ($CanUseSPF && $ValidateSPF) || ($CanUseSPF2 && $ValidateSPF && $SPF2);
-                    if (   $doSPF
+                    if (   $CanUseSPF2 && $ValidateSPF
                         && $enableSPFbackground
                         && $SPFCacheInterval
                         && $SPFCacheObject
@@ -30115,7 +30067,7 @@ sub headerAddrCheckOK_Run {
 
 sub SPFbg {
     my $parm = shift;
-    return unless ($ValidateSPF && $SPFCacheInterval && $SPFCacheObject && (($CanUseSPF2 && $SPF2) || $CanUseSPF));
+    return unless ($ValidateSPF && $SPFCacheInterval && $SPFCacheObject && $CanUseSPF2);
     my $fh = time;
     ($Con{$fh}->{ip},$Con{$fh}->{mailfrom},$Con{$fh}->{helo}) = split(/ /o,$parm,3);
     $Con{$fh}->{max_dns_interactive_terms} = undef ;
@@ -30130,14 +30082,12 @@ sub SPFbg {
 }
 
 # do SPF (sender policy framework) checks
-# uses Mail::SPF v2.xxxx  or  Mail::SPF::Query v1.999001
+# uses Mail::SPF v2.xxxx
 sub SPFok {
     my $fh = shift;
     my $this = $Con{$fh};
-    my $do1 = $CanUseSPF && $ValidateSPF;
-    my $do2 = $CanUseSPF2 && $ValidateSPF && $SPF2;
     my $res;
-    return 1 unless $do1 or $do2;
+    return 1 unless $CanUseSPF2 && $ValidateSPF;
     $res = SPFok_Run($fh);    # do SPF check on 'mail from'
     if (   $res
         && $DoSPFinHeader
@@ -30175,10 +30125,7 @@ sub SPFok {
 sub SPFok_Run {
     my $fh = shift;
     d('SPFok');
-    my $do1 = $CanUseSPF && $ValidateSPF;
-    my $do2 = $CanUseSPF2 && $ValidateSPF && $SPF2;
-    $do1 = 0 if $do2;
-    return 1 unless $do1 or $do2;
+    return 1 unless $CanUseSPF2 && $ValidateSPF;
     
     my $this = $Con{$fh};
     $fh = 0 if "$fh" =~ /^\d+$/o;
@@ -30262,87 +30209,70 @@ sub SPFok_Run {
         &sigoff(__LINE__);
         my $query;
         my $ip_overwrite;
-        if ($do1) {       # Mail::SPF::Query v1.999001
-            d('SPF1');
-            eval {
-                my $timeout = max($ALARMtimeout,($DNStimeout * ($DNSretry + 1)),5);
-                local $SIG{ALRM} =
-                  sub { die "spf1_query_timeout after $timeout seconds\n" };    # NB: \n required
-                alarm ($timeout);
+        eval {
+            my $timeout = max($ALARMtimeout,($DNStimeout * ($DNSretry + 1)),5);
+            local $SIG{ALRM} =
+              sub { die "spf_query_timeout after $timeout seconds\n" };    # NB: \n required
+            alarm ($timeout);
+            my %override   = eval "($spfoverride)";
+            my %fallback   = eval "($spffallback)";
+            my ( $identity, $scope );
+            if ($mfd) {
+                $identity = $mf;
+                $scope    = 'mfrom';
+            } else {
+                $identity = $helo;
+                $scope    = 'helo';
+            }
 
-                $query = Mail::SPF::Query->new(
-                    sender     => $mf,
-                    ipv4       => $ip,
-                    helo       => $helo,
-                    myhostname => $myName,
-                    sanitize   => 1,
-                    guess      => $LocalPolicySPF,      # non-standard feature
-                    override   => {"$spfoverride"},     # non-standard feature
-                    fallback   => {"$spffallback"},     # non-standard feature
-                    debug      => $DebugSPF,
-                    debuglog => sub { mlog( $fh, "SPF debuglog: @_", 1, 1 ); }
+            my $res = getDNSResolver();
+
+            my $spf_server = Mail::SPF::Server->new(
+                hostname     => $myName,
+                dns_resolver => $res,
+                query_rr_types => 1, # TXT queries only  (0=SPF+TXT, 1=TXT, 2=SPF)
+                max_dns_interactive_terms => (exists($this->{max_dns_interactive_terms})
+                                                ? $this->{max_dns_interactive_terms}
+                                                : $strict ? undef : $SPF_max_dns_interactive_terms),
+                %{$this->{SPFlimits}}
                 );
-                ( $spf_result, $local_exp, $header_comment, $spf_record, $detail ) = $query->result();
 
-                alarm 0;
-                1;
-            } or do {
-                alarm 0;
+            my $request = Mail::SPF::Request->new(
+                versions      => [ 1, 2 ],
+                scope         => $scope,
+                identity      => $identity,
+                ip_address    => $ip,
+                helo_identity => $helo
+            );
 
-            #exception check
-                mlog( $fh, "error: SPFOK(1): $@ - for $mfd (mailfrom:$mf / helo:$helo)", 1, 1 );
-                &sigon(__LINE__);
-                return 1;
-            };   # end do eval $do1
-        }      # end if $do1
-
-        if ($do2) {              # Mail::SPF v2
-            d('SPF2');
-            eval {
-                my $timeout = max($ALARMtimeout,($DNStimeout * ($DNSretry + 1)),5);
-                local $SIG{ALRM} =
-                  sub { die "spf2_query_timeout after $timeout seconds\n" };    # NB: \n required
-                alarm ($timeout);
-                my %override   = eval "($spfoverride)";
-                my %fallback   = eval "($spffallback)";
-                my ( $identity, $scope );
-                if ($mfd) {
-                    $identity = $mf;
-                    $scope    = 'mfrom';
-                } else {
-                    $identity = $helo;
-                    $scope    = 'helo';
+            my $result;
+            my $ovr = matchHashKey(\%override,$mfd, '0 1 1');
+            mlog(0,"SPF: SPFoverride for domain $mfd - $ovr") if $DebugSPF;
+            if ($ovr) {
+                $usedoverride = 1;
+                my $version = ($ovr =~ /\s*v\s*=\s*spf1/io) ? 1 : 2;
+                try {
+                    my $record = SPF_get_records_from_text($spf_server, $ovr, 'TXT', $version, $scope, $mfd);
+                    $spf_server->throw_result('permerror', $request, "SPF override record not valid: \"$ovr\"\n") unless $record;
+                    $request->record($record);
+                    $record->eval($spf_server, $request);
                 }
-
-                my $res = getDNSResolver();
-
-                my $spf_server = Mail::SPF::Server->new(
-                    hostname     => $myName,
-                    dns_resolver => $res,
-                    query_rr_types => 1, # TXT queries only  (0=SPF+TXT, 1=TXT, 2=SPF)
-                    max_dns_interactive_terms => (exists($this->{max_dns_interactive_terms})
-                                                    ? $this->{max_dns_interactive_terms}
-                                                    : $strict ? undef : $SPF_max_dns_interactive_terms),
-                    %{$this->{SPFlimits}}
-                    );
-
-                my $request = Mail::SPF::Request->new(
-                    versions      => [ 1, 2 ],
-                    scope         => $scope,
-                    identity      => $identity,
-                    ip_address    => $ip,
-                    helo_identity => $helo
-                );
-
-                my $result;
-                my $ovr = matchHashKey(\%override,$mfd, '0 1 1');
-                mlog(0,"SPF: SPFoverride for domain $mfd - $ovr") if $DebugSPF;
-                if ($ovr) {
-                    $usedoverride = 1;
-                    my $version = ($ovr =~ /\s*v\s*=\s*spf1/io) ? 1 : 2;
+                catch Mail::SPF::Result with {
+                    $result = shift;
+                }
+                except {
+                    die ("SPF-exception: @_\n");
+                };
+            } else {
+                $result = eval { $spf_server->process($request); };
+                my $fb;
+                if ($result && $result->code eq 'none' && ($fb = matchHashKey(\%fallback,$mfd,'0 1 1'))) {
+                    $usedfallback = 1;
+                    mlog(0,"SPF: got result 'none' - but found SPFfallback for domain $mfd => $fb") if $DebugSPF;
+                    my $version = ($fb =~ /\s*v\s*=\s*spf1/io) ? 1 : 2 ;
                     try {
-                        my $record = SPF_get_records_from_text($spf_server, $ovr, 'TXT', $version, $scope, $mfd);
-                        $spf_server->throw_result('permerror', $request, "SPF override record not valid: \"$ovr\"\n") unless $record;
+                        my $record = SPF_get_records_from_text($spf_server, $fb, 'TXT', $version, $scope, $mfd);
+                        $spf_server->throw_result('permerror', $request, "SPF fallback record not valid: \"$ovr\"\n") unless $record;
                         $request->record($record);
                         $record->eval($spf_server, $request);
                     }
@@ -30352,112 +30282,92 @@ sub SPFok_Run {
                     except {
                         die ("SPF-exception: @_\n");
                     };
-                } else {
-                    $result = eval { $spf_server->process($request); };
-                    my $fb;
-                    if ($result && $result->code eq 'none' && ($fb = matchHashKey(\%fallback,$mfd,'0 1 1'))) {
-                        $usedfallback = 1;
-                        mlog(0,"SPF: got result 'none' - but found SPFfallback for domain $mfd => $fb") if $DebugSPF;
-                        my $version = ($fb =~ /\s*v\s*=\s*spf1/io) ? 1 : 2 ;
-                        try {
-                            my $record = SPF_get_records_from_text($spf_server, $fb, 'TXT', $version, $scope, $mfd);
-                            $spf_server->throw_result('permerror', $request, "SPF fallback record not valid: \"$ovr\"\n") unless $record;
-                            $request->record($record);
-                            $record->eval($spf_server, $request);
-                        }
-                        catch Mail::SPF::Result with {
-                            $result = shift;
-                        }
-                        except {
-                            die ("SPF-exception: @_\n");
-                        };
-                    }
                 }
+            }
 
-                eval { $spf_record = $request->record; };
-                if ($result) {
+            eval { $spf_record = $request->record; };
+            if ($result) {
 
-                    $spf_result    = $result->code;  $spf_result =~ s/\\(["'])/$1/go;
-                    $local_exp     = $result->local_explanation; $local_exp =~ s/\\(["'])/$1/go;
-                    $authority_exp = eval{$result->authority_explanation if $result->can('authority_explanation');}; $authority_exp =~ s/\\(["'])/$1/go;
-                    $received_spf = $result->received_spf_header; $received_spf =~ s/\\(["'])/$1/go;
-                    $this->{received_spf} = $received_spf unless $fh;    # for analyze only
-                } else {
-                    $spf_result = 'error';
-                }
-                
-                if (   $enableSPFbackground
-                    && $SPFCacheInterval
-                    && $SPFCacheObject
-                    && ! exists($this->{SPFlimits})
-                    && $spf_result eq 'permerror'
-                    && $local_exp =~ /Maximum DNS-interactive terms limit/io
-                   )
-                {
-                    cmdToThread('SPFbg',"$ip $mf $helo"); # try without limits in background
-                }
+                $spf_result    = $result->code;  $spf_result =~ s/\\(["'])/$1/go;
+                $local_exp     = $result->local_explanation; $local_exp =~ s/\\(["'])/$1/go;
+                $authority_exp = eval{$result->authority_explanation if $result->can('authority_explanation');}; $authority_exp =~ s/\\(["'])/$1/go;
+                $received_spf = $result->received_spf_header; $received_spf =~ s/\\(["'])/$1/go;
+                $this->{received_spf} = $received_spf unless $fh;    # for analyze only
+            } else {
+                $spf_result = 'error';
+            }
+            
+            if (   $enableSPFbackground
+                && $SPFCacheInterval
+                && $SPFCacheObject
+                && ! exists($this->{SPFlimits})
+                && $spf_result eq 'permerror'
+                && $local_exp =~ /Maximum DNS-interactive terms limit/io
+               )
+            {
+                cmdToThread('SPFbg',"$ip $mf $helo"); # try without limits in background
+            }
 
-                my $spfmatch;   # detect faiked SPF records
-                $spfmatch = $1 if $received_spf =~ /(mechanism .+? matched)/io;
-                my @ipv4count = $spf_record =~ /$IPv4Re\/(\d+)/go;
-                my $ipv4count;
-                eval{$ipv4count = Math::BigInt->new();};
-                for (@ipv4count) {$ipv4count += 2**(32-$_);}
-                my $minV4Network = min(@ipv4count, ($spfmatch =~ /$IPv4Re\/(\d+)/go));
-                $minV4Network = 24 unless defined $minV4Network;
-                $minV4Network *= 4;
-                my @ipv6count = $spf_record =~ /$IPv6Re\/(\d+)/go;
-                my $ipv6count;
-                eval{$ipv6count = Math::BigInt->new();};
-                for (@ipv6count) {$ipv6count += 2**(128-$_);}
-                my $ipcount;
-                eval{$ipcount = Math::BigInt->new($ipv4count + $ipv6count);};
-                my $minV6Network = min(@ipv6count, ($spfmatch =~ /$IPv6Re\/(\d+)/go));
-                $minV6Network = 96 unless defined $minV6Network;
-                my $rec;
-                if ($spf_result eq 'pass' &&
-                    (  $spf_record =~ /\s*((?:v\s*=\s*spf.|spf2.0\/\S+).*?\+all)/oi #  ...+all  allows all IPs
-                    || $spf_record =~ /\s*((?:v\s*=\s*spf.|spf2.0\/\S+).*?\D0+\.0+\.0+\.0+(?:\/\d+\s+)?.*?(?:all)?)/oi  # '0.0.0.0/xxx' allows also all IPs
-                    || $spfmatch =~ /(\+all)/io
-                    || $spfmatch =~ /\D(0+\.0+\.0+\.0+)/io
-                    || ($rec = min($minV4Network,$minV6Network) < 32)
-                    )
-                   )
-                {
-                    my $mask = $rec ? ' - too short network mask (ip4 <8 or ip6 <32)' : '';
-                    $rec = $rec ? $spfmatch : $1;
-                    (my $what, $spf_result) = ($rec=~/([+? ]all)/io || $rec!~/all/io) ?('SPAMMER',($rec=~/\?all/io)?'softfail':'fail'):('suspiciouse','none');
-                    $ip_overwrite = '0.0.0.0';
-                    mlog($fh,"SPF: found $what SPF record or mechanism '$rec' for domain $mfd - SPF result is set to '$spf_result'$mask") if $SPFLog;
-                    $this->{received_spf} .= "\&nbsp;<span class=negative>found $what SPF record or mechanism '$rec' - switched SPF result to '$spf_result'$mask</span>" unless $fh;    # for analyze only
-                }
-                if ($spf_result eq 'pass' && $SPF_max_allowed_IP && $ipcount > $SPF_max_allowed_IP) {
-                    $ip_overwrite = '0.0.0.0';
-                    mlog($fh,"SPF: found suspiciouse SPF record - domain $mfd defines $ipcount IP-addresses (max. allowed $SPF_max_allowed_IP) in its SPF record - the SPF result is set to 'none'") if $SPFLog;
-                    $spf_result = 'none';
-                    $this->{received_spf} .= "\&nbsp;<span class=negative>found suspiciouse SPF record - domain $mfd defines $ipcount IP-addresses in its SPF record - switched SPF result to '$spf_result'</span>" unless $fh;    # for analyze only
-                }
+            my $spfmatch;   # detect faiked SPF records
+            $spfmatch = $1 if $received_spf =~ /(mechanism .+? matched)/io;
+            my @ipv4count = $spf_record =~ /$IPv4Re\/(\d+)/go;
+            my $ipv4count;
+            eval{$ipv4count = Math::BigInt->new();};
+            for (@ipv4count) {$ipv4count += 2**(32-$_);}
+            my $minV4Network = min(@ipv4count, ($spfmatch =~ /$IPv4Re\/(\d+)/go));
+            $minV4Network = 24 unless defined $minV4Network;
+            $minV4Network *= 4;
+            my @ipv6count = $spf_record =~ /$IPv6Re\/(\d+)/go;
+            my $ipv6count;
+            eval{$ipv6count = Math::BigInt->new();};
+            for (@ipv6count) {$ipv6count += 2**(128-$_);}
+            my $ipcount;
+            eval{$ipcount = Math::BigInt->new($ipv4count + $ipv6count);};
+            my $minV6Network = min(@ipv6count, ($spfmatch =~ /$IPv6Re\/(\d+)/go));
+            $minV6Network = 96 unless defined $minV6Network;
+            my $rec;
+            if ($spf_result eq 'pass' &&
+                (  $spf_record =~ /\s*((?:v\s*=\s*spf.|spf2.0\/\S+).*?\+all)/oi #  ...+all  allows all IPs
+                || $spf_record =~ /\s*((?:v\s*=\s*spf.|spf2.0\/\S+).*?\D0+\.0+\.0+\.0+(?:\/\d+\s+)?.*?(?:all)?)/oi  # '0.0.0.0/xxx' allows also all IPs
+                || $spfmatch =~ /(\+all)/io
+                || $spfmatch =~ /\D(0+\.0+\.0+\.0+)/io
+                || ($rec = min($minV4Network,$minV6Network) < 32)
+                )
+               )
+            {
+                my $mask = $rec ? ' - too short network mask (ip4 <8 or ip6 <32)' : '';
+                $rec = $rec ? $spfmatch : $1;
+                (my $what, $spf_result) = ($rec=~/([+? ]all)/io || $rec!~/all/io) ?('SPAMMER',($rec=~/\?all/io)?'softfail':'fail'):('suspiciouse','none');
+                $ip_overwrite = '0.0.0.0';
+                mlog($fh,"SPF: found $what SPF record or mechanism '$rec' for domain $mfd - SPF result is set to '$spf_result'$mask") if $SPFLog;
+                $this->{received_spf} .= "\&nbsp;<span class=negative>found $what SPF record or mechanism '$rec' - switched SPF result to '$spf_result'$mask</span>" unless $fh;    # for analyze only
+            }
+            if ($spf_result eq 'pass' && $SPF_max_allowed_IP && $ipcount > $SPF_max_allowed_IP) {
+                $ip_overwrite = '0.0.0.0';
+                mlog($fh,"SPF: found suspiciouse SPF record - domain $mfd defines $ipcount IP-addresses (max. allowed $SPF_max_allowed_IP) in its SPF record - the SPF result is set to 'none'") if $SPFLog;
+                $spf_result = 'none';
+                $this->{received_spf} .= "\&nbsp;<span class=negative>found suspiciouse SPF record - domain $mfd defines $ipcount IP-addresses in its SPF record - switched SPF result to '$spf_result'</span>" unless $fh;    # for analyze only
+            }
 
-                if ($DebugSPF) {
-                    mlog( $fh, "$tlit spf_result:$spf_result", 1, 1 );
-                    mlog( $fh, "identity:$identity",           1, 1 );
-                    mlog( $fh, "scope:$scope",                 1, 1 );
-                    mlog( $fh, "spf_record:$spf_record",       1, 1 );
-                    mlog( $fh, "local_exp:$local_exp",         1, 1 );
-                    mlog( $fh, "authority_exp:$authority_exp", 1, 1 ) if $authority_exp;
-                    mlog( $fh, "received_spf:$received_spf",   1, 1 );
-                }
-                alarm 0;
-                1;
-            } or do {
-                alarm 0;
-            #exception check
-                mlog( $fh, "error: SPFOK(2): $@ - for $mfd (mailfrom:$mf / helo:$helo)", 1, 1 );
-                &sigon(__LINE__);
-                return 1;
-            }; # end do eval $do2
-        }    # end if $do2
-        
+            if ($DebugSPF) {
+                mlog( $fh, "$tlit spf_result:$spf_result", 1, 1 );
+                mlog( $fh, "identity:$identity",           1, 1 );
+                mlog( $fh, "scope:$scope",                 1, 1 );
+                mlog( $fh, "spf_record:$spf_record",       1, 1 );
+                mlog( $fh, "local_exp:$local_exp",         1, 1 );
+                mlog( $fh, "authority_exp:$authority_exp", 1, 1 ) if $authority_exp;
+                mlog( $fh, "received_spf:$received_spf",   1, 1 );
+            }
+            alarm 0;
+            1;
+        } or do {
+            alarm 0;
+        #exception check
+            mlog( $fh, "error: SPFOK(2): $@ - for $mfd (mailfrom:$mf / helo:$helo)", 1, 1 );
+            &sigon(__LINE__);
+            return 1;
+        }; # end do eval $do2
+
         &sigon(__LINE__);
 
         SPFCacheAdd( ($ip_overwrite?$ip_overwrite:$ip), $spf_result, $mfd, $helo )
@@ -30580,7 +30490,7 @@ sub SPF_get_records_from_text {
             undef $record if (! grep {$scope eq $_} $record->scopes);  # record covers requested scope?
         }
     } else {
-        die "error: Mail::SPF v2 seem not to be installed - $@\n";
+        die "error: Mail::SPF seem not to be installed - $@\n";
     }
     return $record;
 }
@@ -33251,7 +33161,7 @@ sub DMARCok {
     # check the strict spf alignment
     if (! $failed->{spf} && $this->{dmarc}->{aspf} eq 's' && (!($this->{dmarc}->{dom} && $this->{dmarc}->{mfd}) || ($this->{dmarc}->{dom} ne $this->{dmarc}->{mfd}))) {
         $failed->{spf} = 'fail';
-        mlog($fh,"DMARC: this mail breakes the strict SPF alignment rules: envelope domain '$this->{dmarc}->{mfd}' and from domain '$this->{dmarc}->{dom}' are not equal") if $SPFLog;
+        mlog($fh,"DMARC: this mail breaks the strict SPF alignment rules: envelope domain '$this->{dmarc}->{mfd}' and from domain '$this->{dmarc}->{dom}' are not equal") if $SPFLog;
     }
     if (! $failed->{spf} && $this->{dmarc}->{aspf} eq 's' && $this->{spf_result} ne 'pass') {
         $failed->{spf} = $this->{spf_result};
@@ -33262,32 +33172,32 @@ sub DMARCok {
         $match  ||= $this->{dmarc}->{dom} =~ /\Q$this->{dmarc}->{mfd}\E$/i;
         if (! $match) {
             $failed->{spf} = 'fail';
-            mlog($fh,"DMARC: this mail breakes the relax SPF alignment rules: not matching envelope domain '$this->{dmarc}->{mfd}' and from domain '$this->{dmarc}->{dom}' found") if $SPFLog;
+            mlog($fh,"DMARC: this mail breaks the relax SPF alignment rules: not matching envelope domain '$this->{dmarc}->{mfd}' and from domain '$this->{dmarc}->{dom}' found") if $SPFLog;
         }
     }
     $failed->{spf} ||= ($this->{spf_result} || 'none') if $this->{dmarc}->{aspf} eq 'r' && $this->{spf_result} !~ /pass|neutral|none/o;
     $failed->{spf} ='fail' if $failed->{spf} eq 'softfail';  # make softfail -> fail
     if ($failed->{spf} eq 'fail') {
         my $how = $this->{dmarc}->{aspf} eq 's' ? 'strict' : 'relax';
-        mlog($fh,"DMARC: this mail breakes the $how SPF rules defined in the DMARC record for domain $this->{dmarc}->{dom} - check result='$failed->{spf}'") if $SPFLog;
+        mlog($fh,"DMARC: this mail breaks the $how SPF rules defined in the DMARC record for domain $this->{dmarc}->{dom} - check result='$failed->{spf}'") if $SPFLog;
     }
 
     # check the dkim alignment
     if (@{$this->{dmarc}->{DKIMdomains}}) {
         if (! $failed->{dkim} && $this->{dmarc}->{adkim} eq 's' && ! grep {/^\Q$this->{dmarc}->{dom}\E$/} @{$this->{dmarc}->{DKIMdomains}}) {
             $failed->{dkim} = 'fail';
-            mlog($fh,"DMARC: this mail breakes the DKIM (strict alignment) rules: envelope domain '$this->{dmarc}->{mfd}' and from domain '$this->{dmarc}->{dom}' are not equal") if $SPFLog;
+            mlog($fh,"DMARC: this mail breaks the DKIM (strict alignment) rules: envelope domain '$this->{dmarc}->{mfd}' and from domain '$this->{dmarc}->{dom}' are not equal") if $SPFLog;
         } elsif (! $failed->{dkim} && $this->{dmarc}->{adkim} eq 'r' && ! grep {/\Q$this->{dmarc}->{domain}\E$/} @{$this->{dmarc}->{DKIMdomains}}) {
             $failed->{dkim} = 'fail';
-            mlog($fh,"DMARC: this mail breakes the DKIM (relax alignment) rules: not matching envelope domain '$this->{dmarc}->{mfd}' and from domain '$this->{dmarc}->{dom}' found") if $SPFLog;
+            mlog($fh,"DMARC: this mail breaks the DKIM (relax alignment) rules: not matching envelope domain '$this->{dmarc}->{mfd}' and from domain '$this->{dmarc}->{dom}' found") if $SPFLog;
         } elsif ($failed->{dkim} eq 'fail') {
             my $how = $this->{dmarc}->{adkim} eq 's' ? 'strict' : 'relax';
-            mlog($fh,"DMARC: this mail breakes the DKIM ($how alignment) rules defined in the DMARC record for domain $this->{dmarc}->{dom} - check result='$failed->{dkim}'") if $SPFLog;
+            mlog($fh,"DMARC: this mail breaks the DKIM ($how alignment) rules defined in the DMARC record for domain $this->{dmarc}->{dom} - check result='$failed->{dkim}'") if $SPFLog;
         }
     } else {
         $failed->{dkim} ||= 'fail' if $this->{dmarc}->{adkim} eq 's';
         $failed->{dkim} ||= 'neutral' if $this->{dmarc}->{adkim} eq 'r';
-        mlog($fh,"DMARC: this mail breakes the DKIM policies defined in the DMARC record for domain $this->{dmarc}->{domain} - there is no DKIM-signature found in this mail for domain $this->{dmarc}->{domain}") if $failed->{dkim} eq 'fail' && $SPFLog;
+        mlog($fh,"DMARC: this mail breaks the DKIM policies defined in the DMARC record for domain $this->{dmarc}->{domain} - there is no DKIM-signature found in this mail for domain $this->{dmarc}->{domain}") if $failed->{dkim} eq 'fail' && $SPFLog;
     }
     if (! $this->{DMARC_arc} && $DKIMCacheStrict) {
         DKIMCacheAdd($this->{dmarc}->{domain}) if $this->{dmarc}->{domain} && $this->{dmarc}->{domain} ne $this->{dmarc}->{dom};
@@ -40340,14 +40250,19 @@ sub reply {
         return;
     }
     $Con{$cli}->{greetingSent} = 1 if ( $l =~ /^220[^\-]/o );
-    my $DisableAUTH = $Con{$cli}->{DisableAUTH} =
+    my $DisableAUTH;
+    $DisableAUTH = $Con{$cli}->{DisableAUTH} =
                $Con{$cli}->{DisableAUTH}
                ? $Con{$cli}->{DisableAUTH}
                : (   &matchFH($cli,@lsnNoAUTH)
                   || (   ! $Con{$cli}->{relayok}
                       && (   ( $DisableExtAUTH && mlog($cli,'Disabled SMTP AUTH for External IPs') )
-                          || ( $noAUTHHeloRe && $Con{$cli}->{helo} && matchRE([$Con{$cli}->{helo}],'noAUTHHeloRe') && mlog($cli,"Disabled SMTP AUTH for HELO $Con{$cli}->{helo} ( matches noAUTHHeloRe )") )
-                          || ( $Con{$cli}->{helo} && ! matchREOnly([$Con{$cli}->{helo}],'onlyAUTHHeloRe') && mlog($cli,"Disabled SMTP AUTH for HELO $Con{$cli}->{helo} ( no match for onlyAUTHHeloRe )") )
+                          || (   $noAUTHHeloRe
+                              && $Con{$cli}->{helo} && matchRE([$Con{$cli}->{helo}],'noAUTHHeloRe')
+                              && mlog($cli,"Disabled SMTP AUTH for HELO $Con{$cli}->{helo} ( matches noAUTHHeloRe )") )
+                          || (   $Con{$cli}->{helo}                                   # (nolog==1) log only at the last helo reply line
+                              && ! matchREOnly([$Con{$cli}->{helo}],'onlyAUTHHeloRe',!($Con{$cli}->{lastcmd} =~ /ehlo|helo/io && $l =~ /^\d{3} /io))
+                              && mlog($cli,"Disabled SMTP AUTH for HELO $Con{$cli}->{helo} ( no match for onlyAUTHHeloRe )") )
                          )
                      )
                  );
@@ -42574,7 +42489,7 @@ sub forwardHamSpamReport {
     &sigoffTry(__LINE__);
     foreach my $destinationA (split(/\s*\|\s*/o, $EmailForwardReportedTo)) {
         $s = $CanUseIOSocketINET6
-             ? IO::Socket::INET6->new(Proto=>'tcp',PeerAddr=>$destinationA,Timeout=>2,&getDestSockDom($destinationA),&getLocalAddress('SMTP',$destinationA))
+             ? IO::Socket::IP->new(Proto=>'tcp',PeerAddr=>$destinationA,Timeout=>2,&getDestSockDom($destinationA),&getLocalAddress('SMTP',$destinationA))
              : IO::Socket::INET->new(Proto=>'tcp',PeerAddr=>$destinationA,Timeout=>2,&getLocalAddress('SMTP',$destinationA));
         if(ref($s)) {
             last;
@@ -42656,7 +42571,7 @@ sub ReturnMail {
                 $s = IO::Socket::SSL->new(%parms)
             } else {
                 $s = $CanUseIOSocketINET6
-                     ? IO::Socket::INET6->new(Proto=>'tcp',PeerAddr=>$destinationA,Timeout=>2,&getDestSockDom($destinationA),&getLocalAddress('SMTP',$destinationA))
+                     ? IO::Socket::IP->new(Proto=>'tcp',PeerAddr=>$destinationA,Timeout=>2,&getDestSockDom($destinationA),&getLocalAddress('SMTP',$destinationA))
                      : IO::Socket::INET->new(Proto=>'tcp',PeerAddr=>$destinationA,Timeout=>2,&getLocalAddress('SMTP',$destinationA));
             }
             if(ref($s)) {
@@ -42838,7 +42753,7 @@ sub AdminReportMail {
                 $s = IO::Socket::SSL->new(%parms)
             } else {
                 $s = $CanUseIOSocketINET6
-                     ? IO::Socket::INET6->new(Proto=>'tcp',PeerAddr=>$destinationA,Timeout=>2,&getDestSockDom($destinationA),&getLocalAddress('SMTP',$destinationA))
+                     ? IO::Socket::IP->new(Proto=>'tcp',PeerAddr=>$destinationA,Timeout=>2,&getDestSockDom($destinationA),&getLocalAddress('SMTP',$destinationA))
                      : IO::Socket::INET->new(Proto=>'tcp',PeerAddr=>$destinationA,Timeout=>2,&getLocalAddress('SMTP',$destinationA));
             }
             if(ref($s)) {
@@ -45457,7 +45372,7 @@ sub ccMail {
                 $s = IO::Socket::SSL->new(%parms)
             } else {
                 $s = $CanUseIOSocketINET6
-                     ? IO::Socket::INET6->new(Proto=>'tcp',PeerAddr=>$destinationA,Timeout=>2,&getDestSockDom($destinationA),&getLocalAddress('SMTP',$destinationA))
+                     ? IO::Socket::IP->new(Proto=>'tcp',PeerAddr=>$destinationA,Timeout=>2,&getDestSockDom($destinationA),&getLocalAddress('SMTP',$destinationA))
                      : IO::Socket::INET->new(Proto=>'tcp',PeerAddr=>$destinationA,Timeout=>2,&getLocalAddress('SMTP',$destinationA));
                 }
             if(ref($s)) {
@@ -49151,7 +49066,7 @@ Host: assp.sourceforge.net";
         $target = $hostaddress;
     }
     my $s = $CanUseIOSocketINET6
-            ? IO::Socket::INET6->new(Proto=>'tcp',PeerAddr=>$peeraddress,Timeout=>2,&getDestSockDom($hostaddress),&getLocalAddress('HTTP',$target))
+            ? IO::Socket::IP->new(Proto=>'tcp',PeerAddr=>$peeraddress,Timeout=>2,&getDestSockDom($hostaddress),&getLocalAddress('HTTP',$target))
             : IO::Socket::INET->new(Proto=>'tcp',PeerAddr=>$peeraddress,Timeout=>2,&getLocalAddress('HTTP',$target));
     if($s) {
         my %UploadStats = ();
@@ -50056,7 +49971,7 @@ sub forwardSpam {
                 $s = IO::Socket::SSL->new(%parms)
             } else {
                 $s = $CanUseIOSocketINET6
-                     ? IO::Socket::INET6->new(Proto=>'tcp',PeerAddr=>$destinationA,Timeout=>2,&getDestSockDom($destinationA),&getLocalAddress('SMTP',$destinationA))
+                     ? IO::Socket::IP->new(Proto=>'tcp',PeerAddr=>$destinationA,Timeout=>2,&getDestSockDom($destinationA),&getLocalAddress('SMTP',$destinationA))
                      : IO::Socket::INET->new(Proto=>'tcp',PeerAddr=>$destinationA,Timeout=>2,&getLocalAddress('SMTP',$destinationA));
             }
             if(ref($s)) {
@@ -62297,7 +62212,6 @@ sub unloadHighThreadModules {
 
 sub unloadMainThreadModules {
 #    unloadNameSpace 'Mail::SPF';
-#    unloadNameSpace 'Mail::SPF::Query';
 #    unloadNameSpace 'Mail::SRS';
 #    unloadNameSpace 'Email::MIME';
 #    unloadNameSpace 'MIME::Types';
@@ -64972,17 +64886,17 @@ sub ConfigChangeIPv6 {my ($name, $old, $new, $init)=@_;
             mlog(0,"error: IPv6 is not supported by your system");
             return "<br />*** IPv6 is not supported by your system ***<script type=\"text/javascript\">alert(\'IPv6 is not supported by your system\');</script>";
         }
-        if (! $useIOSocketINET6) {
-            $useIOSocketINET6 = $Config{useIOSocketINET6} = 1;
-            mlog(0,"AdminUpdate: useIOSocketINET6 changed from '' to '1' - A RESTART OF ASSP IS REQUIRED!");
+        if (! $useIOSocketIP) {
+            $useIOSocketIP = $Config{useIOSocketIP} = 1;
+            mlog(0,"AdminUpdate: useIOSocketIP changed from '' to '1' - A RESTART OF ASSP IS REQUIRED!");
         }
-	    $CanUseIOSocketINET6 = $AvailIOSocketINET6 = eval("use IO::Socket::INET6; 1");
+	    $CanUseIOSocketINET6 = $AvailIOSocketINET6 = eval("use IO::Socket::IP; 1");
         my $error = ($CanUseIOSocketINET6) ? '' : $@;
         if ($CanUseIOSocketINET6) {
             if ($SysIOSocketINET6 == -1) {
                 $CanUseIOSocketINET6 = $AvailIOSocketINET6 =
                   eval {
-                      my $sock = IO::Socket::INET6->new(Domain => AF_INET6, Listen => 1, LocalAddr => '[::]', LocalPort => $IPv6TestPort);
+                      my $sock = IO::Socket::IP->new(Domain => AF_INET6, Listen => 1, LocalAddr => '[::]', LocalPort => $IPv6TestPort);
                       if ($sock) {
                           sockclose($sock);
                           $SysIOSocketINET6 = 1;
@@ -65022,7 +64936,7 @@ sub ConfigChangeIPv6 {my ($name, $old, $new, $init)=@_;
         return "<br />*** unable to start IPv6 support ***<script type=\"text/javascript\">alert(\'unable to start IPv6 support\');</script>";
     } else {
         $CanUseIOSocketINET6 = $AvailIOSocketINET6 = 0;
-        eval("no IO::Socket::INET6; use IO::Socket::INET;");
+        eval("no IO::Socket::IP; use IO::Socket::INET;");
         eval("no IO::Socket::SSL; use IO::Socket::SSL 'inet4';") if ($CanUseIOSocketSSL);  # to correct @ISA
 
         if ($WorkerNumber == 0) {
@@ -65243,7 +65157,7 @@ sub ConfigChangeTCPBuf {my ($name, $old, $new, $init)=@_;
     my %sysdef;
     {
         eval <<'EOT';
-        my $mod = $CanUseIOSocketINET6 ? 'IO::Socket::INET6' : 'IO::Socket::INET';
+        my $mod = $CanUseIOSocketINET6 ? 'IO::Socket::IP' : 'IO::Socket::INET';
         my $addr = $CanUseIOSocketINET6 ? '[::1]' : '127.0.0.1';
         my $sock = $mod->new(Listen => 1, LocalAddr => $addr);
         $sysdef{tcprcv} = unpack("i", getsockopt($sock, SOL_SOCKET, SO_RCVBUF));
@@ -67165,7 +67079,7 @@ sub configUpdateSPFCheckRecord {
     return $rec if $rec;
     $rec = SPF_get_records_from_text($spf_server, $rec, 'TXT', $version, 'helo', $mfd);
     return $rec if $rec;
-    die "error: SPF2 record check failed - record '$rec' has no scope for 'mfrom' or 'helo' or another error occured\n";
+    die "error: SPF record check failed - record '$rec' has no scope for 'mfrom' or 'helo' or another error occured\n";
 }
 
 sub configUpdateSPFLR {
@@ -70388,7 +70302,7 @@ sub NewProxyConnection {
     }
 
     my $server = $CanUseIOSocketINET6
-                 ? IO::Socket::INET6->new(Proto=>'tcp',PeerAddr=>$dest,Timeout=>2,&getDestSockDom($dest),&getLocalAddress('SMTP',$dest))
+                 ? IO::Socket::IP->new(Proto=>'tcp',PeerAddr=>$dest,Timeout=>2,&getDestSockDom($dest),&getLocalAddress('SMTP',$dest))
                  : IO::Socket::INET->new(Proto=>'tcp',PeerAddr=>$dest,Timeout=>2,&getLocalAddress('SMTP',$dest));
     if (!$server) {
         $mlog->(0,"error: couldn't create proxy socket to $dest -- aborting connection: $!") ;
@@ -72823,28 +72737,46 @@ sub getfh4fileno {
     d("getfh4fileno: $ipg $portg $sockType");
 
     if ($sockType eq 'IO::Socket::INET') {
-        $fhh = $sockType->new();
-        $fhh->fdopen($fno, '+>');
-        return $fhh;
-    } elsif ($sockType eq 'IO::Socket::INET6') {
+        if (!($fhh = $sockType->new())) {
+            mlog(0,"error: unable to create $sockType socket - $!");
+            return 0;
+        }
+        return $fhh if $fhh->fdopen($fno, '+>');
+        mlog(0,"error: unable to (fd)open socket $sockType for file number $fno - $!");
+        return 0;
+    } elsif ($sockType eq 'IO::Socket::IP') {
         %Domain = ($fhInfo =~ /^$IPv4Re:$PortRe$/o)
                    ? ('Domain' => AF_INET ,'LocalAddr' => $ipg)
                    : ('Domain' => AF_INET6,'LocalAddr' => $ipg);
-        $fhh = $sockType->new(%Domain);
-        $fhh->fdopen($fno, '+>');
-        return $fhh;
+        if (!($fhh = $sockType->new(%Domain))) {
+            mlog(0,"error: unable to create $sockType socket - $!");
+            return 0;
+        }
+        return $fhh if $fhh->fdopen($fno, '+>');
+        mlog(0,"error: unable to (fd)open socket $sockType for file number $fno - $!");
+        return 0;
     } else {   # IO::Socket::SSL
+        my $baseType;
         if ($CanUseIOSocketINET6) {
+            $baseType = 'IO::Socket::IP';
             if ($fhInfo =~ /^$IPv4Re:$PortRe$/o) {
                 %Domain = ('Domain' => AF_INET ,'LocalAddr' => $ipg);
             } else {
                 %Domain = ('Domain' => AF_INET6,'LocalAddr' => $ipg);
             }
-            $fhh = IO::Socket::INET6->new(%Domain);
+            $fhh = IO::Socket::IP->new(%Domain);
         } else {
+            $baseType = 'IO::Socket::INET';
             $fhh = IO::Socket::INET->new();
         }
-        $fhh->fdopen($fno, '+>');
+        if (! $fhh) {
+            mlog(0,"error: unable to create $baseType socket for $sockType socket - $!");
+            return 0;
+        }
+        if (! $fhh->fdopen($fno, '+>')) {
+            mlog(0,"error: unable to (fd)open base socket $baseType for file number $fno - $!");
+            return 0;
+        }
     }
 
     my $fail = 0;
@@ -75294,7 +75226,7 @@ sub ThreadMain {
         }
     }
 
-    # remove orphaned connection data, if there wee procuced in socketcalls
+    # remove orphaned connection data, if procuced in socketcalls
     my $i;
     while ( my ($fh,$dfh) = each %Con) {
         if (! $fh || ! $dfh || ! $dfh->{self} || ! fileno($dfh->{self}) || ! exists $SocketCalls{$dfh->{self}} || ! exists $SocketCalls{$fh}) {
@@ -78656,7 +78588,7 @@ sub lookup {
     if (! @sock) {
         for (@{$self->{server}}) {
             my $sock = $main::CanUseIOSocketINET6
-                       ? IO::Socket::INET6->new(Proto=>'udp',PeerAddr=>$_,PeerPort=>53,&main::getDestSockDom($_),&main::getLocalAddress('DNS',$_))
+                       ? IO::Socket::IP->new(Proto=>'udp',PeerAddr=>$_,PeerPort=>53,&main::getDestSockDom($_),&main::getLocalAddress('DNS',$_))
                        : IO::Socket::INET->new(Proto=>'udp',PeerAddr=>$_,PeerPort=>53,&main::getLocalAddress('DNS',$_));
             push @sock, $sock if $sock;
         }
@@ -79977,7 +79909,7 @@ sub send {                                                    ## no critic
         $message = "<$d>$local{Name}$pid: $msg";
     }
 
-    my $mod = $main::CanUseIOSocketINET6 ? 'IO::Socket::INET6' : 'IO::Socket::INET';
+    my $mod = $main::CanUseIOSocketINET6 ? 'IO::Socket::IP' : 'IO::Socket::INET';
     
     $self->{Socket} ||= $mod->new(
         PeerAddr => $local{SyslogHost},
@@ -80167,7 +80099,7 @@ sub whoisip_get_connect {
     my $whois_registrar = shift;
     my $s;
     my $c;
-    require IO::Socket::INET6 if $main::CanUseIOSocketINET6;
+    require IO::Socket::IP if $main::CanUseIOSocketINET6;
     # round robin for the ARIN servers
     if ($whois_registrar eq 'whois.arin.net' && ($s = scalar @main::ARINservers) ) {
         $c = ++$main::ARINcounter;
@@ -80180,7 +80112,7 @@ sub whoisip_get_connect {
     }
 
     my $sock = $main::CanUseIOSocketINET6
-                ? IO::Socket::INET6->new(Proto=>'tcp',
+                ? IO::Socket::IP->new(   Proto=>'tcp',
                                          PeerAddr=>$whois_registrar,
                                          PeerPort=>'43',
                                          Timeout=>$Timeout,
@@ -80206,7 +80138,7 @@ sub whoisip_get_connect {
             sleep 1;
         }
         $sock = $main::CanUseIOSocketINET6
-                ? IO::Socket::INET6->new(Proto=>'tcp',
+                ? IO::Socket::IP->new(   Proto=>'tcp',
                                          PeerAddr=>$whois_registrar,
                                          PeerPort=>'43',
                                          Timeout=>$Timeout,

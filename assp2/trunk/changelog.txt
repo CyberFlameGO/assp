@@ -1,3 +1,30 @@
+2021-12-17
+fixed in assp 2.6.6 *SPAM-Evaporator* build 21351:
+
+- if 'onlyAUTHHeloRe' was used, a logline for a match was written after each SMTP command - now the match is shown only after the HELO/EHLO command was used
+
+
+changed:
+
+- ASSP_AFC.pm version 5.37 is now able to detect template injection in RTF-documents
+  https://www.proofpoint.com/uk/blog/threat-insight/injection-new-black-novel-rtf-template-inject-technique-poised-widespread
+
+
+- the status of the perl module IO::Socket::INET6 was set to deprecated by the cpan maintainer
+  assp.pl uses now IO::Socket::IP for IPv6 handling
+  ASSP_DCC.pl 2.02 also uses IO::Socket::IP for IPv6 handling
+  IO::Socket::INET6 is no longer installed by the assp perl module installer (2.10)
+
+
+- the module Mail::SPF::Query (SPFv1) is removed from assp.pl (only Mail::SPF is used)
+  Mail::SPF::Query is no longer installed by the assp perl module installer (2.10)
+  'LocalPolicySPF' is removed from configuration, it was only used by Mail::SPF::Query (SPFv1)
+  'SPF2' is removed from configuration - it is no longer required, Mail::SPF (SPFv2) is permanently used
+
+
+
+
+
 2021-11-24
 fixed in assp 2.6.6 *SPAM-Evaporator* build 21328:
 
