@@ -81,6 +81,7 @@ use strict qw(vars subs);
 
 our %signo;
 our $dftIOEngine = 0;
+our $crypt;
 sub check_iThreads {
     use Config qw(myconfig);
 
@@ -110,7 +111,7 @@ perl -V
 Upgrade your Perl installation to a multithreading version.
 To run this version of ASSP, a Perl version 5.026002 (5.26.2) or higher
 is recommended.
-Perl 5.03000x (5.30.x) is highly recommended.
+Perl 5.03200x (5.32.x) is highly recommended.
 An perl version 5.010000 is at least required.
 Perl version 6.x is not supported.
 ******************************************************************************
@@ -119,6 +120,28 @@ EOT
     $dftIOEngine = 1 if $Config::Config{'uname'} =~ /strawberry-perl/o || $Config::Config{'myuname'} =~ /strawberry-perl/o;
     no Config;
     undef $iThreads;
+
+    local $@;
+    $crypt = sub { return crypt(shift,shift); };
+    my $crypt_ok = eval{$crypt->('nospam4me',"45")};
+    if ($@ || $crypt_ok !~ /^45.{11}$/o) {
+        if (! eval('use Crypt::UnixCrypt; 1;')) {
+            die <<EOT;
+
+***** ATTENTION *****
+
+******************************************************************************
+Your system, but at least the used perl installation, does not support the
+CORE::crypt (3) function.
+This function was removed by the OS vendor or the perl distributor.
+How ever, assp requires this function or an equivalent function!
+To workaround this issue, install the perl module Crypt::UnixCrypt
+(e.g. from cpan), which provides the required function - and start assp again.
+******************************************************************************
+EOT
+        }
+        $crypt = sub { return Crypt::UnixCrypt::crypt(shift,shift); }
+    }
 }
 
 our $VSTR;
@@ -204,7 +227,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.6';
-$build   = '21351';        # 17.12.2021 TE
+$build   = '22019';        # 19.01.2022 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.034999';
 $MAINVERSION = $version . $modversion;
@@ -677,7 +700,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = 'DCD4B3E4E3F7E92FFDDFD66C861BB6351E505382'; }
+sub __cs { $codeSignature = '73890455D1BF4B328CEAB4A752AAC417E8704BAB'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1033,8 +1056,8 @@ our %cryptConfigVars:shared = (
     'mypassword' => 1,
     'exportDBDir' => 1,
     'ExportMysqlDB' => 1,
-    'LDAPLogin' => 1 ,
-    'LDAPPassword' => 1 ,
+    'LDAPLogin' => 1,
+    'LDAPPassword' => 1,
     'adminusersdb' => 1,
     'adminusersdbpass' => 1,
     'adminusersdbNoBIN' => 1,
@@ -3412,7 +3435,10 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  sp.com=>127.0.*.*=>1<br /><br />
  Valid bitmasks are 1,2,4,8,16,32,64 and 128. The resulting weight will be the weight sum of all matching bitmasks (if no full qualified definition is found). For example: a return code of 127.0.0.6 for sp.com will result in a weight of 66 (25+41), a reply of 127.0.0.2 will result in 22<br />
  Because each single bitmask indicates a set of 128 numbers you should prevent the usage of something like 127.0.M16.M1 - this will lead in to a set of (128*128) 16384 addresses, which is really too much!<br />
- For the same service provider, first define all bitmask definitions, after that all full qualified definitions and than all definitions with wildcards, like in the example above! If your definition order is wrong, the resulting weights will be unexpected!
+ For the same service provider, first define all bitmask definitions, after that all full qualified definitions and than all definitions with wildcards, like in the example above! If your definition order is wrong, the resulting weights will be unexpected!<br /><br />
+ It can be possible, that you need to provide a privat key or ID in the query string for a RBL Service Provider - like: your-key.query-data.rbl-provider.org<br />
+ In this case, define the RBL Service Provider like: your-key.$DATA$.rbl-provider.org<br />
+ The string $DATA$ will be replaced by the queried data in each request.
   ',undef,undef,'msg003810','msg003811'],
 ['RBLmaxreplies','Maximum Replies',3,\&textinput,7,'(\d*)','configUpdateRBLMR','A reply is affirmative or negative reply from a DNSBL.<br />
   The DNSBL module will wait for this number of replies (negative or positive) from the DNSBLs listed under Service Provider for up to the Maximum Time( RBLmaxtime ).<br />
@@ -3465,7 +3491,11 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
  virustotal=>127.0.0.2=&gt;1 # one hit<br />
  virustotal=>127.0.0.3=&gt;0.5 # two hits<br />
  virustotal=>127.0.0.4=&gt;0.33 # three hits<br />
- virustotal=>127.0.0.*=&gt;0.25 # more than three hits',undef,undef,'msg003930','msg003931'],
+ virustotal=>127.0.0.*=&gt;0.25 # more than three hits<br /><br />
+ It can be possible, that you need to provide a privat key or ID in the query string for a URIBL Service Provider - like: your-key.query-data.uribl-provider.org<br />
+ In this case, define the URIBL Service Provider like: your-key.$DATA$.uribl-provider.org<br />
+ The string $DATA$ will be replaced by the queried data in each request.
+ ',undef,undef,'msg003930','msg003931'],
  ['URIBLCCTLDS','URIBL Country Code TLDs*',60,\&textnoinput,'file:files/URIBLCCTLDS.txt','(.*)','ConfigMakeRe',
   'List of <a href="http://www.surbl.org/tld/two-level-tlds" rel="external">two level country code TLDs</a> and <a href="http://www.surbl.org/tld/three-level-tlds" rel="external">three level country code TLDs</a> used to determine the base domain of the uri. Two level TLDs will be checked on third level, third level TLDs will be checked on fourth level. Any not listed domain will be checked in level two.',undef,undef,'msg003940','msg003941'],
  ['URIBLmaxuris','Maximum URIs',5,\&textinput,0,'(\d*)',undef,
@@ -4669,7 +4699,7 @@ For example: mysql/dbimport<br />
  'If set to a number &gt; zero, assp will use the defined number of fastest responding nameservers (DNSServers) for DNS queries.<br />
  Otherwise, all nameserver are used every time.<br />
  Notice: This value is not checked against the number of defined DNSServers - don\'t set nonsense here!',undef,undef,'msg010490','msg010491'],
-['host2IPminTTL','Minimum TTL used for config reload',5,\&textinput,300,'(\d+)',undef,'Minimum TTL used for config reload options, if hostnames are defined for any IP in regular expressions.',undef,undef,'msg009810','msg009811'],
+['host2IPminTTL','Minimum TTL used for config reload',5,\&textinput,300,'(\d+)',undef,'Minimum TTL used for config reload options, if a hostname or SPF: is used for any IP in regular expressions.',undef,undef,'msg009810','msg009811'],
 ['dnsLocalIPAddress','DNS / WHOIS - Destination to Local IP-address Mapping*',40,\&textinput,'','^(\s*file\s*:\s*.+|)$','configChangeLocalIPMap',
   'You need to use the "file: ..." option for this parameter!<br />
   On windows systems at least Vista/2008 is required!<br />
@@ -7900,9 +7930,6 @@ our $kudos;
 our $lastDNSerror;
 our $lastDNScheck:shared;
 our $lastDebugPrint;
-our $lastPrintCount;
-our $lastPrintLine;
-our $lastPrintTime;
 our $lastRenderedUser;
 our $lastMlog;
 our $lastmlogWrite;
@@ -8105,6 +8132,9 @@ our %hmmconf_spam:shared;
 our %images;
 our %inchrset:shared ;
 our %lastd:shared;
+our %lastPrintCount;
+our %lastPrintLine;
+our %lastPrintTime;
 our %lastsigoff:shared;
 our %lastsigon:shared;
 our %localFrequencyNotify:shared;
@@ -12097,7 +12127,8 @@ $lngmsghint{'msg500013'} = '# main form buttom hint 3';
 $lngmsg{'msg500013'} = '<div id="iphint">IP ranges are defined as for example 182.82.10. CIDR notation is accepted (182.82.10.0/24).' ;
 
 $lngmsghint{'msg500014'} = '# main form buttom hint 4';
-$lngmsg{'msg500014'} = '<br />Text after the range (and before a number sign) will be accepted as comment to be shown in a match. For example:<br />182.82.10.0/24 Yahoo #comment to be removed<br />The short notation like 182.82.10. is only allowed for IPv4 addresses, IPv6 addresses must be fully defined as for example 2201:1::1 or 2201:1::/96<br /><span class="negative">NEVER EVER include leading zeros in to IPv4 octets - like 010.200.001.078 (use 10.200.1.78 instead), this will lead in to unexpected errors in several used perl modules!</span><br />You may define a hostname instead of an IP, in this case the hostname will be replaced by all DNS-resolved IP-addresses, each with a /32 or /128 netmask. For example:<br />mta5.am0.yahoodns.net Yahoo #comment to be removed -&gt; 66.94.238.147/32 Yahoo|... Yahoo|... Yahoo<br /></div>' ;
+$lngmsg{'msg500014'} = '<br />Text after the range (and before a number sign) will be accepted as comment to be shown in a match. For example:<br />182.82.10.0/24 Yahoo #comment to be removed<br />The short notation like 182.82.10. is only allowed for IPv4 addresses, IPv6 addresses must be fully defined as for example 2201:1::1 or 2201:1::/96<br /><span class="negative">NEVER EVER include leading zeros in to IPv4 octets - like 010.200.001.078 (use 10.200.1.78 instead), this will lead in to unexpected errors in several used perl modules!</span><br />You may define a hostname instead of an IP, in this case the hostname will be replaced by all DNS-resolved IP-addresses, each with a /32 or /128 netmask. For example:<br />mta5.am0.yahoodns.net Yahoo #comment to be removed -&gt; 66.94.238.147/32 Yahoo|... Yahoo|... Yahoo<br />
+For several IP-address lists in assp, it can be advantageous to include all IP\'s (and ranges) listed in the SPF-record of a specific domain (for example in noPB, noHelo, whiteListedIPs, ...). To provide this, simply write SPF: in front of the domain name in a list entry - like 182.82.10.0/24|<span class="positive">SPF:amazon.com</span>|2201:1::1 . In this example assp will replace the term SPF:amazon.com with the list of all IP\'s and resolved IP\'s defined in the SPF-record of amazon.com. This will also work for IP lists in a group definition. Assignments made to such an entry - like <span class="positive">SPF:amazon.com=&gt;[usergroup]</span> will be added to each resolved SPF-IP-address.</div>';
 
 $lngmsghint{'msg500015'} = '# main form buttom hint 5';
 $lngmsg{'msg500015'} = 'If Net::CIDR::Lite is installed, hyphenated ranges can be used (182.82.10.0-182.82.10.255).';
@@ -19430,29 +19461,29 @@ sub mlogWrite {
            if ($logfile && $asspLog && fileno($LOG)) {
                my $skipPrint;
                my $ll = substr($logline,length($LogDateFormat));
-               $ll =~ s/^.*?\[Worker_\d+\]\s*//o;
-               if ($ll =~ /^(?:info|warning|error)\s*:/oi) {
-                   my ($type) = $lastPrintLine =~ /^(info|warning|error)\s*:/oi;
-                   if ($lastPrintLine eq $ll && $lastPrintTime < (time - 120) ) {
-                       $lastPrintCount++;
-                       $lastPrintLine =~ s/[\r\n]+$//o;
-                       print $LOG $lastPrintLine . " (suppressed $lastPrintCount concurrent equal '$type' loglines from all Workers in the last ".(time - $lastPrintTime)." seconds)\n";
-                       $lastPrintLine = $ll;
-                       $lastPrintCount = 1;
-                       $lastPrintTime = time;
-                   } elsif ($lastPrintLine eq $ll) {
-                       $lastPrintCount++;
+               $ll =~ s/^.*?\[(?:Worker_\d+|Main_Thread)\]\s*//o;
+               if ($ll =~ /^(info|warning|error)\s*:/oi) {
+                   my $type = lc $1;
+                   if ($lastPrintLine{$type} eq $ll && $lastPrintTime{$type} < (time - 120) ) {
+                       $lastPrintCount{$type}++;
+                       $lastPrintLine{$type} =~ s/[\r\n]+$//o;
+                       print $LOG $lastPrintLine{$type} . " (suppressed $lastPrintCount{$type} concurrent equal '$type' loglines from all Workers in the last ".(time - $lastPrintTime{$type})." seconds)\n";
+                       $lastPrintLine{$type} = $ll;
+                       $lastPrintCount{$type} = 1;
+                       $lastPrintTime{$type} = time;
+                   } elsif ($lastPrintLine{$type} eq $ll) {
+                       $lastPrintCount{$type}++;
                        $skipPrint = 1;
-                   } elsif ($lastPrintCount > 1) {
-                       $lastPrintLine =~ s/[\r\n]+$//o;
-                       print $LOG $lastPrintLine . " (suppressed $lastPrintCount concurrent equal '$type' loglines from all Workers)\n";
-                       $lastPrintLine = $ll;
-                       $lastPrintCount = 1;
-                       $lastPrintTime = time;
+                   } elsif ($lastPrintCount{$type} > 1) {
+                       $lastPrintLine{$type} =~ s/[\r\n]+$//o;
+                       print $LOG $lastPrintLine{$type} . " (suppressed $lastPrintCount{$type} concurrent equal '$type' loglines from all Workers)\n";
+                       $lastPrintLine{$type} = $ll;
+                       $lastPrintCount{$type} = 1;
+                       $lastPrintTime{$type} = time;
                    } else {
-                       $lastPrintLine = $ll;
-                       $lastPrintCount = 1;
-                       $lastPrintTime = time;
+                       $lastPrintLine{$type} = $ll;
+                       $lastPrintCount{$type} = 1;
+                       $lastPrintTime{$type} = time;
                    }
                }
                print $LOG $logline if (! $skipPrint);
@@ -43059,7 +43090,7 @@ sub BlockReportSend {
             && ! matchIP($mtaIP,'noTLSIP',$fh,1)
            )
         {
-            mlog(0,"BlockReport-send: will try to use STARTTLS on connection to $MTA") if $ConnectionLog >= 2 || $ReportLog >= 2;
+            mlog(0,"info: BlockReport-send: will try to use STARTTLS on connection to $MTA") if $ConnectionLog >= 2 || $ReportLog >= 2;
             $TLS = 1;
         }
         if ($useSSL) {
@@ -51179,12 +51210,12 @@ sub webRequest {
     }
 
     if (!($cert && exists $webAuthStore{$cert}) && $user eq 'root' && substr($Config{webAdminPassword}, 0, 2) eq "45" && $pass) {
-        $pass=crypt($pass,"45");
+        $pass=$crypt->($pass,"45");
     } elsif ($cert && exists $webAuthStore{$cert} && $user eq 'root' && ! $pass) {
         $pass = $Config{webAdminPassword};
         $webAuthStore{$cert} = [$user,$enc->ENCRYPT($pass)];
     } elsif ($user eq 'root' && substr($Config{webAdminPassword}, 0, 2) eq "45" && $pass) {
-        $pass=crypt($pass,"45") if ! $passFromStore;
+        $pass=$crypt->($pass,"45") if ! $passFromStore;
     }
 
     my $sessionCookie = $head{'cookie'};
@@ -61552,7 +61583,7 @@ sub fixConfigSettings {
 
     $Config{baysNonSpamLog} = 0 if $Config{baysNonSpamLog} == 6;
 
-    $Config{webAdminPassword}=crypt($Config{webAdminPassword},"45") if substr($Config{webAdminPassword}, 0, 2) ne "45";
+    $Config{webAdminPassword}=$crypt->($Config{webAdminPassword},"45") if substr($Config{webAdminPassword}, 0, 2) ne "45";
 
     &fixV1ConfigSettings() if substr($Config{asspCfgVersion},0,1) < 2;
     
@@ -61749,7 +61780,7 @@ sub fixConfigSettings {
         } elsif ($AvailCryptGhost && defined ASSP::CRYPT->new($Config{webAdminPassword},0,0)->DECRYPT($Config{adminusersdbpass})) {
             $CanUseCryptGhost = 0;
             $usedCrypt = -1; # can but don't use Crypt::GOST - try a later engine change
-            mlog(0,"info: the old encryption engine is still used, but the new, faster one (Crypt::GOST) is available - the engine will be changed at a later time");
+            mlog(0,"info: the old encryption engine is still used, but the new, faster one (Crypt::GOST) is available - the engine type will be changed at a later time");
         } elsif (defined ASSP::CRYPT->new($Config{webAdminPassword},0,0)->DECRYPT($Config{adminusersdbpass})) {
             $usedCrypt = 0;  # can't and don't use Crypt::GOST
         } else {
@@ -63257,7 +63288,68 @@ sub ConfigMakeEmailAdmDomRe {
     return $ret;
 }
 
-# inplace replace a hostname with all available IP's
+# get all IP's and host names from a domain SPF-record
+sub getSPFIPs {
+    my $domain = shift;
+
+    return unless $CanUseSPF2;
+    
+    my $res = getDNSResolver();
+    
+    my $spf_server = Mail::SPF::Server->new(
+        hostname     => 'localhost',
+        dns_resolver => $res,
+        query_rr_types => 1, # TXT queries only  (0=SPF+TXT, 1=TXT, 2=SPF)
+        );
+
+    my $request = Mail::SPF::Request->new(
+        versions      => [ 1, 2 ],
+        scope         => 'helo',
+        identity      => $domain,
+        ip_address    => '127.0.0.1',
+        helo_identity => 'localhost'
+    );
+
+    eval { $spf_server->process($request); };
+    my $spf_record;
+    eval { $spf_record = $request->record; };
+
+    my @ret;
+    $spf_record =~ s/^\s*v=spf[12]\s*//;
+    foreach (split(/\s+/,$spf_record)) {
+        next if /^[-~+]all$/i;
+        next if /^exists:/i;
+        s/^ip[46]://;
+        if (s/^include://i) {
+            my @ips = getSPFIPs($_);
+            push @ret, @ips if @ips;
+            next;
+        }
+        if (s/^redirect=//i) {
+            my @ips = getSPFIPs($_);
+            push @ret, @ips if @ips;
+            last;
+        }
+        if (/^(a|ptr)$/i) {
+            push @ret, $domain;
+            next;
+        }
+        if (/^mx$/i) {
+            my $ans = queryDNS($domain ,'MX');
+            my @queryMX = ref($ans) ? sort { $a->preference <=> $b->preference } grep { $_->type eq 'MX'} $ans->answer : ();
+            foreach my $rr ( @queryMX ) {
+                my $mxexchange;
+                eval{$mxexchange = $rr->exchange;} or next;
+                push @ret,$mxexchange;
+            }
+            next;
+        }
+        push @ret,$_ if ! /^(localhost|$IPprivate)$/i;
+    }
+    return @ret;
+}
+
+# inplace replace a hostname with all available IP's and SPF:requests with all SPF-IP's
 # in a ConfigMakeIPRe value and return errors
 sub replaceHostByIP {
     my ($new,$name,$description) = @_;
@@ -63265,9 +63357,28 @@ sub replaceHostByIP {
     my $ret;
     my $seenhostname;
     my $minTTL = 999999999;
-    foreach my $l (split(/\|/o,$$new)) {
+    my @entries = split(/\|/o,$$new);
+    while (@entries) {
+        my $l = shift(@entries);
         $l =~ s/^\s+//o;
         $l =~ s/\s$//o;
+
+        if ($l =~ /^spf:\s*($EmailDomainRe|\w\w+)(.*)$/io) {
+            my ($domain,$ext) = ($1,$2);
+            my @spfips = getSPFIPs($domain);
+            @spfips = reverse(@spfips) if @spfips;
+            $seenhostname = 1;
+            $minTTL = 86400 if 86400 < $minTTL;
+            while (@spfips) {
+                my $ip = shift(@spfips);
+                unshift @entries, "$ip$ext" if $ip;
+            }
+            next;
+        } elsif ($l =~ /^spf:/io) {
+            $ret .= ConfigShowError(1, "AdminInfo: '$l' SPF domain definition is wrong in $name - ignore entry");
+            next;
+        }
+
         if ($l =~ m/^$IPv6Re(?:\/\d{1,3})?/io) {  # is a IPv6 address
             push @nnew, $l;
             next;
@@ -65847,7 +65958,7 @@ sub ConfigChangePassword {my ($name, $old, $new, $init)=@_;
     if (!$init) {
         if ($new) {
             $Config{webAdminPassword}=$webAdminPassword=$new;
-            $Config{webAdminPassword}=$webAdminPassword=crypt($webAdminPassword,"45") if ($new !~ /^45/o || length($new) != 13);
+            $Config{webAdminPassword}=$webAdminPassword=$crypt->($webAdminPassword,"45") if ($new !~ /^45/o || length($new) != 13);
             mlog(0,"AdminUpdate: root Password changed");
         } elsif (! $new && ! $old) {
             $new = $old = $webAdminPassword;
@@ -69970,7 +70081,7 @@ sub reloadConfigFile {
         && $newConfig{webAdminPassword} !~ /^45/o
         && length($newConfig{webAdminPassword}) != 13)
     {
-        $newConfig{webAdminPassword}=crypt($newConfig{webAdminPassword},"45");
+        $newConfig{webAdminPassword}=$crypt->($newConfig{webAdminPassword},"45");
         mlog(0,"AdminUpdate: reload config - new unencrypted webAdminPassword is now encrypted");
         $newencwebpass = 1;
     }
@@ -72189,6 +72300,10 @@ sub checkReplyRecom {
 ###################################
 
 sub EXITASSP {
+    $SIG{TERM} = 'IGNORE';
+    $SIG{KILL} = 'IGNORE';
+    $SIG{SEGV} = 'IGNORE';
+    $SIG{INT}  = 'IGNORE';
     &RemovePid();
     exit 1;
 }
@@ -73610,7 +73725,7 @@ sub ThreadGoSleep {
          done2($fh);
       }
       &ConDone();
-      mlog(0,"$WorkerName prepare to sleep") if ($WorkerLog >= 2 && ! $thread_nolog && $ComWorker{$Iam}->{run} != 2);
+      mlog(0,"info: $WorkerName prepare to sleep") if ($WorkerLog >= 2 && ! $thread_nolog && $ComWorker{$Iam}->{run} != 2);
       %Con = ();
       %Fileno = ();
       %ConToTLS = ();
@@ -73620,7 +73735,7 @@ sub ThreadGoSleep {
       threads->yield();
       return if $ComWorker{$Iam}->{run} == 2;  # we got a Quit - there is nothing more to do
       d('sleeping');
-      mlog(0,"$WorkerName will sleep now") if ($WorkerLog && (! $thread_nolog || $WorkerLog == 3));
+      mlog(0,"info: $WorkerName will sleep now") if ($WorkerLog && (! $thread_nolog || $WorkerLog == 3));
       my $mem = $showMEM ? printMem() : 0;
       mlog(0,"info: worker memory$mem") if $mem && $MaintenanceLog > 2;
       $WorkerLastAct{$Iam} = time;
@@ -73636,7 +73751,7 @@ sub ThreadGoSleep {
       threads->yield();
       $thread_nolog = 0;
       $thread_nolog = 1 if ( $res eq 'status' );
-      mlog(0,"$WorkerName wakes up") if ($WorkerLog && (! $thread_nolog || $WorkerLog == 3));
+      mlog(0,"info: $WorkerName wakes up") if ($WorkerLog && (! $thread_nolog || $WorkerLog == 3));
       $mem = $showMEM ? printMem() : 0;
       mlog(0,"info: worker memory$mem") if $mem && $MaintenanceLog > 2;
       $WorkerLastAct{$Iam} = time;
@@ -75657,32 +75772,34 @@ sub sigCentralHandler {
     local @_ = ();
     local $/ = undef;
     my ($package, $file, $line) = caller;
+    my $tag = ($sig =~ /abrt|break|quit|kill|term|int|segv/io) ? 'error' : 'warning';
     if (! $SignalLog) {
         $sigCount{$sig}++;
         if (time > $nextSigCountCheck) {
             $nextSigCountCheck = time + 600;
             for (keys %sigCount) {
-                mlog(0,"warning: got unexpected signal $_ $sigCount{$_} times in last 10 minutes!");
+                mlog(0,"$tag: got unexpected signal $_ $sigCount{$_} times in last 10 minutes!");
             }
             %sigCount = ();
         }
     } else {
         %sigCount = ();
+        mlog(0,"$tag: got unexpected signal $sig in $WorkerName: package - $package, file - $file, line - $line!");
     }
-    mlog(0,"warning: got unexpected signal $sig in $WorkerName: package - $package, file - $file, line - $line!") if ($SignalLog);
     if ($SignalLog > 1) {
         my $m = &timestring();
-        $m .= " warning: got unexpected signal $sig in $WorkerName: package - $package, file - $file, line - $line!";
+        $m .= " $tag: got unexpected signal $sig in $WorkerName: package - $package, file - $file, line - $line!";
         my $S;
         open $S, '>>',"$base/debugSignal.txt";
         binmode $S;
         print $S "$m\n";
         $S->close if $S;
     }
-    if ($sig =~ /abrt|break|quit|kill|term|int/io) {
+    if ($sig =~ /abrt|break|quit|kill|term|int|segv/io) {
         if ($WorkerNumber == 0) {
-            &downASSP("restarting on signal $sig");
+            &downASSP("try restarting on signal $sig");
             _assp_try_restart;
+            exit 1 if $sig =~ /segv/io;
         } else {
             $doShutdown = time + 15;
             threads->yield();
@@ -78624,16 +78741,25 @@ sub lookup {
     my @availsock;
     my %regsock;
     if ( $self->{ query_txt } ) {
-        foreach my $list(@{ $self->{ lists } }) {
+        foreach my $list (@{ $self->{ lists } }) {
             next if $list =~ /virustotal/oi;
-            if (length($qtarget.$list) > 62 && $type ne 'URIBL' && $isip != 2) {
+            my $qdom = $list;
+            $qdom =~ s/\$DATA\$/$qtarget/o;
+            if (length($qdom) > 253) {
                 eval{$_->close if $_;} for (@sock);
                 @{$self->{sockets}} = ();
-                return "domain name too long";
+                return "domain name too long (>253)";
+            }
+            for (split(/\./o,$qdom)) {
+                if (length($_) > 63) {
+                    eval{$_->close if $_;} for (@sock);
+                    @{$self->{sockets}} = ();
+                    return "label '$_' in domain name is too long (>63)";
+                }
             }
             if ($list && !($type eq 'URIBL' && lc $list eq 'dbl.spamhaus.org' && $isip)) {
                 my($msg_a, $msg_t) = mk_packet($self, $qtarget, $list);
-                $list =~ s/.*?\$DATA\$\.?//io;
+                $list =~ s/.*?\$DATA\$\.?//o;
                 foreach ($msg_a, $msg_t) {
                     my $redo;
                     my $t = ($_ eq $msg_a) ? 'A' : 'TXT';
@@ -78660,16 +78786,25 @@ sub lookup {
             }
         }
     } else {
-        foreach my $list(@{ $self->{ lists } }) {
+        foreach my $list (@{ $self->{ lists } }) {
             next if $list =~ /virustotal/oi;
-            if (length($qtarget.$list) > 62 && $type ne 'URIBL' && $isip != 2) {
+            my $qdom = $list;
+            $qdom =~ s/\$DATA\$/$qtarget/o;
+            if (length($qdom) > 253) {
                 eval{$_->close if $_;} for (@sock);
                 @{$self->{sockets}} = ();
-                return "domain name too long";
+                return "domain name too long (>253)";
+            }
+            for (split(/\./o,$qdom)) {
+                if (length($_) > 63) {
+                    eval{$_->close if $_;} for (@sock);
+                    @{$self->{sockets}} = ();
+                    return "label '$_' in domain name is too long (>63)";
+                }
             }
             if ($list && !($type eq 'URIBL' && lc $list eq 'dbl.spamhaus.org' && $isip)) {
                 my $msg = mk_packet($self, $qtarget, $list);
-                $list =~ s/.*?\$DATA\$\.?//io;
+                $list =~ s/.*?\$DATA\$\.?//o;
                 foreach ($msg,0) {
                     last unless $_;
                     my $redo;
@@ -78902,7 +79037,7 @@ package ASSP::CryptTie;
 ##################################
 # module to encrypt keys and values of hashes and tied hashes
 #
-# this modules uses ASSP::CRYPT as encryption engine
+# this module uses ASSP::CRYPT as encryption engine
 #
 # written and copyright by Thomas Eckardt (2009)
 ##################################

@@ -1,3 +1,39 @@
+2022-01-19
+fixed in assp 2.6.6 *SPAM-Evaporator* build 22019:
+
+- If the used perl version was compiled without linking to libcypto, the perl 'crypt' command was without function. This caused the assp internal encryption engine to fail
+  and all encrypted configuration values and files were unuseable. The password for the root user was not stored.
+  Now, if such a perl version is found by assp, it will try to load the module Crypt::UnixCrypt, which has the same function like the perl internal crypt command. If this module
+  can't be loaded, assp will die and shows a related hint at the command line.
+
+- ASSP contains code to handle unexpected SEGV signal errors. The past has shown, that recovering assp to a normal state after a SEGV occured is impossible.
+  Most times the maillog.txt was filled with thousands or even million of error lines.
+  For this reason, assp will now try a restart, if a SEGV happens - if a restart is not possible, the assp process will be ended.
+
+
+- If a query string in RBL-, RWL- and URIBL-queries was longer than 62 byte, the query was not processed by assp. The length of such a query string is now limited to 253 byte.
+  The length of the labels in a domain string are limited to 63 byte.
+
+
+changed:
+
+- It was possible for years now (but undocumented) to provide api keys for RBLServiceProvider and URIBLServiceProvider.
+  The documentation for both parameters is extended.
+  ...  It can be possible, that you need to provide a privat key or ID in the query string for a URIBL Service Provider - like: your-key.query-data.uribl-provider.org
+       In this case, define the URIBL Service Provider like: your-key.$DATA$.uribl-provider.org
+       The string $DATA$ will be replaced by the queried data in each request.
+
+
+- A new function is implemented in to all IP-address lists. It is now possible to include all IP's of a SPF-record of a domain in to IP-address lists.
+  The help text is extended:
+  .... For several IP-address lists in assp, it can be advantageous to include all IP's (and ranges) listed in the SPF-record of a specific domain (for example in noPB, noHelo, whiteListedIPs, ...).
+       To provide this, simply write SPF: in front of the domain name in a list entry - like 182.82.10.0/24|SPF:amazon.com|2201:1::1 .
+       In this example assp will replace the term SPF:amazon.com with the list of all IP's and resolved IP's defined in the SPF-record of amazon.com.
+       This will also work for IP lists in a group definition. Assignments made to such an entry - like SPF:amazon.com=>[usergroup] will be added to each resolved SPF-IP-address.
+
+
+
+
 2021-12-17
 fixed in assp 2.6.6 *SPAM-Evaporator* build 21351:
 
