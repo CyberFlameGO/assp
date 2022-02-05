@@ -1,4 +1,4 @@
-# $Id: ASSP_AFC.pm,v 5.37 2021/12/09 11:00:00 TE Exp $
+# $Id: ASSP_AFC.pm,v 5.38 2022/02/05 12:00:00 TE Exp $
 # Author: Thomas Eckardt Thomas.Eckardt@thockar.com
 
 # This is a ASSP-Plugin for full Attachment detection and ClamAV-scan.
@@ -341,7 +341,7 @@ our %SMIMEkey;
 our %SMIMEuser:shared;
 our %skipSMIME;
 
-$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.37 2021/12/09 11:00:00 TE Exp $' =~ /,v ([\d.]+) /);
+$VERSION = $1 if('$Id: ASSP_AFC.pm,v 5.38 2022/02/05 12:00:00 TE Exp $' =~ /,v ([\d.]+) /);
 our $MINBUILD = '(18085)';
 our $MINASSPVER = '2.6.1'.$MINBUILD;
 our $plScan = 0;
@@ -2537,7 +2537,7 @@ sub isAnEXE {
         $type = "$1 script";
     } elsif (! $skipLockyCheck && $$raf =~ /\bstring\.prototype\.|\bcharAt\b/io) {   # detect possibly lucky virus script
         $type = "Java script - possibly (ransomware) virus";
-    } elsif ($sk !~ /:WSH/oi && $$raf =~ /W(?:shShell|script)\.|IWsh(?:Shell|Environment|Network)_Class/ios) {
+    } elsif ($sk !~ /:WSH/oi && $$raf =~ /(?:^|\s)=wmic(?:\.exe)?\s*\||W(?:shShell|script)\.|IWsh(?:Shell|Environment|Network)_Class/ios) {
         $type = "Windows-Scripting-Host script";
     } elsif ( $sk !~ /:CSC/oi && ($count = () = $$raf =~
                    /^\s*(
