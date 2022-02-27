@@ -226,8 +226,8 @@ our $maxPerlVersion;
 
 #
 sub setVersion {
-$version = '2.6.6';
-$build   = '22019';        # 19.01.2022 TE
+$version = '2.6.8';
+$build   = '22058';        # 27.02.2022 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.034999';
 $MAINVERSION = $version . $modversion;
@@ -700,7 +700,9 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
     'error'   => 60
 );
 
-sub __cs { $codeSignature = '73890455D1BF4B328CEAB4A752AAC417E8704BAB'; }
+our $sortWeightedConfig = {};       # 'configParameter' => 1, '' => 1, ... - reverse sort regular expressions in this weighted config parameters
+
+sub __cs { $codeSignature = '1467EBDA4C1D2C7CC188A37286B3E834CBD770AC'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1531,7 +1533,8 @@ $SpamTagRE = qr/(?:
                    Backscatter | BATV | Bayesian |
                    BlackDomain | BlackHELO | BombBlack |
                    BombData | BombHeader | BombRe |
-                   BombScript | BombSender | BounceAddress |
+                   BombScript | BombSender |
+#                   BounceAddress |
 
                    Collect | Connection | CountryCode |
 
@@ -1853,7 +1856,6 @@ sub defConfigArray {
  # last used msg number 010791
 
  # still unused msg numbers
- # 'msg003560','msg003561'
  # 'msg003470','msg003471'
  #
 
@@ -2239,9 +2241,17 @@ If multiple matches (values) are found in a mail for any IP address in the trans
  [specialIPList]<br />
  1.2.3.4<br />
  123.234.0.0/16<br />
+ SPF:domain.org<br />
+ SPF:otherdomain.org -_spf1.domain.org, -1.2.3.4/32, -123.2.3.0/24, -...<br />
+ SPF:amazon.com -amazonses.com<br />
  ::1<br />
  <br />
  Lines starting with a # OR ; are consider a comment. Empty lines will be ignored. A group definition stops, if a new group definition starts or at the end of the file. Comments are not allowed inside a definition line.<br />
+ <br />
+ <font color="orange">Only here in Groups</font>, the SFP: notation is enhanced. The SPF: definition can follow a comma separated list of hosts, include-definition, redirect-definition and resulting IP-addresses/networks (full string match), which should be ignored. The leading hyphen for each excluded entry is mandatory - see the example above!
+ <br />
+ SPF:amazon.com -amazonses.com : in this example assp will follow include:spf1.amazon.com and include:spf2.amazon.com - but not include:amazonses.com .
+ <br />
  <br />
  There are two possible methods to import entries from an external source in to a group - the execution of a system command or an LDAP query.<br />
  To import entries via a system command like (eg. cat|grep or find or your self made shell script), write a single line that begins with exec: followed by the command to be executed - like:<br />
@@ -2290,7 +2300,7 @@ If multiple matches (values) are found in a mail for any IP address in the trans
  If you are able to get all results (eg. email addresses or domain names) with the \'LDAP_group_query\' query, leave the definition of \'LDAP_entry_query_filter\' and \'LDAP_entry_query_attribut_to_return\' empty {}{}.<br />
  <br />
  The result of each group definition will be stored in a file in files/group_export/GROUPNAME.txt.<br />
- The groups are build at every start of assp and if the defined file or an include file is stored (changed file creation or modification time). To force a reload of all groups, open the file and click \'Save changes\' or change the file time with an external shell script. It is also possible to use GroupsReloadEvery, to reload the Groups definition in time intervals, if the exec: or ldap: option are used.<br />
+ The groups are build at every start of assp and if the defined file or an include file is stored (changed file creation or modification time). To force a reload of all groups, open the file and click \'Save changes\' or change the file time with an external shell script. It is also possible to use GroupsReloadEvery, to reload the Groups definition in time intervals, if any of the exec: , ldap: or SPF: option is used. If the TTL of a SPF-record is less, the TTL will be used.<br />
  <br />
  some simple examples:<br />
  <br />
@@ -2317,10 +2327,15 @@ If multiple matches (values) are found in a mail for any IP address in the trans
  ldap:{host=&gt;"edir.your-domain.local:389,edir2.your-domain.local:389",base=&gt;\'ou=your-domain,o=com\',user=&gt;\'ldapadmin\',password=&gt;\'LdapAdmin0PW=\',timeout=&gt;10,scheme=&gt;ldap,starttls=&gt;1,version=&gt;3},<font color="orange">{(&amp;(objectclass=group)(cn=mailAdmins))<font color="red">&lt;=s/,o=.+//io</font>}<b>{member}</b></font>,<font color="green">{(&amp;(objectclass=inetOrgPerson)(<font color="red">%USERID%</font>))}<b>{mail}</b></font><br />
  <br />
  ASSP will do a small syntax check for your LDAP line definition. How ever - it is recommended to validate your LDAP queries with a ldap tool before you put them in to assp and to set LDAPLog to diagnostic while you play around with this configuration!<br /><br />
+
+
+
+
  NOTICE: Do NOT try to "#include ..." any configuration file used by any other configuration parameter - those includes will be ignored. Instead define the group here and use it in the other configuration parameter(s).<br />
  ','Basic',undef,'msg009470','msg009471'],
 ['GroupsReloadEvery','Reload the Groups definitions every this minutes <sup>s</sup>',40,\&textinput,60,$ScheduleGUIRe,'configChangeSched',
- 'ASSP will reload the Groups definition every this minutes, if the exec: or ldap: option is used in Groups. <br />
+ 'ASSP will reload the Groups definition every this minutes, if any of the exec: , ldap: or SPF: option is used in Groups .<br />
+ If the TTL of a SPF-record used in Groups is less, the TTL will be used.<br />
  A value of zero disables the scheduled reload. Defaults to 60 minutes.<br />
  <hr /><div class="cfgnotes">Notes On Group Definitions</div><input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/groupsdef.txt\',3);" />','Basic',undef,'msg007910','msg007911'],
 
@@ -2600,7 +2615,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   (0) global &amp; private - the email address is automatically whitelisted for all local domains and all local users<br />
   (1) domain &amp; private - the email address is automatically whitelisted for all local users in the same local domain<br />
   (2) private only - the email address is only whitelisted for this single local user<br /><br />
- Global and domain based entries are not added to the whitelist by a private addition, if these records are marked as "rmoved from whitelist".<br />
+ Global and domain based entries are not added to the whitelist by a private addition, if these records are marked as "removed from whitelist".<br />
  If a user removes an email address from his personal whitelist, global and domain based entries are not changed!<br />
  NOTICE: independent from this setting, the whitelistdb manages all three entries (global,domain,private), to make it possible to switch this value at any time.<br />
  This setting is only observed in queries to the whitelist!',undef,undef,'msg009740','msg009741'],
@@ -3781,7 +3796,7 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 ['bombHeaderRe','Regular Expression to Identify Spam in Header Part**',80,\&textinput,'file:files/bombheaderre.txt','(.*)','ConfigCompileRe',
   'Part of DoBombHeaderRe: header will be checked against this Regex if DoBombHeaderRe is enabled. For example<br />
   file:files/bombheaderre.txt',undef,undef,'msg004490','msg004491'],
-['bombSubjectRe','Regular Expression to Identify Spam in Subject**',80,\&textinput,'','(.*)','ConfigCompileRe','Part of DoBombHeaderRe : the mail header will be checked against this Regex if DoBombHeaderRe is enabled. If DoBombHeaderRe is enabled, the mail subject will be automatically checked against <a href="https://tools.ietf.org/html/rfc2047" rel="external">RFC2047</a> (for NON printable characters in the undecoded MIME content).',undef,undef,'msg004500','msg004501'],
+['bombSubjectRe','Regular Expression to Identify Spam in Subject**',80,\&textinput,'','(.*)','ConfigCompileRe','Part of DoBombHeaderRe : the mail MIME decoded subject header will be checked against this Regex if DoBombHeaderRe is enabled. If DoBombHeaderRe is enabled, the mail subject will be automatically checked against <a href="https://tools.ietf.org/html/rfc2047" rel="external">RFC2047</a> (for NON printable characters in the undecoded MIME content).',undef,undef,'msg004500','msg004501'],
 ['maxSubjectLength','Maximum allowed Subject Length',20,\&textinput,'200=>100','^(\d+(?:\=\>\d+)?|)$',undef,'If set to a value greater than 0, assp will check the length of the Subject of the mail. If the Subject length exceeds this value, the message score will be increased by \'bombValencePB\' and the string that is checked in \'bombSubjectRe\' will be trunked to this length. It is possible to define a special weight using the syntax \'length=>value\', in this case the defined absolute value will be used instead of \'bombValencePB\' to increase the message score. If the subject is too long and this weight is equal or higher than \'bombMaxPenaltyVal\' no further bomb checks will be done on the subject.',undef,undef,'msg009360','msg009361'],
 ['bombCharSets','Regular Expression to Identify Foreign Charsets**',60,\&textinput,'charset=(?:BIG5|CHINESEBIG|GB2312|KS_C_5601|KOI8-R|EUC-KR|ISO-2022-JP|ISO-2022-KR|ISO-2022-CN|CP1251|UNKNOWN)','(.*)','ConfigCompileRe','Part of DoBombHeaderRe: header will be checked against this Regex if DoBombHeaderRe is enabled. The literal UNKNOWN will detect all wrong defined MIME character sets.<br />
   Part of DoBombRe : every MIME-part header will be checked against this Regex if DoBombRe is enabled.<br />
@@ -3791,10 +3806,11 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   If the number of hits is greater or equal Maximum Hits, the email is flagged <b>Failed</b> (possibly blocked and/or scored).<br />
   If the number of hits is greater 0 and less Maximum Hits, the email is flagged <b>Neutral</b> (possibly scored)',undef,undef,'msg004520','msg004521'],
 ['DoBombRe','Use Bomb Regular Expressions','0:disabled|1:block|2:monitor|3:score',\&listbox,1,'(\d*)',undef,
-  'If activated, each message is checked  against bombRe and bombDataRe Regular Expressions.<br />
+  'If activated, each message is checked against bombRe and bombDataRe Regular Expressions.<br />
   The scoring value is the sum of all valences(weights) of all found bombs - bombValencePB .',undef,undef,'msg004530','msg004531'],
 ['bombRe','Regular Expression for Header and Data Part**',80,\&textinput,'file:files/bombre.txt','(.*)','ConfigCompileRe','Header and Data will be checked against this Regular Expression if DoBombRe is enabled.  For example:<br />
  IMG [^&gt;]*src=[\'&quot;]cid|&lt;BODY[^&gt;]*&gt;(&lt;[^&gt;]+&gt;|\n|\r)*&lt;IMG[^&gt;]+&gt;(&lt;[^&gt;]+&gt;|\n|\r)*&lt;/BODY&gt;<br />
+ This regular expression is checked against the MIME and HTML decoded mail content.<br />
  If you want to search for attachment names, define a line with \'attachment:the_attachment_name\'.',undef,undef,'msg004540','msg004541'],
 ['bombSkipHeaderTagRe','Regular Expression to Identify skipped Tags in Header Part*',80,\&textinput,'file:files/bombskipheadertagre.txt','(.*)','ConfigCompileRe',
   'Regular Expression to define header tags, that will be skipped for bombSuspiciousRe, bombHeaderRe, bombRe and blackRe - like \'DKIM-Signature|Domainkey-Signature\' - the always followed collon (:) is added by assp. For example<br />
@@ -3804,7 +3820,8 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
   If the number of hits is greater 0 and less Maximum Hits, the email is flagged <b>Neutral</b> (possibly scored)',undef,undef,'msg004550','msg004551'],
 ['bombDataRe','BombData Regular Expression for Data Part**',80,\&textinput,'','(.*)','ConfigCompileRe','Data part will be checked against the Regular Expression  if DoBombRe is enabled. For example:<br />
  IMG [^&gt;]*src=[\'&quot;]cid|&lt;BODY[^&gt;]*&gt;(&lt;[^&gt;]+&gt;|\n|\r)*&lt;IMG[^&gt;]+&gt;(&lt;[^&gt;]+&gt;|\n|\r)*&lt;/BODY&gt;<br />
-  If you want to search for attachment names, define a line with \'attachment:the_attachment_name\'.',undef,undef,'msg004560','msg004561'],
+ This regular expression is checked against the MIME and HTML decoded mail body (like bombRe) - and against the only MIME decoded mail body with removed line endings (=\n).<br />
+ If you want to search for attachment names, define a line with \'attachment:the_attachment_name\'.',undef,undef,'msg004560','msg004561'],
 ['bombDataReMaxHits','Maximum Hits for Bombs in Data',3,\&textinput,1,'(\d*)',undef,'A hit is a found Bomb in data - bombDataRe .<br />
   If the number of hits is greater or equal Maximum Hits, the email is flagged <b>Failed</b> (possibly blocked and/or scored).<br />
   If the number of hits is greater 0 and less Maximum Hits, the email is flagged <b>Neutral</b> (possibly scored)',undef,undef,'msg004570','msg004571'],
@@ -4743,7 +4760,10 @@ For example: mysql/dbimport<br />
 ['enable8BITMIME','Enable the 8BITMIME SMTP Extension',0,\&checkbox,'1','(.*)','Config8BitMIME',
  'If enabled (not default) assp offers and supports the 8BITMIME SMTP extension, if the connected peers offers and supports 8BITMIME.',undef,undef,'msg010510','msg010511'],
 ['send250OK','Send 250 OK',0,\&checkbox,'','(.*)',undef,
- 'Set this checkbox if you want ASSP to reply with \'250 OK\' instead of SMTP error code \'554 5.7.1\'. This will turn ASSP in some form of tarpit. ',undef,undef,'msg007430','msg007431'],
+ 'Set this checkbox if you want ASSP to reply with \'250 OK\' instead of SMTP error codes (\'5xx a.b.c\') to all IP-addresses ( see send250toIP for IP-lists ). This will turn ASSP generally in some form of tarpit.',undef,undef,'msg007430','msg007431'],
+['send250toIP','Send 250 OK to this list of IP-addresses*',80,\&textinput,'','(\S*)','ConfigMakeIPRe','List of connecting IP-addresses which will get the reply \'250 OK\' instead of SMTP error codes (\'5xx a.b.c\') - see send250OK .<br />
+ This is a usefull setting, if a blocked sending host got a 5xx reply and does not follow the SMTP-RFC\'s (stop and send a NDR). Instead the host permanently tries to send the same mail again and again.<br />
+ Such blocked mails are internaly processed like any other SPAM mail, but the sender will not get informed about, that the mail was not delivered to the final recipient!','Basic','7','msg003560','msg003561'],
 ['AsADaemon','Run ASSP as a Daemon','0:No|1:Yes - externally controlled|2:Yes - run AutoRestartCmd on restart and wait|3:Yes - run AutoRestartCmd on restart and exit',\&listbox,'0','(.*)',undef,
 'In all NON-Windows OS (eg. Linux/BSD/Unix/OSX...) fork and close STDOUT and STDERR file handles. <br />
  Similar to the command "perl assp.pl &amp;", but better.<br />
@@ -6413,7 +6433,8 @@ sub setMakeREVars {
         'ResetMaxAUTHErrorIPs'          => 'RMAERE',
         'NoSubjectFrequencyIP'          => 'NSFIPRE',
         'URIBLIPRe'                     => 'URIBLIPRE',
-        'NoLocalFrequencyIP'            => 'NLFIPRE'
+        'NoLocalFrequencyIP'            => 'NLFIPRE',
+        'send250toIP'                   => 'SND250IP'
     );
 
     # changes here require coding in ConfigAnalyze for $lastREmatch!
@@ -6662,6 +6683,7 @@ sub setMakeREVars {
 
         'subjectFrequencyCache' => 2,
         'internals' => 3,
+        'SPFRecCache' => 2,
     );
     if (defined $main::CanUseBerkeleyDB && (! $runHMMusesBDB || ! $main::CanUseBerkeleyDB)) {
         delete $tempDBvars{HMMdb};
@@ -7977,6 +7999,7 @@ our $nextMemoryUsageCheckSchedule:shared;
 our $nextNewReported = time + [split(/\s+/o,$newReportedInterval)]->[1] * 60;
 our $nextOptionCheck:shared;
 our $nextQueueSchedule:shared;
+our $nextRefreshSPFCache:shared = time + 120;
 our $nextConsolidateWhitelist:shared;
 our $nextSigCountCheck = time + 600;
 our $nextStatsUpload:shared;
@@ -12128,7 +12151,8 @@ $lngmsg{'msg500013'} = '<div id="iphint">IP ranges are defined as for example 18
 
 $lngmsghint{'msg500014'} = '# main form buttom hint 4';
 $lngmsg{'msg500014'} = '<br />Text after the range (and before a number sign) will be accepted as comment to be shown in a match. For example:<br />182.82.10.0/24 Yahoo #comment to be removed<br />The short notation like 182.82.10. is only allowed for IPv4 addresses, IPv6 addresses must be fully defined as for example 2201:1::1 or 2201:1::/96<br /><span class="negative">NEVER EVER include leading zeros in to IPv4 octets - like 010.200.001.078 (use 10.200.1.78 instead), this will lead in to unexpected errors in several used perl modules!</span><br />You may define a hostname instead of an IP, in this case the hostname will be replaced by all DNS-resolved IP-addresses, each with a /32 or /128 netmask. For example:<br />mta5.am0.yahoodns.net Yahoo #comment to be removed -&gt; 66.94.238.147/32 Yahoo|... Yahoo|... Yahoo<br />
-For several IP-address lists in assp, it can be advantageous to include all IP\'s (and ranges) listed in the SPF-record of a specific domain (for example in noPB, noHelo, whiteListedIPs, ...). To provide this, simply write SPF: in front of the domain name in a list entry - like 182.82.10.0/24|<span class="positive">SPF:amazon.com</span>|2201:1::1 . In this example assp will replace the term SPF:amazon.com with the list of all IP\'s and resolved IP\'s defined in the SPF-record of amazon.com. This will also work for IP lists in a group definition. Assignments made to such an entry - like <span class="positive">SPF:amazon.com=&gt;[usergroup]</span> will be added to each resolved SPF-IP-address.</div>';
+For several IP-address lists in assp, it can be advantageous to include all IP\'s (and ranges) listed in the SPF-record of a specific domain (for example in noPB, noHelo, whiteListedIPs, ...). To provide this, simply write SPF: in front of the domain name in a list entry - like 182.82.10.0/24|<span class="positive">SPF:amazon.com</span>|2201:1::1 . In this example assp will replace the term SPF:amazon.com with the list of all IP\'s and resolved IP\'s defined in the SPF-record of amazon.com. Assignments made to such an entry - like <span class="positive">SPF:amazon.com=&gt;[usergroup]</span> will be added to each resolved SPF-IP-address.<br />
+The SPF:domain.org notation can be also used for IP lists in a group definition.</div>';
 
 $lngmsghint{'msg500015'} = '# main form buttom hint 5';
 $lngmsg{'msg500015'} = 'If Net::CIDR::Lite is installed, hyphenated ranges can be used (182.82.10.0-182.82.10.255).';
@@ -13661,6 +13685,7 @@ $headers .= "</div><hr />
 	<div onclick=\"return popFileEditor(\'DB-LDAPNotFound\',\'1h\');\"><img src=\"$noIcon\" alt=\"#\" /> LDAPNotFound</div>
 	<div onclick=\"return popFileEditor(\'DB-EmergencyBlock\',\'1h\');\"><img src=\"$noIcon\" alt=\"#\" /> EmergencyBlock</div>
 	<div onclick=\"return popFileEditor(\'DB-RFC822dom\',\'1h\');\"><img src=\"$noIcon\" alt=\"#\" /> RFC822dom</div>
+	<div onclick=\"return popFileEditor(\'DB-SPFRecCache\',\'1h\');\"><img src=\"$noIcon\" alt=\"#\" /> SPF-Record Cache</div>
 	<div onclick=\"return popFileEditor(\'DB-LastSchedRun\',\'1h\');\"><img src=\"$noIcon\" alt=\"#\" /> Scheduler History</div>
 	<div onclick=\"return popFileEditor(\'DB-T10StatI\',\'1h\');\"><img src=\"$noIcon\" alt=\"#\" /> TOP blocked IP\'s</div>
 	<div onclick=\"return popFileEditor(\'DB-T10StatS\',\'1h\');\"><img src=\"$noIcon\" alt=\"#\" /> TOP blocked senders</div>
@@ -14286,6 +14311,7 @@ sub initPrivatHashes {
                     && $_ ne 'DMARCrec'
                     && $_ ne 'subjectFrequencyCache'
                     && $_ ne 'internals'
+                    && $_ ne 'SPFRecCache'
                     && $_ !~ /^T10Stat/o
                     && $clean
                     && $WorkerNumber == 0);
@@ -14316,9 +14342,9 @@ sub initPrivatHashes {
         }
     } else {
         for my $hash (sort keys %tempDBvars) {
-            if ($tempDBvars{$hash} == 2) {
+            if ($tempDBvars{$hash} == 2 && -e "$base/tmpDB/$hash.sav") {
                 loadHashFromFile("$base/tmpDB/files/$hash.sav",\%{$hash});
-            } elsif ($tempDBvars{$hash} == 3) {
+            } elsif ($tempDBvars{$hash} == 3 && -e "$base/tmpDB/$hash.store") {
                 if (-e "$base/tmpDB/files/$hash.store") {
                     eval{%{$hash} = %{Storable::retrieve("$base/tmpDB/files/$hash.store")}};
                     if ($@) {
@@ -14335,6 +14361,7 @@ sub initPrivatHashes {
                     && $hash ne 'DMARCrec'
                     && $hash ne 'subjectFrequencyCache'
                     && $hash ne 'internals'
+                    && $hash ne 'SPFRecCache'
                     && $hash ne 'Griplist'
                     && $hash !~ /^T10Stat/o
                     && $clean
@@ -15339,10 +15366,18 @@ EOT
     }
 
     # if BDB is not available or not used we need to share all internal hashes
+    # if the hashes are not empty, we need to copy them
     if (! $CanUseBerkeleyDB || ! $useDB4IntCache) {
         foreach (sort keys %tempDBvars) {
             next if $_ eq 'BackDNS2';
+            my %tmp;
+            while (my ($k,$v) = each %{$_}) {
+                $tmp{$k} = $v;
+            }
             share(%{$_});
+            while (my ($k,$v) = each %tmp) {
+                ${$_}{$k} = $v;
+            }
         }
     }
     print '.';
@@ -15524,16 +15559,16 @@ EOT
     if ($CanUseRegexpOptimizer) {
         $ver=eval('Regexp::Optimizer->VERSION'); $VerRegexpOptimizer=$ver; $ver=" version $ver" if $ver;
         if ($VerRegexpOptimizer ge '0.23') {
-            mlog(0,"Regexp::Optimizer module$ver installed - default Regular Expression Optimization is available");
+            mlog(0,"Regexp::Optimizer module$ver installed - Regular Expression Speed Optimization is available");
             $installed = 'enabled';
         } else {
             $CanUseRegexpOptimizer = $AvailRegexpOptimizer = 0;
             $installed = "with wrong version ($VerRegexpOptimizer) installed (requires 0.23)";
-            mlog(0,"Regexp::Optimizer module $installed - default Regular Expression Optimization is not available - regex processing will take approximately 3 times longer");
+            mlog(0,"Regexp::Optimizer module $installed - Regular Expression Speed Optimization is not available");
         }
     } elsif (!$AvailRegexpOptimizer)  {
         $installed = $useRegexpOptimizer ? 'is not installed' : 'is disabled in config';
-        mlog(0,"Regexp::Optimizer module $installed - default Regular Expression Optimization is not available - regex processing will take approximately 3 times longer");
+        mlog(0,"Regexp::Optimizer module $installed - Regular Expression Speed Optimization is not available");
     }
     $ModuleList{'Regexp::Optimizer'} = $VerRegexpOptimizer.'/0.23';
     $ModuleStat{'Regexp::Optimizer'} = $installed;
@@ -15743,7 +15778,7 @@ for client connections : $dftcSSLCipherList " if $dftsSSLCipherList && $dftcSSLC
     }
 
     my $v;
-    $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.37;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
+    $ModuleList{'Plugins::ASSP_AFC'}    =~ s/([0-9\.\-\_]+)$/$v=5.38;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_AFC'};
     $ModuleList{'Plugins::ASSP_ARC'}    =~ s/([0-9\.\-\_]+)$/$v=2.09;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_ARC'};
     $ModuleList{'Plugins::ASSP_DCC'}    =~ s/([0-9\.\-\_]+)$/$v=2.02;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_DCC'};
     $ModuleList{'Plugins::ASSP_OCR'}    =~ s/([0-9\.\-\_]+)$/$v=2.25;$1>$v?$1:$v;/oe if exists $ModuleList{'Plugins::ASSP_OCR'};
@@ -20696,6 +20731,7 @@ sub NewSMTPConnection {
     #  mlog(0,"connection fno : client = $fnoC , server = $fnoS");
     d("Connected: SID=$Con{$client}->{SessionID} $client -- $server");
     $Con{$client}->{acceptall} = 1 if matchIP($ip,'acceptAllMail',$client,0);
+    $Con{$client}->{send250OK} = 1 if matchIP($ip,'send250toIP',$client,0);
     if( $Con{$client}->{acceptall} || $Con{$client}->{relayok} || isOk2Relay($client,$ip) ) {
         $Con{$client}->{relayok} = 1;
         d("$client relaying ok: $ip");
@@ -21547,9 +21583,9 @@ sub SetRE {
                 $loadRE =~ s/\)$//o if $loadRE =~ s/^\(\?(?:\^u?)?\:(\((?!\?\|))/$1/o;
                 $$var = qr/$loadRE/;
             } else {
-   #             $o->set(debug => $debug);
                 my @noOpt;
                 my $o = $optReModule->new;
+#                $o->set(debug => $debug);
                 if ($r =~ /\<\<\<(.*?)\>\>\>/o) { # Regexp::Optimizer is unable to skip optim - so we have to do this
                     while ($r =~ s/\<\<\<(.*?)\>\>\>\|?//o) {
                         push @noOpt, $1;
@@ -27938,7 +27974,7 @@ sub getline {
             if ( ! $this->{relayok} && PersBlackFind("$u$h",$this->{mailfrom}) ) {
                 my $addr = (exists $this->{orgrcpt}) ? $this->{orgrcpt} : "$u$h";
                 my $reply = "550 mailbox for <$addr> is unavailable\r\n";
-                $reply = "250 OK\r\n" if $send250OK or ($this->{ispip} && $send250OKISP);
+                $reply = "250 OK\r\n" if $send250OK or $this->{send250OK} or ($this->{ispip} && $send250OKISP);
                 sendque( $fh, $reply );
                 $this->{prepend} = "[PersonalBlack]";
                 $this->{orgrcpt} = "$u$h";
@@ -27967,9 +28003,11 @@ sub getline {
                     $reply = "550 5.1.1 User unknown $u$h\r\n";
                 }
                 sendque( $fh, $reply );
+                my $oldprepend = $this->{prepend};
                 $this->{prepend} = '[BounceAddress]';
-                mlog( $fh, "rejected by bounce address list: $u$h" )
+                mlog( $fh, "rejected by bounce address list ( RejectTheseLocalAddresses ): $u$h" )
                   if $ValidateUserLog;
+                $this->{prepend} = $oldprepend;
                 return;
             } elsif (   (!$this->{nocollect} && matchSL( "$u$h", 'spamaddresses' ) )
                 	 || ($UseTrapToCollect && &pbTrapFind($fh,"$u$h") )
@@ -29143,7 +29181,7 @@ sub getheader {
     $l =~ s/\r?\n$/\r\n/o; # correct malformed line termination anyway
     
     if($this->{inerror} or $this->{intemperror}) {  # got 4/5xx from MTA - possibly next step after DATA
-        if ($send250OK or ($this->{ispip} && $send250OKISP)) {
+        if ($send250OK or $this->{send250OK} or ($this->{ispip} && $send250OKISP)) {
             mlog($fh,"info: connection is moved to NULL after MTA has sent an error reply in DATA part") if $ConnectionLog;
             $this->{getline}=\&NullData;
   		    $this->{getlinetxt} = 'NullData';
@@ -30036,7 +30074,7 @@ sub headerAddrCheckOK_Run {
                             $reply = $PenaltyTrapPolite;
                             $reply =~ s/EMAILADDRESS/$addr/go;
                         }
-                        if ($send250OK or ($this->{ispip} && $send250OKISP)) {
+                        if ($send250OK or $this->{send250OK} or ($this->{ispip} && $send250OKISP)) {
                             $this->{getline} = \&NullData;
                             $this->{getlinetxt} = 'NullData';
                         } else {
@@ -30066,7 +30104,7 @@ sub headerAddrCheckOK_Run {
                     $this->{messagereason} = "relay attempt blocked for non local $BCC: recipient - $addr";
                     mlog(0,"Notice: you may set 'removeForeignBCC' to prevent this relay attempt blocking") if $ValidateUserLog;
                     $this->{spamfound} = 1;
-                    if ($send250OK or ($this->{ispip} && $send250OKISP)) {
+                    if ($send250OK or $this->{send250OK} or ($this->{ispip} && $send250OKISP)) {
                         my $fn = $this->{maillogfilename};   # store the mail if we have to receive it
                         unless ($fn) {
                             $fn = Maillog($fh,'',7); # tell maillog what this is -> discarded.
@@ -31855,7 +31893,7 @@ sub weightRe {
         $skip = 0;
         my $used = $how ? " used '$how' -" : '';
         mlog(0,"info: weighted regex ($name) result found for '$key' - with '$k' -$used weight is $weight") if $regexLogging;
-        $weightMatch .= ' , ' if $weightMatch;
+        $weightMatch .= ' , ' if $weightMatch;   # global var !!
         $weightMatch .= $k;
         last;
     }
@@ -35821,7 +35859,7 @@ sub subjectFrequencyOK_Run {
     pbAdd( $fh, $ip, 'isValencePB', 'LimitingSameSubject' ) if $DoSameSubject != 2;
     if ( $DoSameSubject == 1 ) {
         $Stats{smtpSameSubject}++;
-        unless (($send250OKISP && $this->{ispip}) || $send250OK) {
+        unless (($send250OKISP && $this->{ispip}) || $send250OK || $this->{send250OK}) {
             seterror( $fh, "554 5.7.1 too many mails with same subject", 1 );
             return 0;
         }
@@ -35900,7 +35938,7 @@ sub DomainIPOK_Run {
             pbAdd( $fh, $myip, 'idValencePB', 'LimitingIPDomain' ) if $DoDomainIP != 2;
             if ( $DoDomainIP == 1 ) {
                 $Stats{smtpConnDomainIP}++;
-                unless (($send250OKISP && $this->{ispip}) || $send250OK) {
+                unless (($send250OKISP && $this->{ispip}) || $send250OK || $this->{send250OK}) {
                     seterror( $fh, "554 5.7.1 too many different IP's for domain '$mfdd'", 1 );
                     return 0;
                 }
@@ -35993,7 +36031,7 @@ sub FrequencyIPOK_Run {
                 pbAdd( $fh, $ConIp550, 'ifValencePB', 'IPfrequency' ) if $DoFrequencyIP!=2;
                 if ( $DoFrequencyIP == 1 ) {
                     $Stats{smtpConnLimitFreq}++;
-                    unless (($send250OKISP && $this->{ispip}) || $send250OK) {
+                    unless (($send250OKISP && $this->{ispip}) || $send250OK || $this->{send250OK}) {
                         if ($ConIp550 eq $this->{ip}) {
                             seterror( $fh, "554 5.7.1 too frequent connections for '$ConIp550'", 1 );
                         } else {
@@ -36865,12 +36903,10 @@ sub BombWeight_Run {
            $rawtext =~ s/(<!--.+?)-->/$1/sgo;
            my $mimetext = cleanMIMEBody2UTF8(\$rawtext);
            if ($mimetext) {
-               if (! $isbombDataRe) {
-                   $text[0] = cleanMIMEHeader2UTF8(\$rawtext,0);
-                   $mimetext =~ s/\=(?:\015?\012|\015)//go;
-                   $mimetext = decHTMLent(\$mimetext);
-               }
-               $text[0] .= $mimetext;
+               $text[0] = cleanMIMEHeader2UTF8(\$rawtext,0) if (! $isbombDataRe);
+               $mimetext =~ s/\=(?:\015?\012|\015)//go;
+               $text[0] .= decHTMLent(\$mimetext);
+               $text[0] .= "\r\n".$mimetext if ($isbombDataRe && $text[0] ne $mimetext);
            } else {
                $text[0] = decodeMimeWords2UTF8($rawtext);
            }
@@ -37690,7 +37726,7 @@ sub PersBlackOK_Run {
         delete $this->{orgrcpt};
         $this->{prepend} = '';
 
-        if ($send250OK or ($this->{ispip} && $send250OKISP)) {
+        if ($send250OK or $this->{send250OK} or ($this->{ispip} && $send250OKISP)) {
             $this->{getline} = \&NullData;
             $this->{getlinetxt} = 'NullData';
         } else {
@@ -38368,7 +38404,7 @@ sub whitebody {
         if ( $done || $this->{maillength} >= $mbytes ) {
             d('whitebodydone',1);
             $this->{whitebodydone} = 1;
-            my $doneToError = $done || ($send250OK || ($send250OKISP && ($this->{ispip} || $this->{cip})));
+            my $doneToError = $done || ($send250OK || $this->{send250OK} || ($send250OKISP && ($this->{ispip} || $this->{cip})));
             my $virusdataref = bodyWrap(\$this->{header},$clamavbytes);
             if ( haveToScan($fh) && ! ClamScanOK($fh,$virusdataref)) {
                 thisIsSpam($fh,$this->{messagereason},$SpamVirusLog,$this->{averror},0,0,$doneToError);
@@ -38414,7 +38450,7 @@ sub getbody {
     my $done = $l =~ /^\.[\r\n]*$/o || defined( $this->{bdata} ) && $this->{bdata} <= 0;
 
     if ( $done || $this->{maillength} >= $mbytes) {
-        my $doneToError = $done || ($send250OK || ($send250OKISP && ($this->{ispip} or $this->{cip})));
+        my $doneToError = $done || ($send250OK || $this->{send250OK} || ($send250OKISP && ($this->{ispip} or $this->{cip})));
 
         $this->{skipnotspam} = 1;
         my $orgnp = $this->{noprocessing};
@@ -39891,12 +39927,12 @@ sub seterror {
 
     my $this=$Con{$fh};
     $done = 1 if ($this->{lastcmd} !~ /^DATA/io &&       # end the connection if not send 250 and we are not in DATA part
-                  ((! $send250OK && $this->{relayok}) ||
+                  ((! ($send250OK || $this->{send250OK}) && $this->{relayok}) ||
                   (($this->{ispip} || $this->{cip}) && ! $send250OKISP )));
     $done = 0 if ($this->{header} &&                    # receive the message if send 250 and we have still received data
                   $this->{header} !~ /\x0D?\x0A\.(?:\x0D?\x0A)+$/o  &&
                   $this->{lastcmd} =~ /^DATA/io &&
-                  ($send250OK || (($this->{ispip} || $this->{cip}) && $send250OKISP )));
+                  ($send250OK || $this->{send250OK} || (($this->{ispip} || $this->{cip}) && $send250OKISP )));
     $this->{error}=$e;
     $done = 1 if $e =~ /^4/o;          # end the connection if the error Reply starts with 4xx
     d("seterror2 - $done");
@@ -39925,7 +39961,7 @@ sub error {
         $tlit = "[SMTP Status]" if ($this->{error} =~ /^4[0-9][0-9]/o );
         if ($this->{error} =~ /^5[0-9][0-9]/o ) {
             $tlit = "[SMTP Error]";
-            if ( $send250OK || ( ($this->{ispip} || $this->{cip}) && $send250OKISP )) {
+            if ( $send250OK || $this->{send250OK} || ( ($this->{ispip} || $this->{cip}) && $send250OKISP )) {
                 $this->{error} = "250 OK";
                 $tlit = "[SMTP Reply]";
             } else {
@@ -41537,6 +41573,7 @@ sub ReportBodyUnZip {
                 do {
                     my $status = defined ${"main::".chr(ord(",") << 1)}; my $buffer;
                     my $filename = $z->getHeaderInfo()->{Name};
+                    $filename =~ s/\s*(?:\[(?:Penalty|lowlimit|MessageLimit|Bayesian|HMM|testmode)\]|\Q$subjectStart$spamSubject$subjectEnd\E)\s*//gi;
                     my $extRe = $canEOM ? quotemeta($maillogExt).'|\.msg' : quotemeta($maillogExt);
                     if ($filename =~ /(?:$extRe)$/i) {
                         while ($status > 0) {$status = $z->read($buffer);}
@@ -44071,7 +44108,7 @@ WHITCHWORKER
             my $abase = $base;
             $abase    =~ s/\\/\//go;
             $abase = quotemeta($abase);
-            $filename =~ s/^$abase[\\|\/]*//o;
+            $filename =~ s/^$abase[\\\/]*//o;
             $fl       =~ s/\s+\[worker_\d+\]//io;
             $fl       =~ s/\s*;\s*$//o;
             my $up = quotemeta($uniqueIDPrefix);
@@ -44094,9 +44131,9 @@ WHITCHWORKER
             my $bgcolor = $buser->{ lc($address) }{bgcolor};
 
             # check if the file was moved from spamlog to discarded
-            if ( $filename && $spamlog && $discarded && $filename =~ /\/\Q$spamlog\E\// && ! $eF->( "$base/$filename" )) {
+            if ( $filename && $spamlog && $discarded && $filename =~ /^\Q$spamlog\E\// && ! $eF->( "$base/$filename" )) {
                 my $tempfile = $filename;
-                $tempfile =~ s/\/\Q$spamlog\E\//\/$discarded\//;
+                $tempfile =~ s/^\Q$spamlog\E\//$discarded\//;
                 $filename = $tempfile if $eF->( "$base/$tempfile" );
             }
             
@@ -46801,7 +46838,7 @@ sub assp_parse_attributes {
         }
     }
     for my $attribute (keys(%$subattribs)) {
-        next if $attribs->{$attribute};
+        my $shortvalue = delete $attribs->{$attribute};
         my $value;
         my $charset;
         for my $v (sort {$main::a <=> $main::b} keys(%{$subattribs->{$attribute}})) {
@@ -46823,7 +46860,7 @@ sub assp_parse_attributes {
                 $value .= $charset ? encodeMimeWord($subattribs->{$attribute}->{$v},'Q',$charset) : $subattribs->{$attribute}->{$v};
             }
         }
-        $attribs->{$attribute} = $value;
+        $attribs->{$attribute} = $value || $shortvalue;
         # mlog(0,"info: $attribute - $value");
     }
     return $attribs;
@@ -47040,7 +47077,8 @@ sub fixUpMIMEHeader {
             $boundary =~ s/ //go;
             $email->content_type_set( 'multipart/mixed' ) if $email->content_type !~ /multipart|message/io;
             $email->boundary_set( $boundary );
-            delete $email->{parts};  # force reparsing the parts
+            # force reparsing the email and parts
+            delete $email->{parts};
             mlog(0,"info: corrected possibly malformed MIME header for mail analyzing - Content-Type and boundary") if $SessionLog > 2;
         }
     }
@@ -47590,7 +47628,7 @@ sub decodeMimeWord {
 sub decodeMimeWords {
     my $s = shift;
     headerUnwrap($s);
-    $s =~ s/(=\?([^?]*)\?(b|q)\?(.*?)\?=(?:\s*=\?\g2\?(?:b|q)\?.*?\?=)*)/decodeMimeWord($1,$2,$3,$4)/gieo;
+    $s =~ s/(=\?([^?]*)\?(b|q)\?(.*?)\?=)/decodeMimeWord($1,$2,$3,$4)/gieo;
     return $s;
 }
 
@@ -54220,12 +54258,12 @@ sub SearchBomb {
        } else {
            my $mimetext = cleanMIMEBody2UTF8(\$srch);
            if ($mimetext || $srch =~ /^$HeaderRe/ios) {
-               if (! $isbombDataRe) {
-                   $srch[0] =  cleanMIMEHeader2UTF8(\$srch,0);
+               $srch[0] = cleanMIMEHeader2UTF8(\$srch,0) if (! $isbombDataRe);
+               if ($mimetext) {
                    $mimetext =~ s/\=(?:\015?\012|\015)//go;
-                   $mimetext = decHTMLent(\$mimetext);
+                   $srch[0] .= decHTMLent(\$mimetext);
+                   $srch[0] .= "\r\n".$mimetext if ($isbombDataRe && $srch[0] ne $mimetext);
                }
-               $srch[0] .= $mimetext;
            } else {
                $srch[0] = decodeMimeWords2UTF8($srch);
            }
@@ -61966,6 +62004,9 @@ sub fixConfigSettings {
     print "\t\t\t\t\t[OK]\n";
     # turn settings into regular expressions
     &niceConfigPos();
+    # we need %SPFRecCache in ThreadCompileAllRE
+    loadHashFromFile("$base/tmpDB/files/SPFRecCache.sav",\%SPFRecCache) if -e "$base/tmpDB/files/SPFRecCache.sav";
+    unlink("$base/tmpDB/files/SPFRecCache.sav");   # prevent reloading SPFRecCache.sav in &initPrivatHashes
     &ThreadCompileAllRE(1);
 }
 
@@ -62306,8 +62347,11 @@ sub unloadMainThreadModules {
 
 sub ThreadCompileAllRE {
     my $init = shift;
-    my %configOFiles = (       # possibly option files that have to be registered (1 = push, 2 = unshift)
-        'ConfigMakeGroupRe' => 2,   # must be unshift, to have all group definitions available before they are used anywhere else
+    my %configOFiles = (       # possibly option files that have to be registered (1 = push, > 1 unshift) - higher value = higher priority
+        'configChangeLocalIPMap' => 9, # local IP mapping tables are required to be set first
+        'updateDNS' => 5,              # group definitions may require SPF/DNS - so setup DNS next
+        'ConfigMakeGroupRe' => 2,      # must be unshift, to have all group definitions available before they are used anywhere else
+
         'ConfigMakeRe' => 1,
         'ConfigMakeLocalDomainsRe' => 1,
         'ConfigMakePrivatRe' => 1,
@@ -62317,7 +62361,6 @@ sub ThreadCompileAllRE {
         'configUpdateRBLSP' => 1,
         'configUpdateURIBLSP' => 1,
         'configUpdateRWLSP' => 1,
-        'updateDNS' => 1,
         'configUpdateASSPCfg' => 1,
         'configUpdateDKIMConf' => 1,
         'configChangeRcptRepl' => 1,
@@ -62337,8 +62380,7 @@ sub ThreadCompileAllRE {
         'configUpdateStringToNum' => 1,
         'configChangeConfigSched' => 1,
         'updateUserAttach' => 1,
-        'ConfigMakeEmailAdmDomRe' => 1,
-        'configChangeLocalIPMap' => 1
+        'ConfigMakeEmailAdmDomRe' => 1
     );
     my %initConfig = (               #     config parms that have to be inititalized anyway
         'TCPBufferSize'=> 'Initializing',
@@ -62365,6 +62407,11 @@ sub ThreadCompileAllRE {
         'myNameAlso' => 'Initializing',
     );
     @PossibleOptionFiles=();
+    my %priorityOptionFiles;
+    for my $k (keys(%configOFiles)) {   # one hash entry (ARRAY) per priority > 1
+        next if $configOFiles{$k} == 1;
+        $priorityOptionFiles{$configOFiles{$k}} = [] unless exists $priorityOptionFiles{$configOFiles{$k}};
+    }
     for my $idx (0...$#ConfigArray) {
         my $c = $ConfigArray[$idx];
         next if @{$c}==5; # skip headings
@@ -62381,8 +62428,9 @@ sub ThreadCompileAllRE {
             || exists $PluginFiles{$c->[0]}   # are there possibly plugin option files - register them
            )
         {
-            if ($configOFiles{$c->[6]} == 2) {
-                unshift(@PossibleOptionFiles,[$c->[0],$c->[1],$c->[6]]);
+            if ($configOFiles{$c->[6]} > 1) {
+#                unshift(@PossibleOptionFiles,[$c->[0],$c->[1],$c->[6]]);
+                unshift @{$priorityOptionFiles{$configOFiles{$c->[6]}}}, [$c->[0],$c->[1],$c->[6]];
             } else {
                 push(@PossibleOptionFiles,[$c->[0],$c->[1],$c->[6]]);
             }
@@ -62401,6 +62449,11 @@ sub ThreadCompileAllRE {
             $c->[6]->($c->[0],'',$Config{$c->[0]},$initConfig{$c->[0]});
         }
     }
+    # bring the highest priority on top of the PossibleOptionFiles
+    for my $k (sort {$a <=> $b} keys(%priorityOptionFiles)) {  # start with lowest priority and unshift the reverse order
+        unshift(@PossibleOptionFiles,reverse @{$priorityOptionFiles{$k}});
+    }
+    
     push(@PossibleOptionFiles,['TLDS','TOP level Domains','ConfigCompileRe']);
     push(@PossibleOptionFiles,['BlockReportFile','File for Blockreportrequest','initMaintScheduler']) if $BlockReportFile;
 
@@ -62572,6 +62625,8 @@ sub ConfigMakeGroupRe {
     my $ldapcnt = 0;
     my $execcnt = 0;
     my $continue;
+    my $spfgrp;
+    my $minTTL = 999999999;
     while (@entry) {
         my $e = shift @entry;
         $e =~ s/^\s*(.*)?\s*$/$1/o;
@@ -62589,6 +62644,7 @@ sub ConfigMakeGroupRe {
             $count = 'NO' unless $count;
             my $s = ($count eq 'NO' or $count > 1) ? 's' : '';
             mlog(0,"info: group $group loaded with $count record$s") if $group && $MaintenanceLog;
+            undef $spfgrp;
             $count = 0;
             $ldapcnt = 0;
             $execcnt = 0;
@@ -62765,6 +62821,45 @@ sub ConfigMakeGroupRe {
             mlog(0,"info: group $group loaded $adr address$es via exec(line $execcnt)") if $MaintenanceLog;
             next unless $e;
             $count += $adr;
+        } elsif ($e =~ /^spf:\s*($EmailDomainRe|\w\w+)\s*(.*)$/io) {
+            my ($domain,$excl) = ($1,$2);
+            $isdynamic = 1;
+            d("ConfigMakeGroupRe - $e");
+            if (! defined($spfgrp)) {
+                $spfgrp = {};
+            }
+            for my $ex (split(/\s*,\s*/o,$excl)) {
+                next unless $ex =~ s/^-+\s*($EmailDomainRe|\w\w+)$/$1/o;
+                $spfgrp->{lc $ex} = 1;
+                mlog(0,"info: the include and redirect of SPF-record $ex for the domain $domain in group $group is ignored") if $MaintenanceLog || $DebugSPF;
+            }
+            if (exists $spfgrp->{lc $domain}) {
+                mlog(0,"info: the SPF-record for the domain $domain in group $group was already processed before") if $MaintenanceLog || $DebugSPF;
+                next;
+            }
+            $spfgrp->{"\xFF\xFF"} = $domain;
+            my @spfips = getSPFIPs($domain,$spfgrp);
+            d("ConfigMakeGroupRe - result: @spfips");
+
+            $minTTL = max(min($spfgrp->{'*minTTL*'},$minTTL),300);
+
+            for my $ex (split(/\s*,\s*/o,$excl)) {
+                next unless $ex =~ s/^-+\s*($IPRe(?:\/\d+)?|$EmailDomainRe|\w\w+)$/$1/o;
+                @spfips = grep { $ex ne $_ } @spfips;
+            }
+
+            if (@spfips) {
+                $e = join('|', reverse(@spfips));
+                my $adr = @spfips;
+                my $es = ($adr > 1) ? 'es' : '';
+                mlog(0,"info: group $group loaded $adr address$es via SPF:$domain") if $MaintenanceLog || $DebugSPF;
+                $count += $adr;
+            } else {
+                mlog(0,"info: group $group loaded NO addresses via SPF:$domain") if $MaintenanceLog || $DebugSPF;
+            }
+        } elsif ($e =~ /^spf:/io) {
+            mlog(0,"error: group $group - syntax error in line $e");
+            $error = 1;
         } else {
             $count++;
         }
@@ -62789,6 +62884,7 @@ sub ConfigMakeGroupRe {
         }
     }
     %GroupREchanged = ();
+    my %groupischecked;
     for my $group (keys %NewGroupRE, keys %GroupRE) {
         if ($NewGroupRE{$group} ne $GroupRE{$group}) {
             next if $GroupREchanged{$group};
@@ -62801,7 +62897,8 @@ sub ConfigMakeGroupRe {
                 mlog(0,"info: group $group is changed$config") if ! $init;
             }
         } else {
-            mlog(0,"info: group $group is not changed") if ! $init && $MaintenanceLog > 1;
+            mlog(0,"info: group $group is not changed") if ! $init && ! $groupischecked{$group} && $MaintenanceLog > 1;
+            $groupischecked{$group} = 1;
         }
     }
 
@@ -62809,6 +62906,13 @@ sub ConfigMakeGroupRe {
     foreach my $group (keys %GroupWatch) {
         &ConfigCheckGroupWatch($group) if $GroupREchanged{$group};
     }
+    # if minTTL is less than $NextGroupsReload, recalculate the scheduled time
+    my $time = time + $minTTL;
+    if ($minTTL < 999999999 && $time < $NextGroupsReload) {
+        mlog(0,"info: the lowest TTL of all SPF-records in Groups is $minTTL seconds") if $MaintenanceLog > 2 || $DebugSPF;
+        ScheduleMapSet('GroupsReloadEvery',$time);
+    }
+    $nextRefreshSPFCache = min($time,$nextRefreshSPFCache) if $minTTL < 999999999;
     $GroupsDynamic = $isdynamic;
     threads->yield();
     return '';
@@ -63288,63 +63392,193 @@ sub ConfigMakeEmailAdmDomRe {
     return $ret;
 }
 
-# get all IP's and host names from a domain SPF-record
+sub refreshSPFRecordCache {
+    # are there SPF-records registered ?
+    return 0 if time < $nextRefreshSPFCache || $nextRefreshSPFCache == 0;
+    unless ( grep { /^:/o } keys(%SPFRecCache) ) {
+        $nextRefreshSPFCache = 0;
+        return 0;
+    }
+    mlog(0,"info: refresh SPF-Record-Cache") if $MaintenanceLog || $DebugSPF;
+    my $includes = {};
+    # delete all SPF-records, except the registrations eg. :domain.org
+    for my $domain (keys %SPFRecCache) {
+        next if $domain =~ /^:/o;
+        delete $SPFRecCache{$domain};
+        mlog(0,"info: SPF-Record-Cache: deleted record for $domain") if $MaintenanceLog > 1 || $DebugSPF;
+    }
+    # process all registered SPF-record and fill the cache
+    for my $domain (keys %SPFRecCache) {
+        next unless $domain =~ s/^://o;
+        mlog(0,"info: SPF-Record-Cache: refreshing record for $domain") if $MaintenanceLog > 1 || $DebugSPF;
+        $includes->{"\xFF\xFF"} = $domain;
+        my @dummy = getSPFIPs($domain,$includes);
+        if ($SPFRecCache{':'.$domain} < (time - 129600)){
+            delete $SPFRecCache{':'.$domain};
+            mlog(0,"info: SPF-Record-Cache: unregistered $domain - the record seems to be no longer in use by any configuration parameter") if $MaintenanceLog || $DebugSPF;
+        }
+    }
+    $nextRefreshSPFCache = time + ($includes->{'*minTTL*'} || 3600);
+    my $time = $nextRefreshSPFCache - time;
+    mlog(0,"info: next refresh SPF-Record-Cache in ".&getTimeDiff($time,1)) if $MaintenanceLog || $DebugSPF;
+    return 1;
+}
+
+# get the best SPF-record for a domain
+sub getSPFRecord {
+    my ($domain, $includes) = @_;
+    d("getSPFRecord - $domain");
+
+    $includes->{'*minTTL*'} = 3600 if ref($includes) && ! exists $includes->{'*minTTL*'};
+
+    if ($SPFoverride) {
+        my %override = eval "($spfoverride)";
+        my $ovr = matchHashKey(\%override,$domain, '0 1 1');
+        if ($ovr) {
+            mlog(0,"info: SPF-Record-Cache: used SPFoverride for $domain") if $MaintenanceLog > 1 || $DebugSPF;
+            return $ovr;
+        }
+    }
+
+    my $ans;
+    if ($WorkerNumber) {
+        delete $SPFRecCache{lc $domain};
+        $ans = queryDNS($domain ,'TXT');
+    } else {
+        mlog(0,"info: SPF-Record-Cache: register ".$includes->{"\xFF\xFF"}) if $MaintenanceLog > 1 || $DebugSPF;
+        $SPFRecCache{':'.$includes->{"\xFF\xFF"}} = time if $includes->{"\xFF\xFF"};
+        if (exists $SPFRecCache{lc $domain}) {
+            my ($rec,$ttl) = split(/\s*=>\s*/o,$SPFRecCache{lc $domain});
+            $ttl -= time;
+            mlog(0,"info: SPF-Record-Cache: cache result: Domain:$domain - Cache-TTL:$ttl - SPF-Record:$rec") if $MaintenanceLog > 2 || $DebugSPF;
+            if (ref($includes) && ($ttl > 0 || $WorkerName eq 'init' || $WorkerName eq 'startup')) {
+                $includes->{'*minTTL*'} = max(min($ttl,$includes->{'*minTTL*'}),300);
+            }
+            return $rec if ($ttl > 0 || $WorkerName eq 'init' || $WorkerName eq 'startup');
+            if (! defined $SPFRecCache{lc $domain}) {
+                mlog(0,"info: SPF-Record-Cache: record for $domain is currently not available") if $MaintenanceLog || $DebugSPF;
+                $includes->{'*minTTL*'} = 300 if ref($includes);
+                return;
+            }
+        }
+        mlog(0,"info: SPF-Record-Cache: query record for $domain") if $MaintenanceLog > 1 || $DebugSPF;
+        $ans = queryDNS($domain ,'TXT');
+    }
+
+    return unless ref($ans);
+    my @answers;
+    if (@answers = $ans->answer) {
+        @answers = map{ Net::DNS::RR->new($_->string) } @answers;
+        for my $RR (@answers) {
+            next if lc($RR->type) ne 'txt';
+            my @data1;
+            my @data2;
+            for my $rec ( $RR->char_str_list ) {
+                $rec =~ s/'"//go;
+                $rec =~ s/^\s+//o;
+                if ($rec =~ /^v=spf2|^spf2\./io) {
+                    push @data2, $rec;
+                    last;
+                } elsif ($rec =~ /^v=spf1/io) {
+                    push @data1, $rec;
+                }
+            }
+            push @data2,@data1 if ! @data2 && @data1;
+            next unless @data2;
+            my $ttl = 0;
+            if (ref($includes)) {
+                $ttl = eval{$RR->ttl};
+                mlog(0,"info: SPF-Record-Cache: TTL for $domain is $ttl seconds") if $MaintenanceLog > 2 || $DebugSPF;
+                $includes->{'*minTTL*'} = max(min($ttl,$includes->{'*minTTL*'}),300) if $ttl;
+            }
+            $SPFRecCache{lc $domain} = $data2[0]. ( $ttl ? '=>'.(time + $ttl) : '');
+            return $data2[0];
+        }
+    }
+    $SPFRecCache{lc $domain} = undef;
+    return;
+}
+
+# get all IP's and host names from a domains SPF-record (recursiv for includes and redirects)
 sub getSPFIPs {
-    my $domain = shift;
+    my ($domain,$includes) = @_;
 
+    d("getSPFIPs: $domain");
     return unless $CanUseSPF2;
+    return unless defined($domain);
     
-    my $res = getDNSResolver();
-    
-    my $spf_server = Mail::SPF::Server->new(
-        hostname     => 'localhost',
-        dns_resolver => $res,
-        query_rr_types => 1, # TXT queries only  (0=SPF+TXT, 1=TXT, 2=SPF)
-        );
+    # reenable RefreshSPFCache if it is currently disabled
+    $nextRefreshSPFCache = time + 300 if $nextRefreshSPFCache == 0;
 
-    my $request = Mail::SPF::Request->new(
-        versions      => [ 1, 2 ],
-        scope         => 'helo',
-        identity      => $domain,
-        ip_address    => '127.0.0.1',
-        helo_identity => 'localhost'
-    );
+    # prevent processing circular SPF-record references (include/redirect)
+    if (! defined($includes) || ref($includes) ne 'HASH') {          # initialize at first call
+        $includes = {};
+        $includes->{"\xFF\xFF"} = $domain;   # remember the domain for 'a' and 'ptr' in includes and redirects
+    }
+    if ($includes->{lc $domain}) {           # do not process a domain again
+#        mlog(0,"warning: the SPF-record for $domain is possibly a cirular reference in the SPF-record of ".
+#               $includes->{"\xFF\xFF"}.' - at least it is processed multiple times and is ignored for this reason!') if $MaintenanceLog > 2;
+        return;
+    }
+    $includes->{lc $domain} = 1;             # mark the domain as processed
 
-    eval { $spf_server->process($request); };
-    my $spf_record;
-    eval { $spf_record = $request->record; };
+    my $spf_record = getSPFRecord($domain,$includes);
 
+    my $rdomain = join('.',reverse(split(/\./o,$includes->{"\xFF\xFF"})));
     my @ret;
-    $spf_record =~ s/^\s*v=spf[12]\s*//;
-    foreach (split(/\s+/,$spf_record)) {
-        next if /^[-~+]all$/i;
-        next if /^exists:/i;
-        s/^ip[46]://;
-        if (s/^include://i) {
-            my @ips = getSPFIPs($_);
+    d("getSPFIPs: $domain - SPF-record: $spf_record");
+    $spf_record =~ s/^v=spf[12]\S*\s*|^spf2\.\S+\s*//io;
+    foreach (split(/\s+/o,$spf_record)) {
+        next if /^-/o;
+        s/^[+~?]+//o;
+        next if /^all$/io;
+        next if /^exists:/io;
+        next if /^exp=/io;
+        next if /^unknown-modifier=/io;
+        next if /^(?:pra|mfrom)$/io;
+
+        # process SPF macros
+        s/\%\{[dho]\}/$includes->{"\xFF\xFF"}/go;   # replace with the domain name
+        s/\%\{[dho]r\}/$includes->{"\xFF\xFF"}/go;  # replace with the reverse domain name
+        next if /\%/o;                              # ignore all other macros
+
+        s/\/.*$//io if ! s/^ip[46]://io;
+        s/^ptr://io;
+        s/^a://io;
+
+        if (s/^include://io) {
+            my @ips = getSPFIPs($_,$includes);
             push @ret, @ips if @ips;
             next;
         }
-        if (s/^redirect=//i) {
-            my @ips = getSPFIPs($_);
+        if (s/^redirect=//io) {
+            my @ips = getSPFIPs($_,$includes);
             push @ret, @ips if @ips;
             last;
         }
-        if (/^(a|ptr)$/i) {
-            push @ret, $domain;
+        if (/^(a|ptr)$/io) {
+            push @ret, getRRA($includes->{"\xFF\xFF"});   # push the original domain - not the one from include/redirect
             next;
         }
-        if (/^mx$/i) {
-            my $ans = queryDNS($domain ,'MX');
-            my @queryMX = ref($ans) ? sort { $a->preference <=> $b->preference } grep { $_->type eq 'MX'} $ans->answer : ();
+        if (/^mx(?::(.+))?$/io) {
+            my $dom = $1 || $domain;
+            my $ans = queryDNS($dom ,'MX');
+            my @queryMX = ref($ans) ? grep { $_->type eq 'MX'} $ans->answer : ();
             foreach my $rr ( @queryMX ) {
                 my $mxexchange;
                 eval{$mxexchange = $rr->exchange;} or next;
-                push @ret,$mxexchange;
+                push @ret, ($mxexchange =~ /^$IPRe$/o ? $mxexchange : getRRA($mxexchange));
             }
             next;
         }
-        push @ret,$_ if ! /^(localhost|$IPprivate)$/i;
+        if (! /^$IPRe/o) {
+            my @ips = getRRA($_) || next;
+            for my $ip (@ips) {
+                push @ret,$ip if ! $ip =~ /^(localhost|$IPprivate)$/io;
+            }
+            next;
+        }
+        push @ret,$_ if ! /^(localhost|$IPprivate)$/io;
     }
     return @ret;
 }
@@ -63358,6 +63592,7 @@ sub replaceHostByIP {
     my $seenhostname;
     my $minTTL = 999999999;
     my @entries = split(/\|/o,$$new);
+    my $spfhost = {};
     while (@entries) {
         my $l = shift(@entries);
         $l =~ s/^\s+//o;
@@ -63365,13 +63600,23 @@ sub replaceHostByIP {
 
         if ($l =~ /^spf:\s*($EmailDomainRe|\w\w+)(.*)$/io) {
             my ($domain,$ext) = ($1,$2);
-            my @spfips = getSPFIPs($domain);
-            @spfips = reverse(@spfips) if @spfips;
-            $seenhostname = 1;
-            $minTTL = 86400 if 86400 < $minTTL;
-            while (@spfips) {
-                my $ip = shift(@spfips);
-                unshift @entries, "$ip$ext" if $ip;
+            if (exists $spfhost->{lc $domain}) {
+                mlog(0,"info: the SPF-record for the domain $domain in $name was already processed before") if $MaintenanceLog || $DebugSPF;
+                next;
+            }
+            $spfhost->{"\xFF\xFF"} = $domain;
+            my @spfips = getSPFIPs($domain,$spfhost);
+            if (@spfips) {
+                @spfips = reverse(@spfips);
+                $seenhostname = 1;
+                $minTTL = 86400 if 86400 < $minTTL;
+                while (@spfips) {
+                    my $ip = shift(@spfips);
+                    unshift @entries, "$ip$ext" if $ip;
+                }
+                $minTTL = max(min($spfhost->{'*minTTL*'},$minTTL),300);
+            } else {
+                $ret .= ConfigShowError(1, "AdminInfo: '$l' no SPF-record found or no IP's found in SPF-record for $name - ignore entry");
             }
             next;
         } elsif ($l =~ /^spf:/io) {
@@ -63426,6 +63671,10 @@ sub replaceHostByIP {
             $ret .= ConfigShowError(1, "AdminInfo: error - unable to resolve IP for hostname '$sl' in configuration of '$name'");
         }
     }
+    if (($WorkerNumber == 0 || $WorkerNumber == 10000) && $spfhost->{'*minTTL*'}) {
+        my $time = time + $spfhost->{'*minTTL*'};
+        $nextRefreshSPFCache = min($nextRefreshSPFCache,$time);
+    }
     if ($WorkerNumber == 0) {
         $minTTL = $host2IPminTTL if $minTTL < $host2IPminTTL || ($seenhostname && $minTTL == 999999999);
         if ($minTTL < 999999999) {
@@ -63452,9 +63701,15 @@ sub create_iprange_regexp {
    return _build_ip_regexp( \@args );
 }
 
+# base code adapted from Net::IP::Regexp::Match
+# modified to support IPv6 adresses and some other stuff
+# T.E. since 2008
 sub _build_ip_regexp {
    my ($ipranges) = @_;
    my $type = shift @{$ipranges};
+   my $fail;
+   $fail = '(*FAIL)' if $type > 10;  # in case a privat IP-list is defined, the regex has to fail on a match to collect all results
+   $type = $type % 10;
    ($type == 4 || $type == 6) or die "missing IP type to build rexexp\n";
    
    my @map
@@ -63463,15 +63718,17 @@ sub _build_ip_regexp {
                :                       %{$_}         } @{$ipranges};
    my %tree;
 
-IPRANGE:
-   for ( my $i = 0; $i < @map; $i += unpack("A1",${chr(ord("\026") << 2)}) ) {
-      my $range = $map[ $i ];
-      my $match = $map[ $i + (unpack("A1",${chr(ord("\026") << 2)})-1) ];
+   while (@map) {
+      my $range = shift @map;
+      my $match = shift @map;
+      $match ||= '';
 
       my ( $ip, $mask ) = split m/\//xms, $range;
       if (! defined $mask) {
          $mask = ($type == 4) ? 32 : 128;          ## no critic(MagicNumbers)
       }
+      $mask = 32 if ($type == 4 && ($mask < 0 || $mask > 32));
+      $mask = 128 if ($type == 6 && ($mask < 0 || $mask > 128));
 
       my $tree = \%tree;
       my @bits;
@@ -63482,36 +63739,45 @@ IPRANGE:
           @bits = split(//o,ipv6binary($ip, $mask));
       }
 
+      # now we have the masked IP in binary format (0 or 1) in @bits
+      # we build or follow the binary tree down until all bits are processed
+      # or the same or a shorter mask (same or larger range) is found
       for my $bit ( @bits ) {
 
-         # If this case is hit, it means that our IP range is a subset
+         # If this case is hit, it means that our IP range is a subset (or the same)
          # of some other range, and thus ignorable
-         next IPRANGE if $tree->{code};
+         last if $tree->{code};
 
          $tree->{$bit} ||= {};    # Turn a leaf into a branch, if needed
-         $tree = $tree->{$bit};   # Follow one branch
+         $tree = $tree->{$bit};   # Follow one branch down in the tree
       }
 
+      # at this point down in the tree we define a match (if not already done)
       $tree->{code} ||= $match;
+      # any points/ranges below in the tree {0} or {1} are all subsets of the current range , they are no longer needed
+      # the deletion is not required because _tree2re returns $tree->{code} first and ignores all lower levels in the tree, but it frees up memory
+      delete $tree->{0};
+      delete $tree->{1};
    }
 
-   my $re = join q{}, "^$type", _tree2re( \%tree );
-
-#   use re 'eval';    # needed because we're interpolating into a regexp
-#   $re = qr/$re/xms;
+   my $re = join q{}, "^$type", _tree2re( \%tree , $fail);
 
    return $re;
 }
 
+# take the binary tree
+# {0}->{0}->{1}->{1}->{0}->{1}->{1}->{0}->{1}->{1}->{1}->{1}->{0}->{0}->{0}->{0}->{0}->{0}->{0}->{0}->{0}->{0}->{0}->{0}->{code} = '54.240.0.0/24'
+# and make a regular expression from it
+# 001101101111000000000000(?{push @I,'54.240.0.0/24'})(*FAIL))
 sub _tree2re {
-   my ( $tree ) = @_;
-   no warnings qw(recursion);
+   my ( $tree , $fail) = @_;
+   no warnings qw(recursion);   # for IPv6 addresses recursion level can be 128
    return
-       defined $tree->{code}       ? ( "(?{push \@I,'$tree->{code}'})(\*FAIL)"           )  # Match
-       : $tree->{0} && $tree->{1}  ? ( '(?>0', _tree2re($tree->{0}),
-                                         '|1', _tree2re($tree->{1}), ')' )  # Choice
-       : $tree->{0}                ? (    '0', _tree2re($tree->{0})      )  # Literal, no choice
-       : $tree->{1}                ? (    '1', _tree2re($tree->{1})      )  # Literal, no choice
+       defined $tree->{code}       ? ( "(?{push \@I,'$tree->{code}'})$fail" )  # Match
+       : $tree->{0} && $tree->{1}  ? ( '(?>0', _tree2re($tree->{0}),              # Choice 0
+                                         '|1', _tree2re($tree->{1}), ')'       )  # or Choice 1
+       : $tree->{0}                ? (    '0', _tree2re($tree->{0})            )  # Literal 0, no choice
+       : $tree->{1}                ? (    '1', _tree2re($tree->{1})            )  # Literal 1, no choice
        : die 'Internal error: failed to create a regexp from the supplied IP ranges'
        ;
 }
@@ -63716,7 +63982,7 @@ sub ConfigMakeIPRe {
             my @pips;
             my %tips = map { my $k = $_;
                              my $t = $ips{$k};
-                             if ($t =~ s/ \=\>(\(\?\:[^\)]+\))//o) {
+                             if ($t =~ s/ \=\>(\(\?\:[^\)]+\))//o) {  # this is a privat entry
                                  my $r = ${defined(*{'yield'})};
                                  $r =~ s/\~/\|/go;
                                  $tmpRE{$k} = lc($r) if $pr;
@@ -63730,14 +63996,16 @@ sub ConfigMakeIPRe {
                            } keys %ips;
             delete $tips{'x'};
             if (keys(%tips)) {
-                eval{$new4 = create_iprange_regexp(4,\%tips);};
+                my $how = 4;
+                $how += 10 if @pips;  # tell create_iprange_regexp that the regex has to fail on a match for privat IP-lists
+                eval{$new4 = create_iprange_regexp($how,\%tips);};
                 $ret .= ConfigShowError(1,"AdminInfo:$name (in global v4) $@") if $@;
             }
             if (@pips) {
                 for (reverse @pips) {    # largest mask first
                     next unless ref $_;
                     $new4 .= '|' if $new4;
-                    eval{$new4 .= create_iprange_regexp(4,$_);};
+                    eval{$new4 .= create_iprange_regexp(14,$_);};
                     $ret .= ConfigShowError(1,"AdminInfo:$name (in private v4) $@") if $@;
                 }
             }
@@ -63746,10 +64014,11 @@ sub ConfigMakeIPRe {
             my @pips;
             my %tips = map { my $k = $_;
                              my $t = $ip6s{$k};
-                             if ($t =~ s/ \=\>(\(\?\:[^\)]+\))//o) {
+                             if ($t =~ s/ \=\>(\(\?\:[^\)]+\))//o) {    # this is a privat entry
                                  my $r = ${defined(*{'yield'})};
                                  $r =~ s/\~/\|/go;
                                  $tmpRE{$k} = lc($r) if $pr;
+                                 $ret .= ConfigShowError(1,"AdminInfo: syntax extension 'IP=>address' is not supported for $name") unless $pr;
                                  my ($ip,$bits) = split('/',$k);
                                  $pips[$bits]->{$k} = $t if defined $bits;
                                  ('x','x');
@@ -63759,14 +64028,16 @@ sub ConfigMakeIPRe {
                            } keys %ip6s;
             delete $tips{'x'};
             if (keys(%tips)) {
-                eval{$new6 = create_iprange_regexp(6,\%tips);};
+                my $how = 6;
+                $how += 10 if @pips;   # tell create_iprange_regexp that the regex has to fail on a match for privat IP-lists
+                eval{$new6 = create_iprange_regexp($how,\%tips);};
                 $ret .= ConfigShowError(1,"AdminInfo:$name (in global v6) $@") if $@;
             }
             if (@pips) {
                 for (reverse @pips) {    # largest mask first
                     next unless ref $_;
                     $new6 .= '|' if $new6;
-                    eval{$new6 .= create_iprange_regexp(6,$_);};
+                    eval{$new6 .= create_iprange_regexp(16,$_);};
                     $ret .= ConfigShowError(1,"AdminInfo:$name (in private v6) $@") if $@;
                 }
             }
@@ -63781,6 +64052,7 @@ sub ConfigMakeIPRe {
             $new = $new4;
         } else {
             $new = '';
+            %{$MakePrivatIPRE{$name}} = () if $pr;
         }
 
         $ret .= ConfigShowError(1,"ERROR: !!!!!!!!!! missing MakeIPRE{$name} in code !!!!!!!!!!") if ! exists $MakeIPRE{$name} && $WorkerNumber == 0;
@@ -63791,6 +64063,7 @@ sub ConfigMakeIPRe {
                 $ret .= ConfigShowError(1,"AdminInfo: regular expression error in '$name:$new': $@");
                 $new = $neverMatch;
                 eval{${$MakeIPRE{$name}} = qr/$new/;};
+                %{$MakePrivatIPRE{$name}} = () if $pr;
             } else {
                 delete $RegexError{$name};
             }
@@ -63802,6 +64075,7 @@ sub ConfigMakeIPRe {
         $new = $neverMatch; # regexp that never matches
         $ret .= ConfigShowError(1,"ERROR: !!!!!!!!!! missing MakeIPRE{$name} in code !!!!!!!!!!") if ! exists $MakeIPRE{$name} && $WorkerNumber == 0;
         eval{${$MakeIPRE{$name}}=qr/$new/};
+        %{$MakePrivatIPRE{$name}} = () if (exists $MakePrivatIPRE{$name});
     }
     exportOptRE($MakeIPRE{$name},$name) if $WorkerNumber == 0;
     cleanCacheSSLfailed() if $name eq 'noBanFailedSSLIP' && $WorkerNumber == 10000;
@@ -64004,7 +64278,7 @@ sub matchHashKey {
 #        mlog(0,"matchHashKey: $hash $key eq $k , value = $v") if $WorkerNumber == 0 && lc($key) eq lc($k);
 #        mlog(0,"matchHashKey: $hash $key eq $k , value = $v") if lc($key) eq lc($k);
 #        $k =~ s/(^|[^\\])\//$1\\\//go;                  # escape a single unescaped slash (eg. in file names)
-        $k =~ s/(^|[^\\])\.($|[^\*\?\{])/$1\\.$2/go;    # escape a single unescaped and unquatified dot
+        $k =~ s/(^|[^\\])\.($|[^\*\?\{])/$1\\.$2/go;    # escape a single unescaped and unquantified dot
         $k =~ s/(^|[^*()\]\\])\?/$1\.\?/go;             # replace an unescaped ? with .? if it is not a quantifier
         $k =~ s/(^|[^)\].\\])\*/$1\.\*\?/go;            # replace an unescaped * with .*? if it is not a quantifier
         if ($start && $end) {
@@ -64487,6 +64761,9 @@ sub ConfigCompileRe {
         @{$name.'Weight'} = ();
         @{$name.'WeightRE'} = ();
         my %seenRe;
+        my @tmpweight;
+        my $l = 0;
+        my $count = 0;
         while ($new =~ s/(\~([^\~]+)?\~|([^\|]+)?)\s*\=\>\s*([+\-]?(?:0?\.\d+|\d+\.\d+|\d+))?(?:\s*\:\>\s*([nNwWlLiI\+\-\s]+)?)?/exists($seenRe{$2.$3})?'':$2.$3/oe) {
             my $re = ($2?$2:'').($3?$3:'');
             $seenRe{$re} += 1;
@@ -64564,20 +64841,38 @@ sub ConfigCompileRe {
                     $WeightedReOverwrite{$name} |= 2;
                 }
             }
-            push (@{$name.'WeightRE'},'{'.$how.'}'.$re);
-            push (@{$name.'Weight'},$we);
-        }
-        my $count = 0;
-        foreach my $k (@{$name.'Weight'}) {
-            my $reg = ${$name.'WeightRE'}[$count];
-            my $how;
-            $how = $1 if $reg =~ s/^\{([^\}]*)?\}(.+)$/$2/o;
-            strip50($reg);
-            $how = " for [$how]" if $how;
-            mlog(0,"info: $name : regex $reg - weight set to $k$how") if $WorkerNumber == 0 && $MaintenanceLog >= 2;
+            push (@tmpweight,[$re , '{'.$how.'}'.$re , $we, $how, $count]); # [ the regex , the processed entry , the weight , the NWLI , the line number ]
+            $l = max($l,length($re));  # get the length of the longest regex
             $count++;
         }
-        mlog(0,"info: Regex $name: $count weighted regular expression defined") if $count && $WorkerNumber == 0 && $MaintenanceLog;
+        if (@tmpweight) {
+            # disable regex optimization to keep the regex order and their possible matches
+            $noOptRe{$name} = 0;
+            
+            # sort the regexes in reverse order to their length
+            # so the longest regex will match first in weightRe (not the first line)
+            # do this only, if $sortWeightedConfig->{'config-parm'} = 1 is set for this config parameter
+            @tmpweight = map  { $_->[0] }
+                         sort { $main::b->[1] cmp $main::a->[1]     # reverse string (regex) sort
+                                              ||
+                                $main::a->[2] <=> $main::b->[2] }   # keep the line order in case of equal regular expressions
+                         map  { [ $_ , (' ' x ($l - length($_->[0])).$_->[0]) , $_->[4] ] } @tmpweight if $sortWeightedConfig->{$name};
+            while (@tmpweight) {
+                my $c = shift @tmpweight;
+                # keep the index in sync for both arrays used in weightRe
+                push (@{$name.'WeightRE'},$c->[1]);   # '{'.$how.'}'.$re
+                push (@{$name.'Weight'}  ,$c->[2]);   # $we
+                if ($WorkerNumber == 0 && $MaintenanceLog >= 2) {
+                    my $how = $c->[3];
+                    my $we = $c->[2];
+                    $how = " for [$how]" if $how;
+                    my $reg = $c->[0];
+                    strip50($reg);
+                    mlog(0,"info: $name : regex $reg - weight set to $we$how");
+                }
+            }
+            mlog(0,"info: Regex $name: $count weighted regular expressions defined") if $WorkerNumber == 0 && $MaintenanceLog;
+        }
     }
 
     if ($name eq 'TLDS') {
@@ -66756,7 +67051,7 @@ sub updateDNS {
     return '' if $WorkerNumber == 10000 && $ComWorker{$WorkerNumber}->{rereadconfig};
     mlog( 0, "AdminUpdate: $name - DNS configuration updated from '$old' to '$new'" )
       unless $init || $new eq $old || $name eq 'updateDNS';
-    ${$name} = $Config{$name} = $new unless $WorkerNumber;
+    ${$name} = $Config{$name} = $new if ($WorkerNumber == 0 && $name ne 'updateDNS');
     
     if ($CanUseDNS) {
         my (@ns,@ns_def,@nservers);
@@ -67177,6 +67472,7 @@ sub configUpdateSPFOF {
         }
     }
     $spf=~s/,$//o;
+    # store the HASH building code in $spf in the lowercase variable version of $name (eg. spfoverride ...)
     $name = lc $name;
     ${$name} = $spf;
     return $ret;
@@ -74124,6 +74420,7 @@ sub ThreadMaintMain {
     }
     return if(! $ComWorker{$Iam}->{run} || $wasrun);
 
+    # if we have to reload groups because they are dynamic, change the file time to the current time and force an option check below
     if ($Groups && $GroupsReloadEvery && time >= $NextGroupsReload && scalar keys %GroupRE && $GroupsDynamic) {
         ScheduleMapSet('GroupsReloadEvery');
         my $fil;
@@ -74135,24 +74432,31 @@ sub ThreadMaintMain {
         }
     }
 
+    if ($nextRefreshSPFCache && time > $nextRefreshSPFCache) {
+        $wasrun = refreshSPFRecordCache();
+    }
+    return if(! $ComWorker{$Iam}->{run} || $wasrun);
+
+    # check if an option file was changed and set $ConfigChanged accordingly to force the MainThread to reload changed files
     if($ReloadOptionFiles && ! $ConfigChanged && time >= $nextOptionCheck ){
-         d('ReloadOptionFiles');
-         ScheduleMapSet('ReloadOptionFiles','nextOptionCheck');
-         for my $idx (0...$#PossibleOptionFiles) {
-          my $f = $PossibleOptionFiles[$idx];
-          if($f->[0] ne 'asspCfg' || ($f->[0] eq 'asspCfg' && $AutoReloadCfg)) {
-              if ($Config{$f->[0]}=~/^ *file: *(.+)/io && fileUpdated($1,$f->[0])) {
-                my $fl = $1;
-                if ($f->[0] eq 'asspCfg' && $asspCFGTime > $FileUpdate{"$base/assp.cfgasspCfg"}) {
-                    $FileUpdate{"$base/assp.cfgasspCfg"} = $asspCFGTime;
-                    next;
+        d('ReloadOptionFiles');
+        ScheduleMapSet('ReloadOptionFiles','nextOptionCheck');
+        my $dummy = refreshSPFRecordCache();
+        for my $idx (0...$#PossibleOptionFiles) {
+            my $f = $PossibleOptionFiles[$idx];
+            if($f->[0] ne 'asspCfg' || ($f->[0] eq 'asspCfg' && $AutoReloadCfg)) {
+                if ($Config{$f->[0]}=~/^ *file: *(.+)/io && fileUpdated($1,$f->[0])) {
+                    my $fl = $1;
+                    if ($f->[0] eq 'asspCfg' && $asspCFGTime > $FileUpdate{"$base/assp.cfgasspCfg"}) {
+                        $FileUpdate{"$base/assp.cfgasspCfg"} = $asspCFGTime;
+                        next;
+                    }
+                    $ConfigChanged = $f->[0] eq 'asspCfg' ? 2 : 1;
+                    d("file $f->[0] - changed");
+                    $wasrun = 1;
+                    last;
                 }
-                $ConfigChanged = $f->[0] eq 'asspCfg' ? 2 : 1;
-                d("file $f->[0] - changed");
-                $wasrun = 1;
-                last;
-             }
-          }
+            }
         }
         my ($file) = $localBackDNSFile =~ /^ *file: *(.+)/io;
         if ($file &&

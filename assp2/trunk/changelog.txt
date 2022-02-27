@@ -1,3 +1,37 @@
+2022-02-27
+fixed in assp 2.6.8 *SPAM-Evaporator* build 22058:
+
+- because of a MIME decoding BUG, reported mails with very long subjects were not processed correctly
+
+- if a blocked mail eml-file was moved from the spam folder to the discarded folder, it was sometimes no longer found by the BlockReport feature - and so no resendlinks were provided in the blockreports
+
+
+added:
+
+'send250toIP','Send 250 OK to this list of IP-addresses*',
+ List of connecting IP-addresses which will get the reply '250 OK' instead of SMTP error codes ('5xx a.b.c') - see send250OK .
+ This is a usefull setting, if a blocked sending host got a 5xx reply and does not follow the SMTP-RFC's (stop and send a NDR). Instead the host permanently tries to send the same mail again and again.
+ Such blocked mails are internaly processed like any other SPAM mail, but the sender will not get informed about, that the mail was not delivered to the final recipient!
+
+
+changed:
+
+- if SPF: lists are included in to IP-address-list, the resolving of the SPF-records in now done in backgound and the results are cached for the lowest received TTL
+
+- 'bombDataRe' (contrary to all other bomb-RE's) was running against the HTML undecoded body content only -
+  now the HTML decoded and HTML undecoded body is checked (only the HTML line endings (=CRLF) are removed from the HTML undecoded body)
+
+- the regular expression optimization is now disabled for a regex configuration parameter, if weights are used for it
+  this way the definiton order for the regular expressions and their weights is keeped
+
+- the processing speed for IP-address regular expressions is improved 
+
+- ASSP_FC version 5.38 is released. The virus detection is enhanced to detect: https://www.bleepingcomputer.com/news/security/malicious-csv-text-files-used-to-install-bazarbackdoor-malware/
+
+
+
+
+
 2022-01-19
 fixed in assp 2.6.6 *SPAM-Evaporator* build 22019:
 
