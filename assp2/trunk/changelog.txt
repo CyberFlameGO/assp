@@ -1,3 +1,29 @@
+2022-03-04
+fixed in assp 2.6.8 *SPAM-Evaporator* build 22063:
+
+
+added:
+
+- The XOAUTH2 authentication mechanism is implemented (IN and OUT/relay). A SSL/TLS protected connection is required in every case for XOAUTH2 - independend from the setting of AUTHrequireTLS.
+  The help text for AUTHrequireTLS, relayAuthUser and relayAuthPass is changed.
+
+changed:
+
+- transparentRecipients: 
+   - moving to a transparent proxy connection requires now that all envelope recipients are matching transparentRecipients (not only one)
+   - moving to a transparent proxy connection is now done after the DATA command is received - no longer when the RCPT TO: is received
+  These changes are done for security reasons. There is no longer a chance to abuse a transparent connection for NON-transparentRecipients or not local recipients!
+
+
+- the default value of 'MaxAllowedDups' is changed from 50 to 0 - the help text is changed
+
+- the (minimum) recommended version for the perl module Email::MIME is changed from 1.946 to 1.950
+
+- SignalLog is improved: if an unexpected signal is detected (like SEGV) and SignalLog is set to verbose, the complete perl caller stack is now written to the file debugSignal.txt
+
+
+
+
 2022-02-27
 fixed in assp 2.6.8 *SPAM-Evaporator* build 22058:
 

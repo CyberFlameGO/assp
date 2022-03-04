@@ -227,7 +227,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.8';
-$build   = '22058';        # 27.02.2022 TE
+$build   = '22063';        # 04.03.2022 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.034999';
 $MAINVERSION = $version . $modversion;
@@ -702,7 +702,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
 
 our $sortWeightedConfig = {};       # 'configParameter' => 1, '' => 1, ... - reverse sort regular expressions in this weighted config parameters
 
-sub __cs { $codeSignature = '1467EBDA4C1D2C7CC188A37286B3E834CBD770AC'; }
+sub __cs { $codeSignature = '6CB11700FD23EA2BF38E6F328A96651CBA0FBE86'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -1994,11 +1994,11 @@ sub defConfigArray {
 ['onlyAUTHHeloRe','Allow AUTH Only for these HELO\'s*',80,\&textinput,'','(.*)','ConfigCompileRe',
 'If configured and a helo does not match this regular expression, the AUTH offer will be removed from the EHLO reply and the AUTH command will be disallowed.
  For example:  ^\w+\.onlyauthdomain\.com$,',undef,undef,'msg010560','msg010561'],
-['AUTHrequireTLS','SMTP AUTH requires SSL/TLS','0:NO|1:PLAIN|2:LOGIN|3:PLAIN and LOGIN|4:ALL',\&listbox,0,'(\d)',undef,
+['AUTHrequireTLS','SMTP AUTH requires SSL/TLS','0:NO|1:PLAIN|2:LOGIN|3:PLAIN and LOGIN|4:ALL',\&listbox,4,'(\d)',undef,
   'An SSL listener or STARTTLS is required before the SMTP AUTH command can be used.<br />
   This setting is ignored for all private IP addresses (localhost, RFC 1918, RFC 4193)!<br />
   In case of a mistake \'538 5.7.11 transport layer encryption (SSL/TLS) required for requested authentication mechanism\' is replied to the client.<br />
-  \'NO\' is the default setting, but \'ALL\' is recommended!',undef,undef,'msg010470','msg010471'],
+  \'ALL\' is recommended and default setting! The authentication mechanism XOAUTH2 requires transport layer encryption independend from this setting!',undef,undef,'msg010470','msg010471'],
 ['EnforceAuth',"Force SMTP AUTH on Second SMTP Listen Port",0,\&checkbox,0,'(.*)',undef,
   'Force clients connecting to the second listen port to authenticate before transferring mail. To use this setting, both listenPort2 (Second SMTP Listen Port) and smtpAuthServer (Second SMTP Destination) must be configured.<hr /><div class="cfgnotes">Notes On Network Setup</div><input type="button" value="Notes" onclick="javascript:popFileEditor(\'notes/network.txt\',3);" />',undef,undef,'msg000090','msg000091'],
 
@@ -2040,8 +2040,8 @@ sub defConfigArray {
  If you need to connect to the relay host using native SSL, write \'SSL:\' in front of the IP/host definition. In this case the Perl module <a href="http://metacpan.org/search?q=IO::Socket::SSL" rel="external">IO::Socket::SSL</a> must be installed and enabled ( useIOSocketSSL ).<br />
  The IP based routing defined in smtpDestinationRT will be used, if the dynamic keyword <b>INBOUND</b> is defined here.<br />
  Examples: your_ISP_Server:25, 149.1.1.1:25, SSL:149.1.1.2:465|any_other_host:25, INBOUND !','Basic',undef,'msg001170','msg001171'],
-['relayAuthUser','User to Authenticate to Relay Host',80,\&passinput,'','(.*)',undef,'The username used for SMTP AUTH authentication to the relayhost  - for example, if your ISP need authentication on the SMTP port! Supported authentication methods are PLAIN, LOGIN, CRAM-MD5 and DIGEST-MD5 . If the relayhost offers multiple methods, the one with highest security option will be used. The Perl module <a href="http://metacpan.org/search?q=Authen::SASL" rel="external">Authen::SASL</a> must be installed to use this feature! The usage of this feature will be skipped, if the sending MTA uses the AUTH command. Leave this blank, if you do not want use this feature.','Basic',undef,'msg009040','msg009041'],
-['relayAuthPass','Password to Authenticate to Relay Host',80,\&passinput,'','(.*)',undef,'The password used for SMTP AUTH authentication to the relayhost ! Leave this blank, if you do not want use this feature.','Basic',undef,'msg009050','msg009051'],
+['relayAuthUser','User to Authenticate to Relay Host',80,\&passinput,'','(.*)',undef,'The username used for SMTP AUTH authentication to the relayhost  - for example, if your ISP need authentication on the SMTP port! Supported authentication methods are PLAIN, LOGIN, CRAM-MD5, DIGEST-MD5 and XOAUTH2. If the relayhost offers multiple methods, the one with highest security option will be used. The Perl module <a href="http://metacpan.org/search?q=Authen::SASL" rel="external">Authen::SASL</a> must be installed to use this feature! The usage of this feature will be skipped, if the sending MTA uses the AUTH command. Leave this blank, if you do not want use this feature.','Basic',undef,'msg009040','msg009041'],
+['relayAuthPass','Password to Authenticate to Relay Host',80,\&passinput,'','(.*)',undef,'The password used for SMTP AUTH authentication to the relayhost ! Leave this blank, if you do not want use this feature. In case the XOAUTH2 authentication mechanism is used (eg.msoffice 365), write the accessToken in to here.','Basic',undef,'msg009050','msg009051'],
 ['relayPort','Relay Port',80,\&textinput,'',$GUIHostPort,'ConfigChangeRelayPort','Tell your mail server to connect to this IP/port as its smarthost / relayhost. For example: 225<br />
  Note that you\'ll want to keep the relayPort protected from external access by your firewall. To restrict access to the relayPort per IP address or network, use allowRelayCon .<br />
  You can supply an interface:port to limit connections.<br />
@@ -2643,8 +2643,9 @@ a list separated by | or a specified file \'file:files/redre.txt\'. ',undef,unde
 
 [0,0,0,'heading','Local Recipients and Domains &amp; Transparent Recipients and Domains'],
 ['transparentRecipients','Mails to these Recipients are Handled in Transparent-PROXY Mode*',80,\&textinput,'','(.*)','ConfigMakeSLRe',
-'Mails to any of these recipients or domains are handled transparent <b>immediatly after</b> a possible SRS check, BATV processing, Recipient-Replacement, RFC822 checks, ORCPT check and a feature match is found in the currently processed "RCPT TO:" SMTP command (envelope recipient).<br />
- What means "transparent handled" ? ASSP acts like a transparent Proxy. No filter actions are taken for the mail. Nothing is analyzed. Nothing is verfied. Nothing is stored. Nothing is logged (except reply codes if configured) - only debugging will work.<br />
+'Mails to any of these envelope recipients or domains are handled transparent <b>right after</b> a possible SRS check, BATV processing, Recipient-Replacement, RFC822 checks, ORCPT check and the SMTP DATA command is received.<br />
+ Notice: all envelope recipients of an email have to match this feature to move the connection in to Transparent-Proxy mode!<br />
+ What means "transparent handled" ? ASSP acts like a transparent Proxy. No filter actions are taken for the mail. Nothing is analyzed. Nothing is verfied. Nothing is stored. No X-ASSP-... headers are added. Nothing is logged (except reply codes if configured) - only debugging will work.<br />
  NOTICE: If a connection is moved in to the transparent proxy mode, this connection will stay in this mode until "MAIL FROM:" or "RSET" is used or the connection is closed by any peer.<br />
  You can list specific addresses (user@mydomain.com), addresses at any local domain (user), or entire domains (@mydomain.com).  Wildcards are supported (fribo*@domain.com). (|).<br />
  For example: fribo@thisdomain.com|jhanna|@sillyguys.org or place them in a plain ASCII file one address per line - file:files/transparentuser.txt.','Basic',undef,'msg010580','msg010581'],
@@ -4390,8 +4391,11 @@ For example: mysql/dbimport<br />
  Recommended: 0.5, Default: 1',undef,undef,'msg006090','msg006091'],
 ['UseSubjectsAsMaillogNames','Use Subject as Maillog Names',0,\&checkbox,'1','(.*)','ConfigChangeUSAMN',
   'You can turn this on to help you manually identify mail in your spam and non-spam collections. This will prevent ASSP from controlling the number of files in your collections(-> MaxFiles ). It is recommended to switch on MaintBayesCollection and to setup MaxNoBayesFileAge to your needs, if you have switched on this option.',undef,undef,'msg006100','msg006101'],
-['MaxAllowedDups','Max Number of Duplicate File Names',5,\&textinput,50,'(\d+)','ConfigChangeMaxAllowedDups',
-  'The maximum number of logged files with the same or similar filename (subject) that are stored in the spam folder (spamlog), if UseSubjectsAsMaillogNames is selected. Default is 0. An low value reduces the number of possibly duplicate mails, assuming that mails with the same or similar subject will have the same content. A value of 0 disables this feature. If this number of files with the same or similar filename is reached, the oldest file with the same subject will be moved to the discarded folder, which has to be defined ( in addition to spamlog ) for this feature to work.', undef, undef,'msg008660','msg008661'],
+['MaxAllowedDups','Max Number of Duplicate File Names',5,\&textinput,0,'(\d+)','ConfigChangeMaxAllowedDups',
+  'The maximum number of logged files with the same or similar filename (subject) that are stored in the spam folder (spamlog), if UseSubjectsAsMaillogNames is selected. Default is 0. An low value reduces the number of possibly duplicate mails, assuming that mails with the same or similar subject will have the same content. A value of 0 disables this feature. If this number of files with the same or similar filename is reached, the oldest file with the same subject will be moved to the discarded folder, which has to be defined ( in addition to spamlog ) for this feature to work.<br />
+  Depending on the count of files in the spam folder, this feature may allocate a large amount of memory! Do not use this feature on systems with a high workload!<br />
+  A setting from zero to another value, will start the file maintenance for the spam folder immediatly.<br />
+  It is safe to use ConfigChangeSchedule to set and unset this value at scheduled times (e.g. once a week or every night).', undef, undef,'msg008660','msg008661'],
 ['AllowedDupSubjectRe','Regular Expression to Identify allowed duplicate Subjects*',80,\&textinput,'','(.*)','ConfigCompileRe','Messages their subject matches this regular expression will be collected regardless the setting in MaxAllowedDups .',undef,undef,'msg008670','msg008671'],
 ['UseUnicode4MaillogNames','Use Unicode to build Maillog Names',0,\&checkbox,'','(.*)',undef,
   'If you have switched on UseSubjectsAsMaillogNames and your default (local language) characterset (please setup ConsoleCharset) needs 8 Bit like "KOI8-r","CP-866","Windows-1251","Windows-1252","ISO-8859-X","X-Mac-Cyrillic","JIS_X0201" or any other (or is UTF-8) - and you want to have readable filenames in the maillog and on the console screen, you can switch on this option. The resolution of some characters written to the console could be incorrect depending on your operating system. This requires an installed <a href="http://metacpan.org/search?q=Email::MIME" rel="external">Email::MIME</a> module in PERL.<br />
@@ -8112,6 +8116,7 @@ our %RegExStore:shared;
 our %ReportFiles;
 our %ReportTypes;
 our %ResendFile;
+our %SASLmechanism:shared;
 our %ScheduledTask:shared;
 our %ScheduleMap:shared;
 our %ScoreStatText;
@@ -11772,7 +11777,7 @@ EOT
     $useWin32APIOutputDebugString = $Config{useWin32APIOutputDebugString} = '' if ($isNoWIN);
     $AvailWin32Debug     = $useWin32APIOutputDebugString ? validateModule('Win32::API::OutputDebugString qw(OutputDebugString DStr)') :0; # AZ: 2009-03-10 win32 debug/trace available
     $CanUseWin32Debug    = $AvailWin32Debug; # AZ: 2009-03-10 win32 debug/trace available
-    $AvailTieRDBM        = $useTieRDBM ? validateModule('Tie::RDBM') : 0;    # Use external database
+    $AvailTieRDBM        = $useTieRDBM ? validateModule('DBI()') && validateModule('Tie::RDBM') : 0;    # Use external database
     $CanUseTieRDBM       = $AvailTieRDBM;
     $AvailDB_File        = $useDB_File ? validateModule('DB_File') : 0;    # Use external DB_File (Berkeley V1) database
     $CanUseDB_File       = $AvailDB_File;
@@ -11947,7 +11952,7 @@ EOT
         $F->close;
     }
 
-    if ($CanUseTieRDBM){
+    if ($CanUseTieRDBM) {
       print "loading database drivers\t";
       @DBdriverNames = DBI->available_drivers;
       $DBdrivers = join('|',@DBdriverNames);
@@ -15430,9 +15435,9 @@ EOT
     if ($CanUseEMM) {
         $ver=eval('Email::MIME->VERSION'); $VerEmailMIME=$ver; $ver=" version $ver" if $ver;
         mlog(0,"Email::MIME module$ver installed - MIME charset decoding and conversion interface and attachment detection available");
-        if ($VerEmailMIME < 1.946) {
+        if ($VerEmailMIME < 1.950) {
             my $winext = $isWIN ? " or 'ppm install Email::MIME'" : '';
-            my $error = "ERROR: The installed version $VerEmailMIME of the important module Email::MIME is too old. The module version should be at least '1.946'. Please upgrade this module as soon as possible - using 'cpanm -n Email::MIME' or 'cpan Email::MIME'$winext!";
+            my $error = "ERROR: The installed version $VerEmailMIME of the important module Email::MIME is too old. The module version should be at least '1.950'. Please upgrade this module as soon as possible - using 'cpanm -n Email::MIME' or 'cpan Email::MIME'$winext!";
             mlog(0,$error);
             if (open(my $F, '>>', "$base/moduleLoadErrors.txt")) {
                 binmode $F;
@@ -15449,7 +15454,7 @@ EOT
         $installed = $useEmailMIME ? 'is not installed' : 'is disabled in config';
         mlog(0,"Email::MIME module $installed - MIME charset decoding and conversion interface and attachment detection not available");
     }
-    $ModuleList{'Email::MIME'} = $VerEmailMIME.'/1.946';
+    $ModuleList{'Email::MIME'} = $VerEmailMIME.'/1.950';
     $ModuleStat{'Email::MIME'} = $installed;
 
     if ($CanUseMTY) {
@@ -15547,8 +15552,17 @@ EOT
 
     if ($CanUseAuthenSASL) {
         $ver=eval('Authen::SASL->VERSION'); $VerAuthenSASL=$ver; $ver=" version $ver" if $ver;
-        mlog(0,"Authen::SASL module$ver installed - SMTP AUTH is available");
         $installed = 'enabled';
+        foreach ('PLAIN','LOGIN','CRAM-MD5','DIGEST-MD5','XOAUTH2') {
+            $SASLmechanism{$_} = 1 if eval{ Authen::SASL->new( mechanism => $_,
+                                                               callback  => {
+                                                                   user     => 'user',
+                                                                   pass     => 'pass',
+                                                                   authname => 'authname'
+                                                               },
+                                                               debug => $ThreadDebug)->client_new('smtp') };
+        }
+        mlog(0,"Authen::SASL module$ver installed - SMTP AUTH is available - supported AUTH-mechanism are: ".join(', ',keys(%SASLmechanism)));
     } elsif (!$AvailAuthenSASL)  {
         $installed = $useAuthenSASL ? 'is not installed' : 'is disabled in config';
         mlog(0,"Authen::SASL module $installed - SMTP AUTH is not available");
@@ -26640,9 +26654,9 @@ sub getline {
             return;
         }
 
-        my %posmeth = (0 => undef, 1 => 'PLAIN',2 => 'LOGIN',3 => 'PLAIN|LOGIN',4 => '.+');
-        my $methCheck = $posmeth{$AUTHrequireTLS};
-        if ($methCheck && "$fh" !~ /SSL/io && $this->{ip} !~ /$IPprivate/o && $authmeth =~ /$methCheck/i)
+        my %posmeth = (0 => 'XOAUTH2', 1 => 'XOAUTH2|PLAIN',2 => 'XOAUTH2|LOGIN',3 => 'XOAUTH2|PLAIN|LOGIN',4 => '.+');
+        my $methCheck = $posmeth{$AUTHrequireTLS} || '.+';
+        if ("$fh" !~ /SSL/io && $this->{ip} !~ /$IPprivate/o && $authmeth =~ /$methCheck/i)
         {
             $this->{lastcmd} = 'AUTH';
             push(@{$this->{cmdlist}},$this->{lastcmd}) if $ConnectionLog >= 2;
@@ -26974,10 +26988,15 @@ sub getline {
         {
             $this->{doneAuthToRelay} = 1;
             $this->{sendAfterAuth} = $l;
-            foreach ('PLAIN','LOGIN','CRAM-MD5','DIGEST-MD5') {
-                $this->{AUTHmechanism} = $_ if exists $this->{authmethodes}->{$_};
+            foreach ('PLAIN','LOGIN','CRAM-MD5','DIGEST-MD5','XOAUTH2') {
+                mlog($fh,"Warning: SMTP-AUTH-mechanism $_ was offered, but is currently not supported by the perl module Authen::SASL - the Authen::SASL-Plugin for $_ is missing or not working")
+                    if $SessionLog && exists $this->{authmethodes}->{$_} && ! exists $SASLmechanism{$_};
+                $this->{AUTHmechanism} = $_ if exists $this->{authmethodes}->{$_} && exists $SASLmechanism{$_};
             }
             $this->{AUTHmechanism} = 'PLAIN' unless $this->{AUTHmechanism};
+            if ("$server" !~ /SSL/io && $this->{AUTHmechanism} =~ /PLAIN|LOGIN|XOAUTH2/io && $server->peerhost() !~ /$IPprivate/io) {
+                mlog($fh,"warning: the connection to the relay host ".$server->peerhost().':'.$server->peerport()." is not SSL/TLS secured - your authentication information can be intercepted and are vulnerable!") if $SessionLog;
+            }
             mlog($fh,"info: starting authentication - AUTH $this->{AUTHmechanism}") if $SessionLog >= 2;
             $this->{AUTHclient} =
                 Authen::SASL->new(
@@ -27511,7 +27530,7 @@ sub getline {
             my ($adr,$user,$dom) = ($1,$2,$3);
             my $error;
             my $nonASCII;
-            my $ns='ANY';  # less strict than 'NS', ANY registration should be fine
+            my $ns='ANY';  # less strict than 'NS', ANY registration should be fine - even RFC8482 takes place
             if (($nonASCII = ! is_7bit_clean(\$adr)) || $adr !~ /$RFC822RE/o ) {
                 $error = 'RFC822';
             }
@@ -27570,7 +27589,7 @@ sub getline {
             && $this->{mailfrom} =~ /(($EmailAdrRe)\@($EmailDomainRe))/o)
         {
             my ($adr,$user,$dom) = ($1,$2,$3);
-            my $ns='NS';
+            my $ns='ANY';  # less strict than 'NS', ANY registration should be fine - even RFC8482 takes place
             if ($dom !~ /^$IPRe$/o) {
                 if ($dom !~ /([^\.]+(?:$URIBLCCTLDSRE|\.$TLDSRE))$/i) {
                     $this->{invalidSenderDomain} = lc $dom;
@@ -27639,7 +27658,7 @@ sub getline {
         }
 
         my ($str, $gen, $day, $hash, $orig_user) = ($e =~ /(prvs=(\d)(\d\d\d)(\w{6})=([$NOCRLF]*))/o);
-        $l =~ s/$str/$orig_user/ if ($orig_user);  # remove our BATV-Tag from VRFY address
+        $l =~ s/\Q$str\E/$orig_user/ if ($orig_user);  # remove our BATV-Tag from VRFY address
 
         # recipient replacment should be done next to here !
         if ($ReplaceRecpt) {
@@ -27653,7 +27672,7 @@ sub getline {
                     my $mf = batv_remove_tag(0,lc $this->{mailfrom},'');
                     my $newmidpart = RcptReplace($midpart,$mf,'RecRepRegex');
                     if (lc $newmidpart ne lc $midpart) {
-                        $l =~ s/$orgmidpart/$newmidpart/i;
+                        $l =~ s/\Q$orgmidpart\E/$newmidpart/i;
                         mlog($fh,"info: $this->{lastcmd} recipient $orgmidpart replaced with $newmidpart");
                     }
                 }
@@ -27786,13 +27805,13 @@ sub getline {
                     my $today = (time / 86400) % 1000;                   # how old is the Tag
                     my $dt = ($day - $today + 1000) % 1000;
                     if ($dt <= 7) {
-                        $l =~ s/$rt/$BATVTag{lc($rt)}/i;          # the age is OK - less than 8 days - so replace recipient address with tagged address
+                        $l =~ s/\Q$rt\E/$BATVTag{lc($rt)}/i;          # the age is OK - less than 8 days - so replace recipient address with tagged address
                         mlog($fh,"reminded BATV-Tag $BATVTag{lc($rt)} for recipient $rt") if ($BATVLog >= 2);
                     } else {
                         delete $BATVTag{lc($rt)};
                     }
                 } else {
-                    $l =~ s/$rt/$BATVTag{lc($rt)}/i;          #  replace recipient address with the foreign private BATV tagged address
+                    $l =~ s/\Q$rt\E/$BATVTag{lc($rt)}/i;          #  replace recipient address with the foreign private BATV tagged address
                     mlog($fh,"reminded BATV-Tag $BATVTag{lc($rt)} for recipient $rt") if ($BATVLog >= 2);
                 }
             }
@@ -27951,17 +27970,6 @@ sub getline {
                 return;
             }
             sendque($fh, $NoRelaying."\r\n");
-            return;
-        }
-
-        # check if we have to move in to transparent mode
-        if ($friend && $transparentRecipients && matchSL( "$u$h", 'transparentRecipients' )) {
-            mlog($fh,"info: the connection will now be moved in to the Full-Transparent-Proxy mode") if $ConnectionLog;
-            $this->{getline}=\&TransClient;
-            $this->{getlinetxt}='TransClient';
-            $friend->{getline}=\&TransServer;
-            $friend->{getlinetxt}='TransServer';
-            sendque($server,$l) if $server;
             return;
         }
 
@@ -28811,6 +28819,35 @@ sub getline {
             pbAdd($fh,$this->{ip},'erValencePB','NeedRecipient',0);
             seterror($fh,"503 5.5.2 Need Recipient\r\n",1);
             return;
+        }
+
+        # check if we have to move in to transparent mode
+        if ($server && $friend && $transparentRecipients && keys(%{$this->{rcptlist}})) {
+            my $moveToTransparent;
+            for my $rcpt (keys(%{$this->{rcptlist}})) {
+                if (matchSL( $rcpt, 'transparentRecipients' )) {
+                    $moveToTransparent = 1;
+                    mlog($fh,"info: found transparent envelope recipient $rcpt") if $ConnectionLog;
+                } else {
+                    $moveToTransparent = 0;
+                    mlog($fh,"info: found not transparent envelope recipient $rcpt - skip Transparent-Proxy mode") if $moveToTransparent == 1 && $ConnectionLog > 1;
+                    last;
+                }
+            }
+            if ($moveToTransparent) {
+                mlog($fh,"info: the connection will now be moved in to the Transparent-Proxy mode") if $ConnectionLog;
+                $this->{messagereason} = '';
+                $this->{passingreason} = '';
+                $this->{whitelisted} = '';
+                $this->{noprocessing} = '';
+                $this->{prepend} = '';
+                $this->{getline}=\&TransClient;
+                $this->{getlinetxt}='TransClient';
+                $friend->{getline}=\&TransServer;
+                $friend->{getlinetxt}='TransServer';
+                sendque($server,$l);
+                return;
+            }
         }
 
         if ($this->{SIZE}) {
@@ -40059,7 +40096,7 @@ sub replyAUTH {
 
     if ($l =~ /^334\s*(.*)$/o) {
         $l = $1;
-        if (exists $Con{$friend}->{AUTHclient} && @{$Con{$friend}->{AUTHClient}}) { # method PLAIN was used
+        if (exists $Con{$friend}->{AUTHclient} && @{$Con{$friend}->{AUTHClient}}) { # method PLAIN or XOAUTH2 was used
             my $str = join ('', @{$Con{$friend}->{AUTHClient}});              # send the authentication
             $str =~ s/[\r\n]+$//o;
             $str .= "\r\n";
@@ -40071,7 +40108,7 @@ sub replyAUTH {
                      $Con{$friend}->{AUTHclient}->client_step(MIME::Base64::decode_base64($l), '')
                    );
             my $str = join ('', @str);
-            $str =~ s/[\r\n]+$//o;
+            $str =~ s/\r|\n//go;
             $str .= "\r\n";
             NoLoopSyswrite($fh,$str,0) if $str;
         } else {
@@ -40977,7 +41014,7 @@ sub storeReport {
     binmode $f;
     $f->print($$email);
     $f->close;
-    mlog(0,"Info: the received report email was store in file: $file");
+    mlog(0,"Info: the received report email was stored in file: $file");
     return;
 }
 
@@ -46707,6 +46744,7 @@ sub onwhitelist {
     return 0;
 }
 
+# return from the headertag in $tag of $email the first found attribute (named in @attr)
 sub attrHeader {
     my $email = shift;
     my $tag = shift;
@@ -46781,7 +46819,7 @@ sub parts_multipart {
     my @bits = split /^--[$NOCRLF]+\s*$/smo, ($body || '');
 
     $self->{body} = undef;
-    $self->{body} = (\shift @bits) if ($bits[0] || '') !~ /:/o;
+    $self->{body} = (\shift @bits) if index(($bits[0] || ''), ':') == -1;
 
     my $bits = @bits;
 
@@ -57798,7 +57836,7 @@ sub decodeMimeWord2UTF8 {
 sub decodeMimeWords2UTF8 {
     my $s = shift;
     headerUnwrap($s);
-    $s =~ s/(=\?([^?]*)\?(b|q)\?(.*?)\?=(?:\s*=\?\g2\?(?:b|q)\?.*?\?=)*)/decodeMimeWord2UTF8($1,$2,$3,$4)/gieo;
+    $s =~ s/(=\?([^?]*)\?(b|q)\?(.*?)\?=)/decodeMimeWord2UTF8($1,$2,$3,$4)/gieo;
     return $s;
 }
 
@@ -65057,14 +65095,13 @@ sub ConfigChangeUSAMN {
 sub ConfigChangeMaxAllowedDups {
     my ($name, $old, $new, $init)=@_;
     return if $WorkerNumber != 0 && $init ne 'reread';
-    my $count = -1;
     if ($new && $Config{UseSubjectsAsMaillogNames} && $Config{discarded} && $Config{spamlog}) {
         cmdToThread('fillSpamfiles','');
     } else {
         %SpamfileNames = ();
+        @spamFolderContent = ();
     }
     mlog(0,"AdminUpdate: $name from '$old' to '$new'") unless $init || $new eq $old;
-    mlog(0,"info: $name - ".nN($count)." files registered in $Config{spamlog} folder") if $init && $new && $count > -1;
     $Config{$name} = $$name = $new unless $WorkerNumber;
 }
 
@@ -76091,12 +76128,23 @@ sub sigCentralHandler {
         mlog(0,"$tag: got unexpected signal $sig in $WorkerName: package - $package, file - $file, line - $line!");
     }
     if ($SignalLog > 1) {
+        my $i = 1;   # 0 = gsigCentralHandler
+        my @out;
+        # trace the complete caller stack
+        while (my @r = caller($i)) {
+            push @out, \@r;
+            $i++;
+        }
         my $m = &timestring();
         $m .= " $tag: got unexpected signal $sig in $WorkerName: package - $package, file - $file, line - $line!";
         my $S;
         open $S, '>>',"$base/debugSignal.txt";
         binmode $S;
-        print $S "$m\n";
+        print $S "\n$m\n";
+        print $S "caller stack trace:\n";
+        #        0         1         2       3           4          5         6           7          8         9         10
+        #my ($package, $filename, $line, $subroutine, $hasargs, $wantarray, $evaltext, $is_require, $hints, $bitmask, $hinthash);
+        print $S "package:$_->[0], filename:$_->[1], line:$_->[2], subroutine:$_->[3], evaltext:$_->[6]\n" for reverse @out;
         $S->close if $S;
     }
     if ($sig =~ /abrt|break|quit|kill|term|int|segv/io) {
