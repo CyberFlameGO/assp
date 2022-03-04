@@ -6,6 +6,7 @@ added:
 
 - The XOAUTH2 authentication mechanism is implemented (IN and OUT/relay). A SSL/TLS protected connection is required in every case for XOAUTH2 - independend from the setting of AUTHrequireTLS.
   The help text for AUTHrequireTLS, relayAuthUser and relayAuthPass is changed.
+  To provide the XOAUTH2 authentication mechanism, the assp library module Authen::SASL::Perl::XOAUTH2 is required (assp/lib/Authen/SASL/Perl/XOAUTH2.pm). 
 
 changed:
 
