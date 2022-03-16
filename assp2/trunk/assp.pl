@@ -152,6 +152,7 @@ BEGIN {
 
 use 5.010;
 use feature ":$::VSTR";     # <- turn on the available version features
+no utf8;                    # assp does not need it and don't like it - here is all latin - this is witten because of the announcement that perl 5.36 or 5.38 will use utf8 in CORE
 use threads 1.69 ('yield');
 use threads::shared 1.18;
 use Thread::Queue 2.06;
@@ -227,7 +228,7 @@ our $maxPerlVersion;
 #
 sub setVersion {
 $version = '2.6.8';
-$build   = '22063';        # 04.03.2022 TE
+$build   = '22075';        # 16.03.2022 TE
 $modversion="($build)";    # appended in version display (YYDDD[.subver]).
 $maxPerlVersion = '5.034999';
 $MAINVERSION = $version . $modversion;
@@ -297,7 +298,7 @@ if ($subversion % 2) {
     $ChangeLogURL = 'http://downloads.sourceforge.net/project/assp/ASSP%20V2%20multithreading/changelog.txt';
     $maxAge = 365 * 24 * 3600;
 } else {
-# stable development (beta) version download
+# stable development version download
     $versionURL = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/version.txt?format=raw';
     $NewAsspURL = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/assp.pl.gz?format=raw';
     $ChangeLogURL = 'http://sourceforge.net/p/assp/svn/HEAD/tree/assp2/trunk/changelog.txt?format=raw';
@@ -702,7 +703,7 @@ our %NotifyFreqTF:shared = (        # one notification per timeframe in seconds 
 
 our $sortWeightedConfig = {};       # 'configParameter' => 1, '' => 1, ... - reverse sort regular expressions in this weighted config parameters
 
-sub __cs { $codeSignature = '6CB11700FD23EA2BF38E6F328A96651CBA0FBE86'; }
+sub __cs { $codeSignature = 'B84787DF9C19AF4E427416EE54392D5353E7D57B'; }
 
 #######################################################
 # any custom code changes should end here !!!!        #
@@ -2219,7 +2220,8 @@ If multiple matches (values) are found in a mail for any IP address in the trans
 ['Groups','Address and Domain Groups*',80,\&textinput,'file:files/groups.txt','(\s*file\s*:\s*.+|)','ConfigMakeGroupRe','
  If you don\'t want to use group definitions, leave this field blank otherwise a file definition like \'file:files/groups.txt\' is required.<br/>
  Group definitions could be used in any other configuration value where multiple user names, email addresses or domain names or IP addresses could be defined.<br />
- Groups are defined and used using the same syntax [group-name] (including the brackets) in a single line. In the configuration parameters, the line [group-name] will be replaced by the content of the group definition, that is done here.<br />
+ Groups are defined and used using the same syntax [group-name] (including the brackets) in a single line. In the configuration parameters, the term [group-name] will be replaced by the content of the group definition, that is done here.<br />
+ So, all entries made (or generated) for a group here, have to fulfill the syntax rules for the configuration parameter where the group is used!<br />
  All group definitions are case sensitive. Group names can only contain the following characters: A-Z, a-z, 0-9, - , _ and @ ( the @ only for groups used in BlockReportFile )!<br />
  The structure of this file has to be as follows:<br />
  <br />
@@ -2246,14 +2248,23 @@ If multiple matches (values) are found in a mail for any IP address in the trans
  SPF:amazon.com -amazonses.com<br />
  ::1<br />
  <br />
- Lines starting with a # OR ; are consider a comment. Empty lines will be ignored. A group definition stops, if a new group definition starts or at the end of the file. Comments are not allowed inside a definition line.<br />
- <br />
- <font color="orange">Only here in Groups</font>, the SFP: notation is enhanced. The SPF: definition can follow a comma separated list of hosts, include-definition, redirect-definition and resulting IP-addresses/networks (full string match), which should be ignored. The leading hyphen for each excluded entry is mandatory - see the example above!
- <br />
- SPF:amazon.com -amazonses.com : in this example assp will follow include:spf1.amazon.com and include:spf2.amazon.com - but not include:amazonses.com .
+ Lines starting with a # OR ; are consider a comment and only those comments are allowed to be used! <b>Never ever comment anything anyhow in a definition line here in Groups!</b> Empty lines will be ignored. A group definition stops, if a new group definition starts or at the end of the file.
  <br />
  <br />
- There are two possible methods to import entries from an external source in to a group - the execution of a system command or an LDAP query.<br />
+ <font color="orange">For IP-address-lists (only!)</font>, the enhanced SFP: notation can be used. The SPF: definition can follow a comma separated list of hosts, include-definition, redirect-definition and resulting IP-addresses/networks, which should be ignored. The leading hyphen for each excluded entry is mandatory - see the example above!
+ <br />
+ SPF:amazon.com -amazonses.com  amazon.com without SES : in this example assp will follow include:spf1.amazon.com and include:spf2.amazon.com - but not include:amazonses.com .
+ <br />
+ Exclusions of SPF-records are active from the point of their definition until the end of the group. If -example.com is defined in the second line of a group definition, but it was used (not excluded, but redirected to or included from) in the first line, the IP\'s of example.com will be not removed from the group!
+ <br />
+ So, you\'ll come to the right conclusion, that it is the best choice to define all SPF excludes in the first line of a group. To make it easy to define and to read, assp accepts an "eXclude" entry like:
+ <br />
+ SPF:eXclude -example1.com , -example2.com , -.... , .....
+ <br />
+ The case sensitive definition "eXclude" is ignored, but the excluded entries are read for the group. You can define more than one SPF:eXclude entries in a group.
+ <br />
+ <br />
+ There are two more possible methods to import entries from an external source in to a group - the execution of a system command or an LDAP query.<br />
  To import entries via a system command like (eg. cat|grep or find or your self made shell script), write a single line that begins with exec: followed by the command to be executed - like:<br />
  exec:cat /etc/anydir/*.txt|grep \'@\'<br />
  The executed system command has to write a comma(,) or pipe(|) or linefeed(LF,CRLF) separated list of entries to STDOUT, that should become part of that group, where this line is used. There could be multiple and any combination of entry types in one group definition.<br />
@@ -2327,10 +2338,6 @@ If multiple matches (values) are found in a mail for any IP address in the trans
  ldap:{host=&gt;"edir.your-domain.local:389,edir2.your-domain.local:389",base=&gt;\'ou=your-domain,o=com\',user=&gt;\'ldapadmin\',password=&gt;\'LdapAdmin0PW=\',timeout=&gt;10,scheme=&gt;ldap,starttls=&gt;1,version=&gt;3},<font color="orange">{(&amp;(objectclass=group)(cn=mailAdmins))<font color="red">&lt;=s/,o=.+//io</font>}<b>{member}</b></font>,<font color="green">{(&amp;(objectclass=inetOrgPerson)(<font color="red">%USERID%</font>))}<b>{mail}</b></font><br />
  <br />
  ASSP will do a small syntax check for your LDAP line definition. How ever - it is recommended to validate your LDAP queries with a ldap tool before you put them in to assp and to set LDAPLog to diagnostic while you play around with this configuration!<br /><br />
-
-
-
-
  NOTICE: Do NOT try to "#include ..." any configuration file used by any other configuration parameter - those includes will be ignored. Instead define the group here and use it in the other configuration parameter(s).<br />
  ','Basic',undef,'msg009470','msg009471'],
 ['GroupsReloadEvery','Reload the Groups definitions every this minutes <sup>s</sup>',40,\&textinput,60,$ScheduleGUIRe,'configChangeSched',
@@ -5530,7 +5537,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
  Only Admins are able to request blockreports for non local email addresses. For example:<br />
  user@non_local_domain=>recipient@any-domain=>4<br />
  *@non_local_domain=>recipient@any-domain=>4<br />
- This will result in an extended blockreport for the non local address(es). Replace \'non_local_domain\' with the domain name you want to query for. Defining the report receipient \'=>recipient@any-domain\' is mandatory in this case!<br />
+ This will result in an extended blockreport for the non local address(es). Replace \'non_local_domain\' with the domain name you want to query for. Defining the report receipient \'=>recipient@any-domain\' is mandatory in this case! All BlockReportFilter will be ignored for extended reports! Extended blockreports will contain all loglines found for requested address(es).<br />
  It is possible to change the complete design of the BlockReports to your needs,  using a html-css file. A default css-file \'blockreport.css\' is in the image folder as is a default icon file \'blockreporticon.gif\' and a default header-image-file \'blockreport.gif\'.  These are optional files - If assp can not find these files in its
  image folder, it will use the default hardcoded css and icon. If the file \'blockreport.gif\' is not found \'logo.gif\' will be used.<br />
  To change any content, use the Blockreport::modify module in the lib folder. You\'ll need some Perl skills to do that.<br />
@@ -5605,7 +5612,7 @@ If you want to define multiple entries separate them by "|"',undef,undef,'msg008
  Only Admins are able to request blockreports for non local email addresses. For example:<br />
  user@non_local_domain=>recipient@any-domain=>4<br />
  *@non_local_domain=>recipient@any-domain=>4<br />
- This will result in an extended blockreport for the non local address(es). Replace \'non_local_domain\' with the domain name you want to query for.',undef,undef,'msg008470','msg008471'],
+ This will result in an extended blockreport for the non local address(es). Replace \'non_local_domain\' with the domain name you want to query for.  All BlockReportFilter will be ignored for extended reports! Extended blockreports will contain all loglines found for requested address(es).',undef,undef,'msg008470','msg008471'],
 ['BlockReportSchedule','Runtime BlockReportFile <sup>s</sup>',40,\&textinput,'0',$ScheduleGUIRe,'configChangeSched',
   'Runtime hour for reports in BlockReportFile. Set a number between 0 and 23. 0 means midnight and is default.',undef,undef,'msg008480','msg008481'],
 ['BlockReportNow','Generate a BlockReport from BlockReportFile Now',0,\&checkbox,'','(.*)','ConfigChangeRunTaskNow', "If selected, ASSP will generate a block report from BlockReportFile now. <input type=button value=\"Apply Changes and Run Block Report Now (if checked)\" onclick=\"document.forms['ASSPconfig'].theButtonX.value='Apply Changes';document.forms['ASSPconfig'].submit();WaitDiv();return false;\" />&nbsp;<input type=button value=\"Refresh Browser\" onclick=\"document.forms['ASSPconfig'].theButtonRefresh.value='Apply Changes';document.forms['ASSPconfig'].submit();WaitDiv();return false;\" />",undef,undef,'msg008490','msg008491'],
@@ -8554,7 +8561,7 @@ if ($@) {
 sub write_rebuild_module {
 my $curr_version = shift;
 
-my $rb_version = '8.14';
+my $rb_version = '8.15';
 my $keepVersion;
 
 if (open my $ADV, '<',"$base/lib/rebuildspamdb.pm") {
@@ -8607,6 +8614,7 @@ rb_mlog("info: rebuildspamdb module version ".${'VERSION'}." loaded");
 # (c) Thomas Eckardt since 2008 under the terms of the GPL
 
 use strict qw(vars subs);
+no utf8;
 use Digest::MD5 qw(md5_hex);
 use File::Copy;
 use IO::Handle;
@@ -12157,6 +12165,8 @@ $lngmsg{'msg500013'} = '<div id="iphint">IP ranges are defined as for example 18
 $lngmsghint{'msg500014'} = '# main form buttom hint 4';
 $lngmsg{'msg500014'} = '<br />Text after the range (and before a number sign) will be accepted as comment to be shown in a match. For example:<br />182.82.10.0/24 Yahoo #comment to be removed<br />The short notation like 182.82.10. is only allowed for IPv4 addresses, IPv6 addresses must be fully defined as for example 2201:1::1 or 2201:1::/96<br /><span class="negative">NEVER EVER include leading zeros in to IPv4 octets - like 010.200.001.078 (use 10.200.1.78 instead), this will lead in to unexpected errors in several used perl modules!</span><br />You may define a hostname instead of an IP, in this case the hostname will be replaced by all DNS-resolved IP-addresses, each with a /32 or /128 netmask. For example:<br />mta5.am0.yahoodns.net Yahoo #comment to be removed -&gt; 66.94.238.147/32 Yahoo|... Yahoo|... Yahoo<br />
 For several IP-address lists in assp, it can be advantageous to include all IP\'s (and ranges) listed in the SPF-record of a specific domain (for example in noPB, noHelo, whiteListedIPs, ...). To provide this, simply write SPF: in front of the domain name in a list entry - like 182.82.10.0/24|<span class="positive">SPF:amazon.com</span>|2201:1::1 . In this example assp will replace the term SPF:amazon.com with the list of all IP\'s and resolved IP\'s defined in the SPF-record of amazon.com. Assignments made to such an entry - like <span class="positive">SPF:amazon.com=&gt;[usergroup]</span> will be added to each resolved SPF-IP-address.<br />
+To exclude specific SPF includes, redirects and IP-addresses/ranges, write for example: SPF:eXclude -toremove1.org, -_spf1.toremove2.org, -x.x.x.x/yy, -host . The leading hyphen is mandatory, comma has to be used as separator and the term eXclude is case sensitive!<br />
+SPF:eXclude definitions should be done before any other SPF:.. definition, because early SPF:.. definition are not affected by later SPF:eXclude definitions!<br />
 The SPF:domain.org notation can be also used for IP lists in a group definition.</div>';
 
 $lngmsghint{'msg500015'} = '# main form buttom hint 5';
@@ -33981,15 +33991,19 @@ sub getRRA {
     $type = uc $type;
     eval {
         if (defined(${chr(ord(substr($type,0,1))+23)}) && $type eq 'A' && (my $res = queryDNS($dom ,$type))) {
-            my @answer = map{$_->string} grep { $_->type eq 'A'} $res->answer;
+            my @answer = grep { $_->type eq 'A'} $res->answer;
             while (@answer) {
-                push @IP, Net::DNS::RR->new(shift @answer)->rdatastr;
+                my $ans = shift @answer;
+                my $ip = eval{$ans->rdatastr};
+                push @IP, $ip if $ip;
             }
         }
         if (defined(${chr(ord(substr($type,0,1))+23)}) && (my $res = queryDNS($dom ,'AAAA'))) {
-            my @answer = map{$_->string} grep { $_->type eq 'AAAA'} $res->answer;
+            my @answer = grep { $_->type eq 'AAAA'} $res->answer;
             while (@answer) {
-                push @IP, Net::DNS::RR->new(shift @answer)->rdatastr;
+                my $ans = shift @answer;
+                my $ip = eval{$ans->rdatastr};
+                push @IP, $ip if $ip;
             }
         }
     };
@@ -34008,21 +34022,24 @@ sub getRRData {
       my @data;
       my @answers;
       if (ref($res) && (@answers = $res->answer)) {
-          @answers = map{Net::DNS::RR->new($_->string)} @answers;
           if (lc($type) eq 'txt') {
               for my $RR (@answers) {
-                  next if lc($RR->type) ne lc($type);
-                  $gotname ||= $RR->name;
-                  $gottype ||= $RR->type;
-                  push @data, $RR->char_str_list;
+                  eval{
+                      next if lc($RR->type) ne lc($type);
+                      $gotname ||= $RR->name;
+                      $gottype ||= $RR->type;
+                      push @data, join('',$RR->char_str_list);
+                  };
               }
               $gotdata = join('',@data);       # return all TXT entries joined
           } else {
               for my $RR (@answers) {
-                  next if (lc($RR->type) ne lc($type) && uc($type) ne 'ANY');
-                  $gotname ||= $RR->name;
-                  $gottype ||= $RR->type;
-                  push @data, $RR->rdatastr;
+                  eval{
+                      next if (lc($RR->type) ne lc($type) && uc($type) ne 'ANY');
+                      $gotname ||= $RR->name;
+                      $gottype ||= $RR->type;
+                      push @data, $RR->rdatastr;
+                  };
               }
               if (@data) {
                   if (uc $type eq 'PTR') {
@@ -36303,10 +36320,11 @@ sub getASData {
         next if $main::lastDNSerror eq 'TIMEOUT';
         my @answers;
         if (ref($res) && (@answers = $res->answer)) {
-            @answers = map{Net::DNS::RR->new($_->string)} @answers;
             for my $RR (@answers) {
-                next if lc($RR->type) ne 'txt';
-                push @data, $RR->char_str_list;
+                eval {
+                    next if lc($RR->type) ne 'txt';
+                    push @data, join('',$RR->char_str_list);
+                };
             }
         }
         last if @data;
@@ -36732,10 +36750,10 @@ sub MXAOK_Run {
                     $lastDNSerror = '' if (! $lde4 || ! $lde6);
                     if (ref($res4) || ref($res6)) {
                         my @answer;
-                        push @answer , map{$_->string} grep { $_->type eq 'A'} $res4->answer if ref($res4);
-                        push @answer , map{$_->string} grep { $_->type eq 'AAAA'} $res6->answer if ref($res6);
+                        push @answer , grep { $_->type eq 'A'} $res4->answer if ref($res4);
+                        push @answer , grep { $_->type eq 'AAAA'} $res6->answer if ref($res6);
                         while (@answer) {
-                            my $RR = Net::DNS::RR->new(shift @answer);
+                            my $RR = shift @answer;
                             my $aip = eval{$RR->rdatastr};
                             mlog( $fh,"$mfd - MX '$mxexchange' - got IP ($aip)", 0)
                                 if $ValidateSenderLog >= 2;
@@ -44069,6 +44087,7 @@ WHITCHWORKER
                      || ( $fl =~ m/\[sl\]/io )
                      || ( $fl =~ m/\[spamlover\]/io )
                      || ( $fl =~ m/\[lowlimit\]/io )
+                     || ( $fl =~ m/\[smtp (?:reply|error)\]/io )
                      || ( $fl =~ m/\[warning\]/io );
                 my $match = 0;
                 foreach my $re (keys %exceptRe) {
@@ -44102,7 +44121,6 @@ WHITCHWORKER
             } else {    # $faddress is OK
                 $address = $faddress;
             }
-
             my $is_admin = $isadmin;
             $is_admin = 1
               if ($is_admin eq 'user' &&
@@ -47835,6 +47853,7 @@ sub downloadGrip {
             binmode $TEMPFILE;
             print $TEMPFILE <<'EOT';
 use strict;
+no utf8;
 
 my ($gripFile,$delta) = @ARGV;
 my $dltime = time;
@@ -58234,10 +58253,17 @@ sub ConfigIPAction {
     $addr =~ s/^\s+//o;
     $addr =~ s/\s+$//o;
     my $wrongaddr;
+    my $s;
     if ($addr !~ /^$IPRe$/o) {
         $wrongaddr = '<br /><span class="negative">This is not a valid IP address or a resolvable hostname!</span><br />' ;
     }
-    if ($wrongaddr && $addr =~ /^$HostRe$/o) {
+    if ($wrongaddr && $addr =~ /^($IPRe\/\d{1,3})\s*-\s*($IPRe(\/\d{1,3})?)/o) {
+        my @cidr = eval{removeIPFromList($2,$1);};
+        $wrongaddr = "<br />resulting CIDR-list for: $2 is removed from $1<br />\n".join('<br />',@cidr).'<br />';
+    } elsif ($wrongaddr && $addr =~ /^($IPRe\/\d{1,3})\s*\+\s*($IPRe(\/\d{1,3})?)/o) {
+        my @cidr = eval{addIPToList($2,$1);};
+        $wrongaddr = "<br />resulting CIDR-list for: $2 is added to $1<br />\n".join('<br />',@cidr).'<br />';
+    } elsif ($wrongaddr && $addr =~ /^$HostRe$/o) {
         my $ta = $addr;
         $addr = join(' ' ,&getRRA($ta,''));
         if ($addr =~ /($IPv4Re)/o) {
@@ -58261,7 +58287,7 @@ sub ConfigIPAction {
     $reason ||= 'no reason';
     my $slo;
     $slo = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="button"  name="showlogout" value="  logout " onclick="window.location.href=\'./logout\';return false;"/></span>' if exists $qs{showlogout};
-    my $s = $qs{reloaded} eq 'reloaded' ? '<span class="positive">(page was auto reloaded)</span><br /><br />' : '';
+    $s .= $qs{reloaded} eq 'reloaded' ? '<span class="positive">(page was auto reloaded)</span><br /><br />' : '';
 
     if ($addr && $action && $qs{Submit} && ! $wrongaddr) {
         if ($action eq '1' && &canUserDo($WebIP{$ActWebSess}->{user},'cfg','noProcessingIPs')) {
@@ -58442,7 +58468,8 @@ $headerHTTP
     <div class="content">
       <form name="edit" id="edit" action="" method="post" autocomplete="off">
         <h3>IP-address or hostname to work with &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img style="height:20px; width:20px;" src="get?file=images/help.png">&nbsp;&nbsp;show results</h3>
-        <input name="ip" size="20" autocomplete="off" value="$addr" onchange="document.forms['edit'].action.value='0';document.forms['edit'].reloaded.value='reloaded';document.forms['edit'].submit();return false;"/>
+        <small>or IP1/MASK-/+IP2[/MASK] to remove/add IP2 from/to IP1 and show the resulting list of CIDR</small><br />
+        <input name="ip" size="40" autocomplete="off" value="$addr" onchange="document.forms['edit'].action.value='0';document.forms['edit'].reloaded.value='reloaded';document.forms['edit'].submit();return false;"/>
         $wrongaddr
         <br /><hr>
         <div style="align: left">
@@ -62664,6 +62691,7 @@ sub ConfigMakeGroupRe {
     my $execcnt = 0;
     my $continue;
     my $spfgrp;
+    my @spfexclIP;
     my $minTTL = 999999999;
     while (@entry) {
         my $e = shift @entry;
@@ -62683,6 +62711,7 @@ sub ConfigMakeGroupRe {
             my $s = ($count eq 'NO' or $count > 1) ? 's' : '';
             mlog(0,"info: group $group loaded with $count record$s") if $group && $MaintenanceLog;
             undef $spfgrp;
+            @spfexclIP = ();
             $count = 0;
             $ldapcnt = 0;
             $execcnt = 0;
@@ -62861,29 +62890,52 @@ sub ConfigMakeGroupRe {
             $count += $adr;
         } elsif ($e =~ /^spf:\s*($EmailDomainRe|\w\w+)\s*(.*)$/io) {
             my ($domain,$excl) = ($1,$2);
+            $excl =~ s/\s*[#;].*$//o;
             $isdynamic = 1;
             d("ConfigMakeGroupRe - $e");
             if (! defined($spfgrp)) {
                 $spfgrp = {};
             }
+            my $q = $domain =~ /^eXclude$/o ? '*' : '+';
             for my $ex (split(/\s*,\s*/o,$excl)) {
-                next unless $ex =~ s/^-+\s*($EmailDomainRe|\w\w+)$/$1/o;
-                $spfgrp->{lc $ex} = 1;
-                mlog(0,"info: the include and redirect of SPF-record $ex for the domain $domain in group $group is ignored") if $MaintenanceLog || $DebugSPF;
+                if ( $ex =~ s/^-$q($EmailDomainRe|\w\w+)$/$1/ ) {
+                    $spfgrp->{lc $ex} = 1;  # tell getSPFIPs to ignore this
+                    push @spfexclIP, $ex;
+                    mlog(0,"info: the include and redirect of SPF-record $ex is ignored for group $group") if $MaintenanceLog || $DebugSPF;
+                } elsif ($ex =~ /^$IPRe(\/\d+)?$/o) {
+                    my $t = $1 ? 'range' : 'address';
+                    push @spfexclIP, $ex;
+                    mlog(0,"info: the IP-$t $ex is ignored for group $group") if $MaintenanceLog || $DebugSPF;
+                } else {
+                    mlog(0,"error: '$ex' in line '$e' for group $group breaks the syntax and is ignored") if $MaintenanceLog || $DebugSPF;
+                }
             }
-            if (exists $spfgrp->{lc $domain}) {
-                mlog(0,"info: the SPF-record for the domain $domain in group $group was already processed before") if $MaintenanceLog || $DebugSPF;
+            # this was only a exclusion definition
+            if ($domain =~ /^eXclude$/o) {
                 next;
             }
+            # the record was already processed before or is excluded
+            if (exists $spfgrp->{lc $domain}) {
+                mlog(0,"info: the SPF-record for the domain $domain in group $group was already processed before") if $MaintenanceLog > 1 || $DebugSPF;
+                next;
+            }
+            # set the top-level SPF-record for getSPFIPs
             $spfgrp->{"\xFF\xFF"} = $domain;
             my @spfips = getSPFIPs($domain,$spfgrp);
             d("ConfigMakeGroupRe - result: @spfips");
 
             $minTTL = max(min($spfgrp->{'*minTTL*'},$minTTL),300);
 
-            for my $ex (split(/\s*,\s*/o,$excl)) {
-                next unless $ex =~ s/^-+\s*($IPRe(?:\/\d+)?|$EmailDomainRe|\w\w+)$/$1/o;
-                @spfips = grep { $ex ne $_ } @spfips;
+            if (@spfips) {
+                for my $ex (@spfexclIP) {
+                    next unless $ex =~ s/^-$q($IPRe(?:\/\d+)?|$EmailDomainRe|\w\w+)$/$1/;
+                    if ($ex =~ /^$IPRe(?:\/\d+)?$/o) {
+                        @spfips = removeIPFromList($ex,@spfips);
+                    } else {
+                        @spfips = grep { $ex ne $_ } @spfips;
+                    }
+                    last unless @spfips;
+                }
             }
 
             if (@spfips) {
@@ -62896,7 +62948,7 @@ sub ConfigMakeGroupRe {
                 mlog(0,"info: group $group loaded NO addresses via SPF:$domain") if $MaintenanceLog || $DebugSPF;
             }
         } elsif ($e =~ /^spf:/io) {
-            mlog(0,"error: group $group - syntax error in line $e");
+            mlog(0,"error: group $group - syntax error in line: $e");
             $error = 1;
         } else {
             $count++;
@@ -63506,12 +63558,11 @@ sub getSPFRecord {
     return unless ref($ans);
     my @answers;
     if (@answers = $ans->answer) {
-        @answers = map{ Net::DNS::RR->new($_->string) } @answers;
         for my $RR (@answers) {
             next if lc($RR->type) ne 'txt';
             my @data1;
             my @data2;
-            for my $rec ( $RR->char_str_list ) {
+            for my $rec ( join('', eval{$RR->char_str_list}) ) {
                 $rec =~ s/'"//go;
                 $rec =~ s/^\s+//o;
                 if ($rec =~ /^v=spf2|^spf2\./io) {
@@ -63542,7 +63593,6 @@ sub getSPFIPs {
     my ($domain,$includes) = @_;
 
     d("getSPFIPs: $domain");
-    return unless $CanUseSPF2;
     return unless defined($domain);
     
     # reenable RefreshSPFCache if it is currently disabled
@@ -63605,7 +63655,7 @@ sub getSPFIPs {
             foreach my $rr ( @queryMX ) {
                 my $mxexchange;
                 eval{$mxexchange = $rr->exchange;} or next;
-                push @ret, ($mxexchange =~ /^$IPRe$/o ? $mxexchange : getRRA($mxexchange));
+                push @ret, ($mxexchange =~ /^$IPRe$/o ? $mxexchange : getRRA($mxexchange) || $mxexchange);
             }
             next;
         }
@@ -63631,6 +63681,7 @@ sub replaceHostByIP {
     my $minTTL = 999999999;
     my @entries = split(/\|/o,$$new);
     my $spfhost = {};
+    my @spfexclIP;
     while (@entries) {
         my $l = shift(@entries);
         $l =~ s/^\s+//o;
@@ -63638,12 +63689,41 @@ sub replaceHostByIP {
 
         if ($l =~ /^spf:\s*($EmailDomainRe|\w\w+)(.*)$/io) {
             my ($domain,$ext) = ($1,$2);
+            my $q = $domain =~ /^eXclude$/o ? '*' : '+';
+            if ($domain =~ /^eXclude$/o) {
+                for my $ex (split(/\s*,\s*/o,$ext)) {
+                    if ( $ex =~ s/^-$q($EmailDomainRe|\w\w+)$/$1/ ) {
+                        $spfhost->{lc $ex} = 1;  # tell getSPFIPs to ignore this
+                        push @spfexclIP, $ex;
+                        mlog(0,"info: the include and redirect of SPF-record $ex is ignored for $name") if $MaintenanceLog || $DebugSPF;
+                    } elsif ($ex =~ /^$IPRe(?:\/\d+)?$/o) {
+                        push @spfexclIP, $ex;
+                        mlog(0,"info: the IP $ex is ignored for SPF-records in $name") if $MaintenanceLog || $DebugSPF;
+                    }
+                }
+                # this was only a exclusion definition
+                next;
+            }
+
             if (exists $spfhost->{lc $domain}) {
-                mlog(0,"info: the SPF-record for the domain $domain in $name was already processed before") if $MaintenanceLog || $DebugSPF;
+                mlog(0,"info: the SPF-record for the domain $domain in $name was already processed before or is excluded") if $MaintenanceLog || $DebugSPF;
                 next;
             }
             $spfhost->{"\xFF\xFF"} = $domain;
             my @spfips = getSPFIPs($domain,$spfhost);
+
+            if (@spfips) {
+                for my $ex (@spfexclIP) {
+                    next unless $ex =~ s/^-$q($IPRe(?:\/\d+)?|$EmailDomainRe|\w\w+)$/$1/;
+                    if ($ex =~ /^$IPRe(?:\/\d+)?$/o) {
+                        @spfips = removeIPFromList($ex,@spfips);
+                    } else {
+                        @spfips = grep { $ex ne $_ } @spfips;
+                    }
+                    last unless @spfips;
+                }
+            }
+
             if (@spfips) {
                 @spfips = reverse(@spfips);
                 $seenhostname = 1;
@@ -63684,11 +63764,11 @@ sub replaceHostByIP {
         my $res6 = queryDNS($sl ,'AAAA');
         if (ref($res4) || ref($res6)) {
             my @answer;
-            push @answer , eval{map{$_->string} grep { $_->type eq 'A'} $res4->answer} if ref($res4);
-            push @answer , eval{map{$_->string} grep { $_->type eq 'AAAA'} $res6->answer} if ref($res6);
+            push @answer , eval{grep { $_->type eq 'A' } $res4->answer} if ref($res4);
+            push @answer , eval{grep { $_->type eq 'AAAA' } $res6->answer} if ref($res6);
             my $w = 1;
             while (@answer) {
-                my $RR = Net::DNS::RR->new(shift @answer);
+                my $RR = shift @answer;
                 my $ttl = eval{$RR->ttl};
                 my $data = eval{$RR->rdatastr};
                 $ret .= ConfigShowError(1, "AdminInfo: warning - TTL for '$sl' is only $ttl seconds in configuration of '$name' - minimum config reload interval is $host2IPminTTL seconds") if $ttl < $host2IPminTTL && $w;
@@ -63818,6 +63898,142 @@ sub _tree2re {
        : $tree->{1}                ? (    '1', _tree2re($tree->{1})            )  # Literal 1, no choice
        : die 'Internal error: failed to create a regexp from the supplied IP ranges'
        ;
+}
+
+# add an IP or IP-range ($value) to an IP-List (list of ranges)
+sub addIPToList {
+    my ($value,@ipList)=@_;
+    d("addIPToList - $value to @ipList");
+    # mlog(0,"info: add $value to @ipList");
+    my @out;
+    my $valIsIP = $value =~ /^$IPRe(?:\/\d+)?$/o;
+    if ($CanUseCIDRlite && $valIsIP) {
+        my $cidr = eval{Net::CIDR::Lite->new($value);};
+        while (@ipList) {
+            my $line = shift @ipList;
+            $line =~ s/\r?\n$//o;
+            my $lineIsIP = $line =~ /^$IPRe(?:\/\d+)?$/o;
+            if ($lineIsIP) {
+                eval{$cidr->add_any($line);};
+            } else {
+                push @out,$line;
+            }
+        }
+        push @out, map {my $t = $_; $t =~ s/^(.*?)(\/\d+)?$/Net::CIDR::Lite::_compress_ipv6($1).$2/oe; $t;} $cidr->list if $cidr;
+    } else {
+        push @out,$value,@ipList;
+    }
+    return @out;
+}
+
+# remove an IP or IP-range ($value) from an IP-List (list of ranges)
+sub removeIPFromList {
+    my ($value,@ipList)=@_;
+    d("removeIPFromList - $value from @ipList");
+    # mlog(0,"info: $value from @ipList");
+    my @out;
+    my $hasNetIP = $CanUseNetAddrIPLite && $CanUseNetIP && $CanUseCIDRlite;
+    my $run = sub {
+        my $s1 = NetAddr::IP::Lite->new(shift,(unpack("A1",${chr(ord("\026") << 2)})-1))+(shift);
+        $s1 =~ s :/.*::o;
+        return ipv6compress($s1);
+    };
+    my $cidr_list = sub {
+        return unless $CanUseCIDRlite;
+        my $cidr = Net::CIDR::Lite->new;
+        $cidr->add_any(shift);
+        return map {my $t = $_; $t =~ s/^(.*?)(\/\d+)?$/Net::CIDR::Lite::_compress_ipv6($1).$2/oe; $t;} $cidr->list;
+    };
+    if (   (grep {/(?:^\s*[^#]?\s*\Q$value\E)/i} @ipList)
+        || ($value =~ /^$IPRe(?:\/\d+)?$/o && $hasNetIP )
+       )
+    {
+        my $valIP;
+        my $valIsIP = $value =~ /^$IPRe(?:\/\d+)?$/o;
+        # mlog(0,"warning: to remove an IP-address or IP-address-range from a defined IP-address-range, you need to install the modules Net::IP and NetAddr::IP::Lite") if (!$hasNetIP && $valIsIP);
+        while (@ipList) {
+            my $line = shift @ipList;
+            $line =~ s/\r?\n$//o;
+            # exact entry match - remove it
+            if ($line =~ /(?:^\Q$value\E)/i) {
+                # mlog(0,"info: $value deleted");
+                next;
+            }
+            my $lineIsIP = $line =~ /^$IPRe(?:\/\d+)?$/o;
+            eval {
+                if ($hasNetIP && $valIsIP && $lineIsIP) {
+                    $valIP ||= eval{Net::IP->new($value)};
+                    if ($valIP) {
+                        my ($iline) = $line =~ /^\s*([^#]+)(?:#.*)?$/o;
+                        $iline =~ s/\s+$//o;
+                        if ($iline =~ /^($IPv6Re)(?:\/(\d+)|-($IPv6Re))?/o) {
+                            my $ip1 = ipv6expand($1);
+                            my $bits = $2;
+                            my $ip2 = $3?ipv6expand($3):undef;
+                            if (! $bits && ! $ip2) {
+                                my $tip = $ip1;
+                                $tip =~ s/(?::0)+$//o;
+                                my @pre = split /:/o, $tip;
+                                $bits = ($#pre+1)*16;
+                            }
+                            $iline = $ip1 . ($bits?"/$bits":'') . ($ip2?"-$ip2":'');
+                        } elsif ($iline =~ /^(\d{1,3}\.?(?:\d{1,3}\.?){0,3})\/?(\d{1,2})?$/o) {
+                            my $ip = $1;
+                            my $bits = $2;
+                            $ip=~s/\.$//o;
+                            my $dcnt = min(3,($ip=~tr/\.//));
+                            $ip .= '.0' x (3-$dcnt);
+                            $bits = ++$dcnt * 8 unless defined $bits;
+                            $iline = $ip . '/' . $bits;
+                        }
+                        if ($iline =~ /^$IPRe/o) {
+                            my $rangeIP = eval{Net::IP->new($iline)};
+                            if (! $rangeIP) {
+                                push @out, $line;
+                                next;
+                            }
+                            my $overlap = eval {$valIP->overlaps($rangeIP);};
+                            #  rangeIP is completely in valIP - remove it completely
+                            if ($overlap==${'Net::IP::IP_B_IN_A_OVERLAP'}) {
+                                next;
+                            #  rangeIP is equal to valIP - remove it completely
+                            } elsif ($overlap==${'Net::IP::IP_IDENTICAL'}) {
+                                next;
+                            #  rangeIP is larger than valIP - remove valIP from rangeIP
+                            } elsif ($overlap==${'Net::IP::IP_A_IN_B_OVERLAP'}) {
+                                my $sl = $run->($rangeIP->ip(),0);
+                                my $el = $run->($valIP->ip(),-1);
+                                my $sh = $run->($valIP->last_ip(),1);
+                                my $eh = $run->($rangeIP->last_ip(),0);
+                                if ($sl && $el && $sh && $eh) {
+                                    push @out, $cidr_list->("$sl-$el") if $rangeIP->ip() ne $valIP->ip();
+                                    push @out, $cidr_list->("$sh-$eh") if $rangeIP->last_ip() ne $valIP->last_ip();
+                                    # mlog(0,"info: $value deleted");
+                                    next;
+                                }
+                            #  rangeIP and valIP overlapping partly - remove valIP from rangeIP
+                            } elsif ($overlap==${'Net::IP::IP_PARTIAL_OVERLAP'}) {
+                                #                                                        the following two overlap types are possible
+                                #                                                        right val                           left val
+                                #                                            valIP   ##############                        ###############
+                                #                                          rangeIP         ****************          **************
+                                #                                        start end                >++++++++<        >++++++<
+                                my $start = ($valIP->binip() <= $rangeIP->binip()) ? $run->($valIP->last_ip(), 1 ) : $run->($rangeIP->ip(),0);
+                                my $end   = ($valIP->binip() <= $rangeIP->binip()) ? $run->($rangeIP->last_ip(),0) : $run->($valIP->ip(),-1);
+                                push @out, $cidr_list->("$start-$end");
+                            }
+                        }
+                    } else {
+                        # mlog(0,"warning: $value seems not to be a valid IP-address or IP-address-range");
+                    }
+                }  # endif
+            }; # end eval
+            push @out, $line;
+        }
+    } else {
+        @out = @ipList;
+    }
+    return @out;
 }
 
 # make IP address RE
@@ -76760,8 +76976,21 @@ sub GPBSetup {
                         $iline = $ip . '/' . $bits;
                     }
                     if ($iline =~ /^$IPRe/o) {
-                        my $rangeIP;
-                        if (($rangeIP = eval{Net::IP->new($iline)}) && $valIP->overlaps($rangeIP)==${'Net::IP::IP_A_IN_B_OVERLAP'}) {
+                        my $rangeIP = eval{Net::IP->new($iline)};
+                        if (! $rangeIP) {
+                            print $GPBFILE "$line\n";
+                            mlog(0,"warning: $iline seems not to be a valid IP-address or IP-address-range in line: $line");
+                            next;
+                        }
+                        my $overlap = eval {$valIP->overlaps($rangeIP);};
+                        #  rangeIP is completely in valIP - remove it completely
+                        if ($overlap==${'Net::IP::IP_B_IN_A_OVERLAP'}) {
+                            next;
+                        #  rangeIP is equal to valIP - remove it completely
+                        } elsif ($overlap==${'Net::IP::IP_IDENTICAL'}) {
+                            next;
+                        #  rangeIP is larger than valIP - remove valIP from rangeIP
+                        } elsif ($overlap==${'Net::IP::IP_A_IN_B_OVERLAP'}) {
                             my $sl = $run->($rangeIP->ip(),0);
                             my $el = $run->($valIP->ip(),-1);
                             my $sh = $run->($valIP->last_ip(),1);
@@ -76782,8 +77011,23 @@ sub GPBSetup {
                                 $ret = 1;
                                 next;
                             }
-                        } elsif (! $rangeIP) {
-                            mlog(0,"warning: $iline seems not to be a valid IP-address or IP-address-range in line: $line");
+                        #  rangeIP and valIP overlapping partly - remove valIP from rangeIP
+                        } elsif ($overlap==${'Net::IP::IP_PARTIAL_OVERLAP'}) {
+                            #                                            valIP   ##############                        ###############
+                            #                                          rangeIP         ****************          **************
+                            #                                        start end                >++++++++<        >++++++<
+                            my $start = ($valIP->binip() <= $rangeIP->binip()) ? $run->($valIP->last_ip(), 1 ) : $run->($rangeIP->ip(),0);
+                            my $end   = ($valIP->binip() <= $rangeIP->binip()) ? $run->($rangeIP->last_ip(),0) : $run->($valIP->ip(),-1);
+                            my @cidr = $cidr_list->("$start-$end");
+                            if ($start ne $end) {
+                                print $GPBFILE "##########\n";
+                                print $GPBFILE "# modified - removed: $value from >$line<\n";
+                                print $GPBFILE "# CIDR: @cidr\n";
+                                print $GPBFILE "##########\n";
+                            }
+                            print $GPBFILE "$start".($start ne $end?"-$end":'')." $desc\n";
+                            $ret = 1;
+                            next;
                         }
                     }
                 } else {
@@ -78553,7 +78797,7 @@ sub DKIM_DNS_query {
    	my ($domain, $type) = @_;
    	my $resp = &main::queryDNS($domain, $type);
    	if (ref $resp) {
-      		my @result = eval{grep { lc $_->type eq lc $type } $resp->answer};
+      		my @result = eval{grep { lc $type eq 'any' || lc $_->type eq lc $type } $resp->answer};
       		return @result if @result;
    	}
     return ();
@@ -80167,7 +80411,7 @@ sub results {
     foreach my $rr (@{$self->{query}}) {
         next unless ref $rr;
         next unless $rr->type eq 'TXT';
-        my $line = $rr->txtdata;
+        my $line = eval{$rr->txtdata};
         if ($line =~ s/^(\d+)-//o) {
             my $id = $1;
             $lines[$id] = $line;

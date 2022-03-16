@@ -1,3 +1,23 @@
+2022-03-16
+fixed in assp 2.6.8 *SPAM-Evaporator* build 22075:
+
+- if a DNS-TXT record contained more than one entry (multi line), only the first entry was read
+  some SPF-records were not processed correctly for this reason
+  this is fixed
+  
+  
+changed:
+
+- the GUI dialog "working with IP-addresses" supports now the calculation of resulting IP-networks, if an IP-address/range is removed from or added to an IP-range
+  example: 192.168.0.0/16-192.168.1.0/24  or  192.168.0.0/24+192.168.1.0/24
+
+- the 'SPF:' SPF-record definition for Groups and IP-lists is enhanced
+  it is now possible to exclude SPF-include, SPF-redirect or IP-addresses/ranges from resolved SPF-records
+  example: SPF:amazon.com -amazonses.com
+  please read the general GUI-help or the Groups-GUI-help for the detailed explanation
+
+
+
 2022-03-04
 fixed in assp 2.6.8 *SPAM-Evaporator* build 22063:
 
