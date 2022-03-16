@@ -2,7 +2,8 @@
 ###############################################################################################
 #If you don't want to use group definitions, leave this field blank otherwise a file definition like 'file:files/groups.txt' is required.
 #Group definitions could be used in any other configuration value where multiple user names, email addresses or domain names or IP addresses could be defined.
-#Groups are defined and used using the same syntax [group-name] (including the brackets) in a single line. In the configuration parameters, the line [group-name] will be replaced by the content of the group definition, that is done here.
+#Groups are defined and used using the same syntax [group-name] (including the brackets) in a single line. In the configuration parameters, the term [group-name] will be replaced by the content of the group definition, that is done here.
+#So, all entries made (or generated) for a group here, have to fulfill the syntax rules for the configuration parameter where the group is used!
 #All group definitions are case sensitive. Group names can only contain the following characters: A-Z, a-z, 0-9, - , _ and @ ( the @ only for groups used in BlockReportFile )!
 #The structure of this file has to be as follows:
 #
@@ -28,7 +29,7 @@
 #SPF:amazon.com -amazonses.com
 #::1
 #
-#Lines starting with a # OR ; are consider a comment. Empty lines will be ignored. A group definition stops, if a new group definition starts or at the end of the file. Comments are not allowed inside a definition line.
+#Lines starting with a # OR ; are consider a comment and only those comments are allowed to be used! Never ever comment anything anyhow in a definition line here in Groups! Empty lines will be ignored. A group definition stops, if a new group definition starts or at the end of the file.
 #
 #For IP-address-lists (only!), the enhanced SFP: notation can be used. The SPF: definition can follow a comma separated list of hosts, include-definition, redirect-definition and resulting IP-addresses/networks, which should be ignored. The leading hyphen for each excluded entry is mandatory - see the example above!
 #SPF:amazon.com -amazonses.com amazon.com without SES : in this example assp will follow include:spf1.amazon.com and include:spf2.amazon.com - but not include:amazonses.com .
